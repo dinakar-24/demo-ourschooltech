@@ -51,7 +51,7 @@
 
 ### Admin Pages Connected
 - [x] `FeesPage` - Connected to fees table with real stats, payment recording
-- [ ] `AttendancePage` (Admin) - Connect to attendance table for overview
+- [x] `AttendancePage` (Admin) - Connected to attendance table for overview
 - [ ] `ExamsPage` - Connect to exams/results tables
 - [ ] `AnnouncementsPage` - Connect to announcements table
 
