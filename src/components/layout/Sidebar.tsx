@@ -20,8 +20,12 @@ import {
   LogOut,
   Menu,
   X,
+  Shield,
+  UserCheck,
+  ScrollText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
@@ -29,78 +33,77 @@ interface SidebarProps {
   userName?: string;
 }
 
+// Route prefixes for each role
+const rolePrefix = {
+  super_admin: '/super-admin',
+  school_admin: '/admin',
+  teacher: '/teacher',
+  parent: '/parent',
+  student: '/student',
+};
+
+// Menu items with relative paths (prefix will be added)
 const menuConfig = {
   super_admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Schools', href: '/schools', icon: School },
-    { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { label: 'Settings', href: '/settings', icon: Settings },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Schools', path: '/schools', icon: School },
+    { label: 'School Admins', path: '/admins', icon: UserCheck },
+    { label: 'All Users', path: '/users', icon: Users },
+    { label: 'Subscriptions', path: '/subscriptions', icon: CreditCard },
+    { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Audit Logs', path: '/audit-logs', icon: ScrollText },
+    { label: 'Settings', path: '/settings', icon: Settings },
   ],
   school_admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { 
-      label: 'Students', 
-      href: '/students', 
-      icon: Users,
-      children: [
-        { label: 'All Students', href: '/students' },
-        { label: 'Add Student', href: '/students/add' },
-        { label: 'Bulk Upload', href: '/students/bulk-upload' },
-      ]
-    },
-    { label: 'Teachers', href: '/teachers', icon: GraduationCap },
-    { label: 'Classes', href: '/classes', icon: BookOpen },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Fees', href: '/fees', icon: CreditCard },
-    { label: 'Exams', href: '/exams', icon: FileText },
-    { label: 'Timetable', href: '/timetable', icon: Clock },
-    { label: 'Announcements', href: '/announcements', icon: Bell },
-    { label: 'Reports', href: '/reports', icon: BarChart3 },
-    { label: 'Settings', href: '/settings', icon: Settings },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Students', path: '/students', icon: Users },
+    { label: 'Teachers', path: '/teachers', icon: GraduationCap },
+    { label: 'Classes', path: '/classes', icon: BookOpen },
+    { label: 'Academic Years', path: '/academic-years', icon: Calendar },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Fees', path: '/fees', icon: CreditCard },
+    { label: 'Exams', path: '/exams', icon: FileText },
+    { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Reports', path: '/reports', icon: BarChart3 },
+    { label: 'Settings', path: '/settings', icon: Settings },
   ],
   teacher: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'My Classes', href: '/my-classes', icon: BookOpen },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/homework', icon: FileText },
-    { label: 'Exams', href: '/exams', icon: Calendar },
-    { label: 'Timetable', href: '/timetable', icon: Clock },
-    { label: 'Announcements', href: '/announcements', icon: Bell },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Homework', path: '/homework', icon: FileText },
+    { label: 'Marks', path: '/marks', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: Users },
   ],
   parent: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/homework', icon: FileText },
-    { label: 'Fees', href: '/fees', icon: CreditCard },
-    { label: 'Results', href: '/results', icon: BarChart3 },
-    { label: 'Announcements', href: '/announcements', icon: Bell },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Fees', path: '/fees', icon: CreditCard },
+    { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: Users },
   ],
   student: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/homework', icon: FileText },
-    { label: 'Timetable', href: '/timetable', icon: Clock },
-    { label: 'Results', href: '/results', icon: BarChart3 },
-    { label: 'Announcements', href: '/announcements', icon: Bell },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Homework', path: '/homework', icon: FileText },
+    { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: Users },
   ],
 };
 
 export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Tech', userName = 'Rajesh Kumar' }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
+  const { logout } = useAuth();
 
   const menuItems = menuConfig[userRole];
+  const prefix = rolePrefix[userRole];
 
-  const toggleExpanded = (label: string) => {
-    setExpandedItems(prev => 
-      prev.includes(label) 
-        ? prev.filter(item => item !== label)
-        : [...prev, label]
-    );
+  const getFullPath = (path: string) => `${prefix}${path}`;
+
+  const isActive = (path: string) => {
+    const fullPath = getFullPath(path);
+    return location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
   };
-
-  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
     <aside 
@@ -114,10 +117,16 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         {!isCollapsed && (
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <School className="w-5 h-5 text-primary-foreground" />
+              {userRole === 'super_admin' ? (
+                <Shield className="w-5 h-5 text-primary-foreground" />
+              ) : (
+                <School className="w-5 h-5 text-primary-foreground" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">{schoolName}</p>
+              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">
+                {userRole === 'super_admin' ? 'Super Admin' : schoolName}
+              </p>
               <p className="text-xs text-sidebar-foreground/70 capitalize">{userRole.replace('_', ' ')}</p>
             </div>
           </div>
@@ -137,58 +146,17 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.label}>
-              {'children' in item && item.children ? (
-                <div>
-                  <button
-                    onClick={() => toggleExpanded(item.label)}
-                    className={cn(
-                      "nav-item w-full justify-between",
-                      isActive(item.href) && "nav-item-active"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!isCollapsed && <span>{item.label}</span>}
-                    </div>
-                    {!isCollapsed && (
-                      expandedItems.includes(item.label) 
-                        ? <ChevronDown className="w-4 h-4" />
-                        : <ChevronRight className="w-4 h-4" />
-                    )}
-                  </button>
-                  {!isCollapsed && expandedItems.includes(item.label) && (
-                    <ul className="mt-1 ml-8 space-y-1">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link
-                            to={child.href}
-                            className={cn(
-                              "block py-2 px-3 rounded-md text-sm transition-colors",
-                              isActive(child.href)
-                                ? "text-sidebar-primary bg-sidebar-accent"
-                                : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
-                            )}
-                          >
-                            {child.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  to={item.href}
-                  className={cn(
-                    "nav-item",
-                    isActive(item.href) && "nav-item-active"
-                  )}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </Link>
-              )}
+              <Link
+                to={getFullPath(item.path)}
+                className={cn(
+                  "nav-item",
+                  isActive(item.path) && "nav-item-active"
+                )}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                {!isCollapsed && <span>{item.label}</span>}
+              </Link>
             </li>
           ))}
         </ul>
@@ -206,7 +174,10 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{userName}</p>
-              <button className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors">
+              <button 
+                onClick={logout}
+                className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors"
+              >
                 <LogOut className="w-3 h-3" />
                 Sign out
               </button>

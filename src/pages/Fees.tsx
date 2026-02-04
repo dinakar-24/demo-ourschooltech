@@ -66,7 +66,7 @@ export default function Fees() {
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
 
   return (
-    <DashboardLayout title="Fee Management" userRole="school_admin">
+    <DashboardLayout title="Fee Management">
       <div className="space-y-6 animate-fade-up">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

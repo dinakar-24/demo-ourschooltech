@@ -75,7 +75,7 @@ export default function Attendance() {
   };
 
   return (
-    <DashboardLayout title="Mark Attendance" userRole="teacher">
+    <DashboardLayout title="Mark Attendance">
       <div className="space-y-6 animate-fade-up">
         {/* Header Controls */}
         <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm">

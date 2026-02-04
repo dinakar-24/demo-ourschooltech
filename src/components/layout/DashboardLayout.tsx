@@ -3,20 +3,29 @@ import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { TopBar } from './TopBar';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardLayoutProps {
   children: ReactNode;
   title?: string;
-  userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 }
 
-export function DashboardLayout({ children, title, userRole = 'school_admin' }: DashboardLayoutProps) {
+export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, school } = useAuth();
+  
+  const userRole = user?.role || 'school_admin';
+  const schoolName = school?.name || 'Our School Tech';
+  const userName = user?.name || 'User';
 
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Sidebar - Desktop only */}
-      <Sidebar userRole={userRole} />
+      <Sidebar 
+        userRole={userRole} 
+        schoolName={schoolName}
+        userName={userName}
+      />
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
@@ -28,7 +37,11 @@ export function DashboardLayout({ children, title, userRole = 'school_admin' }: 
             className="w-64 h-full bg-sidebar animate-slide-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <Sidebar userRole={userRole} />
+            <Sidebar 
+              userRole={userRole}
+              schoolName={schoolName}
+              userName={userName}
+            />
           </div>
         </div>
       )}
