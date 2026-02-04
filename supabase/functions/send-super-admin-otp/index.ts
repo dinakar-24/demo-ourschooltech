@@ -21,15 +21,6 @@ serve(async (req) => {
       );
     }
 
-    // Only allow the super admin email
-    const allowedEmail = "admin@ourschooltech.com";
-    if (email.toLowerCase() !== allowedEmail.toLowerCase()) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized email address" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -39,6 +30,74 @@ serve(async (req) => {
         persistSession: false,
       },
     });
+
+    // Check if this email is associated with a super_admin role
+    // First, find user by email in profiles
+    const { data: profileData } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+
+    let isSuperAdmin = false;
+    let needsPasswordSetup = true;
+    let existingUser = null;
+
+    if (profileData) {
+      // Check if this user has super_admin role
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profileData.id)
+        .eq("role", "super_admin")
+        .maybeSingle();
+
+      if (roleData) {
+        isSuperAdmin = true;
+        
+        // Get user from auth to check last sign in
+        const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+        existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        
+        if (existingUser?.last_sign_in_at) {
+          needsPasswordSetup = false;
+        }
+      }
+    } else {
+      // Check if this is a designated super admin email that hasn't been set up yet
+      // For initial setup, we allow specific pre-registered super admin emails
+      // This check uses the user_roles table to see if any entry exists for this email
+      const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+      existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (existingUser) {
+        const { data: roleData } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", existingUser.id)
+          .eq("role", "super_admin")
+          .maybeSingle();
+
+        if (roleData) {
+          isSuperAdmin = true;
+          needsPasswordSetup = !existingUser.last_sign_in_at;
+        }
+      }
+    }
+
+    // For very first super admin setup, allow the initial email
+    const initialSuperAdminEmail = "admin@ourschooltech.com";
+    if (!isSuperAdmin && email.toLowerCase() === initialSuperAdminEmail.toLowerCase()) {
+      isSuperAdmin = true;
+      needsPasswordSetup = true;
+    }
+
+    if (!isSuperAdmin) {
+      return new Response(
+        JSON.stringify({ error: "This email is not registered as a Super Admin" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -68,48 +127,6 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to generate OTP" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    // Check if user exists in auth.users
-    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    
-    let needsPasswordSetup = true;
-    
-    if (existingUser) {
-      // Check if user has super_admin role
-      const { data: roleData } = await supabaseAdmin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", existingUser.id)
-        .eq("role", "super_admin")
-        .maybeSingle();
-      
-      if (!roleData) {
-        // User exists but doesn't have super_admin role - this is first-time setup
-        needsPasswordSetup = true;
-      } else {
-        // Check if user has ever logged in
-        needsPasswordSetup = !existingUser.last_sign_in_at;
-      }
-    }
-
-    // Send OTP email using Supabase Auth's signInWithOtp
-    // This uses Lovable Cloud's built-in email infrastructure
-    const { error: otpEmailError } = await supabaseAdmin.auth.signInWithOtp({
-      email: email.toLowerCase(),
-      options: {
-        shouldCreateUser: false,
-        data: {
-          otp_code: otpCode,
-        },
-      },
-    });
-
-    // If signInWithOtp fails (user might not exist), we'll still return success
-    // since we've stored the OTP in our table and can show it for development
-    if (otpEmailError) {
-      console.log("signInWithOtp not applicable, using custom OTP flow:", otpEmailError.message);
     }
 
     console.log(`OTP generated for ${email}: ${otpCode}`);
