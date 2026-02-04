@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,13 +32,12 @@ import {
   Plus,
   Upload,
   Download,
-  Filter,
   MoreVertical,
   Edit,
   Trash2,
   Eye,
   Phone,
-  Mail,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -46,35 +45,89 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const mockStudents = [
-  { id: '1', admissionNo: 'ADM2024001', name: 'Arjun Verma', class: 'Class 8', section: 'A', rollNo: 15, parentName: 'Amit Verma', phone: '9876543210', status: 'active', gender: 'male' },
-  { id: '2', admissionNo: 'ADM2024002', name: 'Priya Singh', class: 'Class 8', section: 'A', rollNo: 22, parentName: 'Rakesh Singh', phone: '9876543211', status: 'active', gender: 'female' },
-  { id: '3', admissionNo: 'ADM2024003', name: 'Rahul Kumar', class: 'Class 9', section: 'B', rollNo: 8, parentName: 'Suresh Kumar', phone: '9876543212', status: 'active', gender: 'male' },
-  { id: '4', admissionNo: 'ADM2024004', name: 'Sneha Patel', class: 'Class 7', section: 'A', rollNo: 31, parentName: 'Vijay Patel', phone: '9876543213', status: 'inactive', gender: 'female' },
-  { id: '5', admissionNo: 'ADM2024005', name: 'Karan Sharma', class: 'Class 10', section: 'A', rollNo: 5, parentName: 'Deepak Sharma', phone: '9876543214', status: 'active', gender: 'male' },
-  { id: '6', admissionNo: 'ADM2024006', name: 'Ananya Reddy', class: 'Class 9', section: 'A', rollNo: 12, parentName: 'Krishna Reddy', phone: '9876543215', status: 'active', gender: 'female' },
-  { id: '7', admissionNo: 'ADM2024007', name: 'Vikram Joshi', class: 'Class 8', section: 'B', rollNo: 28, parentName: 'Mahesh Joshi', phone: '9876543216', status: 'active', gender: 'male' },
-  { id: '8', admissionNo: 'ADM2024008', name: 'Meera Iyer', class: 'Class 10', section: 'B', rollNo: 17, parentName: 'Ramesh Iyer', phone: '9876543217', status: 'active', gender: 'female' },
-];
-
-const classes = ['All Classes', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'];
-const sections = ['All Sections', 'A', 'B', 'C'];
+import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent } from '@/hooks/useStudents';
+import { useClasses } from '@/hooks/useClasses';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 export default function StudentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All Classes');
   const [selectedSection, setSelectedSection] = useState('All Sections');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-
-  const filteredStudents = mockStudents.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.admissionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.parentName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesClass = selectedClass === 'All Classes' || student.class === selectedClass;
-    const matchesSection = selectedSection === 'All Sections' || student.section === selectedSection;
-    return matchesSearch && matchesClass && matchesSection;
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    full_name: '',
+    admission_number: '',
+    class_name: '',
+    section: '',
+    roll_number: '',
+    gender: '',
+    date_of_birth: '',
+    parent_name: '',
+    parent_phone: '',
+    parent_email: '',
   });
+
+  // Fetch data
+  const { data: students, isLoading: studentsLoading } = useStudents({
+    className: selectedClass,
+    section: selectedSection,
+    search: searchQuery,
+  });
+  const { data: stats, isLoading: statsLoading } = useStudentStats();
+  const { data: classes } = useClasses();
+  const createStudent = useCreateStudent();
+  const deleteStudent = useDeleteStudent();
+
+  // Get unique class names and sections
+  const classNames = ['All Classes', ...(classes?.map(c => c.name) || [])];
+  const sections = ['All Sections', 'A', 'B', 'C', 'D'];
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.full_name || !formData.admission_number || !formData.class_name || !formData.section) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    await createStudent.mutateAsync({
+      full_name: formData.full_name,
+      admission_number: formData.admission_number,
+      class_name: formData.class_name,
+      section: formData.section,
+      roll_number: formData.roll_number ? parseInt(formData.roll_number) : undefined,
+      gender: formData.gender || undefined,
+      date_of_birth: formData.date_of_birth || undefined,
+      parent_name: formData.parent_name || undefined,
+      parent_phone: formData.parent_phone || undefined,
+      parent_email: formData.parent_email || undefined,
+    });
+
+    setFormData({
+      full_name: '',
+      admission_number: '',
+      class_name: '',
+      section: '',
+      roll_number: '',
+      gender: '',
+      date_of_birth: '',
+      parent_name: '',
+      parent_phone: '',
+      parent_email: '',
+    });
+    setIsAddDialogOpen(false);
+  };
+
+  const handleDelete = async (studentId: string) => {
+    if (confirm('Are you sure you want to deactivate this student?')) {
+      await deleteStudent.mutateAsync(studentId);
+    }
+  };
 
   return (
     <AdminLayout title="Students">
@@ -84,25 +137,41 @@ export default function StudentsPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Students</p>
-              <p className="text-2xl font-bold text-foreground">1,248</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{stats?.total || 0}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Active</p>
-              <p className="text-2xl font-bold text-success">1,220</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-success">{stats?.active || 0}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">New This Month</p>
-              <p className="text-2xl font-bold text-primary">32</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-primary">{stats?.newThisMonth || 0}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Inactive</p>
-              <p className="text-2xl font-bold text-destructive">28</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-destructive">{stats?.inactive || 0}</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -124,7 +193,7 @@ export default function StudentsPage() {
                 <SelectValue placeholder="Class" />
               </SelectTrigger>
               <SelectContent>
-                {classes.map(cls => (
+                {classNames.map(cls => (
                   <SelectItem key={cls} value={cls}>{cls}</SelectItem>
                 ))}
               </SelectContent>
@@ -162,59 +231,109 @@ export default function StudentsPage() {
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-4 py-4">
                   <div className="space-y-2">
-                    <Label>Full Name</Label>
-                    <Input placeholder="Enter student name" />
+                    <Label>Full Name *</Label>
+                    <Input 
+                      placeholder="Enter student name" 
+                      value={formData.full_name}
+                      onChange={(e) => handleInputChange('full_name', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Admission Number</Label>
-                    <Input placeholder="ADM2024XXX" />
+                    <Label>Admission Number *</Label>
+                    <Input 
+                      placeholder="ADM2024XXX" 
+                      value={formData.admission_number}
+                      onChange={(e) => handleInputChange('admission_number', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Class</Label>
-                    <Select>
+                    <Label>Class *</Label>
+                    <Select value={formData.class_name} onValueChange={(v) => handleInputChange('class_name', v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select class" />
                       </SelectTrigger>
                       <SelectContent>
-                        {classes.slice(1).map(cls => (
-                          <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                        {classes?.map(cls => (
+                          <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Section</Label>
-                    <Select>
+                    <Label>Section *</Label>
+                    <Select value={formData.section} onValueChange={(v) => handleInputChange('section', v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select section" />
                       </SelectTrigger>
                       <SelectContent>
-                        {sections.slice(1).map(sec => (
+                        {['A', 'B', 'C', 'D'].map(sec => (
                           <SelectItem key={sec} value={sec}>{sec}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
+                    <Label>Roll Number</Label>
+                    <Input 
+                      type="number"
+                      placeholder="Enter roll number" 
+                      value={formData.roll_number}
+                      onChange={(e) => handleInputChange('roll_number', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <Select value={formData.gender} onValueChange={(v) => handleInputChange('gender', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Parent Name</Label>
-                    <Input placeholder="Enter parent name" />
+                    <Input 
+                      placeholder="Enter parent name" 
+                      value={formData.parent_name}
+                      onChange={(e) => handleInputChange('parent_name', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone Number</Label>
-                    <Input placeholder="Enter phone number" />
+                    <Input 
+                      placeholder="Enter phone number" 
+                      value={formData.parent_phone}
+                      onChange={(e) => handleInputChange('parent_phone', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" placeholder="Enter email" />
+                    <Label>Parent Email</Label>
+                    <Input 
+                      type="email" 
+                      placeholder="Enter email" 
+                      value={formData.parent_email}
+                      onChange={(e) => handleInputChange('parent_email', e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Date of Birth</Label>
-                    <Input type="date" />
+                    <Input 
+                      type="date" 
+                      value={formData.date_of_birth}
+                      onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => setIsAddDialogOpen(false)}>Add Student</Button>
+                  <Button onClick={handleSubmit} disabled={createStudent.isPending}>
+                    {createStudent.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Add Student
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -238,56 +357,82 @@ export default function StudentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.admissionNo}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                          {student.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <span>{student.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{student.class} - {student.section}</TableCell>
-                    <TableCell>{student.rollNo}</TableCell>
-                    <TableCell>{student.parentName}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Phone className="w-3 h-3" />
-                        {student.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
-                        {student.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {studentsLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : students?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No students found. Add your first student to get started.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  students?.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.admission_number}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                            {student.full_name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <span>{student.full_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{student.class_name} - {student.section}</TableCell>
+                      <TableCell>{student.roll_number || '-'}</TableCell>
+                      <TableCell>{student.parent_name || '-'}</TableCell>
+                      <TableCell>
+                        {student.parent_phone ? (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Phone className="w-3 h-3" />
+                            {student.parent_phone}
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
+                          {student.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDelete(student.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Deactivate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
