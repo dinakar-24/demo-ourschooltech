@@ -172,3 +172,37 @@ export function useChildAnnouncements(schoolId?: string) {
     enabled: !!schoolId,
   });
 }
+
+// Combined hook for parent data
+export function useParentData() {
+  const { data: childProfile, isLoading: isLoadingChild } = useParentChild();
+  
+  const { data: attendanceStats, isLoading: isLoadingAttendance } = useChildAttendanceStats(childProfile?.id);
+  const { data: feeStats, isLoading: isLoadingFees } = useChildFeeStats(childProfile?.id);
+  
+  // Fetch all fees for the child
+  const { data: fees = [], isLoading: isLoadingAllFees } = useQuery({
+    queryKey: ['parent-child-fees', childProfile?.id],
+    queryFn: async () => {
+      if (!childProfile?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('fees')
+        .select('*')
+        .eq('student_id', childProfile.id)
+        .order('due_date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!childProfile?.id,
+  });
+
+  return {
+    childProfile,
+    attendanceStats,
+    feeStats,
+    fees,
+    isLoading: isLoadingChild || isLoadingAttendance || isLoadingFees || isLoadingAllFees,
+  };
+}
