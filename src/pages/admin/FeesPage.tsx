@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,7 @@ import {
   Eye,
   Receipt,
   Send,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -47,56 +48,123 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const mockFeeRecords = [
-  { id: '1', studentName: 'Arjun Verma', class: 'Class 8-A', admNo: 'ADM2024001', feeType: 'Tuition Fee', amount: 25000, dueDate: '2024-01-15', status: 'paid', paidDate: '2024-01-10' },
-  { id: '2', studentName: 'Priya Singh', class: 'Class 8-A', admNo: 'ADM2024002', feeType: 'Tuition Fee', amount: 25000, dueDate: '2024-01-15', status: 'pending', paidDate: null },
-  { id: '3', studentName: 'Rahul Kumar', class: 'Class 9-B', admNo: 'ADM2024003', feeType: 'Transport Fee', amount: 8000, dueDate: '2024-01-10', status: 'overdue', paidDate: null },
-  { id: '4', studentName: 'Sneha Patel', class: 'Class 7-A', admNo: 'ADM2024004', feeType: 'Tuition Fee', amount: 22000, dueDate: '2024-01-15', status: 'paid', paidDate: '2024-01-12' },
-  { id: '5', studentName: 'Karan Sharma', class: 'Class 10-A', admNo: 'ADM2024005', feeType: 'Exam Fee', amount: 3500, dueDate: '2024-01-20', status: 'pending', paidDate: null },
-  { id: '6', studentName: 'Ananya Reddy', class: 'Class 9-A', admNo: 'ADM2024006', feeType: 'Lab Fee', amount: 5000, dueDate: '2024-01-18', status: 'paid', paidDate: '2024-01-15' },
-  { id: '7', studentName: 'Vikram Joshi', class: 'Class 8-B', admNo: 'ADM2024007', feeType: 'Tuition Fee', amount: 25000, dueDate: '2024-01-15', status: 'partial', paidDate: '2024-01-14' },
-  { id: '8', studentName: 'Meera Iyer', class: 'Class 10-B', admNo: 'ADM2024008', feeType: 'Sports Fee', amount: 4000, dueDate: '2024-01-25', status: 'pending', paidDate: null },
-];
+import { useFees, useFeeStats, useRecordPayment, useCreateFee } from '@/hooks/useFees';
+import { useStudents } from '@/hooks/useStudents';
+import { toast } from 'sonner';
 
 const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee'];
-const statusOptions = ['All Status', 'paid', 'pending', 'overdue', 'partial'];
+const statusOptions = ['all', 'paid', 'pending', 'overdue'];
 
 export default function FeesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('All Types');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedFeeId, setSelectedFeeId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [transactionId, setTransactionId] = useState('');
 
-  const filteredRecords = mockFeeRecords.filter(record => {
-    const matchesSearch = record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.admNo.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === 'All Types' || record.feeType === selectedType;
-    const matchesStatus = selectedStatus === 'All Status' || record.status === selectedStatus;
-    return matchesSearch && matchesType && matchesStatus;
+  // New fee form state
+  const [newFee, setNewFee] = useState({
+    student_id: '',
+    fee_type: '',
+    amount: '',
+    due_date: '',
   });
 
-  const stats = {
-    collected: mockFeeRecords.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.amount, 0),
-    pending: mockFeeRecords.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0),
-    overdue: mockFeeRecords.filter(r => r.status === 'overdue').reduce((sum, r) => sum + r.amount, 0),
-    total: mockFeeRecords.reduce((sum, r) => sum + r.amount, 0),
-  };
+  const { data: fees = [], isLoading } = useFees({ 
+    status: selectedStatus,
+    search: searchQuery 
+  });
+  const { data: stats } = useFeeStats();
+  const { data: students = [] } = useStudents();
+  const recordPayment = useRecordPayment();
+  const createFee = useCreateFee();
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <Badge className="bg-success text-success-foreground">Paid</Badge>;
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
-      case 'overdue':
-        return <Badge variant="destructive">Overdue</Badge>;
-      case 'partial':
-        return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  // Filter by fee type (client-side since it's not in DB filter)
+  const filteredRecords = fees.filter(record => {
+    const matchesType = selectedType === 'All Types' || record.fee_type === selectedType;
+    return matchesType;
+  });
+
+  const handleRecordPayment = async () => {
+    if (!selectedFeeId) return;
+
+    try {
+      await recordPayment.mutateAsync({
+        feeId: selectedFeeId,
+        paymentMethod,
+        transactionId: transactionId || undefined,
+      });
+      toast.success('Payment recorded successfully');
+      setIsPaymentDialogOpen(false);
+      setSelectedFeeId(null);
+      setPaymentMethod('cash');
+      setTransactionId('');
+    } catch (error) {
+      toast.error('Failed to record payment');
     }
   };
+
+  const handleAddFee = async () => {
+    if (!newFee.student_id || !newFee.fee_type || !newFee.amount || !newFee.due_date) {
+      toast.error('Please fill all fields');
+      return;
+    }
+
+    try {
+      await createFee.mutateAsync({
+        student_id: newFee.student_id,
+        fee_type: newFee.fee_type,
+        amount: Number(newFee.amount),
+        due_date: newFee.due_date,
+      });
+      toast.success('Fee record created');
+      setIsAddDialogOpen(false);
+      setNewFee({ student_id: '', fee_type: '', amount: '', due_date: '' });
+    } catch (error) {
+      toast.error('Failed to create fee record');
+    }
+  };
+
+  const openPaymentDialog = (feeId: string) => {
+    setSelectedFeeId(feeId);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const getStatusBadge = (status: string, dueDate: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const isOverdue = status === 'pending' && dueDate < today;
+
+    if (status === 'paid') {
+      return <Badge className="bg-success text-success-foreground">Paid</Badge>;
+    }
+    if (isOverdue) {
+      return <Badge variant="destructive">Overdue</Badge>;
+    }
+    if (status === 'pending') {
+      return <Badge variant="secondary">Pending</Badge>;
+    }
+    if (status === 'partial') {
+      return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
+    }
+    return <Badge variant="outline">{status}</Badge>;
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)}L`;
+    }
+    if (amount >= 1000) {
+      return `₹${(amount / 1000).toFixed(0)}K`;
+    }
+    return `₹${amount.toLocaleString()}`;
+  };
+
+  const collectionRate = stats && stats.totalDue > 0 
+    ? ((stats.collected / stats.totalDue) * 100).toFixed(0) 
+    : '0';
 
   return (
     <AdminLayout title="Fees Management">
@@ -110,7 +178,7 @@ export default function FeesPage() {
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-success">₹{(stats.collected / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-bold text-success">{formatCurrency(stats?.collected || 0)}</p>
               <p className="text-sm text-muted-foreground">Collected</p>
             </CardContent>
           </Card>
@@ -121,7 +189,7 @@ export default function FeesPage() {
                   <AlertCircle className="w-4 h-4 text-warning" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-warning">₹{(stats.pending / 1000).toFixed(0)}K</p>
+              <p className="text-2xl font-bold text-warning">{formatCurrency(stats?.pending || 0)}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </CardContent>
           </Card>
@@ -132,7 +200,7 @@ export default function FeesPage() {
                   <AlertCircle className="w-4 h-4 text-destructive" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-destructive">₹{(stats.overdue / 1000).toFixed(0)}K</p>
+              <p className="text-2xl font-bold text-destructive">{formatCurrency(stats?.overdue || 0)}</p>
               <p className="text-sm text-muted-foreground">Overdue</p>
             </CardContent>
           </Card>
@@ -143,9 +211,7 @@ export default function FeesPage() {
                   <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-foreground">
-                {((stats.collected / stats.total) * 100).toFixed(0)}%
-              </p>
+              <p className="text-2xl font-bold text-foreground">{collectionRate}%</p>
               <p className="text-sm text-muted-foreground">Collection Rate</p>
             </CardContent>
           </Card>
@@ -178,9 +244,9 @@ export default function FeesPage() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions.map(status => (
-                  <SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>
-                ))}
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -203,20 +269,28 @@ export default function FeesPage() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Student</Label>
-                    <Select>
+                    <Select 
+                      value={newFee.student_id} 
+                      onValueChange={(v) => setNewFee({ ...newFee, student_id: v })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select student" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockFeeRecords.map(r => (
-                          <SelectItem key={r.id} value={r.admNo}>{r.studentName} ({r.admNo})</SelectItem>
+                        {students.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.full_name} ({s.admission_number})
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Fee Type</Label>
-                    <Select>
+                    <Select 
+                      value={newFee.fee_type} 
+                      onValueChange={(v) => setNewFee({ ...newFee, fee_type: v })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select fee type" />
                       </SelectTrigger>
@@ -229,16 +303,28 @@ export default function FeesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Amount (₹)</Label>
-                    <Input type="number" placeholder="Enter amount" />
+                    <Input 
+                      type="number" 
+                      placeholder="Enter amount"
+                      value={newFee.amount}
+                      onChange={(e) => setNewFee({ ...newFee, amount: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Due Date</Label>
-                    <Input type="date" />
+                    <Input 
+                      type="date"
+                      value={newFee.due_date}
+                      onChange={(e) => setNewFee({ ...newFee, due_date: e.target.value })}
+                    />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => setIsAddDialogOpen(false)}>Add Record</Button>
+                  <Button onClick={handleAddFee} disabled={createFee.isPending}>
+                    {createFee.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Add Record
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -248,70 +334,135 @@ export default function FeesPage() {
         {/* Fee Records Table */}
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Fee Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{record.studentName}</p>
-                        <p className="text-xs text-muted-foreground">{record.admNo}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{record.class}</TableCell>
-                    <TableCell>{record.feeType}</TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <IndianRupee className="w-3 h-3" />
-                        {record.amount.toLocaleString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>{record.dueDate}</TableCell>
-                    <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Record Payment
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Receipt className="w-4 h-4 mr-2" />
-                            Generate Receipt
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Reminder
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredRecords.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No fee records found</p>
+                <p className="text-sm">Create fee records for students to track payments</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Fee Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredRecords.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{record.student?.full_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {record.student?.admission_number || '-'}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {record.student?.class_name}-{record.student?.section}
+                      </TableCell>
+                      <TableCell>{record.fee_type}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <IndianRupee className="w-3 h-3" />
+                          {Number(record.amount).toLocaleString()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(record.due_date).toLocaleDateString('en-IN')}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(record.status, record.due_date)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            {record.status !== 'paid' && (
+                              <DropdownMenuItem onClick={() => openPaymentDialog(record.id)}>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Record Payment
+                              </DropdownMenuItem>
+                            )}
+                            {record.status === 'paid' && (
+                              <DropdownMenuItem>
+                                <Receipt className="w-4 h-4 mr-2" />
+                                Generate Receipt
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem>
+                              <Send className="w-4 h-4 mr-2" />
+                              Send Reminder
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
+
+        {/* Payment Recording Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record Payment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="neft">NEFT/RTGS</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Transaction ID (Optional)</Label>
+                <Input
+                  placeholder="Enter transaction/reference ID"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRecordPayment} disabled={recordPayment.isPending}>
+                {recordPayment.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Confirm Payment
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
