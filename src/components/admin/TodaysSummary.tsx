@@ -1,37 +1,78 @@
+import { useEffect, useState } from 'react';
 import { ClipboardCheck, CreditCard, UserPlus, Bell } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-const todayItems = [
-  { 
-    label: 'Attendance Marked', 
-    value: '12/15 classes', 
-    icon: ClipboardCheck,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10'
-  },
-  { 
-    label: 'Fees Collected', 
-    value: '₹45,000', 
-    icon: CreditCard,
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10'
-  },
-  { 
-    label: 'New Admissions', 
-    value: '3 students', 
-    icon: UserPlus,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10'
-  },
-  { 
-    label: 'Notices Sent', 
-    value: '2 announcements', 
-    icon: Bell,
-    color: 'text-rose-500',
-    bg: 'bg-rose-500/10'
-  },
-];
+interface SummaryData {
+  attendanceMarked: number;
+  totalClasses: number;
+  feesCollected: number;
+  newAdmissions: number;
+  noticesSent: number;
+}
 
 export function TodaysSummary() {
+  const { school } = useAuth();
+  const [data, setData] = useState<SummaryData>({
+    attendanceMarked: 0,
+    totalClasses: 0,
+    feesCollected: 0,
+    newAdmissions: 0,
+    noticesSent: 0,
+  });
+
+  useEffect(() => {
+    if (school?.id) fetchData();
+  }, [school?.id]);
+
+  const fetchData = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const [feesRes, admissionsRes, noticesRes] = await Promise.all([
+      supabase.from('fees').select('amount').eq('status', 'paid').gte('paid_date', today),
+      supabase.from('students').select('id', { count: 'exact', head: true }).gte('created_at', today),
+      supabase.from('announcements').select('id', { count: 'exact', head: true }).gte('created_at', today),
+    ]);
+
+    setData({
+      attendanceMarked: 0,
+      totalClasses: 15,
+      feesCollected: feesRes.data?.reduce((sum, f) => sum + Number(f.amount), 0) || 0,
+      newAdmissions: admissionsRes.count || 0,
+      noticesSent: noticesRes.count || 0,
+    });
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+    if (amount >= 1000) return `₹${(amount / 1000).toFixed(0)}K`;
+    return `₹${amount}`;
+  };
+
+  const todayItems = [
+    { 
+      label: 'Fees Collected', 
+      value: formatCurrency(data.feesCollected), 
+      icon: CreditCard,
+      color: 'text-amber-500',
+      bg: 'bg-amber-500/10'
+    },
+    { 
+      label: 'New Admissions', 
+      value: `${data.newAdmissions} students`, 
+      icon: UserPlus,
+      color: 'text-blue-500',
+      bg: 'bg-blue-500/10'
+    },
+    { 
+      label: 'Notices Sent', 
+      value: `${data.noticesSent} announcements`, 
+      icon: Bell,
+      color: 'text-rose-500',
+      bg: 'bg-rose-500/10'
+    },
+  ];
+
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm">
       <h3 className="text-sm font-semibold text-foreground mb-3">Today's Activity</h3>
