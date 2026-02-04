@@ -98,6 +98,7 @@
 
 ## 📋 Phase 9: Pending - Super Admin SaaS Features
 
+- [x] Subscriptions management page - View all school subscriptions
 - [ ] Revenue dashboard with Recharts
 - [ ] School activation/suspension controls
 - [ ] "Login as School Admin" impersonation
