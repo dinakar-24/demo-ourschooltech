@@ -254,22 +254,12 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       {/* Step 1: Email */}
       {step === 'email' && (
         <div className="space-y-4">
-          <div>
-            <label className="input-label flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Email Address
-            </label>
-            <Input
-              type="email"
-              placeholder="admin@ourschooltech.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-14 rounded-xl"
-              autoFocus
-              disabled
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Only admin@ourschooltech.com can access Super Admin
+          <div className="text-center py-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Click below to receive an OTP on your registered Super Admin email
             </p>
           </div>
 
@@ -433,16 +423,6 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       {/* Step 4: Login with Password */}
       {step === 'login' && (
         <div className="space-y-4">
-          <div>
-            <label className="input-label">Email</label>
-            <Input
-              type="email"
-              value={email}
-              className="h-14 rounded-xl bg-muted/50"
-              disabled
-            />
-          </div>
-
           <div>
             <label className="input-label flex items-center gap-2">
               <Lock className="w-4 h-4" />
