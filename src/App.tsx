@@ -16,6 +16,8 @@ import SchoolsPage from "./pages/super-admin/SchoolsPage";
 import SchoolAdminsPage from "./pages/super-admin/SchoolAdminsPage";
 import AllUsersPage from "./pages/super-admin/AllUsersPage";
 import SystemSettingsPage from "./pages/super-admin/SystemSettingsPage";
+import SystemAnnouncementsPage from "./pages/super-admin/SystemAnnouncementsPage";
+import AuditLogsPage from "./pages/super-admin/AuditLogsPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -83,6 +85,8 @@ function AppRoutes() {
       <Route path="/super-admin/schools" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolsPage /></ProtectedRoute>} />
       <Route path="/super-admin/admins" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolAdminsPage /></ProtectedRoute>} />
       <Route path="/super-admin/users" element={<ProtectedRoute allowedRoles={['super_admin']}><AllUsersPage /></ProtectedRoute>} />
+      <Route path="/super-admin/announcements" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemAnnouncementsPage /></ProtectedRoute>} />
+      <Route path="/super-admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogsPage /></ProtectedRoute>} />
       <Route path="/super-admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemSettingsPage /></ProtectedRoute>} />
       <Route path="/super-admin/*" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
       
