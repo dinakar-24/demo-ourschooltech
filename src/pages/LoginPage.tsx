@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { School, Eye, EyeOff, ArrowRight, Loader2, Search, MapPin, Check, User, GraduationCap, Users, BookOpen, ArrowLeft, Sparkles } from 'lucide-react';
+import { School, Eye, EyeOff, ArrowRight, Loader2, Search, MapPin, Check, User, GraduationCap, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -8,14 +8,14 @@ import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-type LoginStep = 'school' | 'role' | 'credentials';
+type LoginStep = 'school' | 'role' | 'credentials' | 'superadmin';
 type AuthMode = 'login' | 'signup';
 
-const roleOptions: { role: UserRole; label: string; icon: typeof User; description: string; color: string }[] = [
-  { role: 'school_admin', label: 'School Admin', icon: School, description: 'Manage your school', color: 'from-primary to-primary/80' },
-  { role: 'teacher', label: 'Teacher', icon: GraduationCap, description: 'Classes & attendance', color: 'from-info to-info/80' },
-  { role: 'parent', label: 'Parent', icon: Users, description: 'Track your child', color: 'from-success to-success/80' },
-  { role: 'student', label: 'Student', icon: BookOpen, description: 'View academics', color: 'from-accent to-accent/80' },
+const roleOptions: { role: UserRole; label: string; icon: typeof User; description: string }[] = [
+  { role: 'school_admin', label: 'School Admin', icon: School, description: 'Full administrative access' },
+  { role: 'teacher', label: 'Teacher', icon: GraduationCap, description: 'Classes, attendance & homework' },
+  { role: 'parent', label: 'Parent', icon: Users, description: 'View your child\'s progress' },
+  { role: 'student', label: 'Student', icon: BookOpen, description: 'View your academics' },
 ];
 
 export default function LoginPage() {
@@ -72,7 +72,6 @@ export default function LoginPage() {
   const getDashboardPath = (role: UserRole) => {
     switch (role) {
       case 'super_admin':
-        return '/super-admin/dashboard';
       case 'school_admin':
         return '/admin/dashboard';
       case 'teacher':
@@ -124,6 +123,7 @@ export default function LoginPage() {
     try {
       if (authMode === 'login') {
         await login(email, password);
+        // Navigation will be handled by useEffect when isAuthenticated changes
       } else {
         await signup(email, password, fullName, selectedRole, selectedSchool.id);
         setSuccess('Account created! Please check your email to verify your account.');
@@ -147,86 +147,96 @@ export default function LoginPage() {
     }
   };
 
-  const stepIndex = ['school', 'role', 'credentials'].indexOf(step);
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Decorative background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
       {/* Header */}
-      <header className="relative bg-card/50 backdrop-blur-sm border-b border-border/50 px-4 py-4 safe-area-top">
-        <div className="flex items-center justify-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
-            <School className="w-5 h-5 text-primary-foreground" />
+      <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 px-4 py-5 safe-area-top">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+            <School className="w-6 h-6 text-primary-foreground" />
           </div>
-          <div>
-            <span className="text-lg font-display font-bold text-foreground">Our School Tech</span>
-          </div>
+          <span className="text-xl font-display font-bold text-foreground">Our School Tech</span>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="relative flex-1 flex flex-col px-4 py-6 lg:py-10 lg:justify-center">
-        <div className="w-full max-w-md mx-auto space-y-6">
+      <div className="flex-1 flex flex-col px-4 py-6 lg:px-12 lg:justify-center">
+        <div className="w-full max-w-md mx-auto space-y-5">
           
-          {/* Minimal Step Indicator */}
-          <div className="flex items-center justify-center gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300",
-                  i === stepIndex ? "w-8 bg-primary" : i < stepIndex ? "w-4 bg-success" : "w-4 bg-border"
-                )}
-              />
-            ))}
-          </div>
+          {/* Step Progress - Clean horizontal stepper */}
+          {step !== 'superadmin' && (
+            <div className="py-2">
+              <div className="flex items-center justify-center">
+                {['school', 'role', 'credentials'].map((s, i) => {
+                  const stepIndex = ['school', 'role', 'credentials'].indexOf(step);
+                  const isCompleted = stepIndex > i;
+                  const isCurrent = step === s;
+                  
+                  return (
+                    <div key={s} className="flex items-center">
+                      {/* Step circle */}
+                      <div className="flex flex-col items-center">
+                        <div className={cn(
+                          "w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 border-2",
+                          isCurrent && "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30 scale-105",
+                          isCompleted && "bg-success text-success-foreground border-success",
+                          !isCurrent && !isCompleted && "bg-white text-muted-foreground border-border"
+                        )}>
+                          {isCompleted ? <Check className="w-5 h-5" /> : i + 1}
+                        </div>
+                        <span className={cn(
+                          "text-xs mt-2 font-medium transition-colors",
+                          isCurrent ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"
+                        )}>
+                          {s === 'school' ? 'School' : s === 'role' ? 'Role' : 'Login'}
+                        </span>
+                      </div>
+                      
+                      {/* Connector line */}
+                      {i < 2 && (
+                        <div className={cn(
+                          "w-16 md:w-20 h-0.5 mx-2 -mt-5 rounded-full transition-colors duration-300",
+                          stepIndex > i ? "bg-success" : "bg-border"
+                        )} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          {/* Main Card */}
-          <div className="bg-card rounded-2xl border border-border shadow-xl shadow-black/5 overflow-hidden">
-            {/* Back Button & Title */}
-            <div className="px-6 pt-6 pb-4">
-              {step !== 'school' && (
-                <button
-                  onClick={goBack}
-                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
-              )}
-              
-              <h1 className="text-2xl font-display font-bold text-foreground">
+          {/* Step Content Card */}
+          <div className="bg-white rounded-2xl border border-border/50 shadow-xl shadow-black/5 overflow-hidden">
+            {/* Card Header */}
+            <div className="px-6 py-5 border-b border-border/50 bg-gradient-to-r from-muted/30 to-transparent">
+              <h2 className="text-xl font-display font-bold text-foreground">
                 {step === 'school' && 'Find your school'}
-                {step === 'role' && 'How will you use the app?'}
-                {step === 'credentials' && (authMode === 'login' ? 'Welcome back' : 'Create account')}
-              </h1>
-              <p className="text-muted-foreground mt-1">
+                {step === 'role' && 'Select your role'}
+                {step === 'credentials' && (authMode === 'login' ? 'Welcome back!' : 'Create account')}
+                {step === 'superadmin' && 'Super Admin'}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
                 {step === 'school' && 'Search by name or school code'}
-                {step === 'role' && selectedSchool?.name}
+                {step === 'role' && `Logging into ${selectedSchool?.name}`}
                 {step === 'credentials' && `Sign in as ${roleOptions.find(r => r.role === selectedRole)?.label}`}
+                {step === 'superadmin' && 'System administrator access'}
               </p>
             </div>
 
             {/* Card Body */}
-            <div className="px-6 pb-6">
-              {/* Error Alert */}
+            <div className="p-6">
               {error && (
-                <div className="mb-5 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
-                  {error}
+                <div className="mb-5 p-4 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20 flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center shrink-0 text-white text-xs font-bold">!</div>
+                  <span>{error}</span>
                 </div>
               )}
 
-              {/* Success Alert */}
               {success && (
-                <div className="mb-5 p-3 rounded-lg bg-success/10 text-success text-sm border border-success/20 flex items-center gap-2">
-                  <Check className="w-4 h-4 shrink-0" />
-                  {success}
+                <div className="mb-5 p-4 rounded-xl bg-success/10 text-success text-sm border border-success/20 flex items-start gap-3">
+                  <Check className="w-5 h-5 shrink-0" />
+                  <span>{success}</span>
                 </div>
               )}
 
@@ -234,56 +244,55 @@ export default function LoginPage() {
               {step === 'school' && (
                 <div className="space-y-4">
                   <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
                       type="text"
                       placeholder="Search school name or code..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 h-12 rounded-xl bg-muted/50 border-transparent focus:bg-card focus:border-primary"
+                      className="pl-12 h-14 text-base rounded-xl border-2 focus:border-primary bg-white"
                       autoFocus
                     />
                   </div>
                   
-                  <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin pr-1">
+                  <div className="bg-muted/30 rounded-xl divide-y divide-border/50 max-h-56 overflow-y-auto scrollbar-thin">
                     {displaySchools.map((school) => (
                       <button
                         key={school.id}
                         onClick={() => handleSelectSchool(school)}
                         className={cn(
-                          "w-full p-3.5 rounded-xl text-left transition-all flex items-center gap-3 group",
-                          "bg-muted/30 hover:bg-muted border border-transparent hover:border-border/50"
+                          "w-full p-4 text-left transition-all flex items-center gap-4",
+                          "hover:bg-white active:bg-white/80",
+                          selectedSchool?.id === school.id && "bg-white"
                         )}
                       >
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
-                          <School className="w-4 h-4 text-primary" />
+                        <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <School className="w-5 h-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{school.name}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                          <p className="font-semibold text-foreground truncate">{school.name}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                             <MapPin className="w-3 h-3" />
                             <span className="truncate">{school.city}</span>
-                            <span className="text-border">•</span>
-                            <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{school.code}</span>
+                            <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{school.code}</span>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
                       </button>
                     ))}
                     
                     {searchQuery && searchResults.length === 0 && !searchLoading && (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                        <p className="font-medium">No schools found</p>
-                        <p className="text-sm mt-1">Try a different search term</p>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="font-medium text-sm">No schools found</p>
                       </div>
                     )}
 
                     {displaySchools.length === 0 && !searchQuery && (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <School className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                        <p className="font-medium">No schools registered</p>
-                        <p className="text-sm mt-1">Contact admin to add your school</p>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <School className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="font-medium text-sm">No schools registered</p>
+                        <p className="text-xs mt-1">Contact admin to add your school</p>
                       </div>
                     )}
                   </div>
@@ -292,115 +301,114 @@ export default function LoginPage() {
 
               {/* Step 2: Role Selection */}
               {step === 'role' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   {roleOptions.map((option) => (
                     <button
                       key={option.role}
                       onClick={() => handleSelectRole(option.role)}
                       className={cn(
-                        "p-4 rounded-xl text-left transition-all flex flex-col items-center text-center group",
-                        "bg-muted/30 hover:bg-muted border-2 border-transparent hover:border-primary/20",
-                        selectedRole === option.role && "border-primary bg-primary/5"
+                        "w-full p-4 rounded-xl text-left transition-all flex items-center gap-4",
+                        "bg-muted/30 hover:bg-white active:scale-[0.99]",
+                        selectedRole === option.role && "bg-white ring-2 ring-primary"
                       )}
                     >
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3 group-hover:scale-105 transition-transform",
-                        option.color
-                      )}>
-                        <option.icon className="w-5 h-5 text-white" />
+                      <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <option.icon className="w-5 h-5 text-primary" />
                       </div>
-                      <p className="font-semibold text-foreground text-sm">{option.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">{option.label}</p>
+                        <p className="text-sm text-muted-foreground">{option.description}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     </button>
                   ))}
+                  
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-3 mt-2"
+                  >
+                    ← Change school
+                  </button>
                 </div>
               )}
 
               {/* Step 3: Credentials */}
               {step === 'credentials' && (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   {authMode === 'signup' && (
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Full Name</label>
+                      <label className="input-label">Full Name</label>
                       <Input
                         type="text"
                         placeholder="Enter your full name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-card focus:border-primary"
+                        className="h-14 rounded-xl"
                         autoFocus
                       />
                     </div>
                   )}
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                    <label className="input-label">Email</label>
                     <Input
                       type="email"
                       placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-card focus:border-primary"
+                      className="h-14 rounded-xl"
                       autoFocus={authMode === 'login'}
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Password</label>
+                    <label className="input-label">Password</label>
                     <div className="relative">
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-card focus:border-primary pr-12"
+                        className="h-14 rounded-xl pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
                   
                   {authMode === 'login' && (
-                    <div className="flex items-center justify-end">
-                      <button type="button" className="text-sm text-primary hover:underline font-medium">
+                    <div className="flex items-center justify-between text-sm">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="rounded border-border w-4 h-4" />
+                        <span className="text-muted-foreground">Remember me</span>
+                      </label>
+                      <button type="button" className="text-primary hover:underline font-medium">
                         Forgot password?
                       </button>
                     </div>
                   )}
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 rounded-xl text-base font-semibold gap-2" 
-                    disabled={loading}
-                  >
+                  <Button type="submit" size="xl" className="w-full h-14 text-base rounded-xl" disabled={loading}>
                     {loading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                         {authMode === 'login' ? 'Signing in...' : 'Creating account...'}
                       </>
                     ) : (
                       <>
                         {authMode === 'login' ? 'Sign In' : 'Create Account'}
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </Button>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">or</span>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
+                  <div className="text-center pt-2">
                     {authMode === 'login' ? (
                       <p className="text-sm text-muted-foreground">
                         Don't have an account?{' '}
@@ -411,7 +419,7 @@ export default function LoginPage() {
                             setError('');
                             setSuccess('');
                           }}
-                          className="text-primary hover:underline font-semibold"
+                          className="text-primary hover:underline font-medium"
                         >
                           Sign up
                         </button>
@@ -426,26 +434,130 @@ export default function LoginPage() {
                             setError('');
                             setSuccess('');
                           }}
-                          className="text-primary hover:underline font-semibold"
+                          className="text-primary hover:underline font-medium"
                         >
                           Sign in
                         </button>
                       </p>
                     )}
                   </div>
+                  
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+                  >
+                    ← Back to role selection
+                  </button>
+                </form>
+              )}
+
+              {/* Super Admin Login */}
+              {step === 'superadmin' && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!email.trim() || !password.trim()) {
+                    setError('Please enter email and password');
+                    return;
+                  }
+                  setLoading(true);
+                  setError('');
+                  try {
+                    await login(email, password);
+                  } catch (err: any) {
+                    setError(err.message || 'Authentication failed. Please try again.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }} className="space-y-5">
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <p className="text-sm text-primary font-medium">Super Admin Access</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      For system administrators with access to all schools
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="input-label">Email</label>
+                    <Input
+                      type="email"
+                      placeholder="Enter super admin email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-14 rounded-xl"
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="input-label">Password</label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-14 rounded-xl pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" size="xl" className="w-full h-14 text-base rounded-xl" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        Sign In as Super Admin
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </Button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('school');
+                      setError('');
+                    }}
+                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+                  >
+                    ← Back to school selection
+                  </button>
                 </form>
               )}
             </div>
           </div>
+
+          {/* Super Admin Link - Outside main card */}
+          {step === 'school' && (
+            <button
+              type="button"
+              onClick={() => setStep('superadmin')}
+              className="w-full flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <span>🔐</span>
+              <span>Super Admin Login</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="relative bg-card/50 backdrop-blur-sm px-4 py-4 text-center border-t border-border/50 safe-area-bottom">
+      <footer className="bg-white/80 backdrop-blur-sm px-4 py-4 text-center border-t border-border/50 safe-area-bottom">
         <p className="text-sm text-muted-foreground">
-          Need help?{' '}
+          Need help? Contact{' '}
           <a href="mailto:support@ourschooltech.in" className="text-primary hover:underline font-medium">
-            Contact support
+            support@ourschooltech.in
           </a>
         </p>
       </footer>
