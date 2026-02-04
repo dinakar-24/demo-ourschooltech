@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Building2, MapPin, Phone, Mail, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Building2, MapPin, Phone, Mail, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,6 +32,7 @@ interface School {
   city: string;
   phone: string | null;
   email: string | null;
+  logo: string | null;
   created_at: string;
 }
 
@@ -48,7 +49,10 @@ export default function SchoolsPage() {
     city: '',
     phone: '',
     email: '',
+    logo: '',
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSchools();
@@ -85,6 +89,7 @@ export default function SchoolsPage() {
             city: formData.city,
             phone: formData.phone || null,
             email: formData.email || null,
+            logo: logoPreview || formData.logo || null,
           })
           .eq('id', editingSchool.id);
 
@@ -100,6 +105,7 @@ export default function SchoolsPage() {
             city: formData.city,
             phone: formData.phone || null,
             email: formData.email || null,
+            logo: logoPreview || null,
           });
 
         if (error) throw error;
@@ -124,7 +130,9 @@ export default function SchoolsPage() {
       city: school.city,
       phone: school.phone || '',
       email: school.email || '',
+      logo: school.logo || '',
     });
+    setLogoPreview(school.logo || null);
     setIsDialogOpen(true);
   };
 
@@ -144,9 +152,29 @@ export default function SchoolsPage() {
     }
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setFormData({ ...formData, logo: '' });
+  };
+
   const resetForm = () => {
-    setFormData({ name: '', code: '', address: '', city: '', phone: '', email: '' });
+    setFormData({ name: '', code: '', address: '', city: '', phone: '', email: '', logo: '' });
     setEditingSchool(null);
+    setLogoFile(null);
+    setLogoPreview(null);
   };
 
   const filteredSchools = schools.filter(
@@ -253,6 +281,51 @@ export default function SchoolsPage() {
                         placeholder="school@example.com"
                       />
                     </div>
+                  </div>
+                  
+                  {/* Logo Upload */}
+                  <div className="grid gap-2">
+                    <Label>School Logo (Optional)</Label>
+                    {logoPreview ? (
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 rounded-lg border overflow-hidden bg-muted">
+                          <img 
+                            src={logoPreview} 
+                            alt="School logo preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={removeLogo}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="logo"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('logo')?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </Button>
+                        <span className="text-sm text-muted-foreground">PNG, JPG up to 2MB</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end gap-3">
