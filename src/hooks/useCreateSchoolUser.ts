@@ -29,12 +29,21 @@ export function useCreateSchoolUser() {
         body: data,
       });
 
+      // Handle function invocation errors
       if (error) {
-        throw new Error(error.message);
+        // Try to parse error message from the response
+        const errorMsg = error.message || 'Failed to create user';
+        throw new Error(errorMsg);
       }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create user');
+      // Handle application-level errors from the function
+      if (!result?.success) {
+        const errorMsg = result?.error || 'Failed to create user';
+        // Make error messages more user-friendly
+        if (errorMsg.includes('already been registered')) {
+          throw new Error('A user with this email already exists');
+        }
+        throw new Error(errorMsg);
       }
 
       toast.success(`${data.role.replace('_', ' ')} account created successfully`);

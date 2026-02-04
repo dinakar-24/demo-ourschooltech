@@ -114,11 +114,26 @@ export default function SchoolAdminsPage() {
 
   const { createUser, isCreating } = useCreateSchoolUser();
 
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain a number';
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain a special character';
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.schoolId) {
       toast.error('Please select a school');
+      return;
+    }
+
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -203,10 +218,13 @@ export default function SchoolAdminsPage() {
                       type="password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Minimum 6 characters"
-                      minLength={6}
+                      placeholder="Min 8 chars, upper, lower, number, special"
+                      minLength={8}
                       required
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Must include uppercase, lowercase, number, and special character
+                    </p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="school">Assign to School *</Label>
