@@ -50,11 +50,13 @@ serve(async (req) => {
       );
     }
 
-    // Mark OTP as used
-    await supabaseAdmin
-      .from("super_admin_otp")
-      .update({ used: true })
-      .eq("id", otpData.id);
+    // Helper function to mark OTP as used
+    const markOtpAsUsed = async () => {
+      await supabaseAdmin
+        .from("super_admin_otp")
+        .update({ used: true })
+        .eq("id", otpData.id);
+    };
 
     // Check if user exists
     const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
@@ -104,6 +106,9 @@ serve(async (req) => {
         .from("user_roles")
         .insert({ user_id: user.id, role: "super_admin" });
 
+      // Mark OTP as used after successful user creation
+      await markOtpAsUsed();
+
     } else {
       // User exists - check if they need to set password
       const hasLoggedIn = !!user.last_sign_in_at;
@@ -133,6 +138,9 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        // Mark OTP as used after successful password update
+        await markOtpAsUsed();
       }
     }
 
