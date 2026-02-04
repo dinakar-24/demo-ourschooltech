@@ -85,7 +85,7 @@ const menuConfig = {
   ],
 };
 
-export function Sidebar({ userRole = 'school_admin', schoolName = 'Delhi Public School', userName = 'Rajesh Kumar' }: SidebarProps) {
+export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Tech', userName = 'Rajesh Kumar' }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();

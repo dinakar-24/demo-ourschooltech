@@ -61,7 +61,7 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
               <Shield className="w-5 h-5 text-destructive-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">SchoolERP</p>
+              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">Our School Tech</p>
               <p className="text-xs text-destructive font-medium">Super Admin</p>
             </div>
           </div>
