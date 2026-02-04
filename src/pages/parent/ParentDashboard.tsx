@@ -1,30 +1,42 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   ClipboardList, 
   CreditCard, 
   Award,
   Bell,
-  ChevronRight,
-  Calendar,
   TrendingUp,
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useParentChild, useChildAttendanceStats, useChildFeeStats } from '@/hooks/useParentData';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ParentDashboard() {
   const { user } = useAuth();
+  const { data: child, isLoading: childLoading } = useParentChild();
+  const { data: attendanceStats, isLoading: attendanceLoading } = useChildAttendanceStats(child?.id);
+  const { data: feeStats, isLoading: feeLoading } = useChildFeeStats(child?.id);
 
-  const childInfo = {
-    name: user?.childName || 'Arjun Verma',
-    class: user?.className || 'Class 8',
-    section: user?.section || 'A',
-    rollNo: 15,
-    attendance: 94.5,
-    pendingFees: 12500,
+  const isLoading = childLoading || attendanceLoading || feeLoading;
+
+  // Fallback data if no child is linked yet
+  const childInfo = child ? {
+    name: child.full_name,
+    class: child.class_name,
+    section: child.section,
+    rollNo: child.roll_number || '-',
+  } : {
+    name: user?.name || 'No child linked',
+    class: 'N/A',
+    section: 'N/A',
+    rollNo: '-',
   };
+
+  const attendance = attendanceStats?.percentage || 0;
+  const pendingFees = feeStats?.pending || 0;
 
   const recentUpdates = [
     { type: 'result', title: 'Math Test Result', detail: 'Scored 85/100', time: '2 hours ago', icon: Award },
@@ -38,19 +50,43 @@ export default function ParentDashboard() {
         {/* Child Profile Card */}
         <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
           <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                {childInfo.name.split(' ').map(n => n[0]).join('')}
+            {childLoading ? (
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-16 h-16 rounded-full bg-white/20" />
+                <div>
+                  <Skeleton className="h-6 w-32 mb-2 bg-white/20" />
+                  <Skeleton className="h-4 w-40 bg-white/20" />
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold">{childInfo.name}</h2>
-                <p className="text-primary-foreground/80">
-                  {childInfo.class} - {childInfo.section} | Roll No. {childInfo.rollNo}
-                </p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                  {childInfo.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{childInfo.name}</h2>
+                  <p className="text-primary-foreground/80">
+                    {childInfo.class} - {childInfo.section} | Roll No. {childInfo.rollNo}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
+
+        {!child && !childLoading && (
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              <div>
+                <p className="font-medium text-foreground">No Child Linked</p>
+                <p className="text-sm text-muted-foreground">
+                  Contact your school admin to link your child's account.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-3">
@@ -62,7 +98,11 @@ export default function ParentDashboard() {
                     <CheckCircle className="w-5 h-5 text-success" />
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-foreground">{childInfo.attendance}%</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{attendance}%</p>
+                )}
                 <p className="text-sm text-muted-foreground">Attendance</p>
               </CardContent>
             </Card>
@@ -76,7 +116,13 @@ export default function ParentDashboard() {
                     <CreditCard className="w-5 h-5 text-warning" />
                   </div>
                 </div>
-                <p className="text-2xl font-bold text-foreground">₹{(childInfo.pendingFees / 1000).toFixed(1)}K</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">
+                    ₹{pendingFees > 1000 ? `${(pendingFees / 1000).toFixed(1)}K` : pendingFees}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">Pending Fees</p>
               </CardContent>
             </Card>
@@ -103,19 +149,19 @@ export default function ParentDashboard() {
         </div>
 
         {/* Fee Alert */}
-        {childInfo.pendingFees > 0 && (
+        {pendingFees > 0 && (
           <Card className="border-warning/30 bg-warning/5">
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-warning" />
                 <div>
                   <p className="font-medium text-foreground">Fee Payment Due</p>
-                  <p className="text-sm text-muted-foreground">₹{childInfo.pendingFees.toLocaleString()} pending</p>
+                  <p className="text-sm text-muted-foreground">₹{pendingFees.toLocaleString()} pending</p>
                 </div>
               </div>
               <Link to="/parent/fees">
                 <button className="px-4 py-2 bg-warning text-warning-foreground rounded-lg text-sm font-medium">
-                  Pay Now
+                  View
                 </button>
               </Link>
             </CardContent>
@@ -161,22 +207,32 @@ export default function ParentDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-success">18</p>
-                    <p className="text-xs text-muted-foreground">Present</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-destructive">1</p>
-                    <p className="text-xs text-muted-foreground">Absent</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-warning">1</p>
-                    <p className="text-xs text-muted-foreground">Late</p>
-                  </div>
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-10 w-10" />
+                      <Skeleton className="h-10 w-10" />
+                      <Skeleton className="h-10 w-10" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-success">{attendanceStats?.present || 0}</p>
+                        <p className="text-xs text-muted-foreground">Present</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-destructive">{attendanceStats?.absent || 0}</p>
+                        <p className="text-xs text-muted-foreground">Absent</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-warning">{attendanceStats?.late || 0}</p>
+                        <p className="text-xs text-muted-foreground">Late</p>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-success">
                   <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm font-medium">94.5%</span>
+                  <span className="text-sm font-medium">{attendance}%</span>
                 </div>
               </div>
             </CardContent>

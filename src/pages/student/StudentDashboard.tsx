@@ -6,23 +6,37 @@ import {
   BookOpen,
   Award,
   Bell,
-  Calendar,
   Clock,
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useStudentProfile, useStudentAttendanceStats, useStudentHomework } from '@/hooks/useStudentData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { data: student, isLoading: studentLoading } = useStudentProfile();
+  const { data: attendanceStats, isLoading: attendanceLoading } = useStudentAttendanceStats(student?.id);
+  const { data: homework, isLoading: homeworkLoading } = useStudentHomework(student?.class_name, student?.section);
 
-  const studentInfo = {
-    name: user?.name || 'Arjun Verma',
-    class: user?.className || 'Class 8',
-    section: user?.section || 'A',
-    rollNo: 15,
-    attendance: 94.5,
+  const isLoading = studentLoading;
+
+  const studentInfo = student ? {
+    name: student.full_name,
+    class: student.class_name,
+    section: student.section,
+    rollNo: student.roll_number || '-',
+  } : {
+    name: user?.name || 'Student',
+    class: 'N/A',
+    section: 'N/A',
+    rollNo: '-',
   };
+
+  const attendance = attendanceStats?.percentage || 0;
+  const pendingHomework = homework?.length || 0;
 
   const todaySchedule = [
     { subject: 'Mathematics', time: '9:00 - 9:45', teacher: 'Mrs. Sharma', status: 'completed' },
@@ -31,31 +45,51 @@ export default function StudentDashboard() {
     { subject: 'Hindi', time: '12:00 - 12:45', teacher: 'Mrs. Verma', status: 'upcoming' },
   ];
 
-  const pendingHomework = [
-    { subject: 'Mathematics', title: 'Chapter 5 Exercise', due: 'Tomorrow' },
-    { subject: 'Science', title: 'Lab Report', due: 'In 2 days' },
-  ];
-
   return (
     <MobileLayout>
       <div className="p-4 space-y-5">
         {/* Welcome Card */}
         <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
           <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-                {studentInfo.name.split(' ').map(n => n[0]).join('')}
+            {studentLoading ? (
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-14 h-14 rounded-full bg-white/20" />
+                <div>
+                  <Skeleton className="h-4 w-16 mb-2 bg-white/20" />
+                  <Skeleton className="h-6 w-32 mb-1 bg-white/20" />
+                  <Skeleton className="h-4 w-24 bg-white/20" />
+                </div>
               </div>
-              <div>
-                <p className="text-primary-foreground/70 text-sm">Hello,</p>
-                <h2 className="text-xl font-bold">{studentInfo.name}</h2>
-                <p className="text-sm text-primary-foreground/80">
-                  {studentInfo.class} - {studentInfo.section}
-                </p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
+                  {studentInfo.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div>
+                  <p className="text-primary-foreground/70 text-sm">Hello,</p>
+                  <h2 className="text-xl font-bold">{studentInfo.name}</h2>
+                  <p className="text-sm text-primary-foreground/80">
+                    {studentInfo.class} - {studentInfo.section}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
+
+        {!student && !studentLoading && (
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-warning" />
+              <div>
+                <p className="font-medium text-foreground">Profile Not Linked</p>
+                <p className="text-sm text-muted-foreground">
+                  Contact your school admin to link your student profile.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3">
@@ -63,7 +97,11 @@ export default function StudentDashboard() {
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="p-3 text-center">
                 <CheckCircle className="w-6 h-6 text-success mx-auto mb-1" />
-                <p className="text-lg font-bold">{studentInfo.attendance}%</p>
+                {attendanceLoading ? (
+                  <Skeleton className="h-6 w-12 mx-auto mb-1" />
+                ) : (
+                  <p className="text-lg font-bold">{attendance}%</p>
+                )}
                 <p className="text-xs text-muted-foreground">Attendance</p>
               </CardContent>
             </Card>
@@ -73,7 +111,11 @@ export default function StudentDashboard() {
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="p-3 text-center">
                 <BookOpen className="w-6 h-6 text-warning mx-auto mb-1" />
-                <p className="text-lg font-bold">2</p>
+                {homeworkLoading ? (
+                  <Skeleton className="h-6 w-8 mx-auto mb-1" />
+                ) : (
+                  <p className="text-lg font-bold">{pendingHomework}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Pending HW</p>
               </CardContent>
             </Card>
@@ -140,22 +182,41 @@ export default function StudentDashboard() {
             </Link>
           </div>
           <div className="space-y-2">
-            {pendingHomework.map((hw, i) => (
-              <Card key={i}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                      <AlertCircle className="w-4 h-4 text-warning" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{hw.subject}</p>
-                      <p className="text-xs text-muted-foreground">{hw.title}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-warning font-medium">{hw.due}</span>
+            {homeworkLoading ? (
+              Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-3">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : homework?.length === 0 ? (
+              <Card>
+                <CardContent className="p-4 text-center text-muted-foreground">
+                  No pending homework! 🎉
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              homework?.slice(0, 3).map((hw) => (
+                <Card key={hw.id}>
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                        <AlertCircle className="w-4 h-4 text-warning" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{hw.subject}</p>
+                        <p className="text-xs text-muted-foreground">{hw.title}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-warning font-medium">
+                      Due {format(new Date(hw.due_date), 'dd MMM')}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
 

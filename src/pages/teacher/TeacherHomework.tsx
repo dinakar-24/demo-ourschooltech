@@ -24,61 +24,66 @@ import {
   Plus,
   BookOpen,
   Calendar,
-  Clock,
   Eye,
   Edit,
   Users,
+  Loader2,
   FileText,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useClasses } from '@/hooks/useClasses';
+import { useTeacherHomework, useCreateHomework } from '@/hooks/useHomework';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
-const mockHomework = [
-  { 
-    id: '1', 
-    class: 'Class 8-A', 
-    subject: 'Mathematics', 
-    title: 'Chapter 5 - Quadratic Equations', 
-    description: 'Complete exercises 5.1 and 5.2 from the textbook',
-    dueDate: '2024-01-20',
-    submissions: 35,
-    total: 42,
-    status: 'active'
-  },
-  { 
-    id: '2', 
-    class: 'Class 9-B', 
-    subject: 'Mathematics', 
-    title: 'Trigonometry Practice', 
-    description: 'Solve practice problems from worksheet',
-    dueDate: '2024-01-22',
-    submissions: 28,
-    total: 44,
-    status: 'active'
-  },
-  { 
-    id: '3', 
-    class: 'Class 10-A', 
-    subject: 'Physics', 
-    title: 'Light Chapter Summary', 
-    description: 'Write summary of chapter 10',
-    dueDate: '2024-01-18',
-    submissions: 45,
-    total: 48,
-    status: 'completed'
-  },
-];
-
-const classes = ['Class 8-A', 'Class 8-B', 'Class 9-A', 'Class 9-B', 'Class 10-A'];
-const subjects = ['Mathematics', 'Physics', 'Chemistry'];
+const subjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Hindi', 'Social Studies', 'Computer Science'];
 
 export default function TeacherHomework() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
 
-  const handlePost = () => {
-    toast.success('Homework posted successfully!');
+  const { data: classes } = useClasses();
+  const { data: homework, isLoading } = useTeacherHomework();
+  const createHomework = useCreateHomework();
+
+  const selectedClass = classes?.find(c => c.id === selectedClassId);
+
+  const handleSubmit = async () => {
+    if (!selectedClassId || !selectedSubject || !title || !dueDate) {
+      return;
+    }
+
+    await createHomework.mutateAsync({
+      class_id: selectedClassId,
+      section_id: selectedSectionId || undefined,
+      subject: selectedSubject,
+      title,
+      description: description || undefined,
+      due_date: dueDate,
+    });
+
+    setSelectedClassId('');
+    setSelectedSectionId('');
+    setSelectedSubject('');
+    setTitle('');
+    setDescription('');
+    setDueDate('');
     setIsAddDialogOpen(false);
+  };
+
+  const getStatusBadge = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (due < today) {
+      return <Badge variant="secondary">completed</Badge>;
+    }
+    return <Badge variant="default">active</Badge>;
   };
 
   return (
@@ -99,53 +104,84 @@ export default function TeacherHomework() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Class</Label>
-                  <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <Label>Class *</Label>
+                  <Select value={selectedClassId} onValueChange={(v) => {
+                    setSelectedClassId(v);
+                    setSelectedSectionId('');
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select class" />
                     </SelectTrigger>
                     <SelectContent>
-                      {classes.map(cls => (
-                        <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                      {classes?.map(cls => (
+                        <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <Label>Section (Optional)</Label>
+                  <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
+                      <SelectValue placeholder="All sections" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subjects.map(sub => (
-                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                      {selectedClass?.sections.map(sec => (
+                        <SelectItem key={sec.id} value={sec.id}>Section {sec.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Title</Label>
-                <Input placeholder="e.g., Chapter 5 Exercises" />
+                <Label>Subject *</Label>
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map(sub => (
+                      <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Title *</Label>
+                <Input 
+                  placeholder="e.g., Chapter 5 Exercises" 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea 
                   placeholder="Describe the homework assignment..."
                   className="min-h-[100px]"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Input type="date" />
+                <Label>Due Date *</Label>
+                <Input 
+                  type="date" 
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
               </div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button className="flex-1" onClick={handlePost}>
+              <Button 
+                className="flex-1" 
+                onClick={handleSubmit}
+                disabled={createHomework.isPending || !selectedClassId || !selectedSubject || !title || !dueDate}
+              >
+                {createHomework.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Post Homework
               </Button>
             </div>
@@ -153,60 +189,78 @@ export default function TeacherHomework() {
         </Dialog>
 
         {/* Homework List */}
-        <div className="space-y-3">
-          {mockHomework.map((hw) => (
-            <Card key={hw.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-primary" />
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-5 w-48 mb-2" />
+                  <Skeleton className="h-4 w-full mb-3" />
+                  <Skeleton className="h-8 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : homework?.length === 0 ? (
+          <Card className="p-8 text-center">
+            <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Homework Posted</h3>
+            <p className="text-muted-foreground">
+              Post your first homework assignment to get started.
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {homework?.map((hw) => (
+              <Card key={hw.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{hw.class?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {hw.subject} {hw.section && `• Section ${hw.section.name}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{hw.class}</p>
-                      <p className="text-xs text-muted-foreground">{hw.subject}</p>
+                    {getStatusBadge(hw.due_date)}
+                  </div>
+                  
+                  <h3 className="font-semibold mb-1">{hw.title}</h3>
+                  {hw.description && (
+                    <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Due: {format(new Date(hw.due_date), 'dd MMM yyyy')}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      Posted {format(new Date(hw.created_at), 'dd MMM')}
                     </div>
                   </div>
-                  <Badge variant={hw.status === 'active' ? 'default' : 'secondary'}>
-                    {hw.status}
-                  </Badge>
-                </div>
-                
-                <h3 className="font-semibold mb-1">{hw.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
-                
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Due: {hw.dueDate}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {hw.submissions}/{hw.total} submitted
-                  </div>
-                </div>
 
-                <div className="w-full bg-muted rounded-full h-2 mb-3">
-                  <div 
-                    className="bg-primary h-2 rounded-full" 
-                    style={{ width: `${(hw.submissions / hw.total) * 100}%` }}
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="w-4 h-4 mr-2" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Eye className="w-4 h-4 mr-2" />
+                      View
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </MobileLayout>
   );
