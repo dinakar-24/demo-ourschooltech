@@ -538,17 +538,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Super Admin Link - Outside main card */}
-          {step === 'school' && (
-            <button
-              type="button"
-              onClick={() => setStep('superadmin')}
-              className="w-full flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              <span>🔐</span>
-              <span>Super Admin Login</span>
-            </button>
-          )}
         </div>
       </div>
 
