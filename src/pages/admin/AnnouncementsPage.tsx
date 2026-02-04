@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,94 +12,181 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus,
   Bell,
   Edit,
   Trash2,
-  Eye,
   Send,
   Calendar,
   Users,
-  AlertCircle,
+  Loader2,
+  Megaphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { useAnnouncements, AnnouncementFormData } from '@/hooks/useAnnouncements';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { Database } from '@/integrations/supabase/types';
 
-const mockAnnouncements = [
-  {
-    id: '1',
-    title: 'Annual Sports Day',
-    message: 'Annual Sports Day will be held on 28th January 2024. All students are requested to participate actively. Parents are cordially invited.',
-    priority: 'high',
-    targetRoles: ['teacher', 'parent', 'student'],
-    createdAt: '2024-01-15',
-    createdBy: 'Admin',
-    status: 'published',
-  },
-  {
-    id: '2',
-    title: 'Parent Teacher Meeting',
-    message: 'PTM scheduled for Class 8, 9, and 10 on 25th January 2024. Please report to the school auditorium at 10:00 AM.',
-    priority: 'medium',
-    targetRoles: ['parent', 'teacher'],
-    createdAt: '2024-01-14',
-    createdBy: 'Admin',
-    status: 'published',
-  },
-  {
-    id: '3',
-    title: 'Holiday Notice - Republic Day',
-    message: 'School will remain closed on 26th January 2024 on account of Republic Day.',
-    priority: 'low',
-    targetRoles: ['teacher', 'parent', 'student'],
-    createdAt: '2024-01-13',
-    createdBy: 'Admin',
-    status: 'published',
-  },
-  {
-    id: '4',
-    title: 'Fee Payment Reminder',
-    message: 'This is to remind all parents that the last date for fee payment is 31st January 2024. Late fee will be applicable after the due date.',
-    priority: 'high',
-    targetRoles: ['parent'],
-    createdAt: '2024-01-12',
-    createdBy: 'Admin',
-    status: 'draft',
-  },
+type AppRole = Database['public']['Enums']['app_role'];
+
+const AVAILABLE_ROLES: { value: AppRole; label: string }[] = [
+  { value: 'teacher', label: 'Teachers' },
+  { value: 'parent', label: 'Parents' },
+  { value: 'student', label: 'Students' },
 ];
 
 export default function AnnouncementsPage() {
+  const { announcements, loading, stats, createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleActive } = useAnnouncements();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<typeof announcements[0] | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <Badge variant="destructive">High Priority</Badge>;
-      case 'medium':
-        return <Badge className="bg-warning text-warning-foreground">Medium</Badge>;
-      case 'low':
-        return <Badge variant="secondary">Low</Badge>;
-      default:
-        return <Badge variant="outline">{priority}</Badge>;
+  const [formData, setFormData] = useState<AnnouncementFormData>({
+    title: '',
+    content: '',
+    target_roles: [],
+    expires_at: '',
+    is_active: true,
+  });
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      content: '',
+      target_roles: [],
+      expires_at: '',
+      is_active: true,
+    });
+  };
+
+  const toggleRole = (role: AppRole) => {
+    setFormData(prev => ({
+      ...prev,
+      target_roles: prev.target_roles.includes(role)
+        ? prev.target_roles.filter(r => r !== role)
+        : [...prev.target_roles, role]
+    }));
+  };
+
+  const handleCreate = async (publish: boolean) => {
+    if (!formData.title || !formData.content || formData.target_roles.length === 0) {
+      return;
+    }
+    setIsSubmitting(true);
+    const success = await createAnnouncement({
+      ...formData,
+      is_active: publish,
+    });
+    if (success) {
+      setIsAddDialogOpen(false);
+      resetForm();
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleEdit = async () => {
+    if (!selectedAnnouncement) return;
+    setIsSubmitting(true);
+    const success = await updateAnnouncement(selectedAnnouncement.id, formData);
+    if (success) {
+      setIsEditDialogOpen(false);
+      setSelectedAnnouncement(null);
+      resetForm();
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedAnnouncement) return;
+    const success = await deleteAnnouncement(selectedAnnouncement.id);
+    if (success) {
+      setDeleteDialogOpen(false);
+      setSelectedAnnouncement(null);
     }
   };
 
-  const toggleRole = (role: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(role) 
-        ? prev.filter(r => r !== role)
-        : [...prev, role]
-    );
+  const openEditDialog = (announcement: typeof announcements[0]) => {
+    setSelectedAnnouncement(announcement);
+    setFormData({
+      title: announcement.title,
+      content: announcement.content,
+      target_roles: (announcement.target_roles || []) as AppRole[],
+      expires_at: announcement.expires_at ? announcement.expires_at.split('T')[0] : '',
+      is_active: announcement.is_active,
+    });
+    setIsEditDialogOpen(true);
   };
+
+  const openDeleteDialog = (announcement: typeof announcements[0]) => {
+    setSelectedAnnouncement(announcement);
+    setDeleteDialogOpen(true);
+  };
+
+  const FormFields = () => (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label>Title</Label>
+        <Input 
+          placeholder="Enter announcement title" 
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Message</Label>
+        <Textarea 
+          placeholder="Enter announcement message..." 
+          className="min-h-[120px]"
+          value={formData.content}
+          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Expires On (Optional)</Label>
+          <Input 
+            type="date" 
+            value={formData.expires_at}
+            onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Target Audience</Label>
+        <div className="flex gap-4 pt-2">
+          {AVAILABLE_ROLES.map(role => (
+            <div key={role.value} className="flex items-center gap-2">
+              <Checkbox 
+                id={role.value}
+                checked={formData.target_roles.includes(role.value)}
+                onCheckedChange={() => toggleRole(role.value)}
+              />
+              <label htmlFor={role.value} className="text-sm cursor-pointer">
+                {role.label}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <AdminLayout title="Announcements">
@@ -109,25 +196,33 @@ export default function AnnouncementsPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Announcements</p>
-              <p className="text-2xl font-bold text-foreground">24</p>
+              <p className="text-2xl font-bold text-foreground">
+                {loading ? <Skeleton className="h-8 w-12" /> : stats.total}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Published</p>
-              <p className="text-2xl font-bold text-success">20</p>
+              <p className="text-2xl font-bold text-success">
+                {loading ? <Skeleton className="h-8 w-12" /> : stats.active}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Draft</p>
-              <p className="text-2xl font-bold text-warning">4</p>
+              <p className="text-2xl font-bold text-warning">
+                {loading ? <Skeleton className="h-8 w-12" /> : stats.inactive}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">This Month</p>
-              <p className="text-2xl font-bold text-primary">8</p>
+              <p className="text-2xl font-bold text-primary">
+                {loading ? <Skeleton className="h-8 w-12" /> : stats.thisMonth}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -136,7 +231,7 @@ export default function AnnouncementsPage() {
         <div className="flex justify-end">
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" onClick={resetForm}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Announcement
               </Button>
@@ -145,60 +240,21 @@ export default function AnnouncementsPage() {
               <DialogHeader>
                 <DialogTitle>Create Announcement</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input placeholder="Enter announcement title" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Message</Label>
-                  <Textarea 
-                    placeholder="Enter announcement message..." 
-                    className="min-h-[120px]"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Priority</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Publish Date</Label>
-                    <Input type="date" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Target Audience</Label>
-                  <div className="flex gap-4 pt-2">
-                    {['teacher', 'parent', 'student'].map(role => (
-                      <div key={role} className="flex items-center gap-2">
-                        <Checkbox 
-                          id={role}
-                          checked={selectedRoles.includes(role)}
-                          onCheckedChange={() => toggleRole(role)}
-                        />
-                        <label htmlFor={role} className="text-sm capitalize cursor-pointer">
-                          {role}s
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <FormFields />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleCreate(false)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save as Draft
                 </Button>
-                <Button onClick={() => setIsAddDialogOpen(false)}>
+                <Button 
+                  onClick={() => handleCreate(true)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   <Send className="w-4 h-4 mr-2" />
                   Publish
                 </Button>
@@ -208,63 +264,155 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Announcements List */}
-        <div className="space-y-4">
-          {mockAnnouncements.map((announcement) => (
-            <Card key={announcement.id}>
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div className="flex gap-4 flex-1">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                      announcement.priority === 'high' ? 'bg-destructive/10' :
-                      announcement.priority === 'medium' ? 'bg-warning/10' :
-                      'bg-muted'
-                    }`}>
-                      <Bell className={`w-5 h-5 ${
-                        announcement.priority === 'high' ? 'text-destructive' :
-                        announcement.priority === 'medium' ? 'text-warning' :
-                        'text-muted-foreground'
-                      }`} />
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <Card key={i}>
+                <CardContent className="p-5">
+                  <div className="flex gap-4">
+                    <Skeleton className="w-10 h-10 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3 w-32" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-semibold">{announcement.title}</h3>
-                        {getPriorityBadge(announcement.priority)}
-                        {announcement.status === 'draft' && (
-                          <Badge variant="outline">Draft</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : announcements.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Announcements</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first announcement to communicate with your school community.
+              </p>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Announcement
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {announcements.map((announcement) => (
+              <Card key={announcement.id}>
+                <CardContent className="p-5">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex gap-4 flex-1">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                        announcement.is_active ? 'bg-success/10' : 'bg-muted'
+                      }`}>
+                        <Bell className={`w-5 h-5 ${
+                          announcement.is_active ? 'text-success' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-semibold">{announcement.title}</h3>
+                          {announcement.is_active ? (
+                            <Badge className="bg-success/10 text-success">Published</Badge>
+                          ) : (
+                            <Badge variant="outline">Draft</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                          {announcement.content}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(announcement.created_at), 'dd MMM yyyy')}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {announcement.target_roles?.map(r => 
+                              r.charAt(0).toUpperCase() + r.slice(1)
+                            ).join(', ') || 'No audience selected'}
+                          </div>
+                          {announcement.expires_at && (
+                            <div className="flex items-center gap-1">
+                              Expires: {format(new Date(announcement.expires_at), 'dd MMM yyyy')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm"
+                        onClick={() => toggleActive(announcement.id, !announcement.is_active)}
+                        title={announcement.is_active ? 'Unpublish' : 'Publish'}
+                      >
+                        {announcement.is_active ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
                         )}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                        {announcement.message}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {announcement.createdAt}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {announcement.targetRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}
-                        </div>
-                      </div>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm"
+                        onClick={() => openEditDialog(announcement)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon-sm" 
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => openDeleteDialog(announcement)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon-sm">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Announcement</DialogTitle>
+          </DialogHeader>
+          <FormFields />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEdit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedAnnouncement?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
