@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
 
 type LoginStep = 'school' | 'role' | 'credentials' | 'superadmin';
 
@@ -394,88 +395,17 @@ export default function LoginPage() {
                 </form>
               )}
 
-              {/* Super Admin Login */}
+              {/* Super Admin Login with OTP */}
               {step === 'superadmin' && (
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!email.trim() || !password.trim()) {
-                    setError('Please enter email and password');
-                    return;
-                  }
-                  setLoading(true);
-                  setError('');
-                  try {
-                    await login(email, password);
-                  } catch (err: any) {
-                    setError(err.message || 'Authentication failed. Please try again.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }} className="space-y-5">
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <p className="text-sm text-primary font-medium">Super Admin Access</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      For system administrators with access to all schools
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="input-label">Email</label>
-                    <Input
-                      type="email"
-                      placeholder="Enter super admin email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-14 rounded-xl"
-                      autoFocus
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="input-label">Password</label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="h-14 rounded-xl pr-12"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-                      >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button type="submit" size="xl" className="w-full h-14 text-base rounded-xl" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      <>
-                        Sign In as Super Admin
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </Button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep('school');
-                      setError('');
-                    }}
-                    className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
-                  >
-                    ← Back to school selection
-                  </button>
-                </form>
+                <SuperAdminOTPLogin 
+                  onBack={() => {
+                    setStep('school');
+                    setError('');
+                  }}
+                  onSuccess={() => {
+                    // Navigation will be handled by auth state change
+                  }}
+                />
               )}
             </div>
           </div>
