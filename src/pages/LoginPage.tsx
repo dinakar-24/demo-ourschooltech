@@ -267,8 +267,19 @@ export default function LoginPage() {
                           selectedSchool?.id === school.id && "bg-white"
                         )}
                       >
-                        <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <School className="w-5 h-5 text-primary" />
+                        <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          {school.logo ? (
+                            <img 
+                              src={school.logo} 
+                              alt={`${school.name} logo`} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <School className={cn("w-5 h-5 text-primary", school.logo && "hidden")} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-foreground truncate">{school.name}</p>
