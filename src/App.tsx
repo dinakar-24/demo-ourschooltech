@@ -29,6 +29,7 @@ import AttendancePage from "./pages/admin/AttendancePage";
 import FeesPage from "./pages/admin/FeesPage";
 import ExamsPage from "./pages/admin/ExamsPage";
 import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
+import AcademicYearsPage from "./pages/admin/AcademicYearsPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 
@@ -100,6 +101,7 @@ function AppRoutes() {
       <Route path="/admin/attendance" element={<ProtectedRoute allowedRoles={['school_admin']}><AttendancePage /></ProtectedRoute>} />
       <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={['school_admin']}><FeesPage /></ProtectedRoute>} />
       <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['school_admin']}><ExamsPage /></ProtectedRoute>} />
+      <Route path="/admin/academic-years" element={<ProtectedRoute allowedRoles={['school_admin']}><AcademicYearsPage /></ProtectedRoute>} />
       <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['school_admin']}><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['school_admin']}><ReportsPage /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['school_admin']}><SettingsPage /></ProtectedRoute>} />

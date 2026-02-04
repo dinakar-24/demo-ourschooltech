@@ -78,9 +78,9 @@
 
 ---
 
-## 📋 Phase 7: Pending - Academic Year & Promotion
+## ✅ Phase 7: Academic Year & Promotion - PARTIALLY COMPLETE
 
-- [ ] Academic year management UI for School Admin
+- [x] Academic year management UI for School Admin
 - [ ] Student promotion interface (bulk operations)
 - [ ] Promotion options: Promote, Detain, Graduate, Deactivate
 - [ ] Promotion history tracking
