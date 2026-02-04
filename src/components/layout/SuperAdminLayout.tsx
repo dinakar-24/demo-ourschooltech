@@ -85,13 +85,13 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
                 to={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  "nav-item",
+                  "nav-item py-3 md:py-2",
                   isActive(item.href) && "nav-item-active"
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span className="text-sm md:text-base">{item.label}</span>}
               </Link>
             </li>
           ))}
@@ -154,8 +154,8 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b border-border px-4 md:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b border-border px-3 md:px-6 py-2 md:py-3">
+          <div className="flex items-center justify-between gap-2 md:gap-4">
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
@@ -166,13 +166,13 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
                 <Menu className="w-5 h-5" />
               </Button>
               {title && (
-                <h1 className="text-lg md:text-xl font-display font-semibold text-foreground">
+                <h1 className="text-base md:text-xl font-display font-semibold text-foreground truncate max-w-[180px] md:max-w-none">
                   {title}
                 </h1>
               )}
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 md:gap-3">
               <div className="hidden md:flex relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
@@ -180,6 +180,9 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
                   className="pl-9 w-64 bg-muted/50 border-none focus-visible:ring-1"
                 />
               </div>
+              <Button variant="ghost" size="icon-sm" className="md:hidden">
+                <Search className="w-5 h-5" />
+              </Button>
               <Button variant="ghost" size="icon-sm" className="relative">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
@@ -188,7 +191,7 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
           </div>
         </header>
         
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main className="flex-1 p-3 md:p-6 overflow-auto">
           {children}
         </main>
       </div>
