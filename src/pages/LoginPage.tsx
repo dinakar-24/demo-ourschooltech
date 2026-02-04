@@ -8,7 +8,7 @@ import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-type LoginStep = 'school' | 'role' | 'credentials';
+type LoginStep = 'school' | 'role' | 'credentials' | 'superadmin';
 type AuthMode = 'login' | 'signup';
 
 const roleOptions: { role: UserRole; label: string; icon: typeof User; description: string }[] = [
@@ -229,11 +229,13 @@ export default function LoginPage() {
               {step === 'school' && 'Find your school'}
               {step === 'role' && 'Select your role'}
               {step === 'credentials' && (authMode === 'login' ? 'Sign in' : 'Create account')}
+              {step === 'superadmin' && 'Super Admin Login'}
             </h2>
             <p className="text-muted-foreground mt-2">
               {step === 'school' && 'Search by school name or code'}
               {step === 'role' && `Signing into ${selectedSchool?.name}`}
               {step === 'credentials' && `Continue as ${roleOptions.find(r => r.role === selectedRole)?.label}`}
+              {step === 'superadmin' && 'Access to manage all schools'}
             </p>
           </div>
 
@@ -310,6 +312,17 @@ export default function LoginPage() {
                     <p className="text-sm mt-1">Contact administrator to add your school</p>
                   </div>
                 )}
+              </div>
+
+              {/* Super Admin Login Link */}
+              <div className="pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setStep('superadmin')}
+                  className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+                >
+                  🔐 Super Admin Login
+                </button>
               </div>
             </div>
           )}
@@ -469,6 +482,90 @@ export default function LoginPage() {
                 className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 ← Back to role selection
+              </button>
+            </form>
+          )}
+
+          {/* Super Admin Login */}
+          {step === 'superadmin' && (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!email.trim() || !password.trim()) {
+                setError('Please enter email and password');
+                return;
+              }
+              setLoading(true);
+              setError('');
+              try {
+                await login(email, password);
+              } catch (err: any) {
+                setError(err.message || 'Authentication failed. Please try again.');
+              } finally {
+                setLoading(false);
+              }
+            }} className="space-y-5">
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <p className="text-sm text-primary font-medium">Super Admin Access</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  For system administrators with access to all schools
+                </p>
+              </div>
+
+              <div>
+                <label className="input-label">Email</label>
+                <Input
+                  type="email"
+                  placeholder="Enter super admin email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="input-label">Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button type="submit" size="xl" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In as Super Admin
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('school');
+                  setError('');
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to school selection
               </button>
             </form>
           )}
