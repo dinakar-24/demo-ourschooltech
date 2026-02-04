@@ -25,22 +25,26 @@ export function useCreateSchoolUser() {
   const createUser = useCallback(async (data: CreateUserData): Promise<boolean> => {
     setIsCreating(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('create-school-user', {
+      const response = await supabase.functions.invoke('create-school-user', {
         body: data,
       });
 
-      // Handle function invocation errors
-      if (error) {
-        // Try to parse error message from the response
-        const errorMsg = error.message || 'Failed to create user';
-        throw new Error(errorMsg);
+      // The response contains both data and error
+      const result = response.data;
+      const invokeError = response.error;
+
+      // Handle function invocation errors (network, CORS, etc.)
+      if (invokeError) {
+        console.error('Invoke error:', invokeError);
+        // Try to get a meaningful message
+        throw new Error(invokeError.message || 'Failed to call server function');
       }
 
       // Handle application-level errors from the function
       if (!result?.success) {
         const errorMsg = result?.error || 'Failed to create user';
         // Make error messages more user-friendly
-        if (errorMsg.includes('already been registered')) {
+        if (errorMsg.includes('already been registered') || errorMsg.includes('email_exists')) {
           throw new Error('A user with this email already exists');
         }
         throw new Error(errorMsg);
