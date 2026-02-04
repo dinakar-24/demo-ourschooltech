@@ -6,7 +6,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-type OTPStep = 'email' | 'otp' | 'password' | 'login';
+type OTPStep = 'email' | 'otp_password';
 
 interface SuperAdminOTPLoginProps {
   onBack: () => void;
@@ -15,22 +15,28 @@ interface SuperAdminOTPLoginProps {
 
 export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProps) {
   const [step, setStep] = useState<OTPStep>('email');
-  const [email, setEmail] = useState('admin@ourschooltech.com');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [requiresPassword, setRequiresPassword] = useState(false);
   const [debugOtp, setDebugOtp] = useState('');
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSendOTP = async () => {
     if (!email.trim()) {
       setError('Please enter your email');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -39,7 +45,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('send-super-admin-otp', {
-        body: { email },
+        body: { email: email.trim().toLowerCase() },
       });
 
       if (fnError) {
@@ -51,7 +57,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       }
 
       setSuccess('OTP sent to your email');
-      setRequiresPassword(data.needsPasswordSetup);
+      setNeedsPasswordSetup(data.needsPasswordSetup);
       
       // For development - show OTP in console
       if (data.debugOtp) {
@@ -59,45 +65,9 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         setDebugOtp(data.debugOtp);
       }
       
-      setStep('otp');
+      setStep('otp_password');
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      setError('Please enter the complete 6-digit OTP');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('verify-super-admin-otp', {
-        body: { email, otp },
-      });
-
-      if (fnError) {
-        throw new Error(fnError.message);
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data.requiresPassword) {
-        setSuccess('OTP verified! Please create your password.');
-        setStep('password');
-      } else {
-        setSuccess('OTP verified! Please login with your password.');
-        setStep('login');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Invalid OTP');
     } finally {
       setLoading(false);
     }
@@ -122,24 +92,42 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
     return null;
   };
 
-  const handleCreatePassword = async () => {
-    const validationError = validatePassword(newPassword);
-    if (validationError) {
-      setError(validationError);
+  const handleVerifyAndLogin = async () => {
+    if (otp.length !== 6) {
+      setError('Please enter the complete 6-digit OTP');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!password.trim()) {
+      setError('Please enter your password');
       return;
+    }
+
+    // If creating new password, validate it
+    if (needsPasswordSetup) {
+      const validationError = validatePassword(password);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
     }
 
     setLoading(true);
     setError('');
 
     try {
+      // Verify OTP and create/update password if needed
       const { data, error: fnError } = await supabase.functions.invoke('verify-super-admin-otp', {
-        body: { email, otp, newPassword },
+        body: { 
+          email: email.trim().toLowerCase(), 
+          otp,
+          newPassword: needsPasswordSetup ? password : undefined
+        },
       });
 
       if (fnError) {
@@ -150,28 +138,10 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         throw new Error(data.error);
       }
 
-      setSuccess('Password created successfully! You can now login.');
-      setStep('login');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create password');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async () => {
-    if (!loginPassword.trim()) {
-      setError('Please enter your password');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
+      // Now login with password
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: loginPassword,
+        email: email.trim().toLowerCase(),
+        password: password,
       });
 
       if (signInError) {
@@ -180,7 +150,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
 
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -190,8 +160,8 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
     <div className="space-y-5">
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-2 py-2">
-        {['email', 'otp', step === 'password' ? 'password' : 'login'].map((s, i) => {
-          const stepOrder = ['email', 'otp', step === 'password' ? 'password' : 'login'];
+        {['email', 'otp_password'].map((s, i) => {
+          const stepOrder = ['email', 'otp_password'];
           const currentIndex = stepOrder.indexOf(step);
           const isCompleted = currentIndex > i;
           const isCurrent = stepOrder[i] === step;
@@ -206,7 +176,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
               )}>
                 {i + 1}
               </div>
-              {i < 2 && (
+              {i < 1 && (
                 <div className={cn(
                   "w-8 h-0.5 mx-1",
                   currentIndex > i ? "bg-success" : "bg-border"
@@ -223,10 +193,8 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           <p className="text-sm text-primary font-medium">Super Admin Access</p>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          {step === 'email' && 'Enter your email to receive an OTP'}
-          {step === 'otp' && 'Enter the 6-digit code sent to your email'}
-          {step === 'password' && 'Create a secure password for your account'}
-          {step === 'login' && 'Login with your password'}
+          {step === 'email' && 'Enter your Super Admin email to receive an OTP'}
+          {step === 'otp_password' && (needsPasswordSetup ? 'Enter OTP and create your password' : 'Enter OTP and your password to login')}
         </p>
       </div>
 
@@ -244,7 +212,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       )}
 
       {/* Development OTP display */}
-      {debugOtp && step === 'otp' && (
+      {debugOtp && step === 'otp_password' && (
         <div className="p-3 rounded-xl bg-warning/10 border border-warning/30 text-warning-foreground text-sm">
           <p className="font-medium">Development Mode</p>
           <p className="font-mono text-lg">{debugOtp}</p>
@@ -254,13 +222,19 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       {/* Step 1: Email */}
       {step === 'email' && (
         <div className="space-y-4">
-          <div className="text-center py-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Click below to receive an OTP on your registered Super Admin email
-            </p>
+          <div>
+            <label className="input-label flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Super Admin Email
+            </label>
+            <Input
+              type="email"
+              placeholder="Enter your super admin email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-14 rounded-xl"
+              autoFocus
+            />
           </div>
 
           <Button 
@@ -284,8 +258,8 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         </div>
       )}
 
-      {/* Step 2: OTP Verification */}
-      {step === 'otp' && (
+      {/* Step 2: OTP + Password */}
+      {step === 'otp_password' && (
         <div className="space-y-4">
           <div className="flex flex-col items-center">
             <label className="input-label flex items-center gap-2 mb-4">
@@ -311,8 +285,66 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
             </p>
           </div>
 
+          <div>
+            <label className="input-label flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              {needsPasswordSetup ? 'Create Password' : 'Password'}
+            </label>
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder={needsPasswordSetup ? 'Create a strong password' : 'Enter your password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-14 rounded-xl pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {needsPasswordSetup && (
+            <>
+              <div>
+                <label className="input-label">Confirm Password</label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="h-14 rounded-xl pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground space-y-1 p-3 bg-muted/30 rounded-lg">
+                <p className="font-medium text-foreground">Password requirements:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li className={password.length >= 8 ? 'text-success' : ''}>At least 8 characters</li>
+                  <li className={/[A-Z]/.test(password) ? 'text-success' : ''}>One uppercase letter</li>
+                  <li className={/[a-z]/.test(password) ? 'text-success' : ''}>One lowercase letter</li>
+                  <li className={/[0-9]/.test(password) ? 'text-success' : ''}>One number</li>
+                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'text-success' : ''}>One special character</li>
+                </ul>
+              </div>
+            </>
+          )}
+
           <Button 
-            onClick={handleVerifyOTP} 
+            onClick={handleVerifyAndLogin} 
             size="xl" 
             className="w-full h-14 text-base rounded-xl" 
             disabled={loading || otp.length !== 6}
@@ -324,7 +356,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
               </>
             ) : (
               <>
-                Verify OTP
+                {needsPasswordSetup ? 'Create Password & Sign In' : 'Verify & Sign In'}
                 <ArrowRight className="w-5 h-5" />
               </>
             )}
@@ -338,133 +370,6 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           >
             Resend OTP
           </button>
-        </div>
-      )}
-
-      {/* Step 3: Create Password */}
-      {step === 'password' && (
-        <div className="space-y-4">
-          <div>
-            <label className="input-label flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Create Password
-            </label>
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Create a strong password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="h-14 rounded-xl pr-12"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="input-label">Confirm Password</label>
-            <div className="relative">
-              <Input
-                type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="h-14 rounded-xl pr-12"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-              >
-                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="text-xs text-muted-foreground space-y-1 p-3 bg-muted/30 rounded-lg">
-            <p className="font-medium text-foreground">Password requirements:</p>
-            <ul className="list-disc list-inside space-y-0.5">
-              <li className={newPassword.length >= 8 ? 'text-success' : ''}>At least 8 characters</li>
-              <li className={/[A-Z]/.test(newPassword) ? 'text-success' : ''}>One uppercase letter</li>
-              <li className={/[a-z]/.test(newPassword) ? 'text-success' : ''}>One lowercase letter</li>
-              <li className={/[0-9]/.test(newPassword) ? 'text-success' : ''}>One number</li>
-              <li className={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? 'text-success' : ''}>One special character</li>
-            </ul>
-          </div>
-
-          <Button 
-            onClick={handleCreatePassword} 
-            size="xl" 
-            className="w-full h-14 text-base rounded-xl" 
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Creating Password...
-              </>
-            ) : (
-              <>
-                Create Password
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Step 4: Login with Password */}
-      {step === 'login' && (
-        <div className="space-y-4">
-          <div>
-            <label className="input-label flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Password
-            </label>
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="h-14 rounded-xl pr-12"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <Button 
-            onClick={handleLogin} 
-            size="xl" 
-            className="w-full h-14 text-base rounded-xl" 
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </Button>
         </div>
       )}
 

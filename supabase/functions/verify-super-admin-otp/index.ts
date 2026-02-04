@@ -50,13 +50,11 @@ serve(async (req) => {
       );
     }
 
-    // Helper function to mark OTP as used
-    const markOtpAsUsed = async () => {
-      await supabaseAdmin
-        .from("super_admin_otp")
-        .update({ used: true })
-        .eq("id", otpData.id);
-    };
+    // Mark OTP as used immediately
+    await supabaseAdmin
+      .from("super_admin_otp")
+      .update({ used: true })
+      .eq("id", otpData.id);
 
     // Check if user exists
     const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
@@ -66,12 +64,8 @@ serve(async (req) => {
       // Create the super admin user if they don't exist
       if (!newPassword) {
         return new Response(
-          JSON.stringify({ 
-            success: true,
-            requiresPassword: true,
-            message: "OTP verified. Please create your password."
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Password is required for new account setup" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -106,26 +100,12 @@ serve(async (req) => {
         .from("user_roles")
         .insert({ user_id: user.id, role: "super_admin" });
 
-      // Mark OTP as used after successful user creation
-      await markOtpAsUsed();
-
     } else {
-      // User exists - check if they need to set password
+      // User exists
       const hasLoggedIn = !!user.last_sign_in_at;
       
-      if (!hasLoggedIn && !newPassword) {
-        return new Response(
-          JSON.stringify({ 
-            success: true,
-            requiresPassword: true,
-            message: "OTP verified. Please create your password."
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (newPassword) {
-        // Update the password
+      // If user has never logged in and a new password is provided, set it
+      if (!hasLoggedIn && newPassword) {
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           user.id,
           { password: newPassword }
@@ -138,44 +118,28 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-
-        // Mark OTP as used after successful password update
-        await markOtpAsUsed();
       }
-    }
 
-    // Verify user has super_admin role
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "super_admin")
-      .maybeSingle();
-
-    if (!roleData) {
-      // Add super_admin role if not present
-      await supabaseAdmin
+      // Ensure user has super_admin role
+      const { data: roleData } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: user.id, role: "super_admin" });
-    }
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "super_admin")
+        .maybeSingle();
 
-    // Generate a session for the user
-    // Use signInWithPassword to create a session
-    const { data: sessionData, error: signInError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: email.toLowerCase(),
-    });
-
-    if (signInError) {
-      console.error("Error generating session:", signInError);
+      if (!roleData) {
+        await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: user.id, role: "super_admin" });
+      }
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: newPassword ? "Password created successfully. You can now login." : "OTP verified successfully.",
+        message: "OTP verified successfully",
         userId: user.id,
-        canLogin: true,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
