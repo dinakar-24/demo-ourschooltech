@@ -363,76 +363,132 @@ export default function SchoolsPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>School Name</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>City</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSchools.map((school) => (
-                      <TableRow key={school.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Building2 className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{school.name}</p>
-                              <p className="text-sm text-muted-foreground truncate max-w-xs">{school.address}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{school.code}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-muted-foreground">
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {filteredSchools.map((school) => (
+                    <div 
+                      key={school.id} 
+                      className="flex items-center gap-3 p-4 rounded-lg border bg-card"
+                    >
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {school.logo ? (
+                          <img 
+                            src={school.logo} 
+                            alt={`${school.name} logo`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Building2 className="w-6 h-6 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{school.name}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{school.code}</span>
+                          <span className="flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
                             {school.city}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {school.phone && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <Phone className="w-3 h-3" />
-                                {school.phone}
-                              </div>
-                            )}
-                            {school.email && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <Mail className="w-3 h-3" />
-                                {school.email}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(school)}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(school.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(school)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(school.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>School Name</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>City</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSchools.map((school) => (
+                        <TableRow key={school.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+                                {school.logo ? (
+                                  <img 
+                                    src={school.logo} 
+                                    alt={`${school.name} logo`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <Building2 className="w-5 h-5 text-primary" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium">{school.name}</p>
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">{school.address}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{school.code}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <MapPin className="w-3 h-3" />
+                              {school.city}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {school.phone && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <Phone className="w-3 h-3" />
+                                  {school.phone}
+                                </div>
+                              )}
+                              {school.email && (
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <Mail className="w-3 h-3" />
+                                  {school.email}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(school)}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(school.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
