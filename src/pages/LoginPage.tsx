@@ -72,6 +72,7 @@ export default function LoginPage() {
   const getDashboardPath = (role: UserRole) => {
     switch (role) {
       case 'super_admin':
+        return '/super-admin/dashboard';
       case 'school_admin':
         return '/admin/dashboard';
       case 'teacher':
