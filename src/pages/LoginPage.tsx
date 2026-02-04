@@ -1,13 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { School, Eye, EyeOff, ArrowRight, Loader2, Search, MapPin, Check, User, GraduationCap, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useAuth, useSchoolSearch, mockSchools, UserRole } from '@/contexts/AuthContext';
+import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 type LoginStep = 'school' | 'role' | 'credentials';
+type AuthMode = 'login' | 'signup';
 
 const roleOptions: { role: UserRole; label: string; icon: typeof User; description: string }[] = [
   { role: 'school_admin', label: 'School Admin', icon: School, description: 'Full administrative access' },
@@ -18,20 +20,70 @@ const roleOptions: { role: UserRole; label: string; icon: typeof User; descripti
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, selectSchool, isLoading } = useAuth();
+  const { login, signup, selectSchool, isLoading, isAuthenticated, user } = useAuth();
   
   const [step, setStep] = useState<LoginStep>('school');
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [allSchools, setAllSchools] = useState<SchoolType[]>([]);
 
-  const searchResults = useSchoolSearch(searchQuery);
-  const displaySchools = searchQuery.trim() ? searchResults : mockSchools.slice(0, 5);
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const dashboardPath = getDashboardPath(user.role);
+      navigate(dashboardPath);
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Fetch all schools on mount
+  useEffect(() => {
+    const fetchSchools = async () => {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .limit(10);
+      
+      if (!error && data) {
+        setAllSchools(data.map(s => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          logo: s.logo || undefined,
+          address: s.address,
+          city: s.city,
+        })));
+      }
+    };
+    fetchSchools();
+  }, []);
+
+  const { schools: searchResults, isLoading: searchLoading } = useSchoolSearch(searchQuery);
+  const displaySchools = searchQuery.trim() ? searchResults : allSchools;
+
+  const getDashboardPath = (role: UserRole) => {
+    switch (role) {
+      case 'super_admin':
+      case 'school_admin':
+        return '/admin/dashboard';
+      case 'teacher':
+        return '/teacher/dashboard';
+      case 'parent':
+        return '/parent/dashboard';
+      case 'student':
+        return '/student/dashboard';
+      default:
+        return '/dashboard';
+    }
+  };
 
   const handleSelectSchool = (school: SchoolType) => {
     setSelectedSchool(school);
@@ -46,12 +98,19 @@ export default function LoginPage() {
     setStep('credentials');
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter username and password');
+    
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter email and password');
       return;
     }
+    
+    if (authMode === 'signup' && !fullName.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
+    
     if (!selectedSchool || !selectedRole) {
       setError('Please select a school and role');
       return;
@@ -59,30 +118,19 @@ export default function LoginPage() {
     
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      await login(selectedSchool.id, username, password, selectedRole);
-      
-      // Navigate based on role
-      switch (selectedRole) {
-        case 'super_admin':
-        case 'school_admin':
-          navigate('/admin/dashboard');
-          break;
-        case 'teacher':
-          navigate('/teacher/dashboard');
-          break;
-        case 'parent':
-          navigate('/parent/dashboard');
-          break;
-        case 'student':
-          navigate('/student/dashboard');
-          break;
-        default:
-          navigate('/dashboard');
+      if (authMode === 'login') {
+        await login(email, password);
+        // Navigation will be handled by useEffect when isAuthenticated changes
+      } else {
+        await signup(email, password, fullName, selectedRole, selectedSchool.id);
+        setSuccess('Account created! Please check your email to verify your account.');
+        setAuthMode('login');
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -90,6 +138,7 @@ export default function LoginPage() {
 
   const goBack = () => {
     setError('');
+    setSuccess('');
     if (step === 'credentials') {
       setStep('role');
     } else if (step === 'role') {
@@ -179,7 +228,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-display font-bold text-foreground">
               {step === 'school' && 'Find your school'}
               {step === 'role' && 'Select your role'}
-              {step === 'credentials' && 'Sign in'}
+              {step === 'credentials' && (authMode === 'login' ? 'Sign in' : 'Create account')}
             </h2>
             <p className="text-muted-foreground mt-2">
               {step === 'school' && 'Search by school name or code'}
@@ -191,6 +240,12 @@ export default function LoginPage() {
           {error && (
             <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 rounded-lg bg-success/10 text-success text-sm border border-success/20">
+              {success}
             </div>
           )}
 
@@ -242,10 +297,17 @@ export default function LoginPage() {
                   </button>
                 ))}
                 
-                {searchQuery && searchResults.length === 0 && (
+                {searchQuery && searchResults.length === 0 && !searchLoading && (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>No schools found for "{searchQuery}"</p>
                     <p className="text-sm mt-1">Try a different search term</p>
+                  </div>
+                )}
+
+                {displaySchools.length === 0 && !searchQuery && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No schools registered yet</p>
+                    <p className="text-sm mt-1">Contact administrator to add your school</p>
                   </div>
                 )}
               </div>
@@ -294,20 +356,31 @@ export default function LoginPage() {
 
           {/* Step 3: Credentials */}
           {step === 'credentials' && (
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {authMode === 'signup' && (
+                <div>
+                  <label className="input-label">Full Name</label>
+                  <Input
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="h-12"
+                    autoFocus
+                  />
+                </div>
+              )}
+              
               <div>
-                <label className="input-label">Username / Email</label>
+                <label className="input-label">Email</label>
                 <Input
-                  type="text"
-                  placeholder="Enter your username or email"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="h-12"
-                  autoFocus
+                  autoFocus={authMode === 'login'}
                 />
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  Demo: admin / teacher / parent / student (password: [role]123)
-                </p>
               </div>
               
               <div>
@@ -330,29 +403,65 @@ export default function LoginPage() {
                 </div>
               </div>
               
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded border-border" />
-                  <span className="text-muted-foreground">Remember me</span>
-                </label>
-                <button type="button" className="text-primary hover:underline">
-                  Forgot password?
-                </button>
-              </div>
+              {authMode === 'login' && (
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-border" />
+                    <span className="text-muted-foreground">Remember me</span>
+                  </label>
+                  <button type="button" className="text-primary hover:underline">
+                    Forgot password?
+                  </button>
+                </div>
+              )}
 
               <Button type="submit" size="xl" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Signing in...
+                    {authMode === 'login' ? 'Signing in...' : 'Creating account...'}
                   </>
                 ) : (
                   <>
-                    Sign In
+                    {authMode === 'login' ? 'Sign In' : 'Create Account'}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
               </Button>
+
+              <div className="text-center">
+                {authMode === 'login' ? (
+                  <p className="text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signup');
+                        setError('');
+                        setSuccess('');
+                      }}
+                      className="text-primary hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setError('');
+                        setSuccess('');
+                      }}
+                      className="text-primary hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                )}
+              </div>
 
               <button
                 type="button"
