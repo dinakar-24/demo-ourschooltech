@@ -9,7 +9,6 @@ import type { School as SchoolType } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 type LoginStep = 'school' | 'role' | 'credentials' | 'superadmin';
-type AuthMode = 'login' | 'signup';
 
 const roleOptions: { role: UserRole; label: string; icon: typeof User; description: string }[] = [
   { role: 'school_admin', label: 'School Admin', icon: School, description: 'Full administrative access' },
@@ -20,19 +19,16 @@ const roleOptions: { role: UserRole; label: string; icon: typeof User; descripti
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, signup, selectSchool, isLoading, isAuthenticated, user } = useAuth();
+  const { login, selectSchool, isLoading, isAuthenticated, user } = useAuth();
   
   const [step, setStep] = useState<LoginStep>('school');
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [allSchools, setAllSchools] = useState<SchoolType[]>([]);
 
@@ -107,11 +103,6 @@ export default function LoginPage() {
       return;
     }
     
-    if (authMode === 'signup' && !fullName.trim()) {
-      setError('Please enter your full name');
-      return;
-    }
-    
     if (!selectedSchool || !selectedRole) {
       setError('Please select a school and role');
       return;
@@ -119,17 +110,10 @@ export default function LoginPage() {
     
     setLoading(true);
     setError('');
-    setSuccess('');
     
     try {
-      if (authMode === 'login') {
-        await login(email, password);
-        // Navigation will be handled by useEffect when isAuthenticated changes
-      } else {
-        await signup(email, password, fullName, selectedRole, selectedSchool.id);
-        setSuccess('Account created! Please check your email to verify your account.');
-        setAuthMode('login');
-      }
+      await login(email, password);
+      // Navigation will be handled by useEffect when isAuthenticated changes
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please try again.');
     } finally {
@@ -139,7 +123,6 @@ export default function LoginPage() {
 
   const goBack = () => {
     setError('');
-    setSuccess('');
     if (step === 'credentials') {
       setStep('role');
     } else if (step === 'role') {
@@ -214,7 +197,7 @@ export default function LoginPage() {
               <h2 className="text-xl font-display font-bold text-foreground">
                 {step === 'school' && 'Find your school'}
                 {step === 'role' && 'Select your role'}
-                {step === 'credentials' && (authMode === 'login' ? 'Welcome back!' : 'Create account')}
+                {step === 'credentials' && 'Welcome back!'}
                 {step === 'superadmin' && 'Super Admin'}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -231,13 +214,6 @@ export default function LoginPage() {
                 <div className="mb-5 p-4 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20 flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center shrink-0 text-white text-xs font-bold">!</div>
                   <span>{error}</span>
-                </div>
-              )}
-
-              {success && (
-                <div className="mb-5 p-4 rounded-xl bg-success/10 text-success text-sm border border-success/20 flex items-start gap-3">
-                  <Check className="w-5 h-5 shrink-0" />
-                  <span>{success}</span>
                 </div>
               )}
 
@@ -348,20 +324,6 @@ export default function LoginPage() {
               {/* Step 3: Credentials */}
               {step === 'credentials' && (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  {authMode === 'signup' && (
-                    <div>
-                      <label className="input-label">Full Name</label>
-                      <Input
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="h-14 rounded-xl"
-                        autoFocus
-                      />
-                    </div>
-                  )}
-                  
                   <div>
                     <label className="input-label">Email</label>
                     <Input
@@ -370,7 +332,7 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="h-14 rounded-xl"
-                      autoFocus={authMode === 'login'}
+                      autoFocus
                     />
                   </div>
                   
@@ -394,65 +356,33 @@ export default function LoginPage() {
                     </div>
                   </div>
                   
-                  {authMode === 'login' && (
-                    <div className="flex items-center justify-between text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="rounded border-border w-4 h-4" />
-                        <span className="text-muted-foreground">Remember me</span>
-                      </label>
-                      <button type="button" className="text-primary hover:underline font-medium">
-                        Forgot password?
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="rounded border-border w-4 h-4" />
+                      <span className="text-muted-foreground">Remember me</span>
+                    </label>
+                    <button type="button" className="text-primary hover:underline font-medium">
+                      Forgot password?
+                    </button>
+                  </div>
 
                   <Button type="submit" size="xl" className="w-full h-14 text-base rounded-xl" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        {authMode === 'login' ? 'Signing in...' : 'Creating account...'}
+                        Signing in...
                       </>
                     ) : (
                       <>
-                        {authMode === 'login' ? 'Sign In' : 'Create Account'}
+                        Sign In
                         <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </Button>
 
-                  <div className="text-center pt-2">
-                    {authMode === 'login' ? (
-                      <p className="text-sm text-muted-foreground">
-                        Don't have an account?{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode('signup');
-                            setError('');
-                            setSuccess('');
-                          }}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          Sign up
-                        </button>
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Already have an account?{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode('login');
-                            setError('');
-                            setSuccess('');
-                          }}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          Sign in
-                        </button>
-                      </p>
-                    )}
-                  </div>
+                  <p className="text-center text-sm text-muted-foreground pt-2">
+                    Contact your administrator if you don't have an account
+                  </p>
                   
                   <button
                     type="button"
