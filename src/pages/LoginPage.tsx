@@ -149,19 +149,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-primary/5 to-background flex flex-col overflow-auto">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 px-4 py-5 safe-area-top">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 px-4 py-4 safe-area-top shrink-0">
         <div className="flex items-center justify-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
-            <School className="w-6 h-6 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+            <School className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-display font-bold text-foreground">Our School Tech</span>
+          <span className="text-lg font-display font-bold text-foreground">Our School Tech</span>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col px-4 py-6 lg:px-12 lg:justify-center">
+      <div className="flex-1 flex flex-col px-4 py-4 lg:px-12 lg:py-6 lg:justify-center overflow-auto">
         <div className="w-full max-w-md mx-auto space-y-5">
           
           {/* Step Progress - Clean horizontal stepper */}
