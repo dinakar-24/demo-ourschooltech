@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -19,12 +21,11 @@ export interface User {
   avatar?: string;
   schoolId: string;
   schoolName: string;
-  // Role-specific data
-  childName?: string; // For parents
-  className?: string; // For students/parents
+  childName?: string;
+  className?: string;
   section?: string;
-  employeeId?: string; // For teachers
-  subjects?: string[]; // For teachers
+  employeeId?: string;
+  subjects?: string[];
 }
 
 interface AuthContextType {
@@ -32,102 +33,204 @@ interface AuthContextType {
   school: School | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (schoolId: string, username: string, password: string, role: UserRole) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => Promise<void>;
   logout: () => void;
   selectSchool: (school: School) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock schools data for demo
-const mockSchools: School[] = [
-  { id: '1', name: 'Delhi Public School', code: 'DPS2024', address: 'Sector 45, Gurugram', city: 'Gurugram' },
-  { id: '2', name: 'Ryan International School', code: 'RYAN2024', address: 'Vasant Kunj', city: 'New Delhi' },
-  { id: '3', name: 'St. Xavier\'s High School', code: 'STXAV24', address: 'Andheri West', city: 'Mumbai' },
-  { id: '4', name: 'Kendriya Vidyalaya', code: 'KV2024', address: 'IIT Campus', city: 'Chennai' },
-  { id: '5', name: 'DAV Public School', code: 'DAV2024', address: 'Sector 14', city: 'Chandigarh' },
-];
-
-// Mock users for demo
-const mockUsers: Record<string, { password: string; user: Omit<User, 'schoolId' | 'schoolName'> }> = {
-  'admin': {
-    password: 'admin123',
-    user: { id: '1', name: 'Rajesh Kumar', email: 'admin@dps.edu.in', role: 'school_admin', avatar: undefined }
-  },
-  'teacher': {
-    password: 'teacher123',
-    user: { id: '2', name: 'Priya Sharma', email: 'priya@dps.edu.in', role: 'teacher', employeeId: 'EMP001', subjects: ['Mathematics', 'Physics'] }
-  },
-  'parent': {
-    password: 'parent123',
-    user: { id: '3', name: 'Amit Verma', email: 'amit@gmail.com', role: 'parent', childName: 'Arjun Verma', className: 'Class 8', section: 'A' }
-  },
-  'student': {
-    password: 'student123',
-    user: { id: '4', name: 'Arjun Verma', email: 'arjun@dps.edu.in', role: 'student', className: 'Class 8', section: 'A' }
-  },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for stored session
-    const storedUser = localStorage.getItem('erp_user');
-    const storedSchool = localStorage.getItem('erp_school');
-    
-    if (storedUser && storedSchool) {
-      setUser(JSON.parse(storedUser));
-      setSchool(JSON.parse(storedSchool));
+  // Fetch user profile and role from database
+  const fetchUserData = async (supabaseUser: SupabaseUser) => {
+    try {
+      // Fetch profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return null;
+      }
+
+      if (!profile) {
+        console.log('No profile found for user');
+        return null;
+      }
+
+      // Fetch user role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', supabaseUser.id)
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('Error fetching role:', roleError);
+      }
+
+      // Fetch school if profile has school_id
+      let schoolData: School | null = null;
+      if (profile.school_id) {
+        const { data: schoolResult, error: schoolError } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('id', profile.school_id)
+          .maybeSingle();
+
+        if (!schoolError && schoolResult) {
+          schoolData = {
+            id: schoolResult.id,
+            name: schoolResult.name,
+            code: schoolResult.code,
+            logo: schoolResult.logo || undefined,
+            address: schoolResult.address,
+            city: schoolResult.city,
+          };
+        }
+      }
+
+      const userData: User = {
+        id: supabaseUser.id,
+        name: profile.full_name,
+        email: profile.email,
+        role: (roleData?.role as UserRole) || 'student',
+        avatar: profile.avatar_url || undefined,
+        schoolId: profile.school_id || '',
+        schoolName: schoolData?.name || '',
+        className: profile.class_name || undefined,
+        section: profile.section || undefined,
+        employeeId: profile.employee_id || undefined,
+        subjects: profile.subjects || undefined,
+      };
+
+      return { user: userData, school: schoolData };
+    } catch (error) {
+      console.error('Error in fetchUserData:', error);
+      return null;
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          // Use setTimeout to avoid potential deadlock
+          setTimeout(async () => {
+            const data = await fetchUserData(session.user);
+            if (data) {
+              setUser(data.user);
+              setSchool(data.school);
+            }
+            setIsLoading(false);
+          }, 0);
+        } else {
+          setUser(null);
+          setSchool(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const data = await fetchUserData(session.user);
+        if (data) {
+          setUser(data.user);
+          setSchool(data.school);
+        }
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const selectSchool = (selectedSchool: School) => {
     setSchool(selectedSchool);
-    localStorage.setItem('erp_school', JSON.stringify(selectedSchool));
   };
 
-  const login = async (schoolId: string, username: string, password: string, role: UserRole) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser = mockUsers[username.toLowerCase()];
-    
-    if (!mockUser || mockUser.password !== password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
       setIsLoading(false);
-      throw new Error('Invalid username or password');
+      throw new Error(error.message);
     }
 
-    if (mockUser.user.role !== role) {
+    // User data will be fetched by the auth state listener
+  };
+
+  const signup = async (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => {
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) {
       setIsLoading(false);
-      throw new Error(`This account is not registered as ${role.replace('_', ' ')}`);
+      throw new Error(error.message);
     }
 
-    const selectedSchool = mockSchools.find(s => s.id === schoolId) || mockSchools[0];
-    
-    const authenticatedUser: User = {
-      ...mockUser.user,
-      schoolId: selectedSchool.id,
-      schoolName: selectedSchool.name,
-    };
+    if (data.user) {
+      // Update profile with school_id
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          school_id: schoolId,
+          full_name: fullName,
+        })
+        .eq('id', data.user.id);
 
-    setUser(authenticatedUser);
-    setSchool(selectedSchool);
-    localStorage.setItem('erp_user', JSON.stringify(authenticatedUser));
-    localStorage.setItem('erp_school', JSON.stringify(selectedSchool));
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      }
+
+      // Insert user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({ 
+          user_id: data.user.id, 
+          role: role 
+        });
+
+      if (roleError) {
+        console.error('Error inserting role:', roleError);
+      }
+    }
+
     setIsLoading(false);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setSchool(null);
-    localStorage.removeItem('erp_user');
-    localStorage.removeItem('erp_school');
   };
 
   return (
@@ -137,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       login,
+      signup,
       logout,
       selectSchool,
     }}>
@@ -153,15 +257,41 @@ export function useAuth() {
   return context;
 }
 
-export function useSchoolSearch(query: string): School[] {
-  if (!query.trim()) return [];
-  const lowerQuery = query.toLowerCase();
-  return mockSchools.filter(
-    school => 
-      school.name.toLowerCase().includes(lowerQuery) ||
-      school.code.toLowerCase().includes(lowerQuery) ||
-      school.city.toLowerCase().includes(lowerQuery)
-  );
-}
+// Hook to search schools
+export function useSchoolSearch(query: string): { schools: School[]; isLoading: boolean } {
+  const [schools, setSchools] = useState<School[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-export { mockSchools };
+  useEffect(() => {
+    if (!query.trim()) {
+      setSchools([]);
+      return;
+    }
+
+    const searchSchools = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .or(`name.ilike.%${query}%,code.ilike.%${query}%,city.ilike.%${query}%`)
+        .limit(10);
+
+      if (!error && data) {
+        setSchools(data.map(s => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          logo: s.logo || undefined,
+          address: s.address,
+          city: s.city,
+        })));
+      }
+      setIsLoading(false);
+    };
+
+    const debounce = setTimeout(searchSchools, 300);
+    return () => clearTimeout(debounce);
+  }, [query]);
+
+  return { schools, isLoading };
+}
