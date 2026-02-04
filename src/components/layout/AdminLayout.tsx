@@ -50,6 +50,7 @@ const menuItems = [
   { label: 'Attendance', href: '/admin/attendance', icon: ClipboardList },
   { label: 'Fees', href: '/admin/fees', icon: CreditCard },
   { label: 'Exams', href: '/admin/exams', icon: FileText },
+  { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
   { label: 'Timetable', href: '/admin/timetable', icon: Clock },
   { label: 'Announcements', href: '/admin/announcements', icon: Bell },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },

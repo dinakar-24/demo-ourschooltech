@@ -139,3 +139,61 @@ export function useSetCurrentAcademicYear() {
     },
   });
 }
+
+export function useUpdateAcademicYear() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, name, startDate, endDate }: { 
+      id: string;
+      name: string; 
+      startDate: string;
+      endDate: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('academic_years')
+        .update({
+          name,
+          start_date: startDate,
+          end_date: endDate,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+      queryClient.invalidateQueries({ queryKey: ['current-academic-year'] });
+      toast.success('Academic year updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update academic year');
+    },
+  });
+}
+
+export function useDeleteAcademicYear() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('academic_years')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+      queryClient.invalidateQueries({ queryKey: ['current-academic-year'] });
+      toast.success('Academic year deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete academic year');
+    },
+  });
+}
