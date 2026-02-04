@@ -35,6 +35,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 export function getRoleDashboard(role: UserRole): string {
   switch (role) {
     case 'super_admin':
+      return '/super-admin/dashboard';
     case 'school_admin':
       return '/admin/dashboard';
     case 'teacher':
