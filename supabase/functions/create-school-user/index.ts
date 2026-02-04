@@ -10,7 +10,7 @@ interface CreateUserRequest {
   password: string;
   full_name: string;
   phone?: string;
-  role: "school_admin" | "teacher" | "parent" | "student";
+  role: "super_admin" | "school_admin" | "teacher" | "parent" | "student";
   school_id: string;
   // Additional fields based on role
   employee_id?: string; // for teachers

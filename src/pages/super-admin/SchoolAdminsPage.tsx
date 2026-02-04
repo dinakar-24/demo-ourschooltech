@@ -28,9 +28,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Users, Building2, Mail, UserPlus } from 'lucide-react';
+import { Search, Users, Building2, Mail, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 
 interface School {
   id: string;
@@ -58,7 +59,7 @@ export default function SchoolAdminsPage() {
     fullName: '',
     schoolId: '',
   });
-  const [submitting, setSubmitting] = useState(false);
+  
 
   useEffect(() => {
     fetchData();
@@ -111,53 +112,28 @@ export default function SchoolAdminsPage() {
     }
   };
 
+  const { createUser, isCreating } = useCreateSchoolUser();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
 
-    try {
-      // Create user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-          },
-        },
-      });
+    if (!formData.schoolId) {
+      toast.error('Please select a school');
+      return;
+    }
 
-      if (authError) throw authError;
+    const success = await createUser({
+      email: formData.email,
+      password: formData.password,
+      full_name: formData.fullName,
+      role: 'school_admin',
+      school_id: formData.schoolId,
+    });
 
-      if (authData.user) {
-        // Update profile with school_id
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ school_id: formData.schoolId })
-          .eq('id', authData.user.id);
-
-        if (profileError) throw profileError;
-
-        // Add school_admin role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'school_admin',
-          });
-
-        if (roleError) throw roleError;
-
-        toast.success('School admin created successfully! They will need to verify their email.');
-        setIsDialogOpen(false);
-        setFormData({ email: '', password: '', fullName: '', schoolId: '' });
-        fetchData();
-      }
-    } catch (error: any) {
-      console.error('Error creating admin:', error);
-      toast.error(error.message || 'Failed to create admin');
-    } finally {
-      setSubmitting(false);
+    if (success) {
+      setIsDialogOpen(false);
+      setFormData({ email: '', password: '', fullName: '', schoolId: '' });
+      fetchData();
     }
   };
 
@@ -256,8 +232,8 @@ export default function SchoolAdminsPage() {
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Create Admin'}
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? 'Creating...' : 'Create Admin'}
                   </Button>
                 </div>
               </form>
