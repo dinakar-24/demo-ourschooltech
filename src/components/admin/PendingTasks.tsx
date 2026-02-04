@@ -1,31 +1,54 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, ChevronRight, CreditCard, ClipboardList, FileText } from 'lucide-react';
+import { ChevronRight, CreditCard, ClipboardList, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-const pendingTasks = [
-  { 
-    title: 'Pending Fee Collections',
-    count: '23 students',
-    href: '/admin/fees',
-    icon: CreditCard,
-    priority: 'high'
-  },
-  { 
-    title: 'Attendance Not Marked',
-    count: '3 classes today',
-    href: '/admin/attendance',
-    icon: ClipboardList,
-    priority: 'medium'
-  },
-  { 
-    title: 'Exam Results Pending',
-    count: 'Class 10-A, 10-B',
-    href: '/admin/exams',
-    icon: FileText,
-    priority: 'low'
-  },
-];
+interface PendingData {
+  pendingFees: number;
+  pendingExams: number;
+}
 
 export function PendingTasks() {
+  const { school } = useAuth();
+  const [data, setData] = useState<PendingData>({ pendingFees: 0, pendingExams: 0 });
+
+  useEffect(() => {
+    if (school?.id) fetchData();
+  }, [school?.id]);
+
+  const fetchData = async () => {
+    const [feesRes] = await Promise.all([
+      supabase.from('fees').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
+    
+    setData({
+      pendingFees: feesRes.count || 0,
+      pendingExams: 0,
+    });
+  };
+
+  const pendingTasks = [
+    { 
+      title: 'Pending Fee Collections',
+      count: `${data.pendingFees} students`,
+      href: '/admin/fees',
+      icon: CreditCard,
+      priority: 'high',
+      show: data.pendingFees > 0
+    },
+    { 
+      title: 'Mark Today\'s Attendance',
+      count: 'Classes pending',
+      href: '/admin/attendance',
+      icon: ClipboardList,
+      priority: 'medium',
+      show: true
+    },
+  ].filter(t => t.show);
+
+  if (pendingTasks.length === 0) return null;
+
   return (
     <div className="bg-card rounded-xl border border-border/50 p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">

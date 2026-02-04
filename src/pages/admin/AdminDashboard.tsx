@@ -1,13 +1,68 @@
+import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { AdminQuickActions } from '@/components/admin/AdminQuickActions';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { TodaysSummary } from '@/components/admin/TodaysSummary';
 import { PendingTasks } from '@/components/admin/PendingTasks';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Users, GraduationCap, CreditCard, ClipboardList } from 'lucide-react';
+
+interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  feeCollected: number;
+  attendanceRate: number;
+}
 
 export default function AdminDashboard() {
   const { user, school } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalStudents: 0,
+    totalTeachers: 0,
+    feeCollected: 0,
+    attendanceRate: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (school?.id) {
+      fetchStats();
+    }
+  }, [school?.id]);
+
+  const fetchStats = async () => {
+    try {
+      const [studentsRes, teachersRes, feesRes, attendanceRes] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true }),
+        supabase.from('teachers').select('id', { count: 'exact', head: true }),
+        supabase.from('fees').select('amount').eq('status', 'paid'),
+        supabase.from('attendance').select('status').eq('date', new Date().toISOString().split('T')[0]),
+      ]);
+
+      const feeTotal = feesRes.data?.reduce((sum, f) => sum + Number(f.amount), 0) || 0;
+      const presentCount = attendanceRes.data?.filter(a => a.status === 'present').length || 0;
+      const totalAttendance = attendanceRes.data?.length || 0;
+      const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+
+      setStats({
+        totalStudents: studentsRes.count || 0,
+        totalTeachers: teachersRes.count || 0,
+        feeCollected: feeTotal,
+        attendanceRate,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+    if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
+    return `₹${amount}`;
+  };
   
   const greeting = () => {
     const hour = new Date().getHours();
@@ -19,7 +74,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-5 pb-6">
-        {/* Welcome Section - Compact for mobile */}
+        {/* Welcome Section */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-foreground">
@@ -35,43 +90,32 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Stats Grid - 2x2 on mobile */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <AdminStatCard
             title="Students"
-            value="1,248"
-            trendValue="5.2%"
-            trend="up"
-            subtitle="this month"
+            value={loading ? '...' : stats.totalStudents.toLocaleString()}
             icon={<Users className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Teachers"
-            value="86"
-            trendValue="2"
-            trend="up"
-            subtitle="new"
+            value={loading ? '...' : stats.totalTeachers.toLocaleString()}
             icon={<GraduationCap className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Fee Collected"
-            value="₹18.5L"
-            trendValue="12%"
-            trend="up"
-            subtitle="this month"
+            value={loading ? '...' : formatCurrency(stats.feeCollected)}
             icon={<CreditCard className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Attendance"
-            value="92.4%"
-            trendValue="1.2%"
-            trend="down"
+            value={loading ? '...' : `${stats.attendanceRate}%`}
             subtitle="today"
             icon={<ClipboardList className="w-4 h-4" />}
           />
         </div>
 
-        {/* Quick Actions - App-style grid */}
+        {/* Quick Actions */}
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
           <AdminQuickActions />
