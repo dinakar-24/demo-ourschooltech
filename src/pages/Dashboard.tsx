@@ -9,7 +9,7 @@ import { Users, GraduationCap, CreditCard, ClipboardList } from 'lucide-react';
 
 export default function Dashboard() {
   return (
-    <DashboardLayout title="Dashboard" userRole="school_admin">
+    <DashboardLayout title="Dashboard">
       <div className="space-y-6 animate-fade-up">
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

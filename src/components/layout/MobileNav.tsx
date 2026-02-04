@@ -7,71 +7,89 @@ import {
   CreditCard,
   Bell,
   MoreHorizontal,
+  School,
+  FileText,
+  BarChart3,
 } from 'lucide-react';
 
 interface MobileNavProps {
   userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 }
 
+// Route prefixes for each role
+const rolePrefix = {
+  super_admin: '/super-admin',
+  school_admin: '/admin',
+  teacher: '/teacher',
+  parent: '/parent',
+  student: '/student',
+};
+
+// Mobile nav items with relative paths
 const navConfig = {
   super_admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Schools', href: '/schools', icon: Users },
-    { label: 'Alerts', href: '/alerts', icon: Bell },
-    { label: 'More', href: '/more', icon: MoreHorizontal },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Schools', path: '/schools', icon: School },
+    { label: 'Users', path: '/users', icon: Users },
+    { label: 'Settings', path: '/settings', icon: MoreHorizontal },
   ],
   school_admin: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Students', href: '/students', icon: Users },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Fees', href: '/fees', icon: CreditCard },
-    { label: 'More', href: '/more', icon: MoreHorizontal },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Students', path: '/students', icon: Users },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Fees', path: '/fees', icon: CreditCard },
+    { label: 'More', path: '/settings', icon: MoreHorizontal },
   ],
   teacher: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/homework', icon: CreditCard },
-    { label: 'Alerts', href: '/announcements', icon: Bell },
-    { label: 'More', href: '/more', icon: MoreHorizontal },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Homework', path: '/homework', icon: FileText },
+    { label: 'Marks', path: '/marks', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
   ],
   parent: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Fees', href: '/fees', icon: CreditCard },
-    { label: 'Alerts', href: '/announcements', icon: Bell },
-    { label: 'More', href: '/more', icon: MoreHorizontal },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Fees', path: '/fees', icon: CreditCard },
+    { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
   ],
   student: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/homework', icon: CreditCard },
-    { label: 'Alerts', href: '/announcements', icon: Bell },
-    { label: 'More', href: '/more', icon: MoreHorizontal },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Homework', path: '/homework', icon: FileText },
+    { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
   ],
 };
 
 export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
   const location = useLocation();
   const navItems = navConfig[userRole];
+  const prefix = rolePrefix[userRole];
+
+  const getFullPath = (path: string) => `${prefix}${path}`;
+
+  const isActive = (path: string) => {
+    const fullPath = getFullPath(path);
+    return location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
+  };
 
   return (
     <nav className="mobile-nav safe-area-bottom">
-      {navItems.map((item) => {
-        const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
-        return (
-          <Link
-            key={item.href}
-            to={item.href}
-            className={cn(
-              "mobile-nav-item",
-              isActive && "mobile-nav-item-active"
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs font-medium">{item.label}</span>
-          </Link>
-        );
-      })}
+      {navItems.map((item) => (
+        <Link
+          key={item.path}
+          to={getFullPath(item.path)}
+          className={cn(
+            "mobile-nav-item",
+            isActive(item.path) && "mobile-nav-item-active"
+          )}
+        >
+          <item.icon className="w-5 h-5" />
+          <span className="text-xs font-medium">{item.label}</span>
+        </Link>
+      ))}
     </nav>
   );
 }

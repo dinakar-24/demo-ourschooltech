@@ -76,7 +76,7 @@ export default function Students() {
   };
 
   return (
-    <DashboardLayout title="Students" userRole="school_admin">
+    <DashboardLayout title="Students">
       <div className="space-y-6 animate-fade-up">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
