@@ -148,62 +148,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left Panel - Branding (Desktop only) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1),transparent)]" />
-        <div className="relative z-10 flex flex-col justify-between p-12 text-primary-foreground">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <School className="w-7 h-7" />
-            </div>
-            <span className="text-2xl font-display font-bold">SchoolERP</span>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-4 py-4 safe-area-top">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+            <School className="w-5 h-5 text-primary-foreground" />
           </div>
-          
-          <div className="space-y-6">
-            <h1 className="text-4xl xl:text-5xl font-display font-bold leading-tight">
-              Complete School<br />Management Solution
-            </h1>
-            <p className="text-lg text-primary-foreground/80 max-w-md">
-              Streamline admissions, attendance, fees, exams, and communication. 
-              Trusted by 500+ schools across India.
-            </p>
-            <div className="flex items-center gap-8 pt-4">
-              <div>
-                <p className="text-3xl font-bold">500+</p>
-                <p className="text-sm text-primary-foreground/70">Schools</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold">2L+</p>
-                <p className="text-sm text-primary-foreground/70">Students</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold">98%</p>
-                <p className="text-sm text-primary-foreground/70">Satisfaction</p>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm text-primary-foreground/60">
-            © 2024 SchoolERP. All rights reserved.
-          </p>
+          <span className="text-xl font-display font-bold text-foreground">Our School Tech</span>
         </div>
-      </div>
+      </header>
 
-      {/* Right Panel - Login Flow */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* Mobile Header */}
-        <header className="lg:hidden bg-card border-b border-border px-4 py-4 safe-area-top">
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <School className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-display font-bold text-foreground">SchoolERP</span>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col px-4 py-6 lg:px-12 lg:justify-center">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col px-4 py-6 lg:px-12 lg:justify-center">
           <div className="w-full max-w-md mx-auto space-y-4">
             
             {/* Step Progress Card */}
@@ -612,11 +569,11 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <footer className="lg:hidden px-4 py-4 text-center border-t border-border safe-area-bottom">
+        <footer className="px-4 py-4 text-center border-t border-border safe-area-bottom">
           <p className="text-sm text-muted-foreground">
             Need help? Contact{' '}
-            <a href="mailto:support@schoolerp.in" className="text-primary hover:underline">
-              support@schoolerp.in
+            <a href="mailto:support@ourschooltech.in" className="text-primary hover:underline">
+              support@ourschooltech.in
             </a>
           </p>
         </footer>
