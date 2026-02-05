@@ -32,6 +32,7 @@ import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
 import AcademicYearsPage from "./pages/admin/AcademicYearsPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import SubscriptionPage from "./pages/admin/SubscriptionPage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -105,6 +106,7 @@ function AppRoutes() {
       <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['school_admin']}><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['school_admin']}><ReportsPage /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['school_admin']}><SettingsPage /></ProtectedRoute>} />
+      <Route path="/admin/subscription" element={<ProtectedRoute allowedRoles={['school_admin']}><SubscriptionPage /></ProtectedRoute>} />
       <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin']}><AdminDashboard /></ProtectedRoute>} />
       
       {/* Teacher Routes */}

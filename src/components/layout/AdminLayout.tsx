@@ -54,6 +54,7 @@ const menuItems = [
   { label: 'Timetable', href: '/admin/timetable', icon: Clock },
   { label: 'Announcements', href: '/admin/announcements', icon: Bell },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
