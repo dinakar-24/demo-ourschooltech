@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -11,6 +11,9 @@ export interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  is_active: boolean | null;
+  student_limit: number | null;
+  subscription_status: string | null;
   created_at: string;
 }
 
@@ -24,40 +27,91 @@ export interface SchoolFormData {
   logo: string;
 }
 
-export function useSchools() {
-  const [schools, setSchools] = useState<School[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+interface SchoolFilters {
+  search?: string;
+  status?: 'active' | 'inactive' | 'all';
+  city?: string;
+}
 
-  const fetchSchools = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
+export function useSchools(filters?: SchoolFilters) {
+  return useQuery({
+    queryKey: ['schools', filters],
+    queryFn: async () => {
+      let query = supabase
         .from('schools')
-        .select('id, name, code, address, city, phone, email, logo, created_at')
+        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, created_at')
         .order('created_at', { ascending: false });
 
+      // Server-side filtering
+      if (filters?.search) {
+        query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,city.ilike.%${filters.search}%`);
+      }
+
+      if (filters?.status === 'active') {
+        query = query.eq('is_active', true);
+      } else if (filters?.status === 'inactive') {
+        query = query.eq('is_active', false);
+      }
+
+      if (filters?.city && filters.city !== 'All Cities') {
+        query = query.eq('city', filters.city);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setSchools(data || []);
-    } catch (error) {
-      console.error('Error fetching schools:', error);
-      toast.error('Failed to load schools');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return data as School[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
-  useEffect(() => {
-    fetchSchools();
-  }, [fetchSchools]);
+export function useSchoolStats() {
+  return useQuery({
+    queryKey: ['school-stats'],
+    queryFn: async () => {
+      // Use count aggregates
+      const [totalResult, activeResult] = await Promise.all([
+        supabase.from('schools').select('*', { count: 'exact', head: true }),
+        supabase.from('schools').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      ]);
 
-  const saveSchool = useCallback(async (
-    formData: SchoolFormData,
-    logoPreview: string | null,
-    editingSchool: School | null
-  ) => {
-    setIsSubmitting(true);
-    try {
+      return {
+        total: totalResult.count || 0,
+        active: activeResult.count || 0,
+        inactive: (totalResult.count || 0) - (activeResult.count || 0),
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSchoolCities() {
+  return useQuery({
+    queryKey: ['school-cities'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('city');
+
+      if (error) throw error;
+
+      const cities = new Set<string>();
+      data?.forEach(s => {
+        if (s.city) cities.add(s.city);
+      });
+
+      return ['All Cities', ...Array.from(cities).sort()];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useCreateSchool() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData: SchoolFormData & { logoPreview?: string | null }) => {
       const schoolData = {
         name: formData.name,
         code: formData.code,
@@ -65,73 +119,130 @@ export function useSchools() {
         city: formData.city,
         phone: formData.phone || null,
         email: formData.email || null,
-        logo: logoPreview || formData.logo || null,
+        logo: formData.logoPreview || formData.logo || null,
+        is_active: true,
       };
 
-      if (editingSchool) {
-        const { error } = await supabase
-          .from('schools')
-          .update(schoolData)
-          .eq('id', editingSchool.id);
+      const { data, error } = await supabase
+        .from('schools')
+        .insert(schoolData)
+        .select()
+        .single();
 
-        if (error) throw error;
-        toast.success('School updated successfully');
-      } else {
-        const { error } = await supabase
-          .from('schools')
-          .insert(schoolData);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['school-cities'] });
+      toast.success('School added successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to add school');
+    },
+  });
+}
 
-        if (error) throw error;
-        toast.success('School added successfully');
+export function useUpdateSchool() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, logoPreview, ...formData }: Partial<SchoolFormData> & { id: string; logoPreview?: string | null }) => {
+      const updateData: Record<string, unknown> = { ...formData };
+      
+      if (logoPreview !== undefined) {
+        updateData.logo = logoPreview || formData.logo || null;
       }
 
-      await fetchSchools();
-      return true;
-    } catch (error: any) {
-      console.error('Error saving school:', error);
-      toast.error(error.message || 'Failed to save school');
-      return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [fetchSchools]);
+      const { data, error } = await supabase
+        .from('schools')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
 
-  const deleteSchool = useCallback(async (id: string) => {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-cities'] });
+      toast.success('School updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update school');
+    },
+  });
+}
+
+export function useDeleteSchool() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { error } = await supabase
+        .from('schools')
+        .delete()
+        .eq('id', schoolId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['school-cities'] });
+      toast.success('School deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete school');
+    },
+  });
+}
+
+// Legacy hook for backward compatibility - wraps new hooks
+export function useSchoolsLegacy() {
+  const { data: schools = [], isLoading: loading } = useSchools();
+  const createSchool = useCreateSchool();
+  const updateSchool = useUpdateSchool();
+  const deleteSchoolMutation = useDeleteSchool();
+
+  const saveSchool = async (
+    formData: SchoolFormData,
+    logoPreview: string | null,
+    editingSchool: School | null
+  ) => {
+    try {
+      if (editingSchool) {
+        await updateSchool.mutateAsync({ id: editingSchool.id, ...formData, logoPreview });
+      } else {
+        await createSchool.mutateAsync({ ...formData, logoPreview });
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteSchool = async (id: string) => {
     if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
       return false;
     }
-
     try {
-      const { error } = await supabase.from('schools').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('School deleted successfully');
-      await fetchSchools();
+      await deleteSchoolMutation.mutateAsync(id);
       return true;
-    } catch (error: any) {
-      console.error('Error deleting school:', error);
-      toast.error(error.message || 'Failed to delete school');
+    } catch {
       return false;
     }
-  }, [fetchSchools]);
-
-  const filteredSchools = useMemo(() => {
-    if (!searchQuery) return schools;
-    const query = searchQuery.toLowerCase();
-    return schools.filter(
-      (school) =>
-        school.name.toLowerCase().includes(query) ||
-        school.code.toLowerCase().includes(query) ||
-        school.city.toLowerCase().includes(query)
-    );
-  }, [schools, searchQuery]);
+  };
 
   return {
-    schools: filteredSchools,
+    schools,
     loading,
-    searchQuery,
-    setSearchQuery,
+    searchQuery: '',
+    setSearchQuery: () => {},
     saveSchool,
     deleteSchool,
-    isSubmitting,
+    isSubmitting: createSchool.isPending || updateSchool.isPending,
   };
 }

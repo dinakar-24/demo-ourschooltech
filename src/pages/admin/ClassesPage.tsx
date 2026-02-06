@@ -39,7 +39,7 @@ export default function ClassesPage() {
   const [numSections, setNumSections] = useState('1');
 
   const { data: classes, isLoading } = useClasses();
-  const { allTeachers: teachers } = useTeachers();
+  const { data: teachers = [] } = useTeachers();
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
 

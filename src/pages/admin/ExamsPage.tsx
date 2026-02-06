@@ -33,7 +33,6 @@ import {
 import {
   Plus,
   Calendar,
-  Clock,
   BookOpen,
   FileText,
   Edit,
@@ -41,7 +40,7 @@ import {
   GraduationCap,
   Loader2,
 } from 'lucide-react';
-import { useExams, ExamFormData } from '@/hooks/useExams';
+import { useExams, useExamStats, useCreateExam, useUpdateExam, useDeleteExam, ExamFormData, Exam } from '@/hooks/useExams';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -52,13 +51,17 @@ const SUBJECTS = [
 ];
 
 export default function ExamsPage() {
-  const { exams, loading, stats, createExam, updateExam, deleteExam } = useExams();
+  const { data: exams = [], isLoading } = useExams();
+  const { data: stats } = useExamStats();
   const { data: classes = [] } = useClasses();
+  const createExam = useCreateExam();
+  const updateExam = useUpdateExam();
+  const deleteExamMutation = useDeleteExam();
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState<typeof exams[0] | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   
   const [formData, setFormData] = useState<ExamFormData>({
     name: '',
@@ -82,37 +85,27 @@ export default function ExamsPage() {
     if (!formData.name || !formData.subject || !formData.class_name || !formData.exam_date) {
       return;
     }
-    setIsSubmitting(true);
-    const success = await createExam(formData);
-    if (success) {
-      setIsAddDialogOpen(false);
-      resetForm();
-    }
-    setIsSubmitting(false);
+    await createExam.mutateAsync(formData);
+    setIsAddDialogOpen(false);
+    resetForm();
   };
 
   const handleEdit = async () => {
     if (!selectedExam) return;
-    setIsSubmitting(true);
-    const success = await updateExam(selectedExam.id, formData);
-    if (success) {
-      setIsEditDialogOpen(false);
-      setSelectedExam(null);
-      resetForm();
-    }
-    setIsSubmitting(false);
+    await updateExam.mutateAsync({ id: selectedExam.id, ...formData });
+    setIsEditDialogOpen(false);
+    setSelectedExam(null);
+    resetForm();
   };
 
   const handleDelete = async () => {
     if (!selectedExam) return;
-    const success = await deleteExam(selectedExam.id);
-    if (success) {
-      setDeleteDialogOpen(false);
-      setSelectedExam(null);
-    }
+    await deleteExamMutation.mutateAsync(selectedExam.id);
+    setDeleteDialogOpen(false);
+    setSelectedExam(null);
   };
 
-  const openEditDialog = (exam: typeof exams[0]) => {
+  const openEditDialog = (exam: Exam) => {
     setSelectedExam(exam);
     setFormData({
       name: exam.name,
@@ -124,7 +117,7 @@ export default function ExamsPage() {
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (exam: typeof exams[0]) => {
+  const openDeleteDialog = (exam: Exam) => {
     setSelectedExam(exam);
     setDeleteDialogOpen(true);
   };
@@ -241,7 +234,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Exams</p>
               <p className="text-2xl font-bold text-foreground">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.total}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.total || 0}
               </p>
             </CardContent>
           </Card>
@@ -249,7 +242,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Upcoming</p>
               <p className="text-2xl font-bold text-warning">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.upcoming}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.upcoming || 0}
               </p>
             </CardContent>
           </Card>
@@ -257,7 +250,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Completed</p>
               <p className="text-2xl font-bold text-success">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.completed}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.completed || 0}
               </p>
             </CardContent>
           </Card>
@@ -265,7 +258,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">This Month</p>
               <p className="text-2xl font-bold text-primary">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.thisMonth}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.thisMonth || 0}
               </p>
             </CardContent>
           </Card>
@@ -292,8 +285,8 @@ export default function ExamsPage() {
                 <ExamFormFields />
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreate} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  <Button onClick={handleCreate} disabled={createExam.isPending}>
+                    {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Create Exam
                   </Button>
                 </div>
@@ -302,7 +295,7 @@ export default function ExamsPage() {
           </div>
 
           <TabsContent value="exams" className="space-y-4">
-            {loading ? (
+            {isLoading ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {[1, 2, 3, 4].map(i => (
                   <Card key={i}>
@@ -396,7 +389,7 @@ export default function ExamsPage() {
                 <CardTitle>Upcoming Exam Schedule</CardTitle>
               </CardHeader>
               <CardContent>
-                {loading ? (
+                {isLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map(i => (
                       <Skeleton key={i} className="h-16 w-full" />
@@ -463,8 +456,8 @@ export default function ExamsPage() {
           <ExamFormFields />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleEdit} disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            <Button onClick={handleEdit} disabled={updateExam.isPending}>
+              {updateExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
           </div>
@@ -475,14 +468,17 @@ export default function ExamsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Exam</AlertDialogTitle>
+            <AlertDialogTitle>Delete Examination</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedExam?.name}"? This will also delete all associated results.
+              Are you sure you want to delete "{selectedExam?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
