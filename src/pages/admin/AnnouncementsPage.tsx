@@ -37,7 +37,16 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { useAnnouncements, AnnouncementFormData } from '@/hooks/useAnnouncements';
+import { 
+  useAnnouncements, 
+  useAnnouncementStats,
+  useCreateAnnouncement, 
+  useUpdateAnnouncement, 
+  useDeleteAnnouncement,
+  useToggleAnnouncement,
+  AnnouncementFormData,
+  Announcement 
+} from '@/hooks/useAnnouncements';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
@@ -51,12 +60,17 @@ const AVAILABLE_ROLES: { value: AppRole; label: string }[] = [
 ];
 
 export default function AnnouncementsPage() {
-  const { announcements, loading, stats, createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleActive } = useAnnouncements();
+  const { data: announcements = [], isLoading } = useAnnouncements();
+  const { data: stats } = useAnnouncementStats();
+  const createAnnouncement = useCreateAnnouncement();
+  const updateAnnouncement = useUpdateAnnouncement();
+  const deleteAnnouncementMutation = useDeleteAnnouncement();
+  const toggleAnnouncement = useToggleAnnouncement();
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<typeof announcements[0] | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   const [formData, setFormData] = useState<AnnouncementFormData>({
     title: '',
@@ -89,40 +103,34 @@ export default function AnnouncementsPage() {
     if (!formData.title || !formData.content || formData.target_roles.length === 0) {
       return;
     }
-    setIsSubmitting(true);
-    const success = await createAnnouncement({
+    await createAnnouncement.mutateAsync({
       ...formData,
       is_active: publish,
     });
-    if (success) {
-      setIsAddDialogOpen(false);
-      resetForm();
-    }
-    setIsSubmitting(false);
+    setIsAddDialogOpen(false);
+    resetForm();
   };
 
   const handleEdit = async () => {
     if (!selectedAnnouncement) return;
-    setIsSubmitting(true);
-    const success = await updateAnnouncement(selectedAnnouncement.id, formData);
-    if (success) {
-      setIsEditDialogOpen(false);
-      setSelectedAnnouncement(null);
-      resetForm();
-    }
-    setIsSubmitting(false);
+    await updateAnnouncement.mutateAsync({ id: selectedAnnouncement.id, ...formData });
+    setIsEditDialogOpen(false);
+    setSelectedAnnouncement(null);
+    resetForm();
   };
 
   const handleDelete = async () => {
     if (!selectedAnnouncement) return;
-    const success = await deleteAnnouncement(selectedAnnouncement.id);
-    if (success) {
-      setDeleteDialogOpen(false);
-      setSelectedAnnouncement(null);
-    }
+    await deleteAnnouncementMutation.mutateAsync(selectedAnnouncement.id);
+    setDeleteDialogOpen(false);
+    setSelectedAnnouncement(null);
   };
 
-  const openEditDialog = (announcement: typeof announcements[0]) => {
+  const handleToggle = async (id: string, isActive: boolean) => {
+    await toggleAnnouncement.mutateAsync({ id, isActive: !isActive });
+  };
+
+  const openEditDialog = (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
     setFormData({
       title: announcement.title,
@@ -134,7 +142,7 @@ export default function AnnouncementsPage() {
     setIsEditDialogOpen(true);
   };
 
-  const openDeleteDialog = (announcement: typeof announcements[0]) => {
+  const openDeleteDialog = (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
     setDeleteDialogOpen(true);
   };
@@ -197,7 +205,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Announcements</p>
               <p className="text-2xl font-bold text-foreground">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.total}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.total || 0}
               </p>
             </CardContent>
           </Card>
@@ -205,7 +213,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Published</p>
               <p className="text-2xl font-bold text-success">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.active}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.active || 0}
               </p>
             </CardContent>
           </Card>
@@ -213,7 +221,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Draft</p>
               <p className="text-2xl font-bold text-warning">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.inactive}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.inactive || 0}
               </p>
             </CardContent>
           </Card>
@@ -221,7 +229,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">This Month</p>
               <p className="text-2xl font-bold text-primary">
-                {loading ? <Skeleton className="h-8 w-12" /> : stats.thisMonth}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.thisMonth || 0}
               </p>
             </CardContent>
           </Card>
@@ -245,16 +253,16 @@ export default function AnnouncementsPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => handleCreate(false)}
-                  disabled={isSubmitting}
+                  disabled={createAnnouncement.isPending}
                 >
-                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save as Draft
                 </Button>
                 <Button 
                   onClick={() => handleCreate(true)}
-                  disabled={isSubmitting}
+                  disabled={createAnnouncement.isPending}
                 >
-                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   <Send className="w-4 h-4 mr-2" />
                   Publish
                 </Button>
@@ -264,7 +272,7 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Announcements List */}
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
               <Card key={i}>
@@ -344,7 +352,7 @@ export default function AnnouncementsPage() {
                       <Button 
                         variant="ghost" 
                         size="icon-sm"
-                        onClick={() => toggleActive(announcement.id, !announcement.is_active)}
+                        onClick={() => handleToggle(announcement.id, announcement.is_active)}
                         title={announcement.is_active ? 'Unpublish' : 'Publish'}
                       >
                         {announcement.is_active ? (
@@ -388,8 +396,8 @@ export default function AnnouncementsPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            <Button onClick={handleEdit} disabled={updateAnnouncement.isPending}>
+              {updateAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
           </div>

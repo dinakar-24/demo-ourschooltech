@@ -29,6 +29,7 @@ import {
   Eye,
   Phone,
   Users,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,31 +37,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useTeachers } from '@/hooks/useTeachers';
+import { useTeachers, useTeacherStats, useTeacherSubjects, useDeleteTeacher } from '@/hooks/useTeachers';
 import { CreateTeacherDialog } from '@/components/admin/CreateTeacherDialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TeachersPage() {
-  const {
-    teachers,
-    allTeachers,
-    loading,
-    searchQuery,
-    setSearchQuery,
-    selectedSubject,
-    setSelectedSubject,
-    subjects,
-    deleteTeacher,
-    refetch,
-  } = useTeachers();
-
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('All Subjects');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const handleAddSuccess = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  const { data: teachers = [], isLoading } = useTeachers({ 
+    search: searchQuery, 
+    subject: selectedSubject 
+  });
+  const { data: stats } = useTeacherStats();
+  const { data: subjects = ['All Subjects'] } = useTeacherSubjects();
+  const deleteTeacher = useDeleteTeacher();
 
-  const activeCount = allTeachers.length;
-  const subjectsCount = new Set(allTeachers.flatMap(t => t.subjects || [])).size;
+  const handleAddSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['teachers'] });
+  }, [queryClient]);
+
+  const handleDelete = async (teacherId: string) => {
+    if (confirm('Are you sure you want to delete this teacher?')) {
+      await deleteTeacher.mutateAsync(teacherId);
+    }
+  };
+
+  // Calculate stats from data
+  const subjectsCount = new Set(teachers.flatMap(t => t.subjects || [])).size;
+  const avgClasses = teachers.length > 0 
+    ? Math.round(teachers.reduce((acc, t) => acc + (t.classes?.length || 0), 0) / teachers.length)
+    : 0;
 
   return (
     <AdminLayout title="Teachers">
@@ -70,13 +80,17 @@ export default function TeachersPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Teachers</p>
-              <p className="text-2xl font-bold text-foreground">{allTeachers.length}</p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{stats?.total || teachers.length}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Active</p>
-              <p className="text-2xl font-bold text-success">{activeCount}</p>
+              <p className="text-2xl font-bold text-success">{stats?.total || teachers.length}</p>
             </CardContent>
           </Card>
           <Card>
@@ -88,11 +102,7 @@ export default function TeachersPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Avg Classes</p>
-              <p className="text-2xl font-bold text-warning">
-                {allTeachers.length > 0 
-                  ? Math.round(allTeachers.reduce((acc, t) => acc + (t.classes?.length || 0), 0) / allTeachers.length)
-                  : 0}
-              </p>
+              <p className="text-2xl font-bold text-warning">{avgClasses}</p>
             </CardContent>
           </Card>
         </div>
@@ -135,9 +145,9 @@ export default function TeachersPage() {
         {/* Teachers Table */}
         <Card>
           <CardContent className="p-0">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : teachers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -225,7 +235,7 @@ export default function TeachersPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={() => deleteTeacher(teacher.id)}
+                              onClick={() => handleDelete(teacher.id)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete

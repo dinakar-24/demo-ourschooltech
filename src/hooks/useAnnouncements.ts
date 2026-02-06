@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -28,61 +28,97 @@ export interface AnnouncementFormData {
   is_active: boolean;
 }
 
-export function useAnnouncements() {
-  const { school, user } = useAuth();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    inactive: 0,
-    thisMonth: 0,
-  });
+interface AnnouncementFilters {
+  status?: 'active' | 'inactive' | 'all';
+  search?: string;
+}
 
-  const fetchAnnouncements = useCallback(async () => {
-    if (!school?.id) return;
+export function useAnnouncements(filters?: AnnouncementFilters) {
+  const { school } = useAuth();
 
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
+  return useQuery({
+    queryKey: ['announcements', school?.id, filters],
+    queryFn: async () => {
+      if (!school?.id) throw new Error('No school ID');
+
+      let query = supabase
         .from('announcements')
         .select('*')
+        .eq('school_id', school.id)
         .order('created_at', { ascending: false });
 
+      // Server-side filtering
+      if (filters?.status === 'active') {
+        query = query.eq('is_active', true);
+      } else if (filters?.status === 'inactive') {
+        query = query.eq('is_active', false);
+      }
+
+      if (filters?.search) {
+        query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
+      return data as Announcement[];
+    },
+    enabled: !!school?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
 
-      setAnnouncements(data || []);
+export function useAnnouncementStats() {
+  const { school } = useAuth();
 
-      // Calculate stats
-      const today = new Date();
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      
-      const active = (data || []).filter(a => a.is_active).length;
-      const inactive = (data || []).filter(a => !a.is_active).length;
-      const thisMonth = (data || []).filter(a => new Date(a.created_at) >= monthStart).length;
+  return useQuery({
+    queryKey: ['announcement-stats', school?.id],
+    queryFn: async () => {
+      if (!school?.id) throw new Error('No school ID');
 
-      setStats({
-        total: data?.length || 0,
-        active,
-        inactive,
-        thisMonth,
-      });
-    } catch (error) {
-      console.error('Error fetching announcements:', error);
-      toast.error('Failed to load announcements');
-    } finally {
-      setLoading(false);
-    }
-  }, [school?.id]);
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      const monthStartStr = monthStart.toISOString();
 
-  const createAnnouncement = async (formData: AnnouncementFormData) => {
-    if (!school?.id) {
-      toast.error('No school selected');
-      return false;
-    }
+      // Use count aggregates
+      const [totalResult, activeResult, thisMonthResult] = await Promise.all([
+        supabase
+          .from('announcements')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', school.id),
+        supabase
+          .from('announcements')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', school.id)
+          .eq('is_active', true),
+        supabase
+          .from('announcements')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', school.id)
+          .gte('created_at', monthStartStr),
+      ]);
 
-    try {
-      const { error } = await supabase
+      return {
+        total: totalResult.count || 0,
+        active: activeResult.count || 0,
+        inactive: (totalResult.count || 0) - (activeResult.count || 0),
+        thisMonth: thisMonthResult.count || 0,
+      };
+    },
+    enabled: !!school?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateAnnouncement() {
+  const queryClient = useQueryClient();
+  const { school, user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (formData: AnnouncementFormData) => {
+      if (!school?.id) throw new Error('No school ID');
+
+      const { data, error } = await supabase
         .from('announcements')
         .insert({
           title: formData.title,
@@ -93,89 +129,92 @@ export function useAnnouncements() {
           is_active: formData.is_active,
           school_id: school.id,
           created_by: user?.id || null,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      toast.success(variables.is_active ? 'Announcement published!' : 'Announcement saved as draft');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create announcement');
+    },
+  });
+}
 
-      toast.success(formData.is_active ? 'Announcement published!' : 'Announcement saved as draft');
-      await fetchAnnouncements();
-      return true;
-    } catch (error) {
-      console.error('Error creating announcement:', error);
-      toast.error('Failed to create announcement');
-      return false;
-    }
-  };
+export function useUpdateAnnouncement() {
+  const queryClient = useQueryClient();
 
-  const updateAnnouncement = async (id: string, formData: Partial<AnnouncementFormData>) => {
-    try {
-      const { error } = await supabase
+  return useMutation({
+    mutationFn: async ({ id, ...formData }: Partial<AnnouncementFormData> & { id: string }) => {
+      const { data, error } = await supabase
         .from('announcements')
         .update(formData)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) throw error;
-
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
       toast.success('Announcement updated');
-      await fetchAnnouncements();
-      return true;
-    } catch (error) {
-      console.error('Error updating announcement:', error);
-      toast.error('Failed to update announcement');
-      return false;
-    }
-  };
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update announcement');
+    },
+  });
+}
 
-  const deleteAnnouncement = async (id: string) => {
-    try {
+export function useDeleteAnnouncement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (announcementId: string) => {
       const { error } = await supabase
         .from('announcements')
         .delete()
-        .eq('id', id);
+        .eq('id', announcementId);
 
       if (error) throw error;
-
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
       toast.success('Announcement deleted');
-      await fetchAnnouncements();
-      return true;
-    } catch (error) {
-      console.error('Error deleting announcement:', error);
-      toast.error('Failed to delete announcement');
-      return false;
-    }
-  };
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete announcement');
+    },
+  });
+}
 
-  const toggleActive = async (id: string, isActive: boolean) => {
-    try {
+export function useToggleAnnouncement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const { error } = await supabase
         .from('announcements')
         .update({ is_active: isActive })
         .eq('id', id);
 
       if (error) throw error;
-
-      toast.success(isActive ? 'Announcement published' : 'Announcement unpublished');
-      await fetchAnnouncements();
-      return true;
-    } catch (error) {
-      console.error('Error toggling announcement:', error);
-      toast.error('Failed to update announcement');
-      return false;
-    }
-  };
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
-
-  return {
-    announcements,
-    loading,
-    stats,
-    fetchAnnouncements,
-    createAnnouncement,
-    updateAnnouncement,
-    deleteAnnouncement,
-    toggleActive,
-  };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      toast.success(variables.isActive ? 'Announcement published' : 'Announcement unpublished');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update announcement');
+    },
+  });
 }

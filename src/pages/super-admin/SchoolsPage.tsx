@@ -3,22 +3,18 @@ import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building2 } from 'lucide-react';
-import { useSchools, School, SchoolFormData } from '@/hooks/useSchools';
+import { Plus, Search, Building2, Loader2 } from 'lucide-react';
+import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
 import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 
 export default function SchoolsPage() {
-  const {
-    schools,
-    loading,
-    searchQuery,
-    setSearchQuery,
-    saveSchool,
-    deleteSchool,
-    isSubmitting,
-  } = useSchools();
+  const [searchQuery, setSearchQuery] = useState('');
+  const { data: schools = [], isLoading } = useSchools({ search: searchQuery });
+  const createSchool = useCreateSchool();
+  const updateSchool = useUpdateSchool();
+  const deleteSchoolMutation = useDeleteSchool();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
@@ -34,16 +30,25 @@ export default function SchoolsPage() {
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    await deleteSchool(id);
-  }, [deleteSchool]);
+    if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
+      return;
+    }
+    await deleteSchoolMutation.mutateAsync(id);
+  }, [deleteSchoolMutation]);
 
   const handleSubmit = useCallback(async (formData: SchoolFormData, logoPreview: string | null) => {
-    const success = await saveSchool(formData, logoPreview, editingSchool);
-    if (success) {
+    try {
+      if (editingSchool) {
+        await updateSchool.mutateAsync({ id: editingSchool.id, ...formData, logoPreview });
+      } else {
+        await createSchool.mutateAsync({ ...formData, logoPreview });
+      }
       setIsDialogOpen(false);
       setEditingSchool(null);
+    } catch {
+      // Error handled by mutation
     }
-  }, [saveSchool, editingSchool]);
+  }, [createSchool, updateSchool, editingSchool]);
 
   const handleDialogChange = useCallback((open: boolean) => {
     setIsDialogOpen(open);
@@ -51,6 +56,8 @@ export default function SchoolsPage() {
       setEditingSchool(null);
     }
   }, []);
+
+  const isSubmitting = createSchool.isPending || updateSchool.isPending;
 
   return (
     <SuperAdminLayout title="Schools Management">
@@ -82,9 +89,9 @@ export default function SchoolsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : schools.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">

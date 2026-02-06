@@ -42,31 +42,31 @@ export function useAttendance(date: Date, filters?: {
     queryFn: async () => {
       if (!user?.schoolId) throw new Error('No school ID');
 
+      // Use inner join for server-side filtering
       let query = supabase
         .from('attendance')
         .select(`
           *,
-          student:students(id, full_name, admission_number, roll_number, class_name, section)
+          student:students!inner(id, full_name, admission_number, roll_number, class_name, section)
         `)
         .eq('school_id', user.schoolId)
         .eq('date', dateStr);
 
+      // Server-side class/section filtering
+      if (filters?.className && filters.className !== 'All Classes') {
+        query = query.eq('student.class_name', filters.className);
+      }
+      if (filters?.section && filters.section !== 'All Sections') {
+        query = query.eq('student.section', filters.section);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
-
-      // Filter by class/section if provided
-      let filteredData = data as AttendanceRecord[];
-      if (filters?.className && filters.className !== 'All Classes') {
-        filteredData = filteredData.filter(a => a.student?.class_name === filters.className);
-      }
-      if (filters?.section && filters.section !== 'All Sections') {
-        filteredData = filteredData.filter(a => a.student?.section === filters.section);
-      }
-
-      return filteredData;
+      return data as AttendanceRecord[];
     },
     enabled: !!user?.schoolId,
+    staleTime: 1 * 60 * 1000, // 1 minute for attendance data
   });
 }
 

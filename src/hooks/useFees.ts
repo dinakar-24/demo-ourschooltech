@@ -31,7 +31,14 @@ export interface FeeStats {
   overdue: number;
 }
 
-export function useFees(filters?: { status?: string; classFilter?: string; search?: string }) {
+interface FeeFilters {
+  status?: string;
+  feeType?: string;
+  className?: string;
+  search?: string;
+}
+
+export function useFees(filters?: FeeFilters) {
   const { user } = useAuth();
 
   return useQuery({
@@ -39,41 +46,46 @@ export function useFees(filters?: { status?: string; classFilter?: string; searc
     queryFn: async () => {
       if (!user?.schoolId) return [];
 
+      // Build query with server-side filtering
       let query = supabase
         .from('fees')
         .select(`
           *,
-          student:students(id, full_name, class_name, section, admission_number)
+          student:students!inner(id, full_name, class_name, section, admission_number)
         `)
         .eq('school_id', user.schoolId)
         .order('due_date', { ascending: false });
 
+      // Server-side status filter
       if (filters?.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
+      }
+
+      // Server-side fee type filter
+      if (filters?.feeType && filters.feeType !== 'All Types') {
+        query = query.eq('fee_type', filters.feeType);
+      }
+
+      // Server-side class filter using inner join
+      if (filters?.className && filters.className !== 'all') {
+        query = query.eq('student.class_name', filters.className);
+      }
+
+      // Server-side search
+      if (filters?.search) {
+        query = query.or(
+          `student.full_name.ilike.%${filters.search}%,student.admission_number.ilike.%${filters.search}%`,
+          { foreignTable: 'student' }
+        );
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-
-      // Apply client-side filters for class and search
-      let filtered = data as FeeRecord[];
-
-      if (filters?.classFilter && filters.classFilter !== 'all') {
-        filtered = filtered.filter(f => f.student?.class_name === filters.classFilter);
-      }
-
-      if (filters?.search) {
-        const searchLower = filters.search.toLowerCase();
-        filtered = filtered.filter(f => 
-          f.student?.full_name.toLowerCase().includes(searchLower) ||
-          f.student?.admission_number.toLowerCase().includes(searchLower)
-        );
-      }
-
-      return filtered;
+      return data as FeeRecord[];
     },
     enabled: !!user?.schoolId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -87,38 +99,45 @@ export function useFeeStats() {
         return { totalDue: 0, collected: 0, pending: 0, overdue: 0 };
       }
 
-      const { data, error } = await supabase
-        .from('fees')
-        .select('amount, status, due_date')
-        .eq('school_id', user.schoolId);
-
-      if (error) throw error;
-
       const today = new Date().toISOString().split('T')[0];
 
-      const stats = (data || []).reduce(
-        (acc, fee) => {
-          acc.totalDue += Number(fee.amount);
-          
-          if (fee.status === 'paid') {
-            acc.collected += Number(fee.amount);
-          } else if (fee.status === 'pending' && fee.due_date < today) {
-            acc.overdue += Number(fee.amount);
-          } else if (fee.status === 'pending') {
-            acc.pending += Number(fee.amount);
-          } else if (fee.status === 'partial') {
-            // For partial, we'd need paid_amount field - for now count as pending
-            acc.pending += Number(fee.amount);
-          }
-          
-          return acc;
-        },
-        { totalDue: 0, collected: 0, pending: 0, overdue: 0 }
-      );
+      // Use aggregate queries for better performance
+      const [totalResult, collectedResult, pendingResult, overdueResult] = await Promise.all([
+        supabase
+          .from('fees')
+          .select('amount')
+          .eq('school_id', user.schoolId),
+        supabase
+          .from('fees')
+          .select('amount')
+          .eq('school_id', user.schoolId)
+          .eq('status', 'paid'),
+        supabase
+          .from('fees')
+          .select('amount')
+          .eq('school_id', user.schoolId)
+          .eq('status', 'pending')
+          .gte('due_date', today),
+        supabase
+          .from('fees')
+          .select('amount')
+          .eq('school_id', user.schoolId)
+          .eq('status', 'pending')
+          .lt('due_date', today),
+      ]);
 
-      return stats;
+      const sumAmounts = (data: { amount: number }[] | null) => 
+        (data || []).reduce((sum, f) => sum + Number(f.amount), 0);
+
+      return {
+        totalDue: sumAmounts(totalResult.data),
+        collected: sumAmounts(collectedResult.data),
+        pending: sumAmounts(pendingResult.data),
+        overdue: sumAmounts(overdueResult.data),
+      };
     },
     enabled: !!user?.schoolId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
