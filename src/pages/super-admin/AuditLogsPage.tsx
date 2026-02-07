@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ const actionColors: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
 };
 
 export default function AuditLogsPage() {
+  const isMobile = useIsMobile();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -214,7 +216,47 @@ export default function AuditLogsPage() {
                     : 'Activity will appear here as actions are performed'}
                 </p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {filteredLogs.map((log) => (
+                  <div key={log.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {log.user_name ? (
+                          <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                            {log.user_name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{log.user_name || 'System'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{log.user_email || ''}</p>
+                        </div>
+                      </div>
+                      <Badge variant={getActionBadgeVariant(log.action)} className="shrink-0 text-[10px]">
+                        {log.action}
+                      </Badge>
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {format(new Date(log.created_at), 'MMM d, yyyy HH:mm')}
+                        <span className="mx-1">·</span>
+                        <span>{log.entity_type}</span>
+                      </div>
+                      {formatDetails(log.details) && (
+                        <p className="text-muted-foreground line-clamp-2">{formatDetails(log.details)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -232,18 +274,14 @@ export default function AuditLogsPage() {
                         <TableCell>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Calendar className="w-3 h-3" />
-                            <span className="text-sm">
-                              {format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}
-                            </span>
+                            <span className="text-sm">{format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           {log.user_name || log.user_email ? (
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                                {log.user_name
-                                  ? log.user_name.split(' ').map(n => n[0]).join('')
-                                  : <User className="w-4 h-4" />}
+                                {log.user_name ? log.user_name.split(' ').map(n => n[0]).join('') : <User className="w-4 h-4" />}
                               </div>
                               <div>
                                 <p className="text-sm font-medium">{log.user_name || 'Unknown'}</p>
@@ -254,23 +292,13 @@ export default function AuditLogsPage() {
                             <span className="text-muted-foreground text-sm">System</span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={getActionBadgeVariant(log.action)}>
-                            {log.action}
-                          </Badge>
-                        </TableCell>
+                        <TableCell><Badge variant={getActionBadgeVariant(log.action)}>{log.action}</Badge></TableCell>
                         <TableCell>
                           <span className="text-sm">{log.entity_type}</span>
-                          {log.entity_id && (
-                            <span className="text-xs text-muted-foreground block truncate max-w-[120px]">
-                              {log.entity_id}
-                            </span>
-                          )}
+                          {log.entity_id && <span className="text-xs text-muted-foreground block truncate max-w-[120px]">{log.entity_id}</span>}
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
-                            {formatDetails(log.details)}
-                          </span>
+                          <span className="text-sm text-muted-foreground truncate max-w-[200px] block">{formatDetails(log.details)}</span>
                         </TableCell>
                       </TableRow>
                     ))}

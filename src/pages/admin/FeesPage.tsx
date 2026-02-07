@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab 
 const statusOptions = ['all', 'paid', 'pending', 'overdue'];
 
 export default function FeesPage() {
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('All Types');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -343,7 +345,50 @@ export default function FeesPage() {
                 <p>No fee records found</p>
                 <p className="text-sm">Create fee records for students to track payments</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {filteredRecords.map((record) => (
+                  <div key={record.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{record.student?.full_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{record.student?.admission_number || '-'} · {record.student?.class_name}-{record.student?.section}</p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View</DropdownMenuItem>
+                          {record.status !== 'paid' && (
+                            <DropdownMenuItem onClick={() => openPaymentDialog(record.id)}>
+                              <CreditCard className="w-4 h-4 mr-2" />Record Payment
+                            </DropdownMenuItem>
+                          )}
+                          {record.status === 'paid' && (
+                            <DropdownMenuItem><Receipt className="w-4 h-4 mr-2" />Receipt</DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Remind</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <span className="text-muted-foreground">{record.fee_type}</span>
+                        <span className="mx-2">·</span>
+                        <span className="text-muted-foreground">{new Date(record.due_date).toLocaleDateString('en-IN')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium flex items-center"><IndianRupee className="w-3 h-3" />{Number(record.amount).toLocaleString()}</span>
+                        {getStatusBadge(record.status, record.due_date)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -362,53 +407,32 @@ export default function FeesPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{record.student?.full_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {record.student?.admission_number || '-'}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{record.student?.admission_number || '-'}</p>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {record.student?.class_name}-{record.student?.section}
-                      </TableCell>
+                      <TableCell>{record.student?.class_name}-{record.student?.section}</TableCell>
                       <TableCell>{record.fee_type}</TableCell>
                       <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <IndianRupee className="w-3 h-3" />
-                          {Number(record.amount).toLocaleString()}
-                        </div>
+                        <div className="flex items-center"><IndianRupee className="w-3 h-3" />{Number(record.amount).toLocaleString()}</div>
                       </TableCell>
-                      <TableCell>
-                        {new Date(record.due_date).toLocaleDateString('en-IN')}
-                      </TableCell>
+                      <TableCell>{new Date(record.due_date).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell>{getStatusBadge(record.status, record.due_date)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
+                            <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View Details</DropdownMenuItem>
                             {record.status !== 'paid' && (
                               <DropdownMenuItem onClick={() => openPaymentDialog(record.id)}>
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                Record Payment
+                                <CreditCard className="w-4 h-4 mr-2" />Record Payment
                               </DropdownMenuItem>
                             )}
                             {record.status === 'paid' && (
-                              <DropdownMenuItem>
-                                <Receipt className="w-4 h-4 mr-2" />
-                                Generate Receipt
-                              </DropdownMenuItem>
+                              <DropdownMenuItem><Receipt className="w-4 h-4 mr-2" />Generate Receipt</DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>
-                              <Send className="w-4 h-4 mr-2" />
-                              Send Reminder
-                            </DropdownMenuItem>
+                            <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Send Reminder</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
