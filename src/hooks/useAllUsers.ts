@@ -8,6 +8,7 @@ interface UserWithRole {
   email: string;
   full_name: string;
   school_id: string | null;
+  avatar_url: string | null;
   school_name?: string;
   roles: string[];
 }
@@ -124,7 +125,7 @@ export function useAllUsers({ page, pageSize, searchQuery, roleFilter }: UseAllU
         // Build query for profiles NOT in the set
         let query = supabase
           .from('profiles')
-          .select('id, email, full_name, school_id', { count: 'exact' });
+          .select('id, email, full_name, school_id, avatar_url', { count: 'exact' });
 
         if (searchQuery) {
           query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
@@ -150,7 +151,7 @@ export function useAllUsers({ page, pageSize, searchQuery, roleFilter }: UseAllU
       // Build profiles query with server-side pagination
       let query = supabase
         .from('profiles')
-        .select('id, email, full_name, school_id', { count: 'exact' });
+        .select('id, email, full_name, school_id, avatar_url', { count: 'exact' });
 
       if (searchQuery) {
         query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);

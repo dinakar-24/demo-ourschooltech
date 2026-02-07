@@ -14,6 +14,7 @@ interface SchoolAdmin {
   email: string;
   full_name: string;
   school_id: string | null;
+  avatar_url: string | null;
   school?: School;
 }
 
@@ -60,7 +61,7 @@ export function useSchoolAdmins({ page, pageSize, searchQuery }: UseSchoolAdmins
       // Build paginated profiles query
       let query = supabase
         .from('profiles')
-        .select('id, email, full_name, school_id', { count: 'exact' })
+        .select('id, email, full_name, school_id, avatar_url', { count: 'exact' })
         .in('id', userIds);
 
       if (searchQuery) {

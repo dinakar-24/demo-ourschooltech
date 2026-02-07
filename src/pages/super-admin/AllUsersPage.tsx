@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Mail, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, UserX } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { UserCard } from '@/components/super-admin/UserCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -185,9 +186,12 @@ export default function AllUsersPage() {
                           <TableRow key={user.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                                  {user.full_name.split(' ').map((n) => n[0]).join('')}
-                                </div>
+                                <Avatar className="w-10 h-10">
+                                  <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                    {user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <span className="font-medium">{user.full_name}</span>
                               </div>
                             </TableCell>

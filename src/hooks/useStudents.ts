@@ -58,7 +58,7 @@ export function useStudents(filters?: {
 
       let query = supabase
         .from('students')
-        .select('*', { count: 'exact' })
+        .select('*, profiles:user_id(avatar_url)', { count: 'exact' })
         .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 

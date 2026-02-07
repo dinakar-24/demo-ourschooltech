@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Building2, Mail } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { AdminCard } from '@/components/super-admin/AdminCard';
 import { CreateSchoolAdminDialog } from '@/components/super-admin/CreateSchoolAdminDialog';
@@ -122,9 +123,12 @@ export default function SchoolAdminsPage() {
                           <TableRow key={admin.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                                  {admin.full_name.split(' ').map(n => n[0]).join('')}
-                                </div>
+                                <Avatar className="w-10 h-10">
+                                  <AvatarImage src={admin.avatar_url ?? undefined} alt={admin.full_name} />
+                                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                    {admin.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <span className="font-medium">{admin.full_name}</span>
                               </div>
                             </TableCell>
