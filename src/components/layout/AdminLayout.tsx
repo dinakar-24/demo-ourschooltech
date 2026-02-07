@@ -2,6 +2,8 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner';
 import {
   LayoutDashboard,
   Users,
@@ -60,6 +62,8 @@ const menuItems = [
 
 export function AdminLayout({ children, title }: AdminLayoutProps) {
   const { user, school, logout } = useAuth();
+  const { impersonatedSchool, isImpersonating } = useImpersonation();
+  const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -91,8 +95,8 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
               <School className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">{school?.name}</p>
-              <p className="text-xs text-sidebar-foreground/70 capitalize">School Admin</p>
+              <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">{displaySchoolName}</p>
+              <p className="text-xs text-sidebar-foreground/70 capitalize">{isImpersonating ? 'Viewing as Admin' : 'School Admin'}</p>
             </div>
           </div>
         )}
@@ -225,6 +229,8 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* Impersonation Banner */}
+        <ImpersonationBanner />
         {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b border-border px-4 md:px-6 py-3">
           <div className="flex items-center justify-between gap-4">

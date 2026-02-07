@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,11 @@ import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
 import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 export default function SchoolsPage() {
+  const navigate = useNavigate();
+  const { startImpersonation } = useImpersonation();
   const [searchQuery, setSearchQuery] = useState('');
   const pagination = usePagination(25);
 
@@ -67,6 +71,11 @@ export default function SchoolsPage() {
     }
   }, []);
 
+  const handleImpersonate = useCallback((school: School) => {
+    startImpersonation({ id: school.id, name: school.name });
+    navigate('/admin/dashboard');
+  }, [startImpersonation, navigate]);
+
   const isSubmitting = createSchool.isPending || updateSchool.isPending;
 
   return (
@@ -121,6 +130,7 @@ export default function SchoolsPage() {
                       school={school}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onImpersonate={handleImpersonate}
                     />
                   ))}
                 </div>
@@ -131,6 +141,7 @@ export default function SchoolsPage() {
                     schools={schools}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onImpersonate={handleImpersonate}
                   />
                 </div>
               </>
