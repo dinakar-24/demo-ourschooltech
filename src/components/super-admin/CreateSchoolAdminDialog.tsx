@@ -11,7 +11,7 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { UserPlus, Building2, User, Mail, Lock, Phone } from 'lucide-react';
+import { UserPlus, Building2, User, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -44,6 +44,7 @@ function AdminForm({ formData, update, handleSubmit, isCreating, schools, onClos
   schools: School[];
   onClose: () => void;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <form onSubmit={handleSubmit} className="space-y-4 px-4 sm:px-6 pb-6">
       {/* Full Name */}
@@ -111,14 +112,22 @@ function AdminForm({ formData, update, handleSubmit, isCreating, schools, onClos
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="admin-password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={formData.password}
             onChange={(e) => update('password', e.target.value)}
             placeholder="Enter a strong password"
-            className="pl-10 h-11"
+            className="pl-10 pr-10 h-11"
             minLength={8}
             required
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(prev => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
         </div>
         <p className="text-xs text-muted-foreground">
           Min 8 chars · uppercase · lowercase · number · special character
