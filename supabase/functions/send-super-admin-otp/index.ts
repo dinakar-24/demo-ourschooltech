@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +33,6 @@ serve(async (req) => {
     });
 
     // Check if this email is associated with a super_admin role
-    // First, find user by email in profiles
     const { data: profileData } = await supabaseAdmin
       .from("profiles")
       .select("id, email")
@@ -44,7 +44,6 @@ serve(async (req) => {
     let existingUser = null;
 
     if (profileData) {
-      // Check if this user has super_admin role
       const { data: roleData } = await supabaseAdmin
         .from("user_roles")
         .select("role")
@@ -54,19 +53,13 @@ serve(async (req) => {
 
       if (roleData) {
         isSuperAdmin = true;
-        
-        // Get user from auth to check last sign in
         const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
         existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-        
         if (existingUser?.last_sign_in_at) {
           needsPasswordSetup = false;
         }
       }
     } else {
-      // Check if this is a designated super admin email that hasn't been set up yet
-      // For initial setup, we allow specific pre-registered super admin emails
-      // This check uses the user_roles table to see if any entry exists for this email
       const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
       existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
       
@@ -85,7 +78,7 @@ serve(async (req) => {
       }
     }
 
-    // For very first super admin setup, allow the initial email
+    // Allow initial super admin setup
     const initialSuperAdminEmail = "admin@ourschooltech.com";
     if (!isSuperAdmin && email.toLowerCase() === initialSuperAdminEmail.toLowerCase()) {
       isSuperAdmin = true;
@@ -101,18 +94,16 @@ serve(async (req) => {
 
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // OTP expires in 5 minutes
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    // Invalidate any existing unused OTPs for this email
+    // Invalidate existing unused OTPs
     await supabaseAdmin
       .from("super_admin_otp")
       .update({ used: true })
       .eq("email", email.toLowerCase())
       .eq("used", false);
 
-    // Store the new OTP
+    // Store new OTP
     const { error: insertError } = await supabaseAdmin
       .from("super_admin_otp")
       .insert({
@@ -129,15 +120,67 @@ serve(async (req) => {
       );
     }
 
-    console.log(`OTP generated for ${email}: ${otpCode}`);
+    // Send OTP via Hostinger SMTP
+    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    if (!smtpPassword) {
+      console.error("SMTP_PASSWORD not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: "smtp.hostinger.com",
+        port: 465,
+        tls: true,
+        auth: {
+          username: "admin@ourschooltech.com",
+          password: smtpPassword,
+        },
+      },
+    });
+
+    await client.send({
+      from: "OurSchoolTech <admin@ourschooltech.com>",
+      to: email.toLowerCase(),
+      subject: "Your Super Admin Login OTP",
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="color: #1a1a2e; font-size: 22px; margin: 0;">OurSchoolTech</h1>
+            <p style="color: #64748b; font-size: 14px; margin: 4px 0 0;">Super Admin Verification</p>
+          </div>
+          <div style="background: #f8fafc; border-radius: 12px; padding: 28px; text-align: center; border: 1px solid #e2e8f0;">
+            <p style="color: #334155; font-size: 15px; margin: 0 0 20px;">Your one-time verification code is:</p>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #1a1a2e; font-family: 'Courier New', monospace; background: #ffffff; display: inline-block; padding: 12px 28px; border-radius: 8px; border: 2px dashed #cbd5e1;">
+              ${otpCode}
+            </div>
+            <p style="color: #94a3b8; font-size: 13px; margin: 20px 0 0;">This code expires in <strong>5 minutes</strong>.</p>
+          </div>
+          <div style="margin-top: 24px; padding: 16px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d;">
+            <p style="color: #92400e; font-size: 13px; margin: 0; line-height: 1.5;">
+              ⚠️ If you did not request this code, please ignore this email. Never share your OTP with anyone.
+            </p>
+          </div>
+          <div style="text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} OurSchoolTech. All rights reserved.</p>
+            <p style="color: #94a3b8; font-size: 11px; margin: 4px 0 0;">support@ourschooltech.in</p>
+          </div>
+        </div>
+      `,
+    });
+
+    await client.close();
+
+    console.log(`OTP sent to ${email} via SMTP`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "OTP sent to your email",
         needsPasswordSetup,
-        // Always include OTP for now since email delivery isn't configured
-        debugOtp: otpCode
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
