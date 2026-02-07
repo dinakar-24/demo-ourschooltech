@@ -1,0 +1,302 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Plus, Loader2, User, Hash, Phone, Mail, Calendar } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+
+interface AddStudentDialogProps {
+  classes: { id: string; name: string }[] | undefined;
+  formData: {
+    full_name: string;
+    admission_number: string;
+    class_name: string;
+    section: string;
+    roll_number: string;
+    gender: string;
+    date_of_birth: string;
+    parent_name: string;
+    parent_phone: string;
+    parent_email: string;
+  };
+  onInputChange: (field: string, value: string) => void;
+  onSubmit: () => void;
+  isPending: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const SECTIONS = ['A', 'B', 'C', 'D'];
+const GENDERS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+];
+
+function ChipSelector({ 
+  options, 
+  value, 
+  onChange, 
+  label, 
+  required 
+}: { 
+  options: { value: string; label: string }[]; 
+  value: string; 
+  onChange: (v: string) => void; 
+  label: string; 
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+              value === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StudentFormContent({ formData, onInputChange, onSubmit, isPending, classes, onClose }: {
+  formData: AddStudentDialogProps['formData'];
+  onInputChange: (field: string, value: string) => void;
+  onSubmit: () => void;
+  isPending: boolean;
+  classes: AddStudentDialogProps['classes'];
+  onClose: () => void;
+}) {
+  const classOptions = (classes || []).map(c => ({ value: c.name, label: c.name }));
+  const sectionOptions = SECTIONS.map(s => ({ value: s, label: s }));
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4 px-4 sm:px-6 pb-6">
+      {/* Full Name & Admission Number */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Full Name <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.full_name}
+              onChange={(e) => onInputChange('full_name', e.target.value)}
+              placeholder="Enter student name"
+              className="pl-10 h-11"
+              required
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Admission Number <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.admission_number}
+              onChange={(e) => onInputChange('admission_number', e.target.value)}
+              placeholder="ADM2024XXX"
+              className="pl-10 h-11"
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Class - Chip Selector */}
+      <ChipSelector
+        label="Class"
+        required
+        options={classOptions}
+        value={formData.class_name}
+        onChange={(v) => onInputChange('class_name', v)}
+      />
+
+      {/* Section - Chip Selector */}
+      <ChipSelector
+        label="Section"
+        required
+        options={sectionOptions}
+        value={formData.section}
+        onChange={(v) => onInputChange('section', v)}
+      />
+
+      {/* Roll Number & Gender */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Roll Number</Label>
+          <Input
+            type="number"
+            value={formData.roll_number}
+            onChange={(e) => onInputChange('roll_number', e.target.value)}
+            placeholder="Enter roll number"
+            className="h-11"
+          />
+        </div>
+        <ChipSelector
+          label="Gender"
+          options={GENDERS}
+          value={formData.gender}
+          onChange={(v) => onInputChange('gender', v)}
+        />
+      </div>
+
+      {/* Parent Name & Phone */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Parent Name</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.parent_name}
+              onChange={(e) => onInputChange('parent_name', e.target.value)}
+              placeholder="Enter parent name"
+              className="pl-10 h-11"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Phone Number</Label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="tel"
+              value={formData.parent_phone}
+              onChange={(e) => onInputChange('parent_phone', e.target.value)}
+              placeholder="Enter phone number"
+              className="pl-10 h-11"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Email & DOB */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Parent Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="email"
+              value={formData.parent_email}
+              onChange={(e) => onInputChange('parent_email', e.target.value)}
+              placeholder="Enter email"
+              className="pl-10 h-11"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Date of Birth</Label>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="date"
+              value={formData.date_of_birth}
+              onChange={(e) => onInputChange('date_of_birth', e.target.value)}
+              className="pl-10 h-11"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-2 border-t">
+        <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isPending} className="flex-1 sm:flex-none sm:ml-auto">
+          {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {isPending ? 'Adding…' : 'Add Student'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, isPending, isOpen, onOpenChange }: AddStudentDialogProps) {
+  const isMobile = useIsMobile();
+
+  const triggerButton = (
+    <Button size="sm">
+      <Plus className="w-4 h-4 mr-2" />
+      Add Student
+    </Button>
+  );
+
+  const headerContent = (
+    <div className="flex items-center gap-3 px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+        <Plus className="w-5 h-5 text-primary" />
+      </div>
+      <div>
+        <p className="text-lg font-semibold">Add New Student</p>
+        <p className="text-sm text-muted-foreground">Fill in the student details</p>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={isOpen} onOpenChange={onOpenChange}>
+        <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
+        <DrawerContent className="max-h-[90dvh]">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Add New Student</DrawerTitle>
+            <DrawerDescription>Fill in the student details</DrawerDescription>
+          </DrawerHeader>
+          {headerContent}
+          <div className="overflow-y-auto">
+            <StudentFormContent
+              formData={formData}
+              onInputChange={onInputChange}
+              onSubmit={onSubmit}
+              isPending={isPending}
+              classes={classes}
+              onClose={() => onOpenChange(false)}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>{triggerButton}</DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Add New Student</DialogTitle>
+          <DialogDescription>Fill in the student details</DialogDescription>
+        </DialogHeader>
+        {headerContent}
+        <StudentFormContent
+          formData={formData}
+          onInputChange={onInputChange}
+          onSubmit={onSubmit}
+          isPending={isPending}
+          classes={classes}
+          onClose={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
