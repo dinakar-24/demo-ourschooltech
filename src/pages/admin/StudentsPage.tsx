@@ -72,7 +72,9 @@ export default function StudentsPage() {
     date_of_birth: '',
     parent_name: '',
     parent_phone: '',
+    alternate_phone: '',
     parent_email: '',
+    blood_group: '',
   });
 
   // Fetch data
@@ -113,7 +115,9 @@ export default function StudentsPage() {
       date_of_birth: formData.date_of_birth || undefined,
       parent_name: formData.parent_name || undefined,
       parent_phone: formData.parent_phone || undefined,
+      alternate_phone: formData.alternate_phone || undefined,
       parent_email: formData.parent_email || undefined,
+      blood_group: formData.blood_group || undefined,
     });
 
     setFormData({
@@ -126,7 +130,9 @@ export default function StudentsPage() {
       date_of_birth: '',
       parent_name: '',
       parent_phone: '',
+      alternate_phone: '',
       parent_email: '',
+      blood_group: '',
     });
     setIsAddDialogOpen(false);
   };
