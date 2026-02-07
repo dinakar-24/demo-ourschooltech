@@ -205,16 +205,16 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
             <div key={s} className="flex items-center">
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                isCurrent && "bg-primary text-primary-foreground shadow-lg",
+                isCurrent && "bg-success text-success-foreground shadow-lg",
                 isCompleted && "bg-success text-success-foreground",
-                !isCurrent && !isCompleted && "bg-muted text-muted-foreground"
+                !isCurrent && !isCompleted && "bg-white/20 text-white/60"
               )}>
                 {i + 1}
               </div>
               {i < 1 && (
                 <div className={cn(
                   "w-8 h-0.5 mx-1",
-                  currentIndex > i ? "bg-success" : "bg-border"
+                  currentIndex > i ? "bg-success" : "bg-white/20"
                 )} />
               )}
             </div>
@@ -222,38 +222,35 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         })}
       </div>
 
-      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+      <div className="p-4 rounded-xl bg-white/10 border border-white/15">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-primary" />
-          <p className="text-sm text-primary font-medium">Super Admin Access</p>
+          <ShieldCheck className="w-5 h-5 text-green-300" />
+          <p className="text-sm text-green-300 font-medium">Super Admin Access</p>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-white/50 mt-1">
           {step === 'email' && 'Enter your Super Admin email to receive an OTP'}
           {step === 'otp_password' && (needsPasswordSetup ? 'Enter OTP and create your password' : 'Enter OTP and your password to login')}
         </p>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20 flex items-start gap-3">
+        <div className="p-4 rounded-xl bg-destructive/20 text-white text-sm border border-destructive/30 flex items-start gap-3">
           <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center shrink-0 text-white text-xs font-bold">!</div>
           <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="p-4 rounded-xl bg-success/10 text-success text-sm border border-success/20">
+        <div className="p-4 rounded-xl bg-success/20 text-green-200 text-sm border border-success/30">
           {success}
         </div>
       )}
-
-
-
 
       {/* Step 1: Email */}
       {step === 'email' && (
         <div className="space-y-4">
           <div>
-            <label className="input-label flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-white mb-1.5">
               <Mail className="w-4 h-4" />
               Super Admin Email
             </label>
@@ -262,7 +259,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
               placeholder="Enter your super admin email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-14 rounded-xl"
+              className="h-13 rounded-xl bg-white border-0 text-foreground placeholder:text-muted-foreground/50"
               autoFocus
             />
           </div>
@@ -270,7 +267,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           <Button 
             onClick={handleSendOTP} 
             size="xl" 
-            className="w-full h-14 text-base rounded-xl" 
+            className="w-full h-13 text-base rounded-xl bg-primary hover:bg-primary-hover" 
             disabled={loading}
           >
             {loading ? (
@@ -292,7 +289,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       {step === 'otp_password' && (
         <div className="space-y-4">
           <div className="flex flex-col items-center">
-            <label className="input-label flex items-center gap-2 mb-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-white mb-4">
               <KeyRound className="w-4 h-4" />
               Enter 6-Digit OTP
             </label>
@@ -310,13 +307,13 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
                 <InputOTPSlot index={5} />
               </InputOTPGroup>
             </InputOTP>
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs text-white/50 mt-3">
               OTP expires in 5 minutes
             </p>
           </div>
 
           <div>
-            <label className="input-label flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-white mb-1.5">
               <Lock className="w-4 h-4" />
               {needsPasswordSetup ? 'Create Password' : 'Password'}
             </label>
@@ -326,7 +323,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
                 placeholder={needsPasswordSetup ? 'Create a strong password' : 'Enter your password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-14 rounded-xl pr-12"
+                className="h-13 rounded-xl pr-12 bg-white border-0 text-foreground placeholder:text-muted-foreground/50"
               />
               <button
                 type="button"
@@ -341,14 +338,14 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           {needsPasswordSetup && (
             <>
               <div>
-                <label className="input-label">Confirm Password</label>
+                <label className="text-sm font-medium text-white mb-1.5 block">Confirm Password</label>
                 <div className="relative">
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="h-14 rounded-xl pr-12"
+                    className="h-13 rounded-xl pr-12 bg-white border-0 text-foreground placeholder:text-muted-foreground/50"
                   />
                   <button
                     type="button"
@@ -360,14 +357,14 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
                 </div>
               </div>
 
-              <div className="text-xs text-muted-foreground space-y-1 p-3 bg-muted/30 rounded-lg">
-                <p className="font-medium text-foreground">Password requirements:</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  <li className={password.length >= 8 ? 'text-success' : ''}>At least 8 characters</li>
-                  <li className={/[A-Z]/.test(password) ? 'text-success' : ''}>One uppercase letter</li>
-                  <li className={/[a-z]/.test(password) ? 'text-success' : ''}>One lowercase letter</li>
-                  <li className={/[0-9]/.test(password) ? 'text-success' : ''}>One number</li>
-                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'text-success' : ''}>One special character</li>
+              <div className="text-xs space-y-1 p-3 bg-white/10 rounded-lg border border-white/10">
+                <p className="font-medium text-white">Password requirements:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-white/50">
+                  <li className={password.length >= 8 ? 'text-green-300' : ''}>At least 8 characters</li>
+                  <li className={/[A-Z]/.test(password) ? 'text-green-300' : ''}>One uppercase letter</li>
+                  <li className={/[a-z]/.test(password) ? 'text-green-300' : ''}>One lowercase letter</li>
+                  <li className={/[0-9]/.test(password) ? 'text-green-300' : ''}>One number</li>
+                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'text-green-300' : ''}>One special character</li>
                 </ul>
               </div>
             </>
@@ -376,7 +373,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           <Button 
             onClick={handleVerifyAndLogin} 
             size="xl" 
-            className="w-full h-14 text-base rounded-xl" 
+            className="w-full h-13 text-base rounded-xl bg-primary hover:bg-primary-hover" 
             disabled={loading || otp.length !== 6}
           >
             {loading ? (
@@ -395,7 +392,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
           <button
             type="button"
             onClick={() => handleSendOTP()}
-            className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+            className="w-full text-sm text-white/50 hover:text-white transition-colors py-2"
             disabled={loading}
           >
             Resend OTP
@@ -406,7 +403,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       <button
         type="button"
         onClick={onBack}
-        className="w-full text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+        className="w-full text-sm text-white/50 hover:text-white transition-colors py-2"
       >
         ← Back to school selection
       </button>
