@@ -44,23 +44,42 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
     setError('');
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('send-super-admin-otp', {
+      const response = await supabase.functions.invoke('send-super-admin-otp', {
         body: { email: email.trim().toLowerCase() },
       });
 
-      if (fnError || data?.error) {
-        const msg = data?.error || fnError?.message || '';
-        if (msg.includes('not registered as a Super Admin')) {
+      const result = response.data;
+      const fnError = response.error;
+
+      // Extract the actual error message
+      let errorMsg = '';
+      if (fnError) {
+        // For non-2xx responses, try to read body from error context
+        try {
+          if ((fnError as any).context) {
+            const body = await (fnError as any).context.json();
+            errorMsg = body?.error || '';
+          }
+        } catch {
+          // ignore parse errors
+        }
+        if (!errorMsg) errorMsg = fnError.message || 'Unknown error';
+      } else if (result?.error) {
+        errorMsg = result.error;
+      }
+
+      if (errorMsg) {
+        if (errorMsg.includes('not registered as a Super Admin')) {
           throw new Error('This email is not authorized for Super Admin access. Please check your email or contact support@ourschooltech.in');
         }
-        if (msg.includes('Email service not configured')) {
+        if (errorMsg.includes('Email service not configured')) {
           throw new Error('Unable to send OTP at the moment. Please try again later or contact support@ourschooltech.in');
         }
         throw new Error('Something went wrong. Please try again or contact support@ourschooltech.in');
       }
 
       setSuccess('OTP sent to your email');
-      setNeedsPasswordSetup(data.needsPasswordSetup);
+      setNeedsPasswordSetup(result?.needsPasswordSetup);
       setStep('otp_password');
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again or contact support@ourschooltech.in');
@@ -117,7 +136,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
     setError('');
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('verify-super-admin-otp', {
+      const response = await supabase.functions.invoke('verify-super-admin-otp', {
         body: { 
           email: email.trim().toLowerCase(), 
           otp,
@@ -125,12 +144,27 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         },
       });
 
-      if (fnError || data?.error) {
-        const msg = data?.error || fnError?.message || '';
-        if (msg.includes('Invalid or expired OTP')) {
+      const result = response.data;
+      const fnError = response.error;
+
+      let errorMsg = '';
+      if (fnError) {
+        try {
+          if ((fnError as any).context) {
+            const body = await (fnError as any).context.json();
+            errorMsg = body?.error || '';
+          }
+        } catch { /* ignore */ }
+        if (!errorMsg) errorMsg = fnError.message || 'Unknown error';
+      } else if (result?.error) {
+        errorMsg = result.error;
+      }
+
+      if (errorMsg) {
+        if (errorMsg.includes('Invalid or expired OTP')) {
           throw new Error('The OTP you entered is incorrect or has expired. Please request a new one.');
         }
-        if (msg.includes('Password is required')) {
+        if (errorMsg.includes('Password is required')) {
           throw new Error('Please create a password for your account.');
         }
         throw new Error('Verification failed. Please try again or contact support@ourschooltech.in');
