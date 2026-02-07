@@ -90,26 +90,34 @@ function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose 
         </div>
       </div>
 
-      {/* Subject - Chip Selector */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Primary Subject</Label>
         <div className="flex flex-wrap gap-2">
-          {subjectOptions.map(sub => (
-            <button
-              key={sub}
-              type="button"
-              onClick={() => onChange('subject', formData.subject === sub ? '' : sub)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
-                formData.subject === sub
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-              )}
-            >
-              {sub}
-            </button>
-          ))}
+          {subjectOptions.map(sub => {
+            const isSelected = formData.subject === sub;
+            return (
+              <button
+                key={sub}
+                type="button"
+                onClick={() => onChange('subject', isSelected ? '' : sub)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                {sub}
+              </button>
+            );
+          })}
         </div>
+        <Input
+          value={!subjectOptions.includes(formData.subject) ? formData.subject : ''}
+          onChange={(e) => onChange('subject', e.target.value)}
+          placeholder="Or type subject manually"
+          className="h-10 mt-1"
+        />
       </div>
 
       {/* Actions */}
