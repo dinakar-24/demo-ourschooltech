@@ -3,21 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
+} from '@/components/ui/drawer';
+import { User, Mail, Lock, Phone, Hash, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface CreateTeacherDialogProps {
   open: boolean;
@@ -26,52 +21,120 @@ interface CreateTeacherDialogProps {
 }
 
 const subjectOptions = [
-  'Mathematics',
-  'Science',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'English',
-  'Hindi',
-  'Social Studies',
-  'History',
-  'Geography',
-  'Computer Science',
-  'Physical Education',
-  'Arts',
-  'Music',
+  'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology',
+  'English', 'Hindi', 'Social Studies', 'History', 'Geography',
+  'Computer Science', 'Physical Education', 'Arts', 'Music',
 ];
 
 const initialFormData = {
-  full_name: '',
-  email: '',
-  password: '',
-  phone: '',
-  employee_id: '',
-  subject: '',
+  full_name: '', email: '', password: '', phone: '', employee_id: '', subject: '',
 };
 
-export const CreateTeacherDialog = memo(function CreateTeacherDialog({
-  open,
-  onOpenChange,
-  onSuccess,
-}: CreateTeacherDialogProps) {
+function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose }: {
+  formData: typeof initialFormData;
+  onChange: (field: string, value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isCreating: boolean;
+  onClose: () => void;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 px-4 sm:px-6 pb-6">
+      {/* Name & Employee ID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Full Name <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={formData.full_name} onChange={(e) => onChange('full_name', e.target.value)} placeholder="Enter teacher name" className="pl-10 h-11" required />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Employee ID</Label>
+          <div className="relative">
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={formData.employee_id} onChange={(e) => onChange('employee_id', e.target.value.toUpperCase())} placeholder="EMPXXX" className="pl-10 h-11" />
+          </div>
+        </div>
+      </div>
+
+      {/* Email & Password */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Email <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input type="email" value={formData.email} onChange={(e) => onChange('email', e.target.value)} placeholder="teacher@school.edu" className="pl-10 h-11" required />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Password <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input type={showPassword ? 'text' : 'password'} value={formData.password} onChange={(e) => onChange('password', e.target.value)} placeholder="Min 8 characters" className="pl-10 pr-10 h-11" minLength={8} required />
+            <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">Min 8 chars · uppercase · lowercase · number · special</p>
+        </div>
+      </div>
+
+      {/* Phone */}
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Phone Number</Label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input type="tel" value={formData.phone} onChange={(e) => onChange('phone', e.target.value)} placeholder="+91 9876543210" className="pl-10 h-11" />
+        </div>
+      </div>
+
+      {/* Subject - Chip Selector */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Primary Subject</Label>
+        <div className="flex flex-wrap gap-2">
+          {subjectOptions.map(sub => (
+            <button
+              key={sub}
+              type="button"
+              onClick={() => onChange('subject', formData.subject === sub ? '' : sub)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+                formData.subject === sub
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+              )}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-2 border-t">
+        <Button type="button" variant="outline" onClick={onClose} disabled={isCreating} className="flex-1 sm:flex-none">Cancel</Button>
+        <Button type="submit" disabled={isCreating} className="flex-1 sm:flex-none sm:ml-auto">
+          {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {isCreating ? 'Creating…' : 'Create Teacher'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export const CreateTeacherDialog = memo(function CreateTeacherDialog({ open, onOpenChange, onSuccess }: CreateTeacherDialogProps) {
   const [formData, setFormData] = useState(initialFormData);
   const { createUser, isCreating } = useCreateSchoolUser();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
-  useEffect(() => {
-    if (open) {
-      setFormData(initialFormData);
-    }
-  }, [open]);
+  useEffect(() => { if (open) setFormData(initialFormData); }, [open]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user?.schoolId) {
-      return;
-    }
+    if (!user?.schoolId) return;
 
     const success = await createUser({
       email: formData.email,
@@ -84,110 +147,51 @@ export const CreateTeacherDialog = memo(function CreateTeacherDialog({
       subjects: formData.subject ? [formData.subject] : undefined,
     });
 
-    if (success) {
-      onOpenChange(false);
-      onSuccess();
-    }
+    if (success) { onOpenChange(false); onSuccess(); }
   }, [formData, user?.schoolId, createUser, onOpenChange, onSuccess]);
 
   const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
+  const headerContent = (
+    <div className="flex items-center gap-3 px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+        <User className="w-5 h-5 text-primary" />
+      </div>
+      <div>
+        <p className="text-lg font-semibold">Add New Teacher</p>
+        <p className="text-sm text-muted-foreground">Create a new teacher account</p>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90dvh]">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Add New Teacher</DrawerTitle>
+            <DrawerDescription>Create a new teacher account</DrawerDescription>
+          </DrawerHeader>
+          {headerContent}
+          <div className="overflow-y-auto">
+            <TeacherFormContent formData={formData} onChange={handleFieldChange} onSubmit={handleSubmit} isCreating={isCreating} onClose={() => onOpenChange(false)} />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto p-0">
+        <DialogHeader className="sr-only">
           <DialogTitle>Add New Teacher</DialogTitle>
-          <DialogDescription>
-            Create a new teacher account. They will receive login credentials.
-          </DialogDescription>
+          <DialogDescription>Create a new teacher account</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name *</Label>
-              <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) => handleFieldChange('full_name', e.target.value)}
-                placeholder="Enter teacher name"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="employee_id">Employee ID</Label>
-              <Input
-                id="employee_id"
-                value={formData.employee_id}
-                onChange={(e) => handleFieldChange('employee_id', e.target.value.toUpperCase())}
-                placeholder="EMPXXX"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleFieldChange('email', e.target.value)}
-                placeholder="teacher@school.edu"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleFieldChange('password', e.target.value)}
-                placeholder="Min 6 characters"
-                minLength={6}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleFieldChange('phone', e.target.value)}
-                placeholder="+91 9876543210"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subject">Primary Subject</Label>
-              <Select
-                value={formData.subject}
-                onValueChange={(value) => handleFieldChange('subject', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjectOptions.map(sub => (
-                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Teacher'}
-            </Button>
-          </div>
-        </form>
+        {headerContent}
+        <TeacherFormContent formData={formData} onChange={handleFieldChange} onSubmit={handleSubmit} isCreating={isCreating} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
