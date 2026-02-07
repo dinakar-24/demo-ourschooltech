@@ -22,7 +22,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [debugOtp, setDebugOtp] = useState('');
+  
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,26 +48,22 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         body: { email: email.trim().toLowerCase() },
       });
 
-      if (fnError) {
-        throw new Error(fnError.message);
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
+      if (fnError || data?.error) {
+        const msg = data?.error || fnError?.message || '';
+        if (msg.includes('not registered as a Super Admin')) {
+          throw new Error('This email is not authorized for Super Admin access. Please check your email or contact support@ourschooltech.in');
+        }
+        if (msg.includes('Email service not configured')) {
+          throw new Error('Unable to send OTP at the moment. Please try again later or contact support@ourschooltech.in');
+        }
+        throw new Error('Something went wrong. Please try again or contact support@ourschooltech.in');
       }
 
       setSuccess('OTP sent to your email');
       setNeedsPasswordSetup(data.needsPasswordSetup);
-      
-      // For development - show OTP in console
-      if (data.debugOtp) {
-        console.log('Debug OTP:', data.debugOtp);
-        setDebugOtp(data.debugOtp);
-      }
-      
       setStep('otp_password');
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP');
+      setError(err.message || 'Something went wrong. Please try again or contact support@ourschooltech.in');
     } finally {
       setLoading(false);
     }
@@ -121,7 +117,6 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
     setError('');
 
     try {
-      // Verify OTP and create/update password if needed
       const { data, error: fnError } = await supabase.functions.invoke('verify-super-admin-otp', {
         body: { 
           email: email.trim().toLowerCase(), 
@@ -130,12 +125,15 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         },
       });
 
-      if (fnError) {
-        throw new Error(fnError.message);
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
+      if (fnError || data?.error) {
+        const msg = data?.error || fnError?.message || '';
+        if (msg.includes('Invalid or expired OTP')) {
+          throw new Error('The OTP you entered is incorrect or has expired. Please request a new one.');
+        }
+        if (msg.includes('Password is required')) {
+          throw new Error('Please create a password for your account.');
+        }
+        throw new Error('Verification failed. Please try again or contact support@ourschooltech.in');
       }
 
       // Now login with password
@@ -145,12 +143,15 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
       });
 
       if (signInError) {
-        throw new Error(signInError.message);
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error('Incorrect password. Please try again.');
+        }
+        throw new Error('Login failed. Please try again or contact support@ourschooltech.in');
       }
 
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -211,13 +212,8 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
         </div>
       )}
 
-      {/* Development OTP display */}
-      {debugOtp && step === 'otp_password' && (
-        <div className="p-3 rounded-xl bg-warning/10 border border-warning/30 text-warning-foreground text-sm">
-          <p className="font-medium">Development Mode</p>
-          <p className="font-mono text-lg">{debugOtp}</p>
-        </div>
-      )}
+
+
 
       {/* Step 1: Email */}
       {step === 'email' && (
