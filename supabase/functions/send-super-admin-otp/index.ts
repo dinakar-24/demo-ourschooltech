@@ -143,7 +143,7 @@ serve(async (req) => {
     });
 
     await client.send({
-      from: "OurSchoolTech <admin@ourschooltech.com>",
+      from: "OurSchoolTech <noreply@ourschooltech.com>",
       to: email.toLowerCase(),
       subject: "Your Super Admin Login OTP",
       html: `
