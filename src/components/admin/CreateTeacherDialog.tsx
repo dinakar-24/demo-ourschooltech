@@ -1,4 +1,5 @@
 import { useState, useCallback, memo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,14 @@ const subjectOptions = [
 const initialFormData = {
   full_name: '', email: '', password: '', phone: '', employee_id: '', subject: '',
 };
+
+const passwordRules = [
+  { label: 'Min 8 chars', test: (p: string) => p.length >= 8 },
+  { label: 'Uppercase', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Lowercase', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Number', test: (p: string) => /[0-9]/.test(p) },
+  { label: 'Special char', test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+];
 
 function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose }: {
   formData: typeof initialFormData;
@@ -78,7 +87,17 @@ function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose 
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">Min 8 chars · uppercase · lowercase · number · special</p>
+          {formData.password ? (
+            <div className="flex flex-wrap gap-1.5">
+              {passwordRules.map(rule => (
+                <span key={rule.label} className={cn("text-xs px-2 py-0.5 rounded-full border", rule.test(formData.password) ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted/50 text-muted-foreground border-border")}>
+                  {rule.test(formData.password) ? '✓' : '○'} {rule.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Min 8 chars · uppercase · lowercase · number · special</p>
+          )}
         </div>
       </div>
 
@@ -141,7 +160,8 @@ export const CreateTeacherDialog = memo(function CreateTeacherDialog({ open, onO
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId) return;
-
+    const failedRule = passwordRules.find(r => !r.test(formData.password));
+    if (failedRule) { toast.error(`Password: ${failedRule.label} required`); return; }
     const success = await createUser({
       email: formData.email,
       password: formData.password,
