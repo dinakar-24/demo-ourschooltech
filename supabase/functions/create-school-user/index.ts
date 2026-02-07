@@ -12,7 +12,7 @@ interface CreateUserRequest {
   phone?: string;
   role: "super_admin" | "school_admin" | "teacher" | "parent" | "student";
   school_id: string;
-  // Additional fields based on role
+  avatar_url?: string; // profile photo
   employee_id?: string; // for teachers
   subjects?: string[]; // for teachers
   classes?: string[]; // for teachers
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: CreateUserRequest = await req.json();
-    const { email, password, full_name, phone, role, school_id, employee_id, subjects, classes, class_name, section, admission_number } = body;
+    const { email, password, full_name, phone, role, school_id, employee_id, subjects, classes, class_name, section, admission_number, avatar_url } = body;
 
     // Validate required fields
     if (!email || !password || !full_name || !role || !school_id) {
@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
         section: section || null,
         employee_id: employee_id || null,
         subjects: subjects || null,
+        avatar_url: avatar_url || null,
       })
       .eq("id", userId);
 

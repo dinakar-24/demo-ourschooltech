@@ -33,6 +33,7 @@ import {
   Users,
   Loader2,
 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,8 +178,13 @@ export default function TeachersPage() {
                   <div key={teacher.id} className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                          {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        <div className="w-10 h-10 shrink-0">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={(teacher as any).profiles?.avatar_url} alt={teacher.full_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                              {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{teacher.full_name}</p>
@@ -245,9 +251,12 @@ export default function TeachersPage() {
                       <TableCell className="font-medium font-mono">{teacher.employee_id}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary flex-shrink-0">
-                            {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </div>
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            <AvatarImage src={(teacher as any).profiles?.avatar_url} alt={teacher.full_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                              {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{teacher.full_name}</p>
                             <p className="text-xs text-muted-foreground truncate">{teacher.email}</p>

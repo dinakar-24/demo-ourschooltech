@@ -177,6 +177,7 @@ export const CreateTeacherDialog = memo(function CreateTeacherDialog({ open, onO
       school_id: user.schoolId,
       employee_id: formData.employee_id || undefined,
       subjects: formData.subject ? [formData.subject] : undefined,
+      avatar_url: formData.avatar_url || undefined,
     });
 
     if (success) { onOpenChange(false); onSuccess(); }
