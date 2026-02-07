@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,20 @@ import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, School, 
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
 import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 export default function SchoolsPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: schools = [], isLoading } = useSchools({ search: searchQuery });
+  const pagination = usePagination(25);
+
+  useEffect(() => {
+    pagination.resetPage();
+  }, [searchQuery]);
+
+  const { data: result, isLoading } = useSchools({ search: searchQuery, page: pagination.page, pageSize: pagination.pageSize });
+  const schools = result?.data || [];
+  const totalCount = result?.totalCount || 0;
   const createSchool = useCreateSchool();
   const updateSchool = useUpdateSchool();
   const deleteSchoolMutation = useDeleteSchool();
@@ -125,6 +135,14 @@ export default function SchoolsPage() {
                 </div>
               </>
             )}
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={isLoading}
+            />
           </CardContent>
         </Card>
 

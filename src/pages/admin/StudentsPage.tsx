@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,13 +49,21 @@ import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent } from
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 export default function StudentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All Classes');
   const [selectedSection, setSelectedSection] = useState('All Sections');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const pagination = usePagination(25);
   
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    pagination.resetPage();
+  }, [searchQuery, selectedClass, selectedSection]);
+
   // Form state
   const [formData, setFormData] = useState({
     full_name: '',
@@ -71,17 +79,20 @@ export default function StudentsPage() {
   });
 
   // Fetch data
-  const { data: students, isLoading: studentsLoading } = useStudents({
+  const { data: result, isLoading: studentsLoading } = useStudents({
     className: selectedClass,
     section: selectedSection,
     search: searchQuery,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
   });
+  const students = result?.data || [];
+  const totalCount = result?.totalCount || 0;
   const { data: stats, isLoading: statsLoading } = useStudentStats();
   const { data: classes } = useClasses();
   const createStudent = useCreateStudent();
   const deleteStudent = useDeleteStudent();
 
-  // Get unique class names and sections
   const classNames = ['All Classes', ...(classes?.map(c => c.name) || [])];
   const sections = ['All Sections', 'A', 'B', 'C', 'D'];
 
@@ -370,14 +381,14 @@ export default function StudentsPage() {
                       <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                     </TableRow>
                   ))
-                ) : students?.length === 0 ? (
+                ) : students.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No students found. Add your first student to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  students?.map((student) => (
+                  students.map((student) => (
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">{student.admission_number}</TableCell>
                       <TableCell>
@@ -435,6 +446,14 @@ export default function StudentsPage() {
                 )}
               </TableBody>
             </Table>
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={studentsLoading}
+            />
           </CardContent>
         </Card>
       </div>

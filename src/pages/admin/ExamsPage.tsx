@@ -51,7 +51,8 @@ const SUBJECTS = [
 ];
 
 export default function ExamsPage() {
-  const { data: exams = [], isLoading } = useExams();
+  const { data: examsResult, isLoading } = useExams();
+  const exams = examsResult?.data || [];
   const { data: stats } = useExamStats();
   const { data: classes = [] } = useClasses();
   const createExam = useCreateExam();

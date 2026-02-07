@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getSupabaseRange } from './usePagination';
 
 export interface Teacher {
   id: string;
@@ -21,41 +22,51 @@ export interface Teacher {
 interface TeacherFilters {
   search?: string;
   subject?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedTeachers {
+  data: Teacher[];
+  totalCount: number;
 }
 
 export function useTeachers(filters?: TeacherFilters) {
   const { user } = useAuth();
+  const page = filters?.page || 1;
+  const pageSize = filters?.pageSize || 25;
 
   return useQuery({
     queryKey: ['teachers', user?.schoolId, filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaginatedTeachers> => {
       if (!user?.schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('teachers')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('school_id', user.schoolId)
         .order('full_name', { ascending: true });
 
-      // Server-side search filtering
       if (filters?.search) {
         query = query.or(
           `full_name.ilike.%${filters.search}%,employee_id.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
         );
       }
 
-      // Subject filtering (using contains for array)
       if (filters?.subject && filters.subject !== 'All Subjects') {
         query = query.contains('subjects', [filters.subject]);
       }
 
-      const { data, error } = await query;
+      const { from, to } = getSupabaseRange(page, pageSize);
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as Teacher[];
+      return { data: (data || []) as Teacher[], totalCount: count || 0 };
     },
     enabled: !!user?.schoolId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -67,7 +78,6 @@ export function useTeacherStats() {
     queryFn: async () => {
       if (!user?.schoolId) throw new Error('No school ID');
 
-      // Use count aggregates instead of fetching all records
       const { count: total, error: totalError } = await supabase
         .from('teachers')
         .select('*', { count: 'exact', head: true })
@@ -75,9 +85,7 @@ export function useTeacherStats() {
 
       if (totalError) throw totalError;
 
-      return {
-        total: total || 0,
-      };
+      return { total: total || 0 };
     },
     enabled: !!user?.schoolId,
     staleTime: 5 * 60 * 1000,
@@ -99,7 +107,6 @@ export function useTeacherSubjects() {
 
       if (error) throw error;
 
-      // Extract unique subjects from all teachers
       const allSubjects = new Set<string>();
       data?.forEach(t => {
         t.subjects?.forEach(s => allSubjects.add(s));
@@ -108,7 +115,7 @@ export function useTeacherSubjects() {
       return ['All Subjects', ...Array.from(allSubjects).sort()];
     },
     enabled: !!user?.schoolId,
-    staleTime: 10 * 60 * 1000, // 10 minutes - subjects don't change often
+    staleTime: 10 * 60 * 1000,
   });
 }
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseRange } from './usePagination';
 
 export interface FeeRecord {
   id: string;
@@ -36,42 +37,46 @@ interface FeeFilters {
   feeType?: string;
   className?: string;
   search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedFees {
+  data: FeeRecord[];
+  totalCount: number;
 }
 
 export function useFees(filters?: FeeFilters) {
   const { user } = useAuth();
+  const page = filters?.page || 1;
+  const pageSize = filters?.pageSize || 25;
 
   return useQuery({
     queryKey: ['fees', user?.schoolId, filters],
-    queryFn: async () => {
-      if (!user?.schoolId) return [];
+    queryFn: async (): Promise<PaginatedFees> => {
+      if (!user?.schoolId) return { data: [], totalCount: 0 };
 
-      // Build query with server-side filtering
       let query = supabase
         .from('fees')
         .select(`
           *,
           student:students!inner(id, full_name, class_name, section, admission_number)
-        `)
+        `, { count: 'exact' })
         .eq('school_id', user.schoolId)
         .order('due_date', { ascending: false });
 
-      // Server-side status filter
       if (filters?.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
       }
 
-      // Server-side fee type filter
       if (filters?.feeType && filters.feeType !== 'All Types') {
         query = query.eq('fee_type', filters.feeType);
       }
 
-      // Server-side class filter using inner join
       if (filters?.className && filters.className !== 'all') {
         query = query.eq('student.class_name', filters.className);
       }
 
-      // Server-side search
       if (filters?.search) {
         query = query.or(
           `student.full_name.ilike.%${filters.search}%,student.admission_number.ilike.%${filters.search}%`,
@@ -79,10 +84,13 @@ export function useFees(filters?: FeeFilters) {
         );
       }
 
-      const { data, error } = await query;
+      const { from, to } = getSupabaseRange(page, pageSize);
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as FeeRecord[];
+      return { data: (data || []) as FeeRecord[], totalCount: count || 0 };
     },
     enabled: !!user?.schoolId,
     staleTime: 2 * 60 * 1000,
@@ -101,29 +109,11 @@ export function useFeeStats() {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Use aggregate queries for better performance
       const [totalResult, collectedResult, pendingResult, overdueResult] = await Promise.all([
-        supabase
-          .from('fees')
-          .select('amount')
-          .eq('school_id', user.schoolId),
-        supabase
-          .from('fees')
-          .select('amount')
-          .eq('school_id', user.schoolId)
-          .eq('status', 'paid'),
-        supabase
-          .from('fees')
-          .select('amount')
-          .eq('school_id', user.schoolId)
-          .eq('status', 'pending')
-          .gte('due_date', today),
-        supabase
-          .from('fees')
-          .select('amount')
-          .eq('school_id', user.schoolId)
-          .eq('status', 'pending')
-          .lt('due_date', today),
+        supabase.from('fees').select('amount').eq('school_id', user.schoolId),
+        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'paid'),
+        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'pending').gte('due_date', today),
+        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'pending').lt('due_date', today),
       ]);
 
       const sumAmounts = (data: { amount: number }[] | null) => 
