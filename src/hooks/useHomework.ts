@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 
 export interface Homework {
@@ -30,12 +31,12 @@ export function useHomework(filters?: {
   sectionId?: string;
   subject?: string;
 }) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['homework', user?.schoolId, filters],
+    queryKey: ['homework', schoolId, filters],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('homework')
@@ -44,7 +45,7 @@ export function useHomework(filters?: {
           class:classes(id, name),
           section:sections(id, name)
         `)
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('due_date', { ascending: true });
 
       if (filters?.classId) {
@@ -64,7 +65,7 @@ export function useHomework(filters?: {
       if (error) throw error;
       return data as Homework[];
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
   });
 }
 
@@ -96,6 +97,7 @@ export function useTeacherHomework() {
 export function useCreateHomework() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (homeworkData: {
@@ -107,13 +109,13 @@ export function useCreateHomework() {
       due_date: string;
       attachments?: string[];
     }) => {
-      if (!user?.schoolId || !user?.id) throw new Error('No user context');
+      if (!schoolId || !user?.id) throw new Error('No user context');
 
       const { data, error } = await supabase
         .from('homework')
         .insert({
           ...homeworkData,
-          school_id: user.schoolId,
+          school_id: schoolId,
           assigned_by: user.id,
         })
         .select()

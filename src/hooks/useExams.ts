@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
 
@@ -51,19 +52,19 @@ export interface PaginatedExams {
 }
 
 export function useExams(filters?: ExamFilters) {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['exams', school?.id, filters],
+    queryKey: ['exams', schoolId, filters],
     queryFn: async (): Promise<PaginatedExams> => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('exams')
         .select('*', { count: 'exact' })
-        .eq('school_id', school.id)
+        .eq('school_id', schoolId)
         .order('exam_date', { ascending: false });
 
       if (filters?.className && filters.className !== 'All Classes') {
@@ -89,18 +90,18 @@ export function useExams(filters?: ExamFilters) {
       if (error) throw error;
       return { data: (data || []) as Exam[], totalCount: count || 0 };
     },
-    enabled: !!school?.id,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useExamStats() {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['exam-stats', school?.id],
+    queryKey: ['exam-stats', schoolId],
     queryFn: async () => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const today = new Date().toISOString().split('T')[0];
       const monthStart = new Date();
@@ -111,16 +112,16 @@ export function useExamStats() {
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id),
+          .eq('school_id', schoolId),
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
+          .eq('school_id', schoolId)
           .gte('exam_date', today),
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
+          .eq('school_id', schoolId)
           .gte('exam_date', monthStartStr),
       ]);
 
@@ -131,22 +132,22 @@ export function useExamStats() {
         thisMonth: thisMonthResult.count || 0,
       };
     },
-    enabled: !!school?.id,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCreateExam() {
   const queryClient = useQueryClient();
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (formData: ExamFormData) => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('exams')
-        .insert({ ...formData, school_id: school.id })
+        .insert({ ...formData, school_id: schoolId })
         .select()
         .single();
 

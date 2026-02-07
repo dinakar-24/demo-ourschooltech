@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CreditCard, ClipboardList, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 
 interface PendingData {
   pendingFees: number;
@@ -10,16 +10,16 @@ interface PendingData {
 }
 
 export function PendingTasks() {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const [data, setData] = useState<PendingData>({ pendingFees: 0, pendingExams: 0 });
 
   useEffect(() => {
-    if (school?.id) fetchData();
-  }, [school?.id]);
+    if (schoolId) fetchData();
+  }, [schoolId]);
 
   const fetchData = async () => {
     const [feesRes] = await Promise.all([
-      supabase.from('fees').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('fees').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('status', 'pending'),
     ]);
     
     setData({

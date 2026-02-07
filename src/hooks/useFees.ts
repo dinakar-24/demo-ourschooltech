@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { getSupabaseRange } from './usePagination';
 
 export interface FeeRecord {
@@ -47,14 +48,14 @@ export interface PaginatedFees {
 }
 
 export function useFees(filters?: FeeFilters) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['fees', user?.schoolId, filters],
+    queryKey: ['fees', schoolId, filters],
     queryFn: async (): Promise<PaginatedFees> => {
-      if (!user?.schoolId) return { data: [], totalCount: 0 };
+      if (!schoolId) return { data: [], totalCount: 0 };
 
       let query = supabase
         .from('fees')
@@ -62,7 +63,7 @@ export function useFees(filters?: FeeFilters) {
           *,
           student:students!inner(id, full_name, class_name, section, admission_number)
         `, { count: 'exact' })
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('due_date', { ascending: false });
 
       if (filters?.status && filters.status !== 'all') {
@@ -92,28 +93,28 @@ export function useFees(filters?: FeeFilters) {
       if (error) throw error;
       return { data: (data || []) as FeeRecord[], totalCount: count || 0 };
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,
   });
 }
 
 export function useFeeStats() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['fee-stats', user?.schoolId],
+    queryKey: ['fee-stats', schoolId],
     queryFn: async (): Promise<FeeStats> => {
-      if (!user?.schoolId) {
+      if (!schoolId) {
         return { totalDue: 0, collected: 0, pending: 0, overdue: 0 };
       }
 
       const today = new Date().toISOString().split('T')[0];
 
       const [totalResult, collectedResult, pendingResult, overdueResult] = await Promise.all([
-        supabase.from('fees').select('amount').eq('school_id', user.schoolId),
-        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'paid'),
-        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'pending').gte('due_date', today),
-        supabase.from('fees').select('amount').eq('school_id', user.schoolId).eq('status', 'pending').lt('due_date', today),
+        supabase.from('fees').select('amount').eq('school_id', schoolId),
+        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'paid'),
+        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'pending').gte('due_date', today),
+        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'pending').lt('due_date', today),
       ]);
 
       const sumAmounts = (data: { amount: number }[] | null) => 
@@ -126,14 +127,14 @@ export function useFeeStats() {
         overdue: sumAmounts(overdueResult.data),
       };
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useRecordPayment() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async ({
@@ -154,7 +155,7 @@ export function useRecordPayment() {
           transaction_id: transactionId || null,
         })
         .eq('id', feeId)
-        .eq('school_id', user?.schoolId)
+        .eq('school_id', schoolId)
         .select()
         .single();
 
@@ -170,7 +171,7 @@ export function useRecordPayment() {
 
 export function useCreateFee() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (feeData: {
@@ -179,13 +180,13 @@ export function useCreateFee() {
       amount: number;
       due_date: string;
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('fees')
         .insert({
           ...feeData,
-          school_id: user.schoolId,
+          school_id: schoolId,
           status: 'pending',
         })
         .select()

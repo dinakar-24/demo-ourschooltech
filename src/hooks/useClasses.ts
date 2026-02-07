@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 
 export interface Section {
@@ -29,50 +30,45 @@ export interface ClassWithSections {
 }
 
 export function useClasses() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['classes', user?.schoolId],
+    queryKey: ['classes', schoolId],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // Fetch classes
       const { data: classes, error: classesError } = await supabase
         .from('classes')
         .select('*')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('display_order', { ascending: true });
 
       if (classesError) throw classesError;
 
-      // Fetch sections with teacher info
       const { data: sections, error: sectionsError } = await supabase
         .from('sections')
         .select(`
           *,
           teacher:teachers(id, full_name)
         `)
-        .eq('school_id', user.schoolId);
+        .eq('school_id', schoolId);
 
       if (sectionsError) throw sectionsError;
 
-      // Fetch student counts per section
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('class_name, section')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('status', 'active');
 
       if (studentsError) throw studentsError;
 
-      // Count students per class/section
       const studentCounts: Record<string, number> = {};
       students?.forEach(s => {
         const key = `${s.class_name}-${s.section}`;
         studentCounts[key] = (studentCounts[key] || 0) + 1;
       });
 
-      // Map sections to classes
       const classesWithSections: ClassWithSections[] = (classes || []).map(cls => ({
         ...cls,
         sections: (sections || [])
@@ -85,13 +81,13 @@ export function useClasses() {
 
       return classesWithSections;
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
   });
 }
 
 export function useCreateClass() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async ({ name, displayOrder, sections }: { 
@@ -99,13 +95,12 @@ export function useCreateClass() {
       displayOrder?: number;
       sections?: string[];
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // Create class
       const { data: newClass, error: classError } = await supabase
         .from('classes')
         .insert({
-          school_id: user.schoolId,
+          school_id: schoolId,
           name,
           display_order: displayOrder || 0,
         })
@@ -114,11 +109,10 @@ export function useCreateClass() {
 
       if (classError) throw classError;
 
-      // Create sections if provided
       if (sections && sections.length > 0) {
         const sectionsToInsert = sections.map(sectionName => ({
           class_id: newClass.id,
-          school_id: user.schoolId,
+          school_id: schoolId,
           name: sectionName,
         }));
 
@@ -143,7 +137,7 @@ export function useCreateClass() {
 
 export function useCreateSection() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async ({ classId, name, classTeacherId }: { 
@@ -151,13 +145,13 @@ export function useCreateSection() {
       name: string;
       classTeacherId?: string;
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('sections')
         .insert({
           class_id: classId,
-          school_id: user.schoolId,
+          school_id: schoolId,
           name,
           class_teacher_id: classTeacherId || null,
         })

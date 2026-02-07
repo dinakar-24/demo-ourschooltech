@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
 
@@ -46,18 +47,19 @@ export function useStudents(filters?: {
   pageSize?: number;
 }) {
   const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['students', user?.schoolId, filters],
+    queryKey: ['students', schoolId, filters],
     queryFn: async (): Promise<PaginatedStudents> => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('students')
         .select('*', { count: 'exact' })
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 
       if (filters?.className && filters.className !== 'All Classes') {
@@ -84,18 +86,18 @@ export function useStudents(filters?: {
       if (error) throw error;
       return { data: (data || []) as Student[], totalCount: count || 0 };
     },
-    enabled: !!user?.schoolId,
-    staleTime: 2 * 60 * 1000,
+    enabled: !!schoolId,
   });
 }
 
 export function useStudentStats() {
   const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['student-stats', user?.schoolId],
+    queryKey: ['student-stats', schoolId],
     queryFn: async (): Promise<StudentStats> => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -104,16 +106,16 @@ export function useStudentStats() {
         supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', user.schoolId),
+          .eq('school_id', schoolId),
         supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', user.schoolId)
+          .eq('school_id', schoolId)
           .eq('status', 'active'),
         supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
-          .eq('school_id', user.schoolId)
+          .eq('school_id', schoolId)
           .gte('created_at', startOfMonth),
       ]);
 
@@ -127,14 +129,14 @@ export function useStudentStats() {
         newThisMonth: newResult.count || 0,
       };
     },
-    enabled: !!user?.schoolId,
-    staleTime: 5 * 60 * 1000,
+    enabled: !!schoolId,
   });
 }
 
 export function useCreateStudent() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (studentData: {
@@ -150,13 +152,13 @@ export function useCreateStudent() {
       parent_email?: string;
       address?: string;
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('students')
         .insert({
           ...studentData,
-          school_id: user.schoolId,
+          school_id: schoolId,
           status: 'active',
         })
         .select()

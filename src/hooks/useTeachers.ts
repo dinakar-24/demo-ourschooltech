@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
 
@@ -32,19 +33,19 @@ export interface PaginatedTeachers {
 }
 
 export function useTeachers(filters?: TeacherFilters) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['teachers', user?.schoolId, filters],
+    queryKey: ['teachers', schoolId, filters],
     queryFn: async (): Promise<PaginatedTeachers> => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('teachers')
         .select('*', { count: 'exact' })
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 
       if (filters?.search) {
@@ -65,45 +66,45 @@ export function useTeachers(filters?: TeacherFilters) {
       if (error) throw error;
       return { data: (data || []) as Teacher[], totalCount: count || 0 };
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useTeacherStats() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['teacher-stats', user?.schoolId],
+    queryKey: ['teacher-stats', schoolId],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { count: total, error: totalError } = await supabase
         .from('teachers')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', user.schoolId);
+        .eq('school_id', schoolId);
 
       if (totalError) throw totalError;
 
       return { total: total || 0 };
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useTeacherSubjects() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['teacher-subjects', user?.schoolId],
+    queryKey: ['teacher-subjects', schoolId],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('teachers')
         .select('subjects')
-        .eq('school_id', user.schoolId);
+        .eq('school_id', schoolId);
 
       if (error) throw error;
 
@@ -114,14 +115,14 @@ export function useTeacherSubjects() {
 
       return ['All Subjects', ...Array.from(allSubjects).sort()];
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
     staleTime: 10 * 60 * 1000,
   });
 }
 
 export function useCreateTeacher() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (teacherData: {
@@ -134,13 +135,13 @@ export function useCreateTeacher() {
       qualification?: string;
       joining_date?: string;
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('teachers')
         .insert({
           ...teacherData,
-          school_id: user.schoolId,
+          school_id: schoolId,
         })
         .select()
         .single();
