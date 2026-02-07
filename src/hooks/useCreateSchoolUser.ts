@@ -11,6 +11,7 @@ interface CreateUserData {
   phone?: string;
   role: UserRole;
   school_id: string;
+  avatar_url?: string;
   employee_id?: string;
   subjects?: string[];
   classes?: string[];
