@@ -186,9 +186,13 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
           "flex items-center gap-3",
           isCollapsed && "justify-center"
         )}>
-          <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-medium text-sidebar-accent-foreground">
-            {user?.name.split(' ').map(n => n[0]).join('')}
-          </div>
+          {displaySchoolLogo ? (
+            <img src={displaySchoolLogo} alt={user?.name || 'User'} className="w-9 h-9 rounded-full object-cover" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-medium text-sidebar-accent-foreground">
+              {user?.name.split(' ').map(n => n[0]).join('')}
+            </div>
+          )}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user?.name}</p>
