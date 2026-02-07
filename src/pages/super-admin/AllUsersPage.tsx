@@ -8,11 +8,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Mail, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, UserX } from 'lucide-react';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
+import { UserCard } from '@/components/super-admin/UserCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllUsers } from '@/hooks/useAllUsers';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const getRoleBadgeVariant = (role: string): 'default' | 'destructive' | 'outline' | 'secondary' => {
   switch (role) {
@@ -37,6 +39,7 @@ const ROLE_FILTERS = [
 
 export default function AllUsersPage() {
   const { user: currentUser } = useAuth();
+  const isMobile = useIsMobile();
   const [searchInput, setSearchInput] = useState('');
   const [activeRoleFilter, setActiveRoleFilter] = useState<string | null>(null);
   const [disabledUsers, setDisabledUsers] = useState<Set<string>>(new Set());
@@ -93,7 +96,7 @@ export default function AllUsersPage() {
         </div>
 
         {/* Role Filter Chips */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 -mx-1 px-1 overflow-x-auto pb-1">
           {ROLE_FILTERS.map((filter) => {
             const Icon = filter.icon;
             const isActive = activeRoleFilter === filter.key;
@@ -103,17 +106,18 @@ export default function AllUsersPage() {
                 key={filter.key ?? 'all'}
                 onClick={() => handleRoleFilterChange(filter.key)}
                 className={`
-                  inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all
+                  inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium border transition-all whitespace-nowrap shrink-0
                   ${isActive
                     ? `${filter.color} ring-2 ring-offset-1 ring-current shadow-sm`
                     : 'bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground'
                   }
                 `}
               >
-                <Icon className="w-3.5 h-3.5" />
-                {filter.label}
+                <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">{filter.label}</span>
+                <span className="sm:hidden">{filter.label.split(' ').pop()}</span>
                 <span className={`
-                  inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold
+                  inline-flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full text-[10px] sm:text-xs font-semibold
                   ${isActive ? 'bg-background/50' : 'bg-muted'}
                 `}>
                   {count}
@@ -125,8 +129,8 @@ export default function AllUsersPage() {
 
         {/* Users Table */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Users className="w-5 h-5" />
               {activeRoleFilter
                 ? `${ROLE_FILTERS.find(f => f.key === activeRoleFilter)?.label || ''} Users`
@@ -149,73 +153,88 @@ export default function AllUsersPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead>School</TableHead>
-                        <TableHead className="w-12">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                                {user.full_name.split(' ').map((n) => n[0]).join('')}
-                              </div>
-                              <span className="font-medium">{user.full_name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Mail className="w-3 h-3" />
-                              {user.email}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {user.roles.length > 0 ? (
-                                user.roles.map((role) => (
-                                  <Badge key={role} variant={getRoleBadgeVariant(role)}>
-                                    {role.replace('_', ' ')}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-muted-foreground text-sm">No role</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {user.school_name ? (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Building2 className="w-3 h-3" />
-                                {user.school_name}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <UserActionsMenu
-                              userId={user.id}
-                              userName={user.full_name}
-                              userEmail={user.email}
-                              isDisabled={disabledUsers.has(user.id)}
-                              isSelf={currentUser?.id === user.id}
-                              onActionComplete={handleActionComplete}
-                              currentFullName={user.full_name}
-                            />
-                          </TableCell>
+                {/* Mobile Card Layout */}
+                {isMobile ? (
+                  <div className="divide-y px-4 pb-2">
+                    {users.map((user) => (
+                      <div key={user.id} className="py-3 first:pt-0">
+                        <UserCard
+                          user={user}
+                          isDisabled={disabledUsers.has(user.id)}
+                          isSelf={currentUser?.id === user.id}
+                          onActionComplete={handleActionComplete}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Desktop/Tablet Table */
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Roles</TableHead>
+                          <TableHead>School</TableHead>
+                          <TableHead className="w-12">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                                  {user.full_name.split(' ').map((n) => n[0]).join('')}
+                                </div>
+                                <span className="font-medium">{user.full_name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Mail className="w-3 h-3" />{user.email}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {user.roles.length > 0 ? (
+                                  user.roles.map((role) => (
+                                    <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                                      {role.replace('_', ' ')}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">No role</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {user.school_name ? (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Building2 className="w-3 h-3" />{user.school_name}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <UserActionsMenu
+                                userId={user.id}
+                                userName={user.full_name}
+                                userEmail={user.email}
+                                isDisabled={disabledUsers.has(user.id)}
+                                isSelf={currentUser?.id === user.id}
+                                onActionComplete={handleActionComplete}
+                                currentFullName={user.full_name}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
                 <PaginationControls
                   page={pagination.page}
                   pageSize={pagination.pageSize}
