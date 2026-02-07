@@ -789,6 +789,8 @@ export type Database = {
           academic_year_id: string | null
           address: string | null
           admission_number: string
+          alternate_phone: string | null
+          blood_group: string | null
           class_name: string
           created_at: string
           date_of_birth: string | null
@@ -809,6 +811,8 @@ export type Database = {
           academic_year_id?: string | null
           address?: string | null
           admission_number: string
+          alternate_phone?: string | null
+          blood_group?: string | null
           class_name: string
           created_at?: string
           date_of_birth?: string | null
@@ -829,6 +833,8 @@ export type Database = {
           academic_year_id?: string | null
           address?: string | null
           admission_number?: string
+          alternate_phone?: string | null
+          blood_group?: string | null
           class_name?: string
           created_at?: string
           date_of_birth?: string | null

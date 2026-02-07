@@ -149,8 +149,10 @@ export function useCreateStudent() {
       date_of_birth?: string;
       parent_name?: string;
       parent_phone?: string;
+      alternate_phone?: string;
       parent_email?: string;
       address?: string;
+      blood_group?: string;
     }) => {
       if (!schoolId) throw new Error('No school ID');
 

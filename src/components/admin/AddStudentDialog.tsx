@@ -8,7 +8,7 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Plus, Loader2, User, Hash, Phone, Mail, Calendar } from 'lucide-react';
+import { Plus, Loader2, User, Hash, Phone, Mail, Calendar, Droplets } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,9 @@ interface AddStudentDialogProps {
     date_of_birth: string;
     parent_name: string;
     parent_phone: string;
+    alternate_phone: string;
     parent_email: string;
+    blood_group: string;
   };
   onInputChange: (field: string, value: string) => void;
   onSubmit: () => void;
@@ -39,13 +41,56 @@ const GENDERS = [
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
 ];
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+function ChipSelectorWithInput({ 
+  options, value, onChange, label, required, placeholder 
+}: { 
+  options: { value: string; label: string }[]; 
+  value: string; 
+  onChange: (v: string) => void; 
+  label: string; 
+  required?: boolean;
+  placeholder?: string;
+}) {
+  const isCustom = value !== '' && !options.some(o => o.value === value);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+              value === opt.value
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {placeholder && (
+        <Input
+          value={isCustom ? value : ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-10 mt-1"
+        />
+      )}
+    </div>
+  );
+}
 
 function ChipSelector({ 
-  options, 
-  value, 
-  onChange, 
-  label, 
-  required 
+  options, value, onChange, label, required 
 }: { 
   options: { value: string; label: string }[]; 
   value: string; 
@@ -63,7 +108,7 @@ function ChipSelector({
           <button
             key={opt.value}
             type="button"
-            onClick={() => onChange(opt.value)}
+            onClick={() => onChange(value === opt.value ? '' : opt.value)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
               value === opt.value
@@ -89,6 +134,7 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
 }) {
   const classOptions = (classes || []).map(c => ({ value: c.name, label: c.name }));
   const sectionOptions = SECTIONS.map(s => ({ value: s, label: s }));
+  const bloodGroupOptions = BLOOD_GROUPS.map(b => ({ value: b, label: b }));
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4 px-4 sm:px-6 pb-6">
@@ -98,67 +144,49 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
           <Label className="text-sm font-medium">Full Name <span className="text-destructive">*</span></Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.full_name}
-              onChange={(e) => onInputChange('full_name', e.target.value)}
-              placeholder="Enter student name"
-              className="pl-10 h-11"
-              required
-            />
+            <Input value={formData.full_name} onChange={(e) => onInputChange('full_name', e.target.value)} placeholder="Enter student name" className="pl-10 h-11" required />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Admission Number <span className="text-destructive">*</span></Label>
           <div className="relative">
             <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.admission_number}
-              onChange={(e) => onInputChange('admission_number', e.target.value)}
-              placeholder="ADM2024XXX"
-              className="pl-10 h-11"
-              required
-            />
+            <Input value={formData.admission_number} onChange={(e) => onInputChange('admission_number', e.target.value)} placeholder="ADM2024XXX" className="pl-10 h-11" required />
           </div>
         </div>
       </div>
 
-      {/* Class - Chip Selector */}
-      <ChipSelector
+      {/* Class - Chips + manual entry */}
+      <ChipSelectorWithInput
         label="Class"
         required
         options={classOptions}
         value={formData.class_name}
         onChange={(v) => onInputChange('class_name', v)}
+        placeholder="Or type class name manually"
       />
 
-      {/* Section - Chip Selector */}
-      <ChipSelector
+      {/* Section - Chips + manual entry */}
+      <ChipSelectorWithInput
         label="Section"
         required
         options={sectionOptions}
         value={formData.section}
         onChange={(v) => onInputChange('section', v)}
+        placeholder="Or type section manually"
       />
 
       {/* Roll Number & Gender */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Roll Number</Label>
-          <Input
-            type="number"
-            value={formData.roll_number}
-            onChange={(e) => onInputChange('roll_number', e.target.value)}
-            placeholder="Enter roll number"
-            className="h-11"
-          />
+          <Input type="number" value={formData.roll_number} onChange={(e) => onInputChange('roll_number', e.target.value)} placeholder="Enter roll number" className="h-11" />
         </div>
-        <ChipSelector
-          label="Gender"
-          options={GENDERS}
-          value={formData.gender}
-          onChange={(v) => onInputChange('gender', v)}
-        />
+        <ChipSelector label="Gender" options={GENDERS} value={formData.gender} onChange={(v) => onInputChange('gender', v)} />
       </div>
+
+      {/* Blood Group */}
+      <ChipSelector label="Blood Group" options={bloodGroupOptions} value={formData.blood_group} onChange={(v) => onInputChange('blood_group', v)} />
 
       {/* Parent Name & Phone */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -166,63 +194,48 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
           <Label className="text-sm font-medium">Parent Name</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.parent_name}
-              onChange={(e) => onInputChange('parent_name', e.target.value)}
-              placeholder="Enter parent name"
-              className="pl-10 h-11"
-            />
+            <Input value={formData.parent_name} onChange={(e) => onInputChange('parent_name', e.target.value)} placeholder="Enter parent name" className="pl-10 h-11" />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Phone Number</Label>
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="tel"
-              value={formData.parent_phone}
-              onChange={(e) => onInputChange('parent_phone', e.target.value)}
-              placeholder="Enter phone number"
-              className="pl-10 h-11"
-            />
+            <Input type="tel" value={formData.parent_phone} onChange={(e) => onInputChange('parent_phone', e.target.value)} placeholder="Primary phone" className="pl-10 h-11" />
           </div>
         </div>
       </div>
 
-      {/* Email & DOB */}
+      {/* Alternate Phone & Email */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Alternate Phone (Emergency)</Label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input type="tel" value={formData.alternate_phone} onChange={(e) => onInputChange('alternate_phone', e.target.value)} placeholder="Emergency contact" className="pl-10 h-11" />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Parent Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="email"
-              value={formData.parent_email}
-              onChange={(e) => onInputChange('parent_email', e.target.value)}
-              placeholder="Enter email"
-              className="pl-10 h-11"
-            />
+            <Input type="email" value={formData.parent_email} onChange={(e) => onInputChange('parent_email', e.target.value)} placeholder="Enter email" className="pl-10 h-11" />
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Date of Birth</Label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="date"
-              value={formData.date_of_birth}
-              onChange={(e) => onInputChange('date_of_birth', e.target.value)}
-              className="pl-10 h-11"
-            />
-          </div>
+      </div>
+
+      {/* DOB */}
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Date of Birth</Label>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input type="date" value={formData.date_of_birth} onChange={(e) => onInputChange('date_of_birth', e.target.value)} className="pl-10 h-11" />
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex gap-3 pt-2 border-t">
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">
-          Cancel
-        </Button>
+        <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">Cancel</Button>
         <Button type="submit" disabled={isPending} className="flex-1 sm:flex-none sm:ml-auto">
           {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           {isPending ? 'Adding…' : 'Add Student'}
@@ -265,14 +278,7 @@ export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, i
           </DrawerHeader>
           {headerContent}
           <div className="overflow-y-auto">
-            <StudentFormContent
-              formData={formData}
-              onInputChange={onInputChange}
-              onSubmit={onSubmit}
-              isPending={isPending}
-              classes={classes}
-              onClose={() => onOpenChange(false)}
-            />
+            <StudentFormContent formData={formData} onInputChange={onInputChange} onSubmit={onSubmit} isPending={isPending} classes={classes} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -288,14 +294,7 @@ export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, i
           <DialogDescription>Fill in the student details</DialogDescription>
         </DialogHeader>
         {headerContent}
-        <StudentFormContent
-          formData={formData}
-          onInputChange={onInputChange}
-          onSubmit={onSubmit}
-          isPending={isPending}
-          classes={classes}
-          onClose={() => onOpenChange(false)}
-        />
+        <StudentFormContent formData={formData} onInputChange={onInputChange} onSubmit={onSubmit} isPending={isPending} classes={classes} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
