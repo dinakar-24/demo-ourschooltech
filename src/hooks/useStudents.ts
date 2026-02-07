@@ -210,21 +210,21 @@ export function useDeleteStudent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (studentId: string) => {
-      const { error } = await supabase
-        .from('students')
-        .update({ status: 'deactivated' })
-        .eq('id', studentId);
+    mutationFn: async ({ studentId, userId }: { studentId: string; userId: string | null }) => {
+      const { data, error } = await supabase.functions.invoke('delete-school-user', {
+        body: { user_id: userId, teacher_id: null, student_id: studentId },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to delete student');
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete student');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['student-stats'] });
-      toast.success('Student deactivated successfully');
+      toast.success('Student deleted successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to deactivate student');
+      toast.error(error.message || 'Failed to delete student');
     },
   });
 }

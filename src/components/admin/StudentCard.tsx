@@ -18,11 +18,12 @@ interface Student {
   parent_name: string | null;
   parent_phone: string | null;
   status: string | null;
+  user_id: string | null;
 }
 
 interface StudentCardProps {
   student: Student;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, userId: string | null) => void;
 }
 
 export function StudentCard({ student, onDelete }: StudentCardProps) {
@@ -57,9 +58,9 @@ export function StudentCard({ student, onDelete }: StudentCardProps) {
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(student.id)}>
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(student.id, student.user_id)}>
                 <Trash2 className="w-4 h-4 mr-2" />
-                Deactivate
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
