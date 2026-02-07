@@ -219,9 +219,20 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
           onClick={() => setMobileMenuOpen(false)}
         >
           <div 
-            className="w-64 h-full bg-sidebar animate-slide-in flex flex-col"
+            className="w-72 h-full bg-sidebar animate-slide-in flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile close button */}
+            <div className="absolute top-3 right-3 z-10">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sidebar-foreground hover:bg-sidebar-accent"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
             <SidebarContent />
           </div>
         </div>
