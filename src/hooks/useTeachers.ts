@@ -191,13 +191,14 @@ export function useDeleteTeacher() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (teacherId: string) => {
-      const { error } = await supabase
-        .from('teachers')
-        .delete()
-        .eq('id', teacherId);
+    mutationFn: async ({ teacherId, userId }: { teacherId: string; userId: string | null }) => {
+      // Use edge function to fully delete auth user + all related records
+      const { data, error } = await supabase.functions.invoke('delete-school-user', {
+        body: { user_id: userId, teacher_id: teacherId },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to delete teacher');
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete teacher');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });

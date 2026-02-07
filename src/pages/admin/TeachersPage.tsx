@@ -73,9 +73,9 @@ export default function TeachersPage() {
     queryClient.invalidateQueries({ queryKey: ['teachers'] });
   }, [queryClient]);
 
-  const handleDelete = async (teacherId: string) => {
-    if (confirm('Are you sure you want to delete this teacher?')) {
-      await deleteTeacher.mutateAsync(teacherId);
+  const handleDelete = async (teacherId: string, userId: string | null) => {
+    if (confirm('Are you sure you want to delete this teacher? This will also remove their login account.')) {
+      await deleteTeacher.mutateAsync({ teacherId, userId });
     }
   };
 
@@ -193,7 +193,7 @@ export default function TeachersPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View</DropdownMenuItem>
                           <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id)}>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -292,7 +292,7 @@ export default function TeachersPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View Details</DropdownMenuItem>
                             <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id)}>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
                               <Trash2 className="w-4 h-4 mr-2" />Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
