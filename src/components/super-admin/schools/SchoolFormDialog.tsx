@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Upload, X } from 'lucide-react';
+import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 
 interface SchoolFormData {
   name: string;
@@ -168,12 +169,10 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input
+                <IndianPhoneInput
                   id="phone"
-                  type="tel"
                   value={formData.phone}
-                  onChange={(e) => handleFieldChange('phone', e.target.value)}
-                  placeholder="+91 9876543210"
+                  onChange={(v) => handleFieldChange('phone', v)}
                 />
               </div>
               <div className="grid gap-2">
