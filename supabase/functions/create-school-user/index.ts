@@ -92,19 +92,41 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create the user
+    // Try to create the user
+    let userId: string;
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirm email
+      email_confirm: true,
       user_metadata: { full_name },
     });
 
     if (createError) {
-      throw new Error(`Failed to create user: ${createError.message}`);
+      // If email already exists in Auth (orphaned from a previous delete), reuse that account
+      if (createError.message.includes("already been registered") || createError.message.includes("email_exists")) {
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = users?.find(u => u.email === email);
+        if (!existingUser) {
+          throw new Error("Email conflict detected but user not found. Please contact support.");
+        }
+        userId = existingUser.id;
+        // Update the existing auth user's password and metadata
+        await supabaseAdmin.auth.admin.updateUser(userId, {
+          password,
+          email_confirm: true,
+          user_metadata: { full_name },
+        });
+        // Clean up any orphaned records
+        await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+        await supabaseAdmin.from("teachers").delete().eq("user_id", userId);
+        await supabaseAdmin.from("students").delete().eq("user_id", userId);
+        console.log(`Reusing existing auth user ${userId} for email ${email}`);
+      } else {
+        throw new Error(`Failed to create user: ${createError.message}`);
+      }
+    } else {
+      userId = newUser.user.id;
     }
-
-    const userId = newUser.user.id;
 
     // Update profile with school_id and additional info
     const { error: profileError } = await supabaseAdmin
