@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { getSupabaseRange } from './usePagination';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -31,23 +32,31 @@ export interface AnnouncementFormData {
 interface AnnouncementFilters {
   status?: 'active' | 'inactive' | 'all';
   search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedAnnouncements {
+  data: Announcement[];
+  totalCount: number;
 }
 
 export function useAnnouncements(filters?: AnnouncementFilters) {
   const { school } = useAuth();
+  const page = filters?.page || 1;
+  const pageSize = filters?.pageSize || 25;
 
   return useQuery({
     queryKey: ['announcements', school?.id, filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaginatedAnnouncements> => {
       if (!school?.id) throw new Error('No school ID');
 
       let query = supabase
         .from('announcements')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('school_id', school.id)
         .order('created_at', { ascending: false });
 
-      // Server-side filtering
       if (filters?.status === 'active') {
         query = query.eq('is_active', true);
       } else if (filters?.status === 'inactive') {
@@ -58,10 +67,13 @@ export function useAnnouncements(filters?: AnnouncementFilters) {
         query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`);
       }
 
-      const { data, error } = await query;
+      const { from, to } = getSupabaseRange(page, pageSize);
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as Announcement[];
+      return { data: (data || []) as Announcement[], totalCount: count || 0 };
     },
     enabled: !!school?.id,
     staleTime: 2 * 60 * 1000,
@@ -80,22 +92,10 @@ export function useAnnouncementStats() {
       monthStart.setDate(1);
       const monthStartStr = monthStart.toISOString();
 
-      // Use count aggregates
       const [totalResult, activeResult, thisMonthResult] = await Promise.all([
-        supabase
-          .from('announcements')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id),
-        supabase
-          .from('announcements')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
-          .eq('is_active', true),
-        supabase
-          .from('announcements')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', school.id)
-          .gte('created_at', monthStartStr),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id).eq('is_active', true),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id).gte('created_at', monthStartStr),
       ]);
 
       return {

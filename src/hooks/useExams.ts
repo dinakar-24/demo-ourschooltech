@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getSupabaseRange } from './usePagination';
 
 export interface Exam {
   id: string;
@@ -40,23 +41,31 @@ interface ExamFilters {
   className?: string;
   subject?: string;
   status?: 'upcoming' | 'completed' | 'all';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedExams {
+  data: Exam[];
+  totalCount: number;
 }
 
 export function useExams(filters?: ExamFilters) {
   const { school } = useAuth();
+  const page = filters?.page || 1;
+  const pageSize = filters?.pageSize || 25;
 
   return useQuery({
     queryKey: ['exams', school?.id, filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaginatedExams> => {
       if (!school?.id) throw new Error('No school ID');
 
       let query = supabase
         .from('exams')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('school_id', school.id)
         .order('exam_date', { ascending: false });
 
-      // Server-side filtering
       if (filters?.className && filters.className !== 'All Classes') {
         query = query.eq('class_name', filters.className);
       }
@@ -72,10 +81,13 @@ export function useExams(filters?: ExamFilters) {
         query = query.lt('exam_date', today);
       }
 
-      const { data, error } = await query;
+      const { from, to } = getSupabaseRange(page, pageSize);
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as Exam[];
+      return { data: (data || []) as Exam[], totalCount: count || 0 };
     },
     enabled: !!school?.id,
     staleTime: 5 * 60 * 1000,
@@ -95,7 +107,6 @@ export function useExamStats() {
       monthStart.setDate(1);
       const monthStartStr = monthStart.toISOString().split('T')[0];
 
-      // Use count aggregates
       const [totalResult, upcomingResult, thisMonthResult] = await Promise.all([
         supabase
           .from('exams')
@@ -135,10 +146,7 @@ export function useCreateExam() {
 
       const { data, error } = await supabase
         .from('exams')
-        .insert({
-          ...formData,
-          school_id: school.id,
-        })
+        .insert({ ...formData, school_id: school.id })
         .select()
         .single();
 
@@ -211,10 +219,7 @@ export function useExamResults(examId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('results')
-        .select(`
-          *,
-          student:students(full_name, admission_number)
-        `)
+        .select(`*, student:students(full_name, admission_number)`)
         .eq('exam_id', examId);
 
       if (error) throw error;
@@ -242,7 +247,6 @@ export function useSaveResult() {
       grade?: string;
       remarks?: string;
     }) => {
-      // Check if result exists
       const { data: existing } = await supabase
         .from('results')
         .select('id')
@@ -253,25 +257,13 @@ export function useSaveResult() {
       if (existing) {
         const { error } = await supabase
           .from('results')
-          .update({
-            marks_obtained: marksObtained,
-            grade,
-            remarks,
-          })
+          .update({ marks_obtained: marksObtained, grade, remarks })
           .eq('id', existing.id);
-
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('results')
-          .insert({
-            exam_id: examId,
-            student_id: studentId,
-            marks_obtained: marksObtained,
-            grade,
-            remarks,
-          });
-
+          .insert({ exam_id: examId, student_id: studentId, marks_obtained: marksObtained, grade, remarks });
         if (error) throw error;
       }
     },

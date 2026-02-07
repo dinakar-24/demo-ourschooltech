@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,17 +41,28 @@ import { useTeachers, useTeacherStats, useTeacherSubjects, useDeleteTeacher } fr
 import { CreateTeacherDialog } from '@/components/admin/CreateTeacherDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 export default function TeachersPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All Subjects');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const pagination = usePagination(25);
 
-  const { data: teachers = [], isLoading } = useTeachers({ 
+  useEffect(() => {
+    pagination.resetPage();
+  }, [searchQuery, selectedSubject]);
+
+  const { data: result, isLoading } = useTeachers({ 
     search: searchQuery, 
-    subject: selectedSubject 
+    subject: selectedSubject,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
   });
+  const teachers = result?.data || [];
+  const totalCount = result?.totalCount || 0;
   const { data: stats } = useTeacherStats();
   const { data: subjects = ['All Subjects'] } = useTeacherSubjects();
   const deleteTeacher = useDeleteTeacher();
@@ -66,7 +77,6 @@ export default function TeachersPage() {
     }
   };
 
-  // Calculate stats from data
   const subjectsCount = new Set(teachers.flatMap(t => t.subjects || [])).size;
   const avgClasses = teachers.length > 0 
     ? Math.round(teachers.reduce((acc, t) => acc + (t.classes?.length || 0), 0) / teachers.length)
@@ -248,10 +258,17 @@ export default function TeachersPage() {
                 </TableBody>
               </Table>
             )}
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={isLoading}
+            />
           </CardContent>
         </Card>
 
-        {/* Create Teacher Dialog */}
         <CreateTeacherDialog
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}

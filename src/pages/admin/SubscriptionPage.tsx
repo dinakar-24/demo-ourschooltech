@@ -27,13 +27,12 @@
  export default function SubscriptionPage() {
    const { user } = useAuth();
    const queryClient = useQueryClient();
-   const { data: subscription, isLoading: subLoading } = useSubscription();
-   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
-  const { data: students, isLoading: studentsLoading } = useStudents();
-   const createSubscription = useCreateSubscription();
-   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
- 
-  const studentCount = students?.length || 0;
+  const { data: subscription, isLoading: subLoading } = useSubscription();
+  const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
+  const { data: studentsResult, isLoading: studentsLoading } = useStudents();
+  const createSubscription = useCreateSubscription();
+  const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
+  const studentCount = studentsResult?.totalCount || 0;
    const totalAmount = studentCount * PRICE_PER_STUDENT;
  
    const isActive = subscription?.status === 'active';

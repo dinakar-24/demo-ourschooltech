@@ -73,20 +73,19 @@ export default function FeesPage() {
     due_date: '',
   });
 
-  const { data: fees = [], isLoading } = useFees({ 
+  const { data: feesResult, isLoading } = useFees({ 
     status: selectedStatus,
+    feeType: selectedType,
     search: searchQuery 
   });
+  const fees = feesResult?.data || [];
   const { data: stats } = useFeeStats();
-  const { data: students = [] } = useStudents();
+  const { data: studentsResult } = useStudents();
+  const students = studentsResult?.data || [];
   const recordPayment = useRecordPayment();
   const createFee = useCreateFee();
 
-  // Filter by fee type (client-side since it's not in DB filter)
-  const filteredRecords = fees.filter(record => {
-    const matchesType = selectedType === 'All Types' || record.fee_type === selectedType;
-    return matchesType;
-  });
+  const filteredRecords = fees;
 
   const handleRecordPayment = async () => {
     if (!selectedFeeId) return;

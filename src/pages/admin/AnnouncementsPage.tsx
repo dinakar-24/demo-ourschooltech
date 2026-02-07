@@ -60,7 +60,8 @@ const AVAILABLE_ROLES: { value: AppRole; label: string }[] = [
 ];
 
 export default function AnnouncementsPage() {
-  const { data: announcements = [], isLoading } = useAnnouncements();
+  const { data: announcementsResult, isLoading } = useAnnouncements();
+  const announcements = announcementsResult?.data || [];
   const { data: stats } = useAnnouncementStats();
   const createAnnouncement = useCreateAnnouncement();
   const updateAnnouncement = useUpdateAnnouncement();

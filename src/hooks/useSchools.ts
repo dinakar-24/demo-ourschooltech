@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getSupabaseRange } from './usePagination';
 
 export interface School {
   id: string;
@@ -31,18 +32,27 @@ interface SchoolFilters {
   search?: string;
   status?: 'active' | 'inactive' | 'all';
   city?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedSchools {
+  data: School[];
+  totalCount: number;
 }
 
 export function useSchools(filters?: SchoolFilters) {
+  const page = filters?.page || 1;
+  const pageSize = filters?.pageSize || 25;
+
   return useQuery({
     queryKey: ['schools', filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaginatedSchools> => {
       let query = supabase
         .from('schools')
-        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, created_at')
+        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, created_at', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      // Server-side filtering
       if (filters?.search) {
         query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,city.ilike.%${filters.search}%`);
       }
@@ -57,10 +67,13 @@ export function useSchools(filters?: SchoolFilters) {
         query = query.eq('city', filters.city);
       }
 
-      const { data, error } = await query;
+      const { from, to } = getSupabaseRange(page, pageSize);
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
-      return data as School[];
+      return { data: (data || []) as School[], totalCount: count || 0 };
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -70,7 +83,6 @@ export function useSchoolStats() {
   return useQuery({
     queryKey: ['school-stats'],
     queryFn: async () => {
-      // Use count aggregates
       const [totalResult, activeResult] = await Promise.all([
         supabase.from('schools').select('*', { count: 'exact', head: true }),
         supabase.from('schools').select('*', { count: 'exact', head: true }).eq('is_active', true),
@@ -90,9 +102,7 @@ export function useSchoolCities() {
   return useQuery({
     queryKey: ['school-cities'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('schools')
-        .select('city');
+      const { data, error } = await supabase.from('schools').select('city');
 
       if (error) throw error;
 
@@ -150,7 +160,6 @@ export function useUpdateSchool() {
   return useMutation({
     mutationFn: async ({ id, logoPreview, ...formData }: Partial<SchoolFormData> & { id: string; logoPreview?: string | null }) => {
       const updateData: Record<string, unknown> = { ...formData };
-      
       if (logoPreview !== undefined) {
         updateData.logo = logoPreview || formData.logo || null;
       }
@@ -181,11 +190,7 @@ export function useDeleteSchool() {
 
   return useMutation({
     mutationFn: async (schoolId: string) => {
-      const { error } = await supabase
-        .from('schools')
-        .delete()
-        .eq('id', schoolId);
-
+      const { error } = await supabase.from('schools').delete().eq('id', schoolId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -200,9 +205,10 @@ export function useDeleteSchool() {
   });
 }
 
-// Legacy hook for backward compatibility - wraps new hooks
+// Legacy hook for backward compatibility
 export function useSchoolsLegacy() {
-  const { data: schools = [], isLoading: loading } = useSchools();
+  const { data: result, isLoading: loading } = useSchools();
+  const schools = result?.data || [];
   const createSchool = useCreateSchool();
   const updateSchool = useUpdateSchool();
   const deleteSchoolMutation = useDeleteSchool();
