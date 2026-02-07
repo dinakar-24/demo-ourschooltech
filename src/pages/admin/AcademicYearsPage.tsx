@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
 export default function AcademicYearsPage() {
+  const isMobile = useIsMobile();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<any>(null);
   
@@ -205,7 +207,87 @@ export default function AcademicYearsPage() {
                 <p>No academic years defined</p>
                 <p className="text-sm mt-1">Add your first academic year to get started</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {academicYears.map((year) => (
+                  <div key={year.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{year.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(year.start_date), 'MMM d, yyyy')} — {format(new Date(year.end_date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                      {year.is_current ? (
+                        <Badge className="bg-success/10 text-success border-success/20">
+                          <CheckCircle className="w-3 h-3 mr-1" />Current
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Clock className="w-3 h-3 mr-1" />Inactive
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      {!year.is_current && (
+                        <Button variant="outline" size="sm" onClick={() => handleSetCurrent(year.id)} disabled={setCurrentMutation.isPending}>
+                          Set Current
+                        </Button>
+                      )}
+                      <Dialog open={editingYear?.id === year.id} onOpenChange={(open) => !open && setEditingYear(null)}>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" onClick={() => setEditingYear(year)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>Edit Academic Year</DialogTitle></DialogHeader>
+                          <form onSubmit={handleUpdate} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-name">Name</Label>
+                              <Input id="edit-name" name="name" defaultValue={editingYear?.name} required />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-start_date">Start Date</Label>
+                                <Input id="edit-start_date" name="start_date" type="date" defaultValue={editingYear?.start_date} required />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-end_date">End Date</Label>
+                                <Input id="edit-end_date" name="end_date" type="date" defaultValue={editingYear?.end_date} required />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="button" variant="outline" onClick={() => setEditingYear(null)}>Cancel</Button>
+                              <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" disabled={year.is_current}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Academic Year?</AlertDialogTitle>
+                            <AlertDialogDescription>This will permanently delete "{year.name}". This action cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(year.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -226,115 +308,57 @@ export default function AcademicYearsPage() {
                         <TableCell>
                           {year.is_current ? (
                             <Badge className="bg-success/10 text-success border-success/20">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Current
+                              <CheckCircle className="w-3 h-3 mr-1" />Current
                             </Badge>
                           ) : (
-                            <Badge variant="secondary">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Inactive
-                            </Badge>
+                            <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Inactive</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             {!year.is_current && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSetCurrent(year.id)}
-                                disabled={setCurrentMutation.isPending}
-                              >
-                                Set Current
-                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => handleSetCurrent(year.id)} disabled={setCurrentMutation.isPending}>Set Current</Button>
                             )}
-                            <Dialog 
-                              open={editingYear?.id === year.id} 
-                              onOpenChange={(open) => !open && setEditingYear(null)}
-                            >
+                            <Dialog open={editingYear?.id === year.id} onOpenChange={(open) => !open && setEditingYear(null)}>
                               <DialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon-sm"
-                                  onClick={() => setEditingYear(year)}
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon-sm" onClick={() => setEditingYear(year)}><Edit2 className="w-4 h-4" /></Button>
                               </DialogTrigger>
                               <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Edit Academic Year</DialogTitle>
-                                </DialogHeader>
+                                <DialogHeader><DialogTitle>Edit Academic Year</DialogTitle></DialogHeader>
                                 <form onSubmit={handleUpdate} className="space-y-4">
                                   <div className="space-y-2">
                                     <Label htmlFor="edit-name">Name</Label>
-                                    <Input 
-                                      id="edit-name" 
-                                      name="name" 
-                                      defaultValue={editingYear?.name}
-                                      required 
-                                    />
+                                    <Input id="edit-name" name="name" defaultValue={editingYear?.name} required />
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                       <Label htmlFor="edit-start_date">Start Date</Label>
-                                      <Input 
-                                        id="edit-start_date" 
-                                        name="start_date" 
-                                        type="date"
-                                        defaultValue={editingYear?.start_date}
-                                        required 
-                                      />
+                                      <Input id="edit-start_date" name="start_date" type="date" defaultValue={editingYear?.start_date} required />
                                     </div>
                                     <div className="space-y-2">
                                       <Label htmlFor="edit-end_date">End Date</Label>
-                                      <Input 
-                                        id="edit-end_date" 
-                                        name="end_date" 
-                                        type="date"
-                                        defaultValue={editingYear?.end_date}
-                                        required 
-                                      />
+                                      <Input id="edit-end_date" name="end_date" type="date" defaultValue={editingYear?.end_date} required />
                                     </div>
                                   </div>
                                   <DialogFooter>
-                                    <Button type="button" variant="outline" onClick={() => setEditingYear(null)}>
-                                      Cancel
-                                    </Button>
-                                    <Button type="submit" disabled={updateMutation.isPending}>
-                                      {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                                    </Button>
+                                    <Button type="button" variant="outline" onClick={() => setEditingYear(null)}>Cancel</Button>
+                                    <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
                                   </DialogFooter>
                                 </form>
                               </DialogContent>
                             </Dialog>
-                            
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon-sm"
-                                  className="text-destructive hover:text-destructive"
-                                  disabled={year.is_current}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" disabled={year.is_current}><Trash2 className="w-4 h-4" /></Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete Academic Year?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will permanently delete "{year.name}". This action cannot be undone.
-                                  </AlertDialogDescription>
+                                  <AlertDialogDescription>This will permanently delete "{year.name}". This action cannot be undone.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleDelete(year.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
+                                  <AlertDialogAction onClick={() => handleDelete(year.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>

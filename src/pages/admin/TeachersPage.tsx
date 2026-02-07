@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 
 export default function TeachersPage() {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All Subjects');
@@ -167,7 +169,60 @@ export default function TeachersPage() {
                   {searchQuery ? 'Try a different search term' : 'Add your first teacher to get started'}
                 </p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {teachers.map((teacher) => (
+                  <div key={teacher.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                          {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{teacher.full_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{teacher.email}</p>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View</DropdownMenuItem>
+                          <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id)}>
+                            <Trash2 className="w-4 h-4 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs pl-[52px]">
+                      <div>
+                        <span className="text-muted-foreground">ID: </span>
+                        <span className="font-mono font-medium">{teacher.employee_id}</span>
+                      </div>
+                      {teacher.phone && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Phone className="w-3 h-3" />{teacher.phone}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 pl-[52px]">
+                      {teacher.subjects?.map(sub => (
+                        <Badge key={sub} variant="outline" className="text-[10px] h-5">{sub}</Badge>
+                      ))}
+                      {teacher.classes?.map(cls => (
+                        <Badge key={cls} variant="secondary" className="text-[10px] h-5">{cls}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -235,20 +290,10 @@ export default function TeachersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDelete(teacher.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
+                            <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View Details</DropdownMenuItem>
+                            <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id)}>
+                              <Trash2 className="w-4 h-4 mr-2" />Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

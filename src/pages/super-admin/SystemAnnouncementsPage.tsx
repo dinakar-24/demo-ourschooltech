@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ const roleOptions = [
 ];
 
 export default function SystemAnnouncementsPage() {
+  const isMobile = useIsMobile();
   const [announcements, setAnnouncements] = useState<SystemAnnouncement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -364,7 +366,54 @@ export default function SystemAnnouncementsPage() {
                 <p className="font-medium">No announcements yet</p>
                 <p className="text-sm mt-1">Create your first system announcement</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {filteredAnnouncements.map((announcement) => (
+                  <div key={announcement.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        {getPriorityIcon(announcement.priority)}
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{announcement.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{announcement.content}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(announcement)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => handleDelete(announcement.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={getPriorityVariant(announcement.priority)} className="text-[10px]">{announcement.priority}</Badge>
+                        {announcement.target_roles && announcement.target_roles.length > 0 ? (
+                          announcement.target_roles.map(role => (
+                            <Badge key={role} variant="outline" className="text-[10px]">{role.replace('_', ' ')}</Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground">All users</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={announcement.is_active}
+                          onCheckedChange={() => toggleActive(announcement.id, announcement.is_active)}
+                        />
+                        <span className={`text-xs ${announcement.is_active ? 'text-success' : 'text-muted-foreground'}`}>
+                          {announcement.is_active ? 'Active' : 'Off'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -385,24 +434,16 @@ export default function SystemAnnouncementsPage() {
                             {getPriorityIcon(announcement.priority)}
                             <div>
                               <p className="font-medium">{announcement.title}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-1 max-w-xs">
-                                {announcement.content}
-                              </p>
+                              <p className="text-sm text-muted-foreground line-clamp-1 max-w-xs">{announcement.content}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={getPriorityVariant(announcement.priority)}>
-                            {announcement.priority}
-                          </Badge>
-                        </TableCell>
+                        <TableCell><Badge variant={getPriorityVariant(announcement.priority)}>{announcement.priority}</Badge></TableCell>
                         <TableCell>
                           {announcement.target_roles && announcement.target_roles.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {announcement.target_roles.map((role) => (
-                                <Badge key={role} variant="outline" className="text-xs">
-                                  {role.replace('_', ' ')}
-                                </Badge>
+                              {announcement.target_roles.map(role => (
+                                <Badge key={role} variant="outline" className="text-xs">{role.replace('_', ' ')}</Badge>
                               ))}
                             </div>
                           ) : (
@@ -411,31 +452,17 @@ export default function SystemAnnouncementsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Switch
-                              checked={announcement.is_active}
-                              onCheckedChange={() => toggleActive(announcement.id, announcement.is_active)}
-                            />
+                            <Switch checked={announcement.is_active} onCheckedChange={() => toggleActive(announcement.id, announcement.is_active)} />
                             <span className={announcement.is_active ? 'text-success' : 'text-muted-foreground'}>
                               {announcement.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {format(new Date(announcement.created_at), 'MMM d, yyyy')}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{format(new Date(announcement.created_at), 'MMM d, yyyy')}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(announcement)}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(announcement.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(announcement)}><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(announcement.id)}><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>

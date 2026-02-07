@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import {
 import { useAdminAttendance } from '@/hooks/useAdminAttendance';
 
 export default function AttendancePage() {
+  const isMobile = useIsMobile();
   const [date, setDate] = useState<Date>(new Date());
   const { data, isLoading
   } = useAdminAttendance(date);
@@ -138,7 +140,51 @@ export default function AttendancePage() {
                 <p>No attendance data for this date</p>
                 <p className="text-sm mt-1">Attendance will appear once teachers mark it</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {classWise.map((row) => (
+                  <div key={row.class} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm">{row.class}</p>
+                      <Badge variant={
+                        row.percentage >= 95 ? 'default' :
+                        row.percentage >= 90 ? 'secondary' : 'destructive'
+                      }>
+                        {row.percentage >= 95 ? 'Excellent' : row.percentage >= 90 ? 'Good' : 'Needs Attention'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Present</p>
+                        <p className="text-sm font-medium text-success">{row.present}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Absent</p>
+                        <p className="text-sm font-medium text-destructive">{row.absent}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Late</p>
+                        <p className="text-sm font-medium text-warning">{row.late}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-sm font-medium">{row.total}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm font-medium ${
+                        row.percentage >= 95 ? 'text-success' :
+                        row.percentage >= 90 ? 'text-warning' : 'text-destructive'
+                      }`}>
+                        {row.percentage}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -162,8 +208,7 @@ export default function AttendancePage() {
                       <TableCell className="text-center">
                         <span className={
                           row.percentage >= 95 ? 'text-success' :
-                          row.percentage >= 90 ? 'text-warning' :
-                          'text-destructive'
+                          row.percentage >= 90 ? 'text-warning' : 'text-destructive'
                         }>
                           {row.percentage}%
                         </span>
@@ -171,12 +216,10 @@ export default function AttendancePage() {
                       <TableCell>
                         <Badge variant={
                           row.percentage >= 95 ? 'default' :
-                          row.percentage >= 90 ? 'secondary' :
-                          'destructive'
+                          row.percentage >= 90 ? 'secondary' : 'destructive'
                         }>
                           {row.percentage >= 95 ? 'Excellent' :
-                           row.percentage >= 90 ? 'Good' :
-                           'Needs Attention'}
+                           row.percentage >= 90 ? 'Good' : 'Needs Attention'}
                         </Badge>
                       </TableCell>
                     </TableRow>

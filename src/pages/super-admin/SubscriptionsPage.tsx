@@ -1,4 +1,5 @@
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SubscriptionsPage() {
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const { data: subscriptions, isLoading } = useAllSubscriptions();
@@ -164,7 +166,48 @@ export default function SubscriptionsPage() {
                 <p>No subscriptions found</p>
                 <p className="text-sm mt-1">Subscriptions will appear here when schools are billed</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {filteredSubscriptions.map((subscription) => (
+                  <div key={subscription.id} className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{subscription.school?.name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{subscription.school?.code}</p>
+                      </div>
+                      {getStatusBadge(subscription.status)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Students: </span>
+                        <span className="font-medium">{subscription.student_count}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-muted-foreground">Amount: </span>
+                        <IndianRupee className="w-3 h-3" />
+                        <span className="font-medium">{subscription.total_amount.toLocaleString()}</span>
+                      </div>
+                      <div className="col-span-2 text-muted-foreground">
+                        {subscription.end_date ? `Valid until ${format(new Date(subscription.end_date), 'MMM d, yyyy')}` : 'No end date'}
+                      </div>
+                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedSchoolId(subscription.school_id)}>
+                          <Eye className="w-4 h-4 mr-1" />Details
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader><DialogTitle>Subscription Details</DialogTitle></DialogHeader>
+                        <SubscriptionDetails subscription={subscription} schoolId={subscription.school_id} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Desktop Table */
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -187,24 +230,15 @@ export default function SubscriptionsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4 text-muted-foreground" />
-                            {subscription.student_count}
-                          </div>
+                          <div className="flex items-center gap-1"><Users className="w-4 h-4 text-muted-foreground" />{subscription.student_count}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <IndianRupee className="w-4 h-4 text-muted-foreground" />
-                            {subscription.total_amount.toLocaleString()}
-                          </div>
+                          <div className="flex items-center gap-1"><IndianRupee className="w-4 h-4 text-muted-foreground" />{subscription.total_amount.toLocaleString()}</div>
                         </TableCell>
                         <TableCell>{getStatusBadge(subscription.status)}</TableCell>
                         <TableCell>
                           {subscription.end_date ? (
-                            <div className="flex items-center gap-1 text-sm">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
-                              {format(new Date(subscription.end_date), 'MMM d, yyyy')}
-                            </div>
+                            <div className="flex items-center gap-1 text-sm"><Calendar className="w-4 h-4 text-muted-foreground" />{format(new Date(subscription.end_date), 'MMM d, yyyy')}</div>
                           ) : (
                             <span className="text-muted-foreground text-sm">Not set</span>
                           )}
@@ -212,23 +246,13 @@ export default function SubscriptionsPage() {
                         <TableCell className="text-right">
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => setSelectedSchoolId(subscription.school_id)}
-                              >
-                                <Eye className="w-4 h-4 mr-1" />
-                                Details
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedSchoolId(subscription.school_id)}>
+                                <Eye className="w-4 h-4 mr-1" />Details
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-lg">
-                              <DialogHeader>
-                                <DialogTitle>Subscription Details</DialogTitle>
-                              </DialogHeader>
-                              <SubscriptionDetails 
-                                subscription={subscription} 
-                                schoolId={subscription.school_id}
-                              />
+                              <DialogHeader><DialogTitle>Subscription Details</DialogTitle></DialogHeader>
+                              <SubscriptionDetails subscription={subscription} schoolId={subscription.school_id} />
                             </DialogContent>
                           </Dialog>
                         </TableCell>
