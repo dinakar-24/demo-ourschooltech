@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import {
   User,
   Mail,
@@ -40,9 +43,17 @@ export default function TeacherProfile() {
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
-                {user?.name?.split(' ').map(n => n[0]).join('')}
-              </div>
+              <AvatarUpload
+                value={user?.avatar}
+                onChange={async (url) => {
+                  if (user?.id) {
+                    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+                  }
+                }}
+                fallback={user?.name}
+                size="lg"
+                folder="teachers"
+              />
               <div>
                 <h2 className="text-lg font-bold">{user?.name}</h2>
                 <p className="text-sm text-muted-foreground">{user?.employeeId}</p>

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/drawer';
 import { UserPlus, Building2, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { toast } from 'sonner';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -48,6 +49,11 @@ function AdminForm({ formData, update, handleSubmit, isCreating, schools, onClos
   const [showPassword, setShowPassword] = useState(false);
   return (
     <form onSubmit={handleSubmit} className="space-y-4 px-4 sm:px-6 pb-6">
+      {/* Avatar */}
+      <div className="flex justify-center">
+        <AvatarUpload value={null} onChange={() => {}} fallback={formData.fullName} folder="admins" />
+      </div>
+
       {/* Full Name */}
       <div className="space-y-1.5">
         <Label htmlFor="admin-fullName" className="text-sm font-medium">

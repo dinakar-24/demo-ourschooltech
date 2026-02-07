@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/drawer';
 import { Plus, Loader2, User, Hash, Mail, Calendar, Droplets } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
@@ -139,6 +140,11 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4 px-4 sm:px-6 pb-6">
+      {/* Avatar */}
+      <div className="flex justify-center">
+        <AvatarUpload value={null} onChange={() => {}} fallback={formData.full_name} folder="students" />
+      </div>
+
       {/* Full Name & Admission Number */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
