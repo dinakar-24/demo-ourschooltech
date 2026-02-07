@@ -19,14 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { AddStudentDialog } from '@/components/admin/AddStudentDialog';
 import {
   Search,
   Plus,
@@ -233,125 +226,15 @@ export default function StudentsPage() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Student
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Add New Student</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Full Name *</Label>
-                    <Input 
-                      placeholder="Enter student name" 
-                      value={formData.full_name}
-                      onChange={(e) => handleInputChange('full_name', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Admission Number *</Label>
-                    <Input 
-                      placeholder="ADM2024XXX" 
-                      value={formData.admission_number}
-                      onChange={(e) => handleInputChange('admission_number', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Class *</Label>
-                    <Select value={formData.class_name} onValueChange={(v) => handleInputChange('class_name', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select class" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes?.map(cls => (
-                          <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Section *</Label>
-                    <Select value={formData.section} onValueChange={(v) => handleInputChange('section', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select section" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['A', 'B', 'C', 'D'].map(sec => (
-                          <SelectItem key={sec} value={sec}>{sec}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Roll Number</Label>
-                    <Input 
-                      type="number"
-                      placeholder="Enter roll number" 
-                      value={formData.roll_number}
-                      onChange={(e) => handleInputChange('roll_number', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <Select value={formData.gender} onValueChange={(v) => handleInputChange('gender', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parent Name</Label>
-                    <Input 
-                      placeholder="Enter parent name" 
-                      value={formData.parent_name}
-                      onChange={(e) => handleInputChange('parent_name', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <Input 
-                      placeholder="Enter phone number" 
-                      value={formData.parent_phone}
-                      onChange={(e) => handleInputChange('parent_phone', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parent Email</Label>
-                    <Input 
-                      type="email" 
-                      placeholder="Enter email" 
-                      value={formData.parent_email}
-                      onChange={(e) => handleInputChange('parent_email', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date of Birth</Label>
-                    <Input 
-                      type="date" 
-                      value={formData.date_of_birth}
-                      onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleSubmit} disabled={createStudent.isPending}>
-                    {createStudent.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Add Student
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <AddStudentDialog
+              classes={classes}
+              formData={formData}
+              onInputChange={handleInputChange}
+              onSubmit={handleSubmit}
+              isPending={createStudent.isPending}
+              isOpen={isAddDialogOpen}
+              onOpenChange={setIsAddDialogOpen}
+            />
           </div>
         </div>
 
