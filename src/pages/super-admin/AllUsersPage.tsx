@@ -31,6 +31,19 @@ export default function AllUsersPage() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [disabledUsers, setDisabledUsers] = useState<Set<string>>(new Set());
+
+  const handleActionComplete = (action?: string, userId?: string) => {
+    if (action === 'disable' && userId) {
+      setDisabledUsers(prev => new Set(prev).add(userId));
+    } else if (action === 'enable' && userId) {
+      setDisabledUsers(prev => { const next = new Set(prev); next.delete(userId); return next; });
+    } else if (action === 'delete' && userId) {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      return;
+    }
+    fetchUsers();
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -202,8 +215,9 @@ export default function AllUsersPage() {
                             userId={user.id}
                             userName={user.full_name}
                             userEmail={user.email}
+                            isDisabled={disabledUsers.has(user.id)}
                             isSelf={currentUser?.id === user.id}
-                            onActionComplete={fetchUsers}
+                            onActionComplete={handleActionComplete}
                             currentFullName={user.full_name}
                           />
                         </TableCell>

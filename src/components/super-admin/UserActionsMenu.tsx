@@ -44,7 +44,7 @@ interface UserActionsMenuProps {
   userEmail: string;
   isDisabled?: boolean;
   isSelf?: boolean;
-  onActionComplete: () => void;
+  onActionComplete: (action?: string, userId?: string) => void;
   // For edit dialog
   currentFullName?: string;
   currentPhone?: string;
@@ -77,7 +77,7 @@ export function UserActionsMenu({
     const result = await manageUser({ action: 'delete', user_id: userId });
     if (result.success) {
       setDeleteOpen(false);
-      onActionComplete();
+      onActionComplete('delete', userId);
     }
   };
 
@@ -86,7 +86,7 @@ export function UserActionsMenu({
     const result = await manageUser({ action, user_id: userId });
     if (result.success) {
       setDisableOpen(false);
-      onActionComplete();
+      onActionComplete(action, userId);
     }
   };
 
@@ -100,7 +100,7 @@ export function UserActionsMenu({
     });
     if (result.success) {
       setEditOpen(false);
-      onActionComplete();
+      onActionComplete('update_profile', userId);
     }
   };
 
