@@ -65,7 +65,59 @@ Deno.serve(async (req) => {
           ban_duration: "876000h", // ~100 years
         });
         if (error) throw new Error(`Failed to disable user: ${error.message}`);
-        result = { message: "User disabled successfully" };
+
+        // If user is a school_admin, cascade disable to all users in their school
+        const { data: targetRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+
+        const isSchoolAdmin = targetRoles?.some(r => r.role === "school_admin");
+        let cascadeCount = 0;
+
+        if (isSchoolAdmin) {
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("school_id")
+            .eq("id", user_id)
+            .single();
+
+          if (profile?.school_id) {
+            // Get all users in this school (excluding the admin themselves and super_admins)
+            const { data: schoolUsers } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("school_id", profile.school_id)
+              .neq("id", user_id);
+
+            if (schoolUsers && schoolUsers.length > 0) {
+              // Filter out super_admins
+              const { data: superAdminRoles } = await supabaseAdmin
+                .from("user_roles")
+                .select("user_id")
+                .eq("role", "super_admin")
+                .in("user_id", schoolUsers.map(u => u.id));
+
+              const superAdminIds = new Set((superAdminRoles || []).map(r => r.user_id));
+              const usersToDisable = schoolUsers.filter(u => !superAdminIds.has(u.id));
+
+              for (const u of usersToDisable) {
+                const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(u.id, {
+                  ban_duration: "876000h",
+                });
+                if (!banErr) cascadeCount++;
+              }
+
+              // Also deactivate the school
+              await supabaseAdmin
+                .from("schools")
+                .update({ is_active: false })
+                .eq("id", profile.school_id);
+            }
+          }
+        }
+
+        result = { message: `User disabled successfully${cascadeCount > 0 ? `. ${cascadeCount} school users also disabled.` : ""}` };
         break;
       }
 
@@ -74,7 +126,48 @@ Deno.serve(async (req) => {
           ban_duration: "none",
         });
         if (error) throw new Error(`Failed to enable user: ${error.message}`);
-        result = { message: "User enabled successfully" };
+
+        // If user is a school_admin, cascade enable to all users in their school
+        const { data: targetRolesEn } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+
+        const isSchoolAdminEn = targetRolesEn?.some(r => r.role === "school_admin");
+        let cascadeEnCount = 0;
+
+        if (isSchoolAdminEn) {
+          const { data: profileEn } = await supabaseAdmin
+            .from("profiles")
+            .select("school_id")
+            .eq("id", user_id)
+            .single();
+
+          if (profileEn?.school_id) {
+            const { data: schoolUsersEn } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("school_id", profileEn.school_id)
+              .neq("id", user_id);
+
+            if (schoolUsersEn && schoolUsersEn.length > 0) {
+              for (const u of schoolUsersEn) {
+                const { error: unbanErr } = await supabaseAdmin.auth.admin.updateUserById(u.id, {
+                  ban_duration: "none",
+                });
+                if (!unbanErr) cascadeEnCount++;
+              }
+
+              // Re-activate the school
+              await supabaseAdmin
+                .from("schools")
+                .update({ is_active: true })
+                .eq("id", profileEn.school_id);
+            }
+          }
+        }
+
+        result = { message: `User enabled successfully${cascadeEnCount > 0 ? `. ${cascadeEnCount} school users also re-enabled.` : ""}` };
         break;
       }
 
