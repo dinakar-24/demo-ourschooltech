@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
         }
         userId = existingUser.id;
         // Update the existing auth user's password and metadata
-        await supabaseAdmin.auth.admin.updateUser(userId, {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
           password,
           email_confirm: true,
           user_metadata: { full_name },
