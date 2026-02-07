@@ -1,14 +1,13 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
   BookOpen, 
   Calendar, 
   Clock,
   AlertCircle,
   CheckCircle,
-  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 const mockHomework = [
@@ -20,6 +19,7 @@ const mockHomework = [
     dueDate: '2024-01-20',
     teacher: 'Mrs. Sharma',
     status: 'pending',
+    attachments: [],
   },
   { 
     id: '2', 
@@ -29,6 +29,7 @@ const mockHomework = [
     dueDate: '2024-01-22',
     teacher: 'Mr. Gupta',
     status: 'pending',
+    attachments: [],
   },
   { 
     id: '3', 
@@ -38,6 +39,7 @@ const mockHomework = [
     dueDate: '2024-01-18',
     teacher: 'Ms. Patel',
     status: 'submitted',
+    attachments: [],
   },
   { 
     id: '4', 
@@ -48,6 +50,7 @@ const mockHomework = [
     teacher: 'Mrs. Verma',
     status: 'graded',
     grade: 'A',
+    attachments: [],
   },
 ];
 
@@ -117,17 +120,28 @@ export default function StudentHomework() {
                 
                 <h3 className="font-medium mb-1">{hw.title}</h3>
                 <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
+
+                {/* Show attached photos if any */}
+                {hw.attachments && hw.attachments.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {hw.attachments.map((url, i) => (
+                      <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3" />
                     Due: {hw.dueDate}
                   </div>
-                  {hw.status === 'pending' && (
-                    <Button size="sm">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Submit
-                    </Button>
+                  {hw.attachments && hw.attachments.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <ImageIcon className="w-3 h-3" />
+                      {hw.attachments.length} photo{hw.attachments.length > 1 ? 's' : ''}
+                    </div>
                   )}
                 </div>
               </CardContent>
