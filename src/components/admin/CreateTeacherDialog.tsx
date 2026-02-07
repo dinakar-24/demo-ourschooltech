@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/drawer';
 import { User, Mail, Lock, Hash, Loader2, Eye, EyeOff } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,7 +30,7 @@ const subjectOptions = [
 ];
 
 const initialFormData = {
-  full_name: '', email: '', password: '', phone: '', employee_id: '', subject: '',
+  full_name: '', email: '', password: '', phone: '', employee_id: '', subject: '', avatar_url: '' as string | null,
 };
 
 const passwordRules = [
@@ -51,6 +52,11 @@ function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose 
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 px-4 sm:px-6 pb-6">
+      {/* Avatar */}
+      <div className="flex justify-center">
+        <AvatarUpload value={formData.avatar_url} onChange={(url) => onChange('avatar_url', url || '')} fallback={formData.full_name} folder="teachers" />
+      </div>
+
       {/* Name & Employee ID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
