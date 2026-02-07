@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ClipboardList, 
   BookOpen, 
@@ -11,17 +15,79 @@ import {
   ChevronRight,
   Calendar,
   Clock,
+  GraduationCap,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+interface TeacherStats {
+  totalStudents: number;
+  totalHomework: number;
+  attendanceToday: number;
+  pendingMarks: number;
+}
+
 export default function TeacherDashboard() {
   const { user, school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
+  const [stats, setStats] = useState<TeacherStats>({
+    totalStudents: 0,
+    totalHomework: 0,
+    attendanceToday: 0,
+    pendingMarks: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (schoolId && user?.id) {
+      fetchStats();
+    }
+  }, [schoolId, user?.id]);
+
+  const fetchStats = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const [homeworkRes, attendanceRes] = await Promise.all([
+        supabase.from('homework').select('id', { count: 'exact', head: true }).eq('assigned_by', user!.id),
+        supabase.from('attendance').select('status').eq('school_id', schoolId).eq('date', today),
+      ]);
+
+      const presentCount = attendanceRes.data?.filter(a => a.status === 'present').length || 0;
+      const totalAttendance = attendanceRes.data?.length || 0;
+      const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+
+      setStats({
+        totalStudents: 156,
+        totalHomework: homeworkRes.count || 0,
+        attendanceToday: attendanceRate,
+        pendingMarks: 3,
+      });
+    } catch (error) {
+      console.error('Error fetching teacher stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const quickActions = [
-    { label: 'Mark Attendance', icon: ClipboardList, href: '/teacher/attendance', color: 'bg-primary' },
-    { label: 'Post Homework', icon: BookOpen, href: '/teacher/homework', color: 'bg-accent' },
-    { label: 'Enter Marks', icon: FileText, href: '/teacher/marks', color: 'bg-success' },
-    { label: 'Announcements', icon: Bell, href: '/teacher/announcements', color: 'bg-info' },
+    { label: 'Attendance', icon: ClipboardList, href: '/teacher/attendance', color: 'bg-emerald-500' },
+    { label: 'Homework', icon: BookOpen, href: '/teacher/homework', color: 'bg-blue-500' },
+    { label: 'Marks', icon: FileText, href: '/teacher/marks', color: 'bg-amber-500' },
+    { label: 'Notices', icon: Bell, href: '/teacher/announcements', color: 'bg-rose-500' },
+    { label: 'Results', icon: BarChart3, href: '/teacher/marks', color: 'bg-purple-500' },
+    { label: 'Timetable', icon: Clock, href: '/teacher/timetable', color: 'bg-teal-500' },
+    { label: 'Students', icon: Users, href: '/teacher/students', color: 'bg-indigo-500' },
+    { label: 'Profile', icon: GraduationCap, href: '/teacher/profile', color: 'bg-primary' },
   ];
 
   const todayClasses = [
@@ -31,128 +97,137 @@ export default function TeacherDashboard() {
     { class: 'Class 7-C', subject: 'Mathematics', time: '2:30 PM', status: 'upcoming' },
   ];
 
+  const pendingTasks = [
+    { label: 'Mark attendance for Class 9-B', icon: ClipboardList, href: '/teacher/attendance', color: 'bg-warning/10 text-warning' },
+    { label: 'Review 12 homework submissions', icon: BookOpen, href: '/teacher/homework', color: 'bg-info/10 text-info' },
+    { label: 'Enter marks for Class 10-A exam', icon: FileText, href: '/teacher/marks', color: 'bg-destructive/10 text-destructive' },
+  ];
+
   return (
     <MobileLayout>
-      <div className="p-4 space-y-6">
-        {/* Welcome Card */}
-        <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-primary-foreground/70 text-sm">Welcome back,</p>
-                <h2 className="text-xl font-bold mt-1">{user?.name}</h2>
-                <p className="text-sm text-primary-foreground/80 mt-0.5">
-                  {user?.subjects?.join(', ')}
-                </p>
-              </div>
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-                {user?.name?.split(' ').map(n => n[0]).join('')}
-              </div>
-            </div>
-            <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/20">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">4 Classes Today</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span className="text-sm">156 Students</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions Grid */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action) => (
-              <Link key={action.label} to={action.href}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]">
-                  <CardContent className="p-4 flex flex-col items-center text-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl ${action.color} flex items-center justify-center`}>
-                      <action.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">{action.label}</span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+      <div className="p-4 space-y-5 pb-6">
+        {/* Welcome Section */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              {greeting()}, {user?.name?.split(' ')[0]}! 👋
+            </h2>
+            <p className="text-sm text-muted-foreground line-clamp-1">
+              {user?.subjects?.join(', ') || 'Teacher'}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-xs text-muted-foreground">Today</p>
+            <p className="text-sm font-semibold text-foreground">4 Classes</p>
           </div>
         </div>
 
-        {/* Today's Schedule */}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <AdminStatCard
+            title="My Students"
+            value={loading ? '...' : stats.totalStudents.toLocaleString()}
+            icon={<Users className="w-4 h-4" />}
+          />
+          <AdminStatCard
+            title="Homework"
+            value={loading ? '...' : stats.totalHomework.toLocaleString()}
+            subtitle="posted"
+            icon={<BookOpen className="w-4 h-4" />}
+          />
+          <AdminStatCard
+            title="Attendance"
+            value={loading ? '...' : `${stats.attendanceToday}%`}
+            subtitle="today"
+            icon={<ClipboardList className="w-4 h-4" />}
+          />
+          <AdminStatCard
+            title="Pending"
+            value={loading ? '...' : `${stats.pendingMarks}`}
+            subtitle="tasks"
+            icon={<AlertCircle className="w-4 h-4" />}
+          />
+        </div>
+
+        {/* Quick Actions */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Today's Schedule
-            </h3>
-            <Link to="/teacher/timetable" className="text-sm text-primary font-medium">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {todayClasses.map((cls, i) => (
-              <Card key={i} className={cls.status === 'ongoing' ? 'border-primary bg-primary/5' : ''}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      cls.status === 'completed' ? 'bg-success/10 text-success' :
-                      cls.status === 'ongoing' ? 'bg-primary/10 text-primary' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{cls.class}</p>
-                      <p className="text-sm text-muted-foreground">{cls.subject}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{cls.time}</p>
-                    <p className={`text-xs capitalize ${
-                      cls.status === 'completed' ? 'text-success' :
-                      cls.status === 'ongoing' ? 'text-primary' :
-                      'text-muted-foreground'
-                    }`}>
-                      {cls.status}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {quickActions.map((action) => (
+              <Link 
+                key={action.label} 
+                to={action.href}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all active:scale-95"
+              >
+                <div className={`w-11 h-11 rounded-xl ${action.color} flex items-center justify-center shadow-sm`}>
+                  <action.icon className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">
+                  {action.label}
+                </span>
+              </Link>
             ))}
           </div>
         </div>
 
         {/* Pending Tasks */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Pending Tasks
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Pending Tasks</h3>
           <Card>
-            <CardContent className="divide-y divide-border">
-              <Link to="/teacher/attendance" className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                    <ClipboardList className="w-4 h-4 text-warning" />
+            <CardContent className="divide-y divide-border p-0">
+              {pendingTasks.map((task, i) => (
+                <Link key={i} to={task.href} className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-lg ${task.color} flex items-center justify-center`}>
+                      <task.icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{task.label}</span>
                   </div>
-                  <span className="text-sm font-medium">Mark attendance for Class 9-B</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </Link>
-              <Link to="/teacher/homework" className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-info" />
-                  </div>
-                  <span className="text-sm font-medium">Review 12 homework submissions</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </Link>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              ))}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Today's Schedule */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Today's Schedule</h3>
+            <span className="text-xs text-primary font-medium">View All</span>
+          </div>
+          <div className="space-y-2">
+            {todayClasses.map((cls, i) => (
+              <Card key={i} className={cls.status === 'ongoing' ? 'border-primary/50 bg-primary/5' : ''}>
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      cls.status === 'completed' ? 'bg-success/10 text-success' :
+                      cls.status === 'ongoing' ? 'bg-primary/10 text-primary' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {cls.status === 'completed' ? <CheckCircle className="w-5 h-5" /> :
+                       cls.status === 'ongoing' ? <TrendingUp className="w-5 h-5" /> :
+                       <Clock className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-foreground">{cls.class}</p>
+                      <p className="text-xs text-muted-foreground">{cls.subject}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-foreground">{cls.time}</p>
+                    <Badge variant={
+                      cls.status === 'completed' ? 'secondary' :
+                      cls.status === 'ongoing' ? 'default' : 'outline'
+                    } className="text-[10px] px-1.5 py-0">
+                      {cls.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </MobileLayout>
