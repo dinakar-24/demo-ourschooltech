@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Phone } from 'lucide-react';
+import { Building2, Mail } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 
 interface School {
@@ -13,6 +14,7 @@ interface SchoolAdmin {
   email: string;
   full_name: string;
   school_id: string | null;
+  avatar_url?: string | null;
   school?: School;
 }
 
@@ -24,14 +26,17 @@ interface AdminCardProps {
 }
 
 export function AdminCard({ admin, isDisabled, isSelf, onActionComplete }: AdminCardProps) {
+  const initials = admin.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
   return (
     <div className="flex items-start gap-3">
-      {/* Avatar */}
-      <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary mt-0.5">
-        {admin.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-      </div>
+      <Avatar className="w-10 h-10 shrink-0 mt-0.5">
+        <AvatarImage src={admin.avatar_url ?? undefined} alt={admin.full_name} />
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
 
-      {/* Info */}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">

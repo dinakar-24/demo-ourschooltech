@@ -1,12 +1,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Phone, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 interface Student {
   id: string;
@@ -19,6 +21,7 @@ interface Student {
   parent_phone: string | null;
   status: string | null;
   user_id: string | null;
+  profiles?: { avatar_url: string | null } | null;
 }
 
 interface StudentCardProps {
@@ -27,13 +30,19 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, onDelete }: StudentCardProps) {
+  const avatarUrl = (student as any).profiles?.avatar_url;
+  const initials = student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
   return (
     <div className="p-4 space-y-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-            {student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-          </div>
+          <Avatar className="w-10 h-10 shrink-0">
+            <AvatarImage src={avatarUrl} alt={student.full_name} />
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0">
             <p className="font-medium text-sm truncate">{student.full_name}</p>
             <p className="text-xs text-muted-foreground">{student.admission_number}</p>
@@ -50,11 +59,11 @@ export function StudentCard({ student, onDelete }: StudentCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('View student details coming soon')}>
                 <Eye className="w-4 h-4 mr-2" />
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('Edit student coming soon')}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
               </DropdownMenuItem>

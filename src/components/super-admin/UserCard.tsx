@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Mail, Building2 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 
 interface UserCardProps {
@@ -7,6 +8,7 @@ interface UserCardProps {
     id: string;
     email: string;
     full_name: string;
+    avatar_url?: string | null;
     school_name?: string;
     roles: string[];
   };
@@ -25,11 +27,16 @@ const getRoleBadgeVariant = (role: string): 'default' | 'destructive' | 'outline
 };
 
 export function UserCard({ user, isDisabled, isSelf, onActionComplete }: UserCardProps) {
+  const initials = user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
   return (
     <div className="flex items-start gap-3 p-4 border rounded-xl bg-card">
-      <div className="w-11 h-11 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-        {user.full_name.split(' ').map(n => n[0]).join('')}
-      </div>
+      <Avatar className="w-11 h-11 shrink-0">
+        <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name} />
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
 
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-center justify-between gap-2">

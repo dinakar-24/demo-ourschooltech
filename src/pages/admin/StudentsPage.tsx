@@ -33,6 +33,7 @@ import {
   Loader2,
   Users,
 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -297,9 +298,12 @@ export default function StudentsPage() {
                       <TableCell className="font-medium">{student.admission_number}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                            {student.full_name.split(' ').map(n => n[0]).join('')}
-                          </div>
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            <AvatarImage src={(student as any).profiles?.avatar_url} alt={student.full_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                              {student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
                           <span>{student.full_name}</span>
                         </div>
                       </TableCell>
@@ -327,11 +331,11 @@ export default function StudentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info('View student details coming soon')}>
                               <Eye className="w-4 h-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info('Edit student coming soon')}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
