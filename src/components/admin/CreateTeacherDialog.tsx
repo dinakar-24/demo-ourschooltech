@@ -8,7 +8,8 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
 } from '@/components/ui/drawer';
-import { User, Mail, Lock, Phone, Hash, Loader2, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Hash, Loader2, Eye, EyeOff } from 'lucide-react';
+import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -84,10 +85,7 @@ function TeacherFormContent({ formData, onChange, onSubmit, isCreating, onClose 
       {/* Phone */}
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">Phone Number</Label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input type="tel" value={formData.phone} onChange={(e) => onChange('phone', e.target.value)} placeholder="+91 9876543210" className="pl-10 h-11" />
-        </div>
+        <IndianPhoneInput value={formData.phone} onChange={(v) => onChange('phone', v)} />
       </div>
 
       <div className="space-y-2">

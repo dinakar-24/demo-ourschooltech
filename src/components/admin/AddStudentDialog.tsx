@@ -8,7 +8,8 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Plus, Loader2, User, Hash, Phone, Mail, Calendar, Droplets } from 'lucide-react';
+import { Plus, Loader2, User, Hash, Mail, Calendar, Droplets } from 'lucide-react';
+import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
@@ -199,10 +200,7 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Phone Number</Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input type="tel" value={formData.parent_phone} onChange={(e) => onInputChange('parent_phone', e.target.value)} placeholder="Primary phone" className="pl-10 h-11" />
-          </div>
+          <IndianPhoneInput value={formData.parent_phone} onChange={(v) => onInputChange('parent_phone', v)} />
         </div>
       </div>
 
@@ -210,10 +208,7 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Alternate Phone (Emergency)</Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input type="tel" value={formData.alternate_phone} onChange={(e) => onInputChange('alternate_phone', e.target.value)} placeholder="Emergency contact" className="pl-10 h-11" />
-          </div>
+          <IndianPhoneInput value={formData.alternate_phone} onChange={(v) => onInputChange('alternate_phone', v)} placeholder="Emergency contact" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Parent Email</Label>
