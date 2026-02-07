@@ -32,6 +32,8 @@ import { Search, Users, Building2, Mail, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
+import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface School {
   id: string;
@@ -48,6 +50,7 @@ interface SchoolAdmin {
 }
 
 export default function SchoolAdminsPage() {
+  const { user } = useAuth();
   const [admins, setAdmins] = useState<SchoolAdmin[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
@@ -289,6 +292,7 @@ export default function SchoolAdminsPage() {
                       <TableHead>Email</TableHead>
                       <TableHead>Assigned School</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="w-12">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -324,6 +328,16 @@ export default function SchoolAdminsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="default">Active</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <UserActionsMenu
+                            userId={admin.id}
+                            userName={admin.full_name}
+                            userEmail={admin.email}
+                            isSelf={user?.id === admin.id}
+                            onActionComplete={fetchData}
+                            currentFullName={admin.full_name}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

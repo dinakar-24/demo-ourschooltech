@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Users, Mail, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UserWithRole {
   id: string;
@@ -25,6 +27,7 @@ interface UserWithRole {
 }
 
 export default function AllUsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,6 +151,7 @@ export default function AllUsersPage() {
                       <TableHead>Email</TableHead>
                       <TableHead>Roles</TableHead>
                       <TableHead>School</TableHead>
+                      <TableHead className="w-12">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -192,6 +196,16 @@ export default function AllUsersPage() {
                           ) : (
                             <span className="text-muted-foreground text-sm">-</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <UserActionsMenu
+                            userId={user.id}
+                            userName={user.full_name}
+                            userEmail={user.email}
+                            isSelf={currentUser?.id === user.id}
+                            onActionComplete={fetchUsers}
+                            currentFullName={user.full_name}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
