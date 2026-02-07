@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide native browser password reveal button */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+/* Chrome/Edge native eye icon */
+input::-webkit-textfield-decoration-container {
+  display: none !important;
+}
+
 /* School ERP Design System - Production Grade */
 /* Inspired by Notion, Linear, Zoho Admin */
 
