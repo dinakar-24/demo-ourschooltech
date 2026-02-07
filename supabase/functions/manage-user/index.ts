@@ -172,7 +172,60 @@ Deno.serve(async (req) => {
       }
 
       case "delete": {
-        // Delete role-specific records first
+        // Check if user is a school_admin — cascade delete all school users
+        const { data: delTargetRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+
+        const isDelSchoolAdmin = delTargetRoles?.some(r => r.role === "school_admin");
+        let cascadeDelCount = 0;
+
+        if (isDelSchoolAdmin) {
+          const { data: delProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("school_id")
+            .eq("id", user_id)
+            .single();
+
+          if (delProfile?.school_id) {
+            const schoolId = delProfile.school_id;
+
+            // Get all other users in this school
+            const { data: schoolUsers } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("school_id", schoolId)
+              .neq("id", user_id);
+
+            if (schoolUsers && schoolUsers.length > 0) {
+              // Filter out super_admins
+              const { data: saRoles } = await supabaseAdmin
+                .from("user_roles")
+                .select("user_id")
+                .eq("role", "super_admin")
+                .in("user_id", schoolUsers.map(u => u.id));
+
+              const saIds = new Set((saRoles || []).map(r => r.user_id));
+              const usersToDelete = schoolUsers.filter(u => !saIds.has(u.id));
+
+              for (const u of usersToDelete) {
+                // Clean up related records
+                await supabaseAdmin.from("teachers").delete().eq("user_id", u.id);
+                await supabaseAdmin.from("students").delete().eq("user_id", u.id);
+                await supabaseAdmin.from("user_roles").delete().eq("user_id", u.id);
+                await supabaseAdmin.from("profiles").delete().eq("id", u.id);
+                const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(u.id);
+                if (!delErr) cascadeDelCount++;
+              }
+            }
+
+            // Delete the school itself
+            await supabaseAdmin.from("schools").delete().eq("id", schoolId);
+          }
+        }
+
+        // Now delete the admin user themselves
         await supabaseAdmin.from("teachers").delete().eq("user_id", user_id);
         await supabaseAdmin.from("students").delete().eq("user_id", user_id);
         await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
@@ -180,7 +233,7 @@ Deno.serve(async (req) => {
 
         const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
         if (error) throw new Error(`Failed to delete user: ${error.message}`);
-        result = { message: "User deleted successfully" };
+        result = { message: `User deleted successfully${cascadeDelCount > 0 ? `. ${cascadeDelCount} school users and the school also deleted.` : ""}` };
         break;
       }
 
