@@ -3,6 +3,7 @@ import { createContext, useContext, useState, ReactNode, useCallback } from 'rea
 interface ImpersonatedSchool {
   id: string;
   name: string;
+  logo?: string;
 }
 
 interface ImpersonationContextType {
