@@ -304,4 +304,70 @@
       transform: translateX(0);
     }
   }
+
+  /* Login page animations */
+  @keyframes loginFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-15px) scale(1.03); }
+  }
+  @keyframes loginDrift {
+    0%, 100% { transform: rotate(30deg) translateX(0); }
+    50% { transform: rotate(35deg) translateX(10px); }
+  }
+  @keyframes loginDriftDelay {
+    0%, 100% { transform: rotate(-20deg) translateX(0); }
+    50% { transform: rotate(-15deg) translateX(-10px); }
+  }
+  @keyframes loginPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.3); }
+  }
+  @keyframes loginSpinSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes loginSway {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(8deg); }
+  }
+  @keyframes loginEnter {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes loginBounceIn {
+    0% { opacity: 0; transform: scale(0.5); }
+    60% { transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes loginPopIn {
+    0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes loginSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes loginRoleIn {
+    from { opacity: 0; transform: scale(0.7) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes loginCardSlide {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-login-float { animation: loginFloat 6s ease-in-out infinite; }
+  .animate-login-float-delay { animation: loginFloat 6s ease-in-out 2s infinite; }
+  .animate-login-pulse { animation: loginPulse 3s ease-in-out infinite; }
+  .animate-login-drift { animation: loginDrift 8s ease-in-out infinite; }
+  .animate-login-drift-delay { animation: loginDriftDelay 8s ease-in-out 1s infinite; }
+  .animate-login-spin-slow { animation: loginSpinSlow 20s linear infinite; }
+  .animate-login-sway { animation: loginSway 4s ease-in-out infinite; }
+  .animate-login-sway-delay { animation: loginSway 4s ease-in-out 1.5s infinite; }
+  .animate-login-enter { animation: loginEnter 0.8s ease-out forwards; }
+  .animate-login-bounce-in { animation: loginBounceIn 0.6s ease-out forwards; }
+  .animate-login-pop-in { animation: loginPopIn 0.5s ease-out 0.4s both; }
+  .animate-login-slide-up { animation: loginSlideUp 0.5s ease-out forwards; }
+  .animate-login-role-in { animation: loginRoleIn 0.4s ease-out both; }
+  .animate-login-card-slide { animation: loginCardSlide 0.6s ease-out 0.2s both; }
 }
