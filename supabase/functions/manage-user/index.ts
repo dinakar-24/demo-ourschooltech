@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
                 await supabaseAdmin.from("user_roles").delete().eq("user_id", u.id);
                 await supabaseAdmin.from("profiles").delete().eq("id", u.id);
                 const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(u.id);
-                if (!delErr) cascadeDelCount++;
+                if (!delErr || delErr.message.includes("not found")) cascadeDelCount++;
               }
             }
 
@@ -232,7 +232,10 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from("profiles").delete().eq("id", user_id);
 
         const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
-        if (error) throw new Error(`Failed to delete user: ${error.message}`);
+        // Ignore "user not found" if already deleted via cascade
+        if (error && !error.message.includes("not found")) {
+          throw new Error(`Failed to delete user: ${error.message}`);
+        }
         result = { message: `User deleted successfully${cascadeDelCount > 0 ? `. ${cascadeDelCount} school users and the school also deleted.` : ""}` };
         break;
       }
