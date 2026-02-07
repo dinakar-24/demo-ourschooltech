@@ -1,24 +1,15 @@
 import { useState, useCallback } from 'react';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Building2, Mail, UserPlus } from 'lucide-react';
-import { toast } from 'sonner';
-import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
+import { Search, Users, Building2, Mail } from 'lucide-react';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { AdminCard } from '@/components/super-admin/AdminCard';
+import { CreateSchoolAdminDialog } from '@/components/super-admin/CreateSchoolAdminDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolAdmins } from '@/hooks/useSchoolAdmins';
 import { usePagination } from '@/hooks/usePagination';
@@ -30,11 +21,7 @@ export default function SchoolAdminsPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [searchInput, setSearchInput] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [disabledAdmins, setDisabledAdmins] = useState<Set<string>>(new Set());
-  const [formData, setFormData] = useState({
-    email: '', password: '', fullName: '', schoolId: '',
-  });
 
   const pagination = usePagination(25);
   const debouncedSearch = useDebounce(searchInput, 400);
@@ -62,35 +49,6 @@ export default function SchoolAdminsPage() {
     refetch();
   }, [refetch, removeAdmin]);
 
-  const { createUser, isCreating } = useCreateSchoolUser();
-
-  const validatePassword = (password: string): string | null => {
-    if (password.length < 8) return 'Password must be at least 8 characters';
-    if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
-    if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
-    if (!/[0-9]/.test(password)) return 'Password must contain a number';
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain a special character';
-    return null;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.schoolId) { toast.error('Please select a school'); return; }
-    const passwordError = validatePassword(formData.password);
-    if (passwordError) { toast.error(passwordError); return; }
-
-    const success = await createUser({
-      email: formData.email, password: formData.password,
-      full_name: formData.fullName, role: 'school_admin', school_id: formData.schoolId,
-    });
-
-    if (success) {
-      setIsDialogOpen(false);
-      setFormData({ email: '', password: '', fullName: '', schoolId: '' });
-      refetch();
-    }
-  };
-
   return (
     <SuperAdminLayout title="School Admins">
       <div className="space-y-4 sm:space-y-6">
@@ -106,63 +64,7 @@ export default function SchoolAdminsPage() {
             />
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add School Admin
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add School Admin</DialogTitle>
-                <DialogDescription>Create a new school administrator account</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <Input id="fullName" value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="John Doe" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input id="email" type="email" value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="admin@school.com" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <Input id="password" type="password" value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Min 8 chars, upper, lower, number, special" minLength={8} required />
-                    <p className="text-xs text-muted-foreground">
-                      Must include uppercase, lowercase, number, and special character
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="school">Assign to School *</Label>
-                    <Select value={formData.schoolId}
-                      onValueChange={(value) => setFormData({ ...formData, schoolId: value })} required>
-                      <SelectTrigger><SelectValue placeholder="Select a school" /></SelectTrigger>
-                      <SelectContent>
-                        {schools.map((school) => (
-                          <SelectItem key={school.id} value={school.id}>
-                            {school.name} ({school.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={isCreating}>{isCreating ? 'Creating...' : 'Create Admin'}</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <CreateSchoolAdminDialog schools={schools} onSuccess={refetch} />
         </div>
 
         {/* Content */}
