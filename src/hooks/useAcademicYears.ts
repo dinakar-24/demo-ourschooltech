@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 
 export interface AcademicYear {
@@ -15,51 +16,51 @@ export interface AcademicYear {
 }
 
 export function useAcademicYears() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['academic-years', user?.schoolId],
+    queryKey: ['academic-years', schoolId],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('academic_years')
         .select('*')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .order('start_date', { ascending: false });
 
       if (error) throw error;
       return data as AcademicYear[];
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
   });
 }
 
 export function useCurrentAcademicYear() {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['current-academic-year', user?.schoolId],
+    queryKey: ['current-academic-year', schoolId],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('academic_years')
         .select('*')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('is_current', true)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data as AcademicYear | null;
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
   });
 }
 
 export function useCreateAcademicYear() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async ({ name, startDate, endDate, isCurrent }: { 
@@ -68,20 +69,19 @@ export function useCreateAcademicYear() {
       endDate: string;
       isCurrent?: boolean;
     }) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // If this is set as current, unset other current years
       if (isCurrent) {
         await supabase
           .from('academic_years')
           .update({ is_current: false })
-          .eq('school_id', user.schoolId);
+          .eq('school_id', schoolId);
       }
 
       const { data, error } = await supabase
         .from('academic_years')
         .insert({
-          school_id: user.schoolId,
+          school_id: schoolId,
           name,
           start_date: startDate,
           end_date: endDate,
@@ -106,19 +106,17 @@ export function useCreateAcademicYear() {
 
 export function useSetCurrentAcademicYear() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (yearId: string) => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // Unset all current years for this school
       await supabase
         .from('academic_years')
         .update({ is_current: false })
-        .eq('school_id', user.schoolId);
+        .eq('school_id', schoolId);
 
-      // Set the selected year as current
       const { data, error } = await supabase
         .from('academic_years')
         .update({ is_current: true })

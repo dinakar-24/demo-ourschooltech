@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 
 interface ClassAttendance {
   class: string;
@@ -12,36 +12,32 @@ interface ClassAttendance {
 }
 
 export function useAdminAttendance(date: Date) {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const dateStr = date.toISOString().split('T')[0];
 
   return useQuery({
-    queryKey: ['admin-attendance', school?.id, dateStr],
+    queryKey: ['admin-attendance', schoolId, dateStr],
     queryFn: async () => {
-      if (!school?.id) return { classWise: [], totals: { present: 0, absent: 0, late: 0, total: 0 } };
+      if (!schoolId) return { classWise: [], totals: { present: 0, absent: 0, late: 0, total: 0 } };
 
-      // Get all students grouped by class
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, class_name')
-        .eq('school_id', school.id)
+        .eq('school_id', schoolId)
         .eq('status', 'active');
 
       if (studentsError) throw studentsError;
 
-      // Get attendance for the date
       const { data: attendance, error: attendanceError } = await supabase
         .from('attendance')
         .select('student_id, status')
-        .eq('school_id', school.id)
+        .eq('school_id', schoolId)
         .eq('date', dateStr);
 
       if (attendanceError) throw attendanceError;
 
-      // Create a map of student_id -> status
       const attendanceMap = new Map(attendance?.map(a => [a.student_id, a.status]) || []);
 
-      // Group students by class
       const classGroups = new Map<string, { present: number; absent: number; late: number; total: number }>();
 
       students?.forEach(student => {
@@ -59,7 +55,6 @@ export function useAdminAttendance(date: Date) {
         else if (status === 'late') group.late++;
       });
 
-      // Convert to array and calculate percentages
       const classWise: ClassAttendance[] = Array.from(classGroups.entries())
         .map(([className, stats]) => ({
           class: className,
@@ -68,7 +63,6 @@ export function useAdminAttendance(date: Date) {
         }))
         .sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }));
 
-      // Calculate totals
       const totals = classWise.reduce(
         (acc, curr) => ({
           present: acc.present + curr.present,
@@ -81,6 +75,6 @@ export function useAdminAttendance(date: Date) {
 
       return { classWise, totals };
     },
-    enabled: !!school?.id,
+    enabled: !!schoolId,
   });
 }

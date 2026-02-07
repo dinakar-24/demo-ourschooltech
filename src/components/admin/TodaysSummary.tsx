@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, CreditCard, UserPlus, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 
 interface SummaryData {
   attendanceMarked: number;
@@ -12,7 +12,7 @@ interface SummaryData {
 }
 
 export function TodaysSummary() {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const [data, setData] = useState<SummaryData>({
     attendanceMarked: 0,
     totalClasses: 0,
@@ -22,16 +22,16 @@ export function TodaysSummary() {
   });
 
   useEffect(() => {
-    if (school?.id) fetchData();
-  }, [school?.id]);
+    if (schoolId) fetchData();
+  }, [schoolId]);
 
   const fetchData = async () => {
     const today = new Date().toISOString().split('T')[0];
     
     const [feesRes, admissionsRes, noticesRes] = await Promise.all([
-      supabase.from('fees').select('amount').eq('status', 'paid').gte('paid_date', today),
-      supabase.from('students').select('id', { count: 'exact', head: true }).gte('created_at', today),
-      supabase.from('announcements').select('id', { count: 'exact', head: true }).gte('created_at', today),
+      supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'paid').gte('paid_date', today),
+      supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).gte('created_at', today),
+      supabase.from('announcements').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).gte('created_at', today),
     ]);
 
     setData({

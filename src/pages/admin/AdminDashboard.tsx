@@ -5,6 +5,8 @@ import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { TodaysSummary } from '@/components/admin/TodaysSummary';
 import { PendingTasks } from '@/components/admin/PendingTasks';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, GraduationCap, CreditCard, ClipboardList } from 'lucide-react';
 
@@ -17,6 +19,8 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
   const { user, school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
+  const { impersonatedSchool, isImpersonating } = useImpersonation();
   const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
     totalTeachers: 0,
@@ -25,19 +29,21 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
+
   useEffect(() => {
-    if (school?.id) {
+    if (schoolId) {
       fetchStats();
     }
-  }, [school?.id]);
+  }, [schoolId]);
 
   const fetchStats = async () => {
     try {
       const [studentsRes, teachersRes, feesRes, attendanceRes] = await Promise.all([
-        supabase.from('students').select('id', { count: 'exact', head: true }),
-        supabase.from('teachers').select('id', { count: 'exact', head: true }),
-        supabase.from('fees').select('amount').eq('status', 'paid'),
-        supabase.from('attendance').select('status').eq('date', new Date().toISOString().split('T')[0]),
+        supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId),
+        supabase.from('teachers').select('id', { count: 'exact', head: true }).eq('school_id', schoolId),
+        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'paid'),
+        supabase.from('attendance').select('status').eq('school_id', schoolId).eq('date', new Date().toISOString().split('T')[0]),
       ]);
 
       const feeTotal = feesRes.data?.reduce((sum, f) => sum + Number(f.amount), 0) || 0;
@@ -81,7 +87,7 @@ export default function AdminDashboard() {
               {greeting()}, {user?.name?.split(' ')[0]}! 👋
             </h2>
             <p className="text-sm text-muted-foreground line-clamp-1">
-              {school?.name || 'Your School'}
+              {displaySchoolName || 'Your School'}
             </p>
           </div>
           <div className="text-right shrink-0">

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { getSupabaseRange } from './usePagination';
@@ -42,19 +43,19 @@ export interface PaginatedAnnouncements {
 }
 
 export function useAnnouncements(filters?: AnnouncementFilters) {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['announcements', school?.id, filters],
+    queryKey: ['announcements', schoolId, filters],
     queryFn: async (): Promise<PaginatedAnnouncements> => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       let query = supabase
         .from('announcements')
         .select('*', { count: 'exact' })
-        .eq('school_id', school.id)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (filters?.status === 'active') {
@@ -75,27 +76,27 @@ export function useAnnouncements(filters?: AnnouncementFilters) {
       if (error) throw error;
       return { data: (data || []) as Announcement[], totalCount: count || 0 };
     },
-    enabled: !!school?.id,
+    enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,
   });
 }
 
 export function useAnnouncementStats() {
-  const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['announcement-stats', school?.id],
+    queryKey: ['announcement-stats', schoolId],
     queryFn: async () => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const monthStart = new Date();
       monthStart.setDate(1);
       const monthStartStr = monthStart.toISOString();
 
       const [totalResult, activeResult, thisMonthResult] = await Promise.all([
-        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id),
-        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id).eq('is_active', true),
-        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', school.id).gte('created_at', monthStartStr),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', schoolId),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).eq('is_active', true),
+        supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).gte('created_at', monthStartStr),
       ]);
 
       return {
@@ -105,18 +106,19 @@ export function useAnnouncementStats() {
         thisMonth: thisMonthResult.count || 0,
       };
     },
-    enabled: !!school?.id,
+    enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
-  const { school, user } = useAuth();
+  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async (formData: AnnouncementFormData) => {
-      if (!school?.id) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('announcements')
@@ -127,7 +129,7 @@ export function useCreateAnnouncement() {
           target_classes: formData.target_classes || null,
           expires_at: formData.expires_at || null,
           is_active: formData.is_active,
-          school_id: school.id,
+          school_id: schoolId,
           created_by: user?.id || null,
         })
         .select()

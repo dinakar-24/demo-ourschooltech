@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -34,25 +35,23 @@ export function useAttendance(date: Date, filters?: {
   className?: string;
   section?: string;
 }) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['attendance', user?.schoolId, dateStr, filters],
+    queryKey: ['attendance', schoolId, dateStr, filters],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // Use inner join for server-side filtering
       let query = supabase
         .from('attendance')
         .select(`
           *,
           student:students!inner(id, full_name, admission_number, roll_number, class_name, section)
         `)
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('date', dateStr);
 
-      // Server-side class/section filtering
       if (filters?.className && filters.className !== 'All Classes') {
         query = query.eq('student.class_name', filters.className);
       }
@@ -65,24 +64,24 @@ export function useAttendance(date: Date, filters?: {
       if (error) throw error;
       return data as AttendanceRecord[];
     },
-    enabled: !!user?.schoolId,
-    staleTime: 1 * 60 * 1000, // 1 minute for attendance data
+    enabled: !!schoolId,
+    staleTime: 1 * 60 * 1000,
   });
 }
 
 export function useAttendanceSummary(date: Date) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['attendance-summary', user?.schoolId, dateStr],
+    queryKey: ['attendance-summary', schoolId, dateStr],
     queryFn: async (): Promise<AttendanceSummary> => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
       const { data, error } = await supabase
         .from('attendance')
         .select('status')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('date', dateStr);
 
       if (error) throw error;
@@ -94,24 +93,23 @@ export function useAttendanceSummary(date: Date) {
         total: data?.length || 0,
       };
     },
-    enabled: !!user?.schoolId,
+    enabled: !!schoolId,
   });
 }
 
 export function useClassAttendance(date: Date, className: string, section: string) {
-  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['class-attendance', user?.schoolId, dateStr, className, section],
+    queryKey: ['class-attendance', schoolId, dateStr, className, section],
     queryFn: async () => {
-      if (!user?.schoolId) throw new Error('No school ID');
+      if (!schoolId) throw new Error('No school ID');
 
-      // First get students in the class
       const { data: students, error: studentsError } = await supabase
         .from('students')
         .select('id, full_name, admission_number, roll_number')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('class_name', className)
         .eq('section', section)
         .eq('status', 'active')
@@ -119,19 +117,17 @@ export function useClassAttendance(date: Date, className: string, section: strin
 
       if (studentsError) throw studentsError;
 
-      // Then get existing attendance for this date
       const studentIds = students?.map(s => s.id) || [];
       
       const { data: attendance, error: attendanceError } = await supabase
         .from('attendance')
         .select('*')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('date', dateStr)
         .in('student_id', studentIds);
 
       if (attendanceError) throw attendanceError;
 
-      // Map students with their attendance status
       const attendanceMap = new Map(attendance?.map(a => [a.student_id, a]) || []);
 
       return {
@@ -140,13 +136,14 @@ export function useClassAttendance(date: Date, className: string, section: strin
         isMarked: (attendance?.length || 0) > 0,
       };
     },
-    enabled: !!user?.schoolId && !!className && !!section,
+    enabled: !!schoolId && !!className && !!section,
   });
 }
 
 export function useMarkAttendance() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
 
   return useMutation({
     mutationFn: async ({ 
@@ -156,28 +153,25 @@ export function useMarkAttendance() {
       date: string;
       records: { studentId: string; status: 'present' | 'absent' | 'late'; notes?: string }[];
     }) => {
-      if (!user?.schoolId || !user?.id) throw new Error('No user context');
+      if (!schoolId || !user?.id) throw new Error('No user context');
 
-      // Upsert attendance records
       const attendanceData = records.map(r => ({
         student_id: r.studentId,
-        school_id: user.schoolId,
+        school_id: schoolId,
         date,
         status: r.status,
         notes: r.notes || null,
         marked_by: user.id,
       }));
 
-      // Delete existing records for this date and these students
       const studentIds = records.map(r => r.studentId);
       await supabase
         .from('attendance')
         .delete()
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .eq('date', date)
         .in('student_id', studentIds);
 
-      // Insert new records
       const { data, error } = await supabase
         .from('attendance')
         .insert(attendanceData)
@@ -199,8 +193,6 @@ export function useMarkAttendance() {
 }
 
 export function useStudentAttendance(studentId: string, startDate?: Date, endDate?: Date) {
-  const { user } = useAuth();
-
   return useQuery({
     queryKey: ['student-attendance', studentId, startDate, endDate],
     queryFn: async () => {
