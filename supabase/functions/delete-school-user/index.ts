@@ -39,8 +39,8 @@ Deno.serve(async (req) => {
       throw new Error("Permission denied: Only admins can delete users");
     }
 
-    const { user_id, teacher_id } = await req.json();
-    if (!user_id && !teacher_id) throw new Error("Missing user_id or teacher_id");
+    const { user_id, teacher_id, student_id } = await req.json();
+    if (!user_id && !teacher_id && !student_id) throw new Error("Missing user_id, teacher_id, or student_id");
 
     let targetUserId = user_id;
 
@@ -54,11 +54,33 @@ Deno.serve(async (req) => {
 
       targetUserId = teacher?.user_id;
 
-      // Even if no user_id linked, delete the teacher record
       if (!targetUserId) {
         await supabaseAdmin.from("teachers").delete().eq("id", teacher_id);
         return new Response(
           JSON.stringify({ success: true, message: "Teacher record deleted" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+    }
+
+    // If only student_id provided, look up user_id from students table
+    if (!targetUserId && student_id) {
+      const { data: student } = await supabaseAdmin
+        .from("students")
+        .select("user_id")
+        .eq("id", student_id)
+        .single();
+
+      targetUserId = student?.user_id;
+
+      if (!targetUserId) {
+        // Delete related records
+        await supabaseAdmin.from("attendance").delete().eq("student_id", student_id);
+        await supabaseAdmin.from("fees").delete().eq("student_id", student_id);
+        await supabaseAdmin.from("results").delete().eq("student_id", student_id);
+        await supabaseAdmin.from("students").delete().eq("id", student_id);
+        return new Response(
+          JSON.stringify({ success: true, message: "Student record deleted" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
         );
       }
@@ -95,6 +117,9 @@ Deno.serve(async (req) => {
     }
 
     // Delete related records
+    await supabaseAdmin.from("attendance").delete().eq("student_id", targetUserId).then(() => {});
+    await supabaseAdmin.from("fees").delete().eq("student_id", targetUserId).then(() => {});
+    await supabaseAdmin.from("results").delete().eq("student_id", targetUserId).then(() => {});
     await supabaseAdmin.from("teachers").delete().eq("user_id", targetUserId);
     await supabaseAdmin.from("students").delete().eq("user_id", targetUserId);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", targetUserId);

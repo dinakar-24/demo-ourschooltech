@@ -137,9 +137,9 @@ export default function StudentsPage() {
     setIsAddDialogOpen(false);
   };
 
-  const handleDelete = async (studentId: string) => {
-    if (confirm('Are you sure you want to deactivate this student?')) {
-      await deleteStudent.mutateAsync(studentId);
+  const handleDelete = async (studentId: string, userId: string | null) => {
+    if (confirm('Are you sure you want to delete this student? This will permanently remove all their data.')) {
+      await deleteStudent.mutateAsync({ studentId, userId });
     }
   };
 
@@ -337,10 +337,10 @@ export default function StudentsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={() => handleDelete(student.id)}
+                              onClick={() => handleDelete(student.id, student.user_id)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
-                              Deactivate
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
