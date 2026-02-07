@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Building2, MapPin, Phone, Mail, Pencil, Trash2 } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Pencil, Trash2, Eye } from 'lucide-react';
 
 interface School {
   id: string;
@@ -26,22 +26,24 @@ interface SchoolsTableProps {
   schools: School[];
   onEdit: (school: School) => void;
   onDelete: (id: string) => void;
+  onImpersonate?: (school: School) => void;
 }
 
 export const SchoolsTable = memo(function SchoolsTable({ 
   schools, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onImpersonate,
 }: SchoolsTableProps) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[35%]">School Name</TableHead>
-          <TableHead className="w-[15%]">Code</TableHead>
-          <TableHead className="w-[15%]">City</TableHead>
+          <TableHead className="w-[30%]">School Name</TableHead>
+          <TableHead className="w-[12%]">Code</TableHead>
+          <TableHead className="w-[13%]">City</TableHead>
           <TableHead className="w-[25%]">Contact</TableHead>
-          <TableHead className="w-[10%] text-right">Actions</TableHead>
+          <TableHead className="w-[20%] text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -94,6 +96,17 @@ export const SchoolsTable = memo(function SchoolsTable({
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">
+                {onImpersonate && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onImpersonate(school)}
+                    className="h-8 px-2 text-xs"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" />
+                    View as Admin
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon-sm" onClick={() => onEdit(school)}>
                   <Pencil className="w-4 h-4" />
                 </Button>

@@ -1,14 +1,18 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
+  /** When true and user is super_admin, requires active impersonation to access */
+  requireImpersonation?: boolean;
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, allowedRoles, requireImpersonation }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { isImpersonating } = useImpersonation();
   const location = useLocation();
 
   if (isLoading) {
@@ -23,10 +27,18 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to user's appropriate dashboard
-    const dashboardPath = getRoleDashboard(user.role);
-    return <Navigate to={dashboardPath} replace />;
+  if (allowedRoles && user) {
+    const hasRole = allowedRoles.includes(user.role);
+    
+    // Super admin accessing admin routes requires impersonation
+    if (hasRole && requireImpersonation && user.role === 'super_admin' && !isImpersonating) {
+      return <Navigate to="/super-admin/schools" replace />;
+    }
+
+    if (!hasRole) {
+      const dashboardPath = getRoleDashboard(user.role);
+      return <Navigate to={dashboardPath} replace />;
+    }
   }
 
   return <>{children}</>;
