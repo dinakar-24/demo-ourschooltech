@@ -56,13 +56,25 @@ export default function SchoolAdminsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [disabledAdmins, setDisabledAdmins] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     fullName: '',
     schoolId: '',
   });
-  
+
+  const handleActionComplete = (action?: string, userId?: string) => {
+    if (action === 'disable' && userId) {
+      setDisabledAdmins(prev => new Set(prev).add(userId));
+    } else if (action === 'enable' && userId) {
+      setDisabledAdmins(prev => { const next = new Set(prev); next.delete(userId); return next; });
+    } else if (action === 'delete' && userId) {
+      setAdmins(prev => prev.filter(a => a.id !== userId));
+      return;
+    }
+    fetchData();
+  };
 
   useEffect(() => {
     fetchData();
@@ -327,15 +339,18 @@ export default function SchoolAdminsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="default">Active</Badge>
+                          <Badge variant={disabledAdmins.has(admin.id) ? 'destructive' : 'default'}>
+                            {disabledAdmins.has(admin.id) ? 'Disabled' : 'Active'}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <UserActionsMenu
                             userId={admin.id}
                             userName={admin.full_name}
                             userEmail={admin.email}
+                            isDisabled={disabledAdmins.has(admin.id)}
                             isSelf={user?.id === admin.id}
-                            onActionComplete={fetchData}
+                            onActionComplete={handleActionComplete}
                             currentFullName={admin.full_name}
                           />
                         </TableCell>
