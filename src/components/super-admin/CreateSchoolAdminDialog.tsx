@@ -11,7 +11,8 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { UserPlus, Building2, User, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Building2, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { toast } from 'sonner';
 import { useCreateSchoolUser } from '@/hooks/useCreateSchoolUser';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -89,17 +90,12 @@ function AdminForm({ formData, update, handleSubmit, isCreating, schools, onClos
           <Label htmlFor="admin-phone" className="text-sm font-medium">
             Phone
           </Label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="admin-phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => update('phone', e.target.value)}
-              placeholder="Optional"
-              className="pl-10 h-11"
-            />
-          </div>
+          <IndianPhoneInput
+            id="admin-phone"
+            value={formData.phone}
+            onChange={(v) => update('phone', v)}
+            placeholder="Optional"
+          />
         </div>
       </div>
 
