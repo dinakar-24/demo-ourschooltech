@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -191,8 +192,12 @@ export default function TeachersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View</DropdownMenuItem>
-                          <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('View teacher details coming soon')}>
+                            <Eye className="w-4 h-4 mr-2" />View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
+                            <Edit className="w-4 h-4 mr-2" />Edit
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
@@ -290,8 +295,12 @@ export default function TeachersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View Details</DropdownMenuItem>
-                            <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info('View teacher details coming soon')}>
+                              <Eye className="w-4 h-4 mr-2" />View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
+                              <Edit className="w-4 h-4 mr-2" />Edit
+                            </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
                               <Trash2 className="w-4 h-4 mr-2" />Delete
                             </DropdownMenuItem>
