@@ -136,14 +136,14 @@ serve(async (req) => {
         port: 465,
         tls: true,
         auth: {
-          username: "admin@ourschooltech.com",
+          username: "noreply@ourschooltech.com",
           password: smtpPassword,
         },
       },
     });
 
     await client.send({
-      from: "OurSchoolTech <admin@ourschooltech.com>",
+      from: "OurSchoolTech <noreply@ourschooltech.com>",
       to: email.toLowerCase(),
       subject: "Your Super Admin Login OTP",
       html: `
