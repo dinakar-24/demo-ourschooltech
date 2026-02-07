@@ -64,6 +64,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   const { user, school, logout } = useAuth();
   const { impersonatedSchool, isImpersonating } = useImpersonation();
   const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
+  const displaySchoolLogo = isImpersonating ? impersonatedSchool?.logo : school?.logo;
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -79,6 +80,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   };
 
   const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
+  const isExactActive = (href: string) => location.pathname === href;
 
   const handleLogout = () => {
     logout();
@@ -91,9 +93,13 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <School className="w-5 h-5 text-primary-foreground" />
-            </div>
+            {displaySchoolLogo ? (
+              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-9 h-9 rounded-lg object-cover" />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                <School className="w-5 h-5 text-primary-foreground" />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">{displaySchoolName}</p>
               <p className="text-xs text-sidebar-foreground/70 capitalize">{isImpersonating ? 'Viewing as Admin' : 'School Admin'}</p>
@@ -143,7 +149,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                             onClick={() => setMobileMenuOpen(false)}
                             className={cn(
                               "block py-2 px-3 rounded-md text-sm transition-colors",
-                              isActive(child.href)
+                              isExactActive(child.href)
                                 ? "text-sidebar-primary bg-sidebar-accent"
                                 : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
                             )}
