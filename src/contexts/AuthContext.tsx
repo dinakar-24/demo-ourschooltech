@@ -46,63 +46,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [school, setSchool] = useState<School | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user profile and role from database
+  // Fetch user profile, role, and school in a single optimized query
   const fetchUserData = async (supabaseUser: SupabaseUser) => {
     try {
-      // Fetch profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_user_auth_data', {
+        _user_id: supabaseUser.id,
+      });
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
+      if (error) {
+        console.error('Error fetching user data:', error);
         return null;
       }
 
-      if (!profile) {
+      const result = data as unknown as { profile: any; role: string | null; school: any | null } | null;
+
+      if (!result?.profile) {
         console.log('No profile found for user');
         return null;
       }
 
-      // Fetch user role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', supabaseUser.id)
-        .maybeSingle();
+      const { profile, role, school } = result;
 
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
-      }
-
-      // Fetch school if profile has school_id
-      let schoolData: School | null = null;
-      if (profile.school_id) {
-        const { data: schoolResult, error: schoolError } = await supabase
-          .from('schools')
-          .select('*')
-          .eq('id', profile.school_id)
-          .maybeSingle();
-
-        if (!schoolError && schoolResult) {
-          schoolData = {
-            id: schoolResult.id,
-            name: schoolResult.name,
-            code: schoolResult.code,
-            logo: schoolResult.logo || undefined,
-            address: schoolResult.address,
-            city: schoolResult.city,
-          };
-        }
-      }
+      const schoolData: School | null = school
+        ? {
+            id: school.id,
+            name: school.name,
+            code: school.code,
+            logo: school.logo || undefined,
+            address: school.address,
+            city: school.city,
+          }
+        : null;
 
       const userData: User = {
         id: supabaseUser.id,
         name: profile.full_name,
         email: profile.email,
-        role: (roleData?.role as UserRole) || 'student',
+        role: (role as UserRole) || 'student',
         avatar: profile.avatar_url || undefined,
         schoolId: profile.school_id || '',
         schoolName: schoolData?.name || '',
