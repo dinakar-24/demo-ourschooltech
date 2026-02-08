@@ -1120,6 +1120,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_auth_data: { Args: { _user_id: string }; Returns: Json }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
