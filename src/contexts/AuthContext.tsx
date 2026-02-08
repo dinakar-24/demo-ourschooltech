@@ -250,19 +250,17 @@ export function useSchoolSearch(query: string): { schools: School[]; isLoading: 
 
     const searchSchools = async () => {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .or(`name.ilike.%${query}%,code.ilike.%${query}%,city.ilike.%${query}%`)
-        .limit(10);
+      const { data, error } = await supabase.rpc('search_schools_public', {
+        _query: query.trim(),
+      });
 
       if (!error && data) {
-        setSchools(data.map(s => ({
+        setSchools((data as any[]).map(s => ({
           id: s.id,
           name: s.name,
           code: s.code,
           logo: s.logo || undefined,
-          address: s.address,
+          address: '',
           city: s.city,
         })));
       }
