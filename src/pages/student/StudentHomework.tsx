@@ -1,6 +1,7 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   BookOpen, 
   Calendar, 
@@ -8,69 +9,29 @@ import {
   AlertCircle,
   CheckCircle,
   Image as ImageIcon,
+  BookX,
 } from 'lucide-react';
-
-const mockHomework = [
-  { 
-    id: '1', 
-    subject: 'Mathematics', 
-    title: 'Chapter 5 - Quadratic Equations', 
-    description: 'Complete exercises 5.1 and 5.2 from the textbook',
-    dueDate: '2024-01-20',
-    teacher: 'Mrs. Sharma',
-    status: 'pending',
-    attachments: [],
-  },
-  { 
-    id: '2', 
-    subject: 'Science', 
-    title: 'Lab Report - Light Experiment', 
-    description: 'Write detailed lab report for the light refraction experiment',
-    dueDate: '2024-01-22',
-    teacher: 'Mr. Gupta',
-    status: 'pending',
-    attachments: [],
-  },
-  { 
-    id: '3', 
-    subject: 'English', 
-    title: 'Essay Writing', 
-    description: 'Write an essay on "Technology in Education"',
-    dueDate: '2024-01-18',
-    teacher: 'Ms. Patel',
-    status: 'submitted',
-    attachments: [],
-  },
-  { 
-    id: '4', 
-    subject: 'Hindi', 
-    title: 'Grammar Exercises', 
-    description: 'Complete exercises from Chapter 8',
-    dueDate: '2024-01-15',
-    teacher: 'Mrs. Verma',
-    status: 'graded',
-    grade: 'A',
-    attachments: [],
-  },
-];
+import { useStudentProfile, useStudentHomework } from '@/hooks/useStudentData';
+import { format, isPast, isToday } from 'date-fns';
 
 export default function StudentHomework() {
-  const getStatusBadge = (status: string, grade?: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge className="bg-warning text-warning-foreground">Pending</Badge>;
-      case 'submitted':
-        return <Badge className="bg-primary text-primary-foreground">Submitted</Badge>;
-      case 'graded':
-        return <Badge className="bg-success text-success-foreground">Graded: {grade}</Badge>;
-      case 'overdue':
-        return <Badge variant="destructive">Overdue</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const { data: profile } = useStudentProfile();
+  const { data: homework, isLoading } = useStudentHomework(profile?.class_name, profile?.section);
+
+  const getStatusBadge = (dueDate: string) => {
+    const due = new Date(dueDate);
+    if (isToday(due)) {
+      return <Badge className="bg-warning text-warning-foreground">Due Today</Badge>;
     }
+    if (isPast(due)) {
+      return <Badge variant="destructive">Overdue</Badge>;
+    }
+    return <Badge className="bg-primary text-primary-foreground">Upcoming</Badge>;
   };
 
-  const pendingCount = mockHomework.filter(h => h.status === 'pending').length;
+  const overdueCount = homework?.filter(h => isPast(new Date(h.due_date)) && !isToday(new Date(h.due_date))).length ?? 0;
+  const dueTodayCount = homework?.filter(h => isToday(new Date(h.due_date))).length ?? 0;
+  const upcomingCount = homework?.filter(h => !isPast(new Date(h.due_date)) && !isToday(new Date(h.due_date))).length ?? 0;
 
   return (
     <MobileLayout title="Homework" showBack>
@@ -79,75 +40,102 @@ export default function StudentHomework() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="p-3 text-center">
-              <AlertCircle className="w-5 h-5 text-warning mx-auto mb-1" />
-              <p className="text-lg font-bold">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground">Pending</p>
+              <AlertCircle className="w-5 h-5 text-destructive mx-auto mb-1" />
+              <p className="text-lg font-bold">{overdueCount}</p>
+              <p className="text-xs text-muted-foreground">Overdue</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
-              <p className="text-lg font-bold">1</p>
-              <p className="text-xs text-muted-foreground">Submitted</p>
+              <Clock className="w-5 h-5 text-warning mx-auto mb-1" />
+              <p className="text-lg font-bold">{dueTodayCount}</p>
+              <p className="text-xs text-muted-foreground">Due Today</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <CheckCircle className="w-5 h-5 text-success mx-auto mb-1" />
-              <p className="text-lg font-bold">1</p>
-              <p className="text-xs text-muted-foreground">Graded</p>
+              <CheckCircle className="w-5 h-5 text-primary mx-auto mb-1" />
+              <p className="text-lg font-bold">{upcomingCount}</p>
+              <p className="text-xs text-muted-foreground">Upcoming</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Homework List */}
-        <div className="space-y-3">
-          {mockHomework.map((hw) => (
-            <Card key={hw.id} className={hw.status === 'pending' ? 'border-warning/50' : ''}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{hw.subject}</p>
-                      <p className="text-xs text-muted-foreground">{hw.teacher}</p>
-                    </div>
-                  </div>
-                  {getStatusBadge(hw.status, hw.grade)}
-                </div>
-                
-                <h3 className="font-medium mb-1">{hw.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
-
-                {/* Show attached photos if any */}
-                {hw.attachments && hw.attachments.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {hw.attachments.map((url, i) => (
-                      <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border">
-                        <img src={url} alt="" className="w-full h-full object-cover" />
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : !homework?.length ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <BookX className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="font-medium text-muted-foreground">No homework assigned</p>
+              <p className="text-sm text-muted-foreground mt-1">Check back later for new assignments</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {homework.map((hw) => {
+              const isOverdue = isPast(new Date(hw.due_date)) && !isToday(new Date(hw.due_date));
+              return (
+                <Card key={hw.id} className={isOverdue ? 'border-destructive/50' : isToday(new Date(hw.due_date)) ? 'border-warning/50' : ''}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{hw.subject}</p>
+                          <p className="text-xs text-muted-foreground">{hw.class?.name}{hw.section ? ` - ${hw.section.name}` : ''}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    Due: {hw.dueDate}
-                  </div>
-                  {hw.attachments && hw.attachments.length > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <ImageIcon className="w-3 h-3" />
-                      {hw.attachments.length} photo{hw.attachments.length > 1 ? 's' : ''}
+                      {getStatusBadge(hw.due_date)}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    
+                    <h3 className="font-medium mb-1">{hw.title}</h3>
+                    {hw.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
+                    )}
+
+                    {/* Show attached photos if any */}
+                    {hw.attachments && hw.attachments.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {hw.attachments.map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden border border-border">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        Due: {format(new Date(hw.due_date), 'dd MMM yyyy')}
+                      </div>
+                      {hw.attachments && hw.attachments.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <ImageIcon className="w-3 h-3" />
+                          {hw.attachments.length} photo{hw.attachments.length > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </MobileLayout>
   );
