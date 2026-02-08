@@ -1129,6 +1129,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      search_schools_public: {
+        Args: { _query: string }
+        Returns: {
+          city: string
+          code: string
+          id: string
+          logo: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       app_role:
