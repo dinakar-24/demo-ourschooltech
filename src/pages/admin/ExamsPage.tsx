@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -12,7 +14,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -39,10 +40,21 @@ import {
   Trash2,
   GraduationCap,
   Loader2,
+  Search,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useExams, useExamStats, useCreateExam, useUpdateExam, useDeleteExam, ExamFormData, Exam } from '@/hooks/useExams';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useDebounce } from '@/hooks/useDebounce';
 import { format } from 'date-fns';
 
 const SUBJECTS = [
@@ -51,8 +63,24 @@ const SUBJECTS = [
 ];
 
 export default function ExamsPage() {
-  const { data: examsResult, isLoading } = useExams();
+  const isMobile = useIsMobile();
+  const pagination = usePagination(25);
+  const [searchInput, setSearchInput] = useState('');
+  const [selectedClass, setSelectedClass] = useState('All Classes');
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  useEffect(() => {
+    pagination.resetPage();
+  }, [debouncedSearch, selectedClass]);
+
+  const { data: examsResult, isLoading } = useExams({
+    className: selectedClass,
+    search: debouncedSearch,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+  });
   const exams = examsResult?.data || [];
+  const totalCount = examsResult?.totalCount || 0;
   const { data: stats } = useExamStats();
   const { data: classes = [] } = useClasses();
   const createExam = useCreateExam();
@@ -73,19 +101,11 @@ export default function ExamsPage() {
   });
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      subject: '',
-      class_name: '',
-      exam_date: '',
-      max_marks: 100,
-    });
+    setFormData({ name: '', subject: '', class_name: '', exam_date: '', max_marks: 100 });
   };
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.subject || !formData.class_name || !formData.exam_date) {
-      return;
-    }
+    if (!formData.name || !formData.subject || !formData.class_name || !formData.exam_date) return;
     await createExam.mutateAsync(formData);
     setIsAddDialogOpen(false);
     resetForm();
@@ -128,7 +148,6 @@ export default function ExamsPage() {
     today.setHours(0, 0, 0, 0);
     const date = new Date(examDate);
     date.setHours(0, 0, 0, 0);
-    
     if (date > today) return 'upcoming';
     if (date < today) return 'completed';
     return 'today';
@@ -147,26 +166,14 @@ export default function ExamsPage() {
     }
   };
 
-  // Group exams by date for schedule view
-  const examSchedule = useMemo(() => {
-    const upcoming = exams
-      .filter(e => new Date(e.exam_date) >= new Date())
-      .sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime())
-      .slice(0, 10);
-    return upcoming;
-  }, [exams]);
-
-  // Unique class names from classes data
-  const classNames = useMemo(() => {
-    return classes.map(c => c.name);
-  }, [classes]);
+  const classNames = useMemo(() => ['All Classes', ...classes.map(c => c.name)], [classes]);
 
   const ExamFormFields = () => (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
         <Label>Exam Name</Label>
-        <Input 
-          placeholder="e.g., Mid-Term Examination" 
+        <Input
+          placeholder="e.g., Mid-Term Examination"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
@@ -174,33 +181,19 @@ export default function ExamsPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Subject</Label>
-          <Select 
-            value={formData.subject}
-            onValueChange={(value) => setFormData({ ...formData, subject: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select subject" />
-            </SelectTrigger>
+          <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
+            <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
             <SelectContent>
-              {SUBJECTS.map(subject => (
-                <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-              ))}
+              {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           <Label>Class</Label>
-          <Select 
-            value={formData.class_name}
-            onValueChange={(value) => setFormData({ ...formData, class_name: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select class" />
-            </SelectTrigger>
+          <Select value={formData.class_name} onValueChange={(v) => setFormData({ ...formData, class_name: v })}>
+            <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
             <SelectContent>
-              {classNames.map(name => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
-              ))}
+              {classes.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -208,19 +201,11 @@ export default function ExamsPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Exam Date</Label>
-          <Input 
-            type="date" 
-            value={formData.exam_date}
-            onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
-          />
+          <Input type="date" value={formData.exam_date} onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })} />
         </div>
         <div className="space-y-2">
           <Label>Max Marks</Label>
-          <Input 
-            type="number" 
-            value={formData.max_marks}
-            onChange={(e) => setFormData({ ...formData, max_marks: parseInt(e.target.value) || 100 })}
-          />
+          <Input type="number" value={formData.max_marks} onChange={(e) => setFormData({ ...formData, max_marks: parseInt(e.target.value) || 100 })} />
         </div>
       </div>
     </div>
@@ -235,7 +220,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Total Exams</p>
               <p className="text-2xl font-bold text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.total || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.total || 0}
               </p>
             </CardContent>
           </Card>
@@ -243,7 +228,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Upcoming</p>
               <p className="text-2xl font-bold text-warning">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.upcoming || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.upcoming || 0}
               </p>
             </CardContent>
           </Card>
@@ -251,7 +236,7 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Completed</p>
               <p className="text-2xl font-bold text-success">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.completed || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.completed || 0}
               </p>
             </CardContent>
           </Card>
@@ -259,201 +244,183 @@ export default function ExamsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">This Month</p>
               <p className="text-2xl font-bold text-primary">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.thisMonth || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.thisMonth || 0}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="exams" className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="exams">All Exams</TabsTrigger>
-              <TabsTrigger value="schedule">Exam Schedule</TabsTrigger>
-              <TabsTrigger value="results">Results</TabsTrigger>
-            </TabsList>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" onClick={resetForm}>
-                  <Plus className="w-4 h-4 mr-2" />
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search exams..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={selectedClass} onValueChange={setSelectedClass}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Class" />
+              </SelectTrigger>
+              <SelectContent>
+                {classNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Exam
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>Create New Examination</DialogTitle></DialogHeader>
+              <ExamFormFields />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreate} disabled={createExam.isPending}>
+                  {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Create Exam
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Create New Examination</DialogTitle>
-                </DialogHeader>
-                <ExamFormFields />
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreate} disabled={createExam.isPending}>
-                    {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Create Exam
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-          <TabsContent value="exams" className="space-y-4">
+        {/* Exams List */}
+        <Card>
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="grid md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4].map(i => (
-                  <Card key={i}>
-                    <CardHeader className="pb-3">
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-4 w-24 mt-2" />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </CardContent>
-                  </Card>
+              <div className="p-4 space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="flex items-center gap-3 py-2">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : exams.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <GraduationCap className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Exams Created</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Create your first exam to get started.
-                  </p>
-                  <Button onClick={() => setIsAddDialogOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Exam
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {exams.map((exam) => (
-                  <Card key={exam.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{exam.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {exam.subject}
-                          </p>
+              <div className="text-center py-12 text-muted-foreground px-4">
+                <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No exams found</p>
+                <p className="text-sm mt-1">
+                  {debouncedSearch ? 'Try a different search term' : 'Create your first exam to get started'}
+                </p>
+              </div>
+            ) : isMobile ? (
+              /* Mobile Card Layout */
+              <div className="divide-y">
+                {exams.map((exam) => {
+                  const status = getExamStatus(exam.exam_date);
+                  return (
+                    <div key={exam.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{exam.name}</p>
+                          <p className="text-xs text-muted-foreground">{exam.subject} · {exam.class_name}</p>
                         </div>
-                        {getStatusBadge(getExamStatus(exam.exam_date))}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {getStatusBadge(status)}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(exam)}>
+                                <Edit className="w-4 h-4 mr-2" />Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(exam)}>
+                                <Trash2 className="w-4 h-4 mr-2" />Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
                           {format(new Date(exam.exam_date), 'dd MMM yyyy')}
-                        </div>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          Max: {exam.max_marks}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <GraduationCap className="w-4 h-4" />
-                          {exam.class_name}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <BookOpen className="w-4 h-4" />
-                        Max Marks: {exam.max_marks}
-                      </div>
-                      <div className="flex gap-2 pt-2 border-t">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => openEditDialog(exam)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1 text-destructive hover:text-destructive"
-                          onClick={() => openDeleteDialog(exam)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Desktop Table */
+              <div className="overflow-x-auto">
+                <table className="w-full caption-bottom text-sm">
+                  <thead className="[&_tr]:border-b">
+                    <tr className="border-b">
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Exam Name</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Subject</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Class</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Max Marks</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[50px]"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_tr:last-child]:border-0">
+                    {exams.map((exam) => {
+                      const status = getExamStatus(exam.exam_date);
+                      return (
+                        <tr key={exam.id} className="border-b transition-colors hover:bg-muted/50">
+                          <td className="p-4 align-middle font-medium">{exam.name}</td>
+                          <td className="p-4 align-middle">{exam.subject}</td>
+                          <td className="p-4 align-middle">{exam.class_name}</td>
+                          <td className="p-4 align-middle">{format(new Date(exam.exam_date), 'dd MMM yyyy')}</td>
+                          <td className="p-4 align-middle">{exam.max_marks}</td>
+                          <td className="p-4 align-middle">{getStatusBadge(status)}</td>
+                          <td className="p-4 align-middle">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditDialog(exam)}>
+                                  <Edit className="w-4 h-4 mr-2" />Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => openDeleteDialog(exam)}>
+                                  <Trash2 className="w-4 h-4 mr-2" />Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="schedule" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Exam Schedule</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <Skeleton key={i} className="h-16 w-full" />
-                    ))}
-                  </div>
-                ) : examSchedule.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No upcoming exams scheduled.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {examSchedule.map((exam) => (
-                      <div 
-                        key={exam.id} 
-                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[60px]">
-                            <p className="text-lg font-bold text-primary">
-                              {format(new Date(exam.exam_date), 'dd')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(exam.exam_date), 'MMM')}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-medium">{exam.subject}</p>
-                            <p className="text-sm text-muted-foreground">{exam.class_name} • {exam.name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <BookOpen className="w-4 h-4" />
-                          {exam.max_marks} marks
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="results" className="space-y-4">
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Results Management</h3>
-                <p className="text-muted-foreground mb-4">
-                  View, enter, and publish examination results for all classes.
-                </p>
-                <Button>Enter Results</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={isLoading}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Examination</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit Examination</DialogTitle></DialogHeader>
           <ExamFormFields />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
@@ -476,10 +443,7 @@ export default function ExamsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
