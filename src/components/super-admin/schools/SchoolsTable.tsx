@@ -27,7 +27,7 @@ interface School {
 interface SchoolsTableProps {
   schools: School[];
   onEdit: (school: School) => void;
-  onDelete: (id: string) => void;
+  onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
 }
 
@@ -124,7 +124,7 @@ export const SchoolsTable = memo(function SchoolsTable({
                   variant="ghost"
                   size="icon-sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => onDelete(school.id)}
+                  onClick={() => onDelete(school)}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>

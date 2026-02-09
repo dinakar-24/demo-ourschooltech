@@ -19,7 +19,7 @@ interface School {
 interface SchoolCardProps {
   school: School;
   onEdit: (school: School) => void;
-  onDelete: (id: string) => void;
+  onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
 }
 
@@ -52,39 +52,40 @@ export const SchoolCard = memo(function SchoolCard({
               <MapPin className="w-3 h-3" />
               {school.city}
             </span>
-            {(school as any).primary_color && (
+            {school.primary_color && (
               <div className="flex gap-0.5 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).primary_color }} />
-                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).accent_color || '#E69500' }} />
+                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: school.primary_color }} />
+                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: school.accent_color || '#E69500' }} />
               </div>
             )}
           </div>
         </div>
-        <div className="flex gap-1 flex-shrink-0">
-          <Button variant="ghost" size="icon-sm" onClick={() => onEdit(school)}>
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => onDelete(school.id)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
       </div>
-      {onImpersonate && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => onImpersonate(school)}
-          className="w-full"
-        >
-          <Eye className="w-4 h-4 mr-2" />
-          View as Admin
+      {/* Action buttons row */}
+      <div className="flex gap-2">
+        {onImpersonate && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onImpersonate(school)}
+            className="flex-1"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View as Admin
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="px-3">
+          <Pencil className="w-4 h-4" />
         </Button>
-      )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="px-3 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+          onClick={() => onDelete(school)}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 });
