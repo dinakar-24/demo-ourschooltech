@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,13 @@ import {
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Plus,
   Bell,
   Edit,
@@ -36,6 +43,7 @@ import {
   Megaphone,
   Eye,
   EyeOff,
+  Search,
 } from 'lucide-react';
 import { 
   useAnnouncements, 
@@ -48,6 +56,9 @@ import {
   Announcement 
 } from '@/hooks/useAnnouncements';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useDebounce } from '@/hooks/useDebounce';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 
@@ -60,8 +71,23 @@ const AVAILABLE_ROLES: { value: AppRole; label: string }[] = [
 ];
 
 export default function AnnouncementsPage() {
-  const { data: announcementsResult, isLoading } = useAnnouncements();
+  const pagination = usePagination(25);
+  const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  useEffect(() => {
+    pagination.resetPage();
+  }, [debouncedSearch, statusFilter]);
+
+  const { data: announcementsResult, isLoading } = useAnnouncements({
+    status: statusFilter,
+    search: debouncedSearch,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+  });
   const announcements = announcementsResult?.data || [];
+  const totalCount = announcementsResult?.totalCount || 0;
   const { data: stats } = useAnnouncementStats();
   const createAnnouncement = useCreateAnnouncement();
   const updateAnnouncement = useUpdateAnnouncement();
@@ -82,13 +108,7 @@ export default function AnnouncementsPage() {
   });
 
   const resetForm = () => {
-    setFormData({
-      title: '',
-      content: '',
-      target_roles: [],
-      expires_at: '',
-      is_active: true,
-    });
+    setFormData({ title: '', content: '', target_roles: [], expires_at: '', is_active: true });
   };
 
   const toggleRole = (role: AppRole) => {
@@ -101,13 +121,8 @@ export default function AnnouncementsPage() {
   };
 
   const handleCreate = async (publish: boolean) => {
-    if (!formData.title || !formData.content || formData.target_roles.length === 0) {
-      return;
-    }
-    await createAnnouncement.mutateAsync({
-      ...formData,
-      is_active: publish,
-    });
+    if (!formData.title || !formData.content || formData.target_roles.length === 0) return;
+    await createAnnouncement.mutateAsync({ ...formData, is_active: publish });
     setIsAddDialogOpen(false);
     resetForm();
   };
@@ -152,16 +167,16 @@ export default function AnnouncementsPage() {
     <div className="space-y-4 py-4">
       <div className="space-y-2">
         <Label>Title</Label>
-        <Input 
-          placeholder="Enter announcement title" 
+        <Input
+          placeholder="Enter announcement title"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
         />
       </div>
       <div className="space-y-2">
         <Label>Message</Label>
-        <Textarea 
-          placeholder="Enter announcement message..." 
+        <Textarea
+          placeholder="Enter announcement message..."
           className="min-h-[120px]"
           value={formData.content}
           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
@@ -170,8 +185,8 @@ export default function AnnouncementsPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Expires On (Optional)</Label>
-          <Input 
-            type="date" 
+          <Input
+            type="date"
             value={formData.expires_at}
             onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
           />
@@ -182,7 +197,7 @@ export default function AnnouncementsPage() {
         <div className="flex gap-4 pt-2">
           {AVAILABLE_ROLES.map(role => (
             <div key={role.value} className="flex items-center gap-2">
-              <Checkbox 
+              <Checkbox
                 id={role.value}
                 checked={formData.target_roles.includes(role.value)}
                 onCheckedChange={() => toggleRole(role.value)}
@@ -204,9 +219,9 @@ export default function AnnouncementsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total Announcements</p>
+              <p className="text-sm text-muted-foreground">Total</p>
               <p className="text-2xl font-bold text-foreground">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.total || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.total || 0}
               </p>
             </CardContent>
           </Card>
@@ -214,7 +229,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Published</p>
               <p className="text-2xl font-bold text-success">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.active || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.active || 0}
               </p>
             </CardContent>
           </Card>
@@ -222,7 +237,7 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Draft</p>
               <p className="text-2xl font-bold text-warning">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.inactive || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.inactive || 0}
               </p>
             </CardContent>
           </Card>
@@ -230,14 +245,35 @@ export default function AnnouncementsPage() {
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">This Month</p>
               <p className="text-2xl font-bold text-primary">
-                {isLoading ? <Skeleton className="h-8 w-12" /> : stats?.thisMonth || 0}
+                {isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : stats?.thisMonth || 0}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end">
+        {/* Search & Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search announcements..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Published</SelectItem>
+                <SelectItem value="inactive">Draft</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" onClick={resetForm}>
@@ -246,23 +282,14 @@ export default function AnnouncementsPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create Announcement</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
               <FormFields />
               <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleCreate(false)}
-                  disabled={createAnnouncement.isPending}
-                >
+                <Button variant="outline" onClick={() => handleCreate(false)} disabled={createAnnouncement.isPending}>
                   {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save as Draft
                 </Button>
-                <Button 
-                  onClick={() => handleCreate(true)}
-                  disabled={createAnnouncement.isPending}
-                >
+                <Button onClick={() => handleCreate(true)} disabled={createAnnouncement.isPending}>
                   {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   <Send className="w-4 h-4 mr-2" />
                   Publish
@@ -273,130 +300,108 @@ export default function AnnouncementsPage() {
         </div>
 
         {/* Announcements List */}
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <Card key={i}>
-                <CardContent className="p-5">
-                  <div className="flex gap-4">
-                    <Skeleton className="w-10 h-10 rounded-lg" />
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-4 space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex gap-4">
+                    <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-5 w-48" />
                       <Skeleton className="h-4 w-full" />
                       <Skeleton className="h-3 w-32" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : announcements.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Announcements</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first announcement to communicate with your school community.
-              </p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Announcement
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {announcements.map((announcement) => (
-              <Card key={announcement.id}>
-                <CardContent className="p-5">
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex gap-4 flex-1">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        announcement.is_active ? 'bg-success/10' : 'bg-muted'
-                      }`}>
-                        <Bell className={`w-5 h-5 ${
-                          announcement.is_active ? 'text-success' : 'text-muted-foreground'
-                        }`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="font-semibold">{announcement.title}</h3>
-                          {announcement.is_active ? (
-                            <Badge className="bg-success/10 text-success">Published</Badge>
-                          ) : (
-                            <Badge variant="outline">Draft</Badge>
-                          )}
+                ))}
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground px-4">
+                <Megaphone className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No announcements found</p>
+                <p className="text-sm mt-1">
+                  {debouncedSearch ? 'Try a different search term' : 'Create your first announcement to communicate with your school community'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {announcements.map((announcement) => (
+                  <div key={announcement.id} className="p-4 md:p-5">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                      <div className="flex gap-3 md:gap-4 flex-1 min-w-0">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          announcement.is_active ? 'bg-success/10' : 'bg-muted'
+                        }`}>
+                          <Bell className={`w-5 h-5 ${
+                            announcement.is_active ? 'text-success' : 'text-muted-foreground'
+                          }`} />
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                          {announcement.content}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(announcement.created_at), 'dd MMM yyyy')}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold text-sm md:text-base">{announcement.title}</h3>
+                            {announcement.is_active ? (
+                              <Badge className="bg-success/10 text-success text-[10px]">Published</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">Draft</Badge>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {announcement.target_roles?.map(r => 
-                              r.charAt(0).toUpperCase() + r.slice(1)
-                            ).join(', ') || 'No audience selected'}
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                            {announcement.content}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {format(new Date(announcement.created_at), 'dd MMM yyyy')}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {announcement.target_roles?.map(r =>
+                                r.charAt(0).toUpperCase() + r.slice(1)
+                              ).join(', ') || 'No audience'}
+                            </span>
+                            {announcement.expires_at && (
+                              <span>Expires: {format(new Date(announcement.expires_at), 'dd MMM')}</span>
+                            )}
                           </div>
-                          {announcement.expires_at && (
-                            <div className="flex items-center gap-1">
-                              Expires: {format(new Date(announcement.expires_at), 'dd MMM yyyy')}
-                            </div>
-                          )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon-sm"
-                        onClick={() => handleToggle(announcement.id, announcement.is_active)}
-                        title={announcement.is_active ? 'Unpublish' : 'Publish'}
-                      >
-                        {announcement.is_active ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon-sm"
-                        onClick={() => openEditDialog(announcement)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon-sm" 
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => openDeleteDialog(announcement)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleToggle(announcement.id, announcement.is_active)}
+                          title={announcement.is_active ? 'Unpublish' : 'Publish'}>
+                          {announcement.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(announcement)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive"
+                          onClick={() => openDeleteDialog(announcement)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                ))}
+              </div>
+            )}
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={isLoading}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Announcement</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit Announcement</DialogTitle></DialogHeader>
           <FormFields />
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateAnnouncement.isPending}>
               {updateAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes

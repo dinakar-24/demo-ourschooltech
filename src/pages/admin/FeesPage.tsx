@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,15 +50,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFees, useFeeStats, useRecordPayment, useCreateFee } from '@/hooks/useFees';
-import { useStudents } from '@/hooks/useStudents';
+import { useStudentSearch } from '@/hooks/useStudentSearch';
+import { usePagination } from '@/hooks/usePagination';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee'];
-const statusOptions = ['all', 'paid', 'pending', 'overdue'];
 
 export default function FeesPage() {
   const isMobile = useIsMobile();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [selectedType, setSelectedType] = useState('All Types');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -66,6 +69,14 @@ export default function FeesPage() {
   const [selectedFeeId, setSelectedFeeId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [transactionId, setTransactionId] = useState('');
+
+  const pagination = usePagination(25);
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  // Reset page on filter change
+  useEffect(() => {
+    pagination.resetPage();
+  }, [debouncedSearch, selectedType, selectedStatus]);
 
   // New fee form state
   const [newFee, setNewFee] = useState({
@@ -75,19 +86,22 @@ export default function FeesPage() {
     due_date: '',
   });
 
-  const { data: feesResult, isLoading } = useFees({ 
+  const { data: feesResult, isLoading } = useFees({
     status: selectedStatus,
     feeType: selectedType,
-    search: searchQuery 
+    search: debouncedSearch,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
   });
   const fees = feesResult?.data || [];
+  const totalCount = feesResult?.totalCount || 0;
   const { data: stats } = useFeeStats();
-  const { data: studentsResult } = useStudents();
-  const students = studentsResult?.data || [];
+
+  // Search-as-you-type student selector for Add Fee dialog
+  const studentSearch = useStudentSearch();
+
   const recordPayment = useRecordPayment();
   const createFee = useCreateFee();
-
-  const filteredRecords = fees;
 
   const handleRecordPayment = async () => {
     if (!selectedFeeId) return;
@@ -124,6 +138,7 @@ export default function FeesPage() {
       toast.success('Fee record created');
       setIsAddDialogOpen(false);
       setNewFee({ student_id: '', fee_type: '', amount: '', due_date: '' });
+      studentSearch.setSearchInput('');
     } catch (error) {
       toast.error('Failed to create fee record');
     }
@@ -154,17 +169,13 @@ export default function FeesPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    if (amount >= 100000) {
-      return `₹${(amount / 100000).toFixed(1)}L`;
-    }
-    if (amount >= 1000) {
-      return `₹${(amount / 1000).toFixed(0)}K`;
-    }
+    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+    if (amount >= 1000) return `₹${(amount / 1000).toFixed(0)}K`;
     return `₹${amount.toLocaleString()}`;
   };
 
-  const collectionRate = stats && stats.totalDue > 0 
-    ? ((stats.collected / stats.totalDue) * 100).toFixed(0) 
+  const collectionRate = stats && stats.totalDue > 0
+    ? ((stats.collected / stats.totalDue) * 100).toFixed(0)
     : '0';
 
   return (
@@ -225,8 +236,8 @@ export default function FeesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name, admission no..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -256,7 +267,13 @@ export default function FeesPage() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) {
+                studentSearch.setSearchInput('');
+                setNewFee({ student_id: '', fee_type: '', amount: '', due_date: '' });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="w-4 h-4 mr-2" />
@@ -270,26 +287,52 @@ export default function FeesPage() {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Student</Label>
-                    <Select 
-                      value={newFee.student_id} 
-                      onValueChange={(v) => setNewFee({ ...newFee, student_id: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select student" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {students.map(s => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.full_name} ({s.admission_number})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Search student by name or admission no (min 2 chars)..."
+                        value={studentSearch.searchInput}
+                        onChange={(e) => {
+                          studentSearch.setSearchInput(e.target.value);
+                          if (!e.target.value) setNewFee(prev => ({ ...prev, student_id: '' }));
+                        }}
+                      />
+                      {studentSearch.isLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Searching...
+                        </div>
+                      )}
+                      {studentSearch.hasSearched && !studentSearch.isLoading && studentSearch.students.length === 0 && (
+                        <p className="text-sm text-muted-foreground p-2">No students found</p>
+                      )}
+                      {studentSearch.students.length > 0 && (
+                        <div className="max-h-40 overflow-y-auto border rounded-md divide-y">
+                          {studentSearch.students.map(s => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              className={`w-full text-left p-2 text-sm hover:bg-muted transition-colors ${
+                                newFee.student_id === s.id ? 'bg-primary/10 text-primary font-medium' : ''
+                              }`}
+                              onClick={() => {
+                                setNewFee(prev => ({ ...prev, student_id: s.id }));
+                                studentSearch.setSearchInput(s.full_name);
+                              }}
+                            >
+                              <span className="font-medium">{s.full_name}</span>
+                              <span className="text-muted-foreground ml-2">
+                                ({s.admission_number}) · {s.class_name}-{s.section}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Fee Type</Label>
-                    <Select 
-                      value={newFee.fee_type} 
+                    <Select
+                      value={newFee.fee_type}
                       onValueChange={(v) => setNewFee({ ...newFee, fee_type: v })}
                     >
                       <SelectTrigger>
@@ -304,8 +347,8 @@ export default function FeesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Amount (₹)</Label>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       placeholder="Enter amount"
                       value={newFee.amount}
                       onChange={(e) => setNewFee({ ...newFee, amount: e.target.value })}
@@ -313,7 +356,7 @@ export default function FeesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Due Date</Label>
-                    <Input 
+                    <Input
                       type="date"
                       value={newFee.due_date}
                       onChange={(e) => setNewFee({ ...newFee, due_date: e.target.value })}
@@ -322,7 +365,7 @@ export default function FeesPage() {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddFee} disabled={createFee.isPending}>
+                  <Button onClick={handleAddFee} disabled={createFee.isPending || !newFee.student_id}>
                     {createFee.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Add Record
                   </Button>
@@ -336,19 +379,29 @@ export default function FeesPage() {
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : filteredRecords.length === 0 ? (
+            ) : fees.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No fee records found</p>
-                <p className="text-sm">Create fee records for students to track payments</p>
+                <p className="font-medium">No fee records found</p>
+                <p className="text-sm mt-1">
+                  {debouncedSearch ? 'Try a different search term' : 'Create fee records for students to track payments'}
+                </p>
               </div>
             ) : isMobile ? (
               /* Mobile Card Layout */
               <div className="divide-y">
-                {filteredRecords.map((record) => (
+                {fees.map((record) => (
                   <div key={record.id} className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -402,7 +455,7 @@ export default function FeesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRecords.map((record) => (
+                  {fees.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell>
                         <div>
@@ -441,6 +494,14 @@ export default function FeesPage() {
                 </TableBody>
               </Table>
             )}
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={isLoading}
+            />
           </CardContent>
         </Card>
 

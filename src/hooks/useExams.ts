@@ -41,6 +41,7 @@ export interface ExamFormData {
 interface ExamFilters {
   className?: string;
   subject?: string;
+  search?: string;
   status?: 'upcoming' | 'completed' | 'all';
   page?: number;
   pageSize?: number;
@@ -73,6 +74,10 @@ export function useExams(filters?: ExamFilters) {
 
       if (filters?.subject && filters.subject !== 'All Subjects') {
         query = query.eq('subject', filters.subject);
+      }
+
+      if (filters?.search) {
+        query = query.or(`name.ilike.%${filters.search}%,subject.ilike.%${filters.search}%`);
       }
 
       const today = new Date().toISOString().split('T')[0];
