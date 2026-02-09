@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { SessionWarningBanner } from '@/components/layout/SessionWarningBanner';
 import { toast } from 'sonner';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
@@ -221,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout();
   }, [logout]);
 
-  useSessionTimeout(user?.role, handleSessionTimeout);
+  const { showWarning, remainingSeconds, extendSession } = useSessionTimeout(user?.role, handleSessionTimeout);
 
   return (
     <AuthContext.Provider value={{
@@ -235,6 +236,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectSchool,
     }}>
       {children}
+      {showWarning && (
+        <SessionWarningBanner
+          remainingSeconds={remainingSeconds}
+          onExtend={extendSession}
+          onLogout={logout}
+        />
+      )}
     </AuthContext.Provider>
   );
 }
