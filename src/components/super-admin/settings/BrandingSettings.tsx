@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -51,7 +52,7 @@ export function BrandingSettings() {
             </div>
             <div className="space-y-2">
               <Label>Support Phone</Label>
-              <Input value={branding.support_phone} onChange={(e) => setBranding(s => ({ ...s, support_phone: e.target.value }))} placeholder="+91 XXXXX XXXXX" />
+              <IndianPhoneInput value={branding.support_phone} onChange={(v) => setBranding(s => ({ ...s, support_phone: v }))} />
             </div>
           </div>
           <Button disabled={saving} onClick={() => updateSetting.mutate({ key: 'branding', value: branding })}>
