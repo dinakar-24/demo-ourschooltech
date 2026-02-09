@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,9 +12,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Shield, Lock, Key } from 'lucide-react';
+import { Shield, Lock, Key, Loader2 } from 'lucide-react';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+
+const PASSWORD_FALLBACK = { min_length: 8, require_uppercase: true, require_special: true, expiry_days: 'never' };
+const SESSION_FALLBACK = { timeout_minutes: '60', require_2fa: false, ip_allowlisting: false, max_failed_attempts: 5 };
 
 export function SecuritySettings() {
+  const { getSetting, updateSetting, isLoading } = useSystemSettings();
+
+  const [password, setPassword] = useState(PASSWORD_FALLBACK);
+  const [session, setSession] = useState(SESSION_FALLBACK);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setPassword(getSetting('password_policy', PASSWORD_FALLBACK));
+      setSession(getSetting('session_security', SESSION_FALLBACK));
+    }
+  }, [isLoading]);
+
+  const saving = updateSetting.isPending;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -22,9 +41,7 @@ export function SecuritySettings() {
             <Lock className="w-5 h-5 text-primary" />
             Password Policy
           </CardTitle>
-          <CardDescription>
-            Set system-wide password requirements for all user accounts.
-          </CardDescription>
+          <CardDescription>Set system-wide password requirements for all user accounts.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -32,7 +49,7 @@ export function SecuritySettings() {
               <p className="font-medium">Minimum Password Length</p>
               <p className="text-sm text-muted-foreground">Applies to all new passwords</p>
             </div>
-            <Input type="number" defaultValue="8" className="w-20" />
+            <Input type="number" value={password.min_length} onChange={(e) => setPassword(s => ({ ...s, min_length: Number(e.target.value) }))} className="w-20" />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -40,7 +57,7 @@ export function SecuritySettings() {
               <p className="font-medium">Require uppercase letters</p>
               <p className="text-sm text-muted-foreground">At least one uppercase character</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={password.require_uppercase} onCheckedChange={(v) => setPassword(s => ({ ...s, require_uppercase: v }))} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -48,7 +65,7 @@ export function SecuritySettings() {
               <p className="font-medium">Require special characters</p>
               <p className="text-sm text-muted-foreground">At least one symbol (@, #, $, etc.)</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={password.require_special} onCheckedChange={(v) => setPassword(s => ({ ...s, require_special: v }))} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -56,10 +73,8 @@ export function SecuritySettings() {
               <p className="font-medium">Password expiry</p>
               <p className="text-sm text-muted-foreground">Force password change periodically</p>
             </div>
-            <Select defaultValue="never">
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={password.expiry_days} onValueChange={(v) => setPassword(s => ({ ...s, expiry_days: v }))}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="never">Never</SelectItem>
                 <SelectItem value="30">30 days</SelectItem>
@@ -68,7 +83,9 @@ export function SecuritySettings() {
               </SelectContent>
             </Select>
           </div>
-          <Button>Save Password Policy</Button>
+          <Button disabled={saving} onClick={() => updateSetting.mutate({ key: 'password_policy', value: password })}>
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save Password Policy
+          </Button>
         </CardContent>
       </Card>
 
@@ -85,10 +102,8 @@ export function SecuritySettings() {
               <p className="font-medium">Session Timeout</p>
               <p className="text-sm text-muted-foreground">Auto-logout after inactivity</p>
             </div>
-            <Select defaultValue="60">
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={session.timeout_minutes} onValueChange={(v) => setSession(s => ({ ...s, timeout_minutes: v }))}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="15">15 minutes</SelectItem>
                 <SelectItem value="30">30 minutes</SelectItem>
@@ -103,7 +118,7 @@ export function SecuritySettings() {
               <p className="font-medium">Two-factor authentication</p>
               <p className="text-sm text-muted-foreground">Require 2FA for super admin & school admin accounts</p>
             </div>
-            <Switch />
+            <Switch checked={session.require_2fa} onCheckedChange={(v) => setSession(s => ({ ...s, require_2fa: v }))} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -111,7 +126,7 @@ export function SecuritySettings() {
               <p className="font-medium">IP allowlisting</p>
               <p className="text-sm text-muted-foreground">Restrict super admin access to specific IPs</p>
             </div>
-            <Switch />
+            <Switch checked={session.ip_allowlisting} onCheckedChange={(v) => setSession(s => ({ ...s, ip_allowlisting: v }))} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -119,9 +134,11 @@ export function SecuritySettings() {
               <p className="font-medium">Max failed login attempts</p>
               <p className="text-sm text-muted-foreground">Lock account after consecutive failures</p>
             </div>
-            <Input type="number" defaultValue="5" className="w-20" />
+            <Input type="number" value={session.max_failed_attempts} onChange={(e) => setSession(s => ({ ...s, max_failed_attempts: Number(e.target.value) }))} className="w-20" />
           </div>
-          <Button className="mt-2">Save Security Settings</Button>
+          <Button className="mt-2" disabled={saving} onClick={() => updateSetting.mutate({ key: 'session_security', value: session })}>
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save Security Settings
+          </Button>
         </CardContent>
       </Card>
 
@@ -131,9 +148,7 @@ export function SecuritySettings() {
             <Key className="w-5 h-5 text-primary" />
             API & Integrations
           </CardTitle>
-          <CardDescription>
-            Manage external service keys and integrations.
-          </CardDescription>
+          <CardDescription>Manage external service keys and integrations.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
