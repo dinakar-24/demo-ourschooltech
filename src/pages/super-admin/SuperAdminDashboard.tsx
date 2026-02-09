@@ -1,5 +1,6 @@
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { StatCardSkeleton } from '@/components/ui/data-states';
 import { SuperAdminQuickActions } from '@/components/super-admin/SuperAdminQuickActions';
 import { RecentSchoolsList } from '@/components/super-admin/RecentSchoolsList';
 import { SubscriptionOverview } from '@/components/super-admin/SubscriptionOverview';
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
 
-  const { data: stats, isLoading: loading } = useQuery({
+  const { data: stats, isLoading: loading, isError, refetch } = useQuery({
     queryKey: ['super-admin-dashboard-stats'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_super_admin_stats' as any);
@@ -26,6 +27,7 @@ export default function SuperAdminDashboard() {
       };
     },
     staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 
   const greeting = () => {
@@ -52,26 +54,42 @@ export default function SuperAdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <AdminStatCard
-            title="Schools"
-            value={loading ? '...' : (stats?.totalSchools ?? 0).toString()}
-            icon={<Building2 className="w-4 h-4" />}
-          />
-          <AdminStatCard
-            title="Students"
-            value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
-            icon={<Users className="w-4 h-4" />}
-          />
-          <AdminStatCard
-            title="Teachers"
-            value={loading ? '...' : (stats?.totalTeachers ?? 0).toLocaleString()}
-            icon={<GraduationCap className="w-4 h-4" />}
-          />
-          <AdminStatCard
-            title="Active Subs"
-            value={loading ? '...' : (stats?.activeSubscriptions ?? 0).toString()}
-            icon={<CreditCard className="w-4 h-4" />}
-          />
+          {loading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : isError ? (
+            <div className="col-span-2 text-center py-6 text-sm text-muted-foreground">
+              Failed to load stats.{' '}
+              <button className="text-primary underline" onClick={() => refetch()}>Retry</button>
+            </div>
+          ) : (
+            <>
+              <AdminStatCard
+                title="Schools"
+                value={(stats?.totalSchools ?? 0).toString()}
+                icon={<Building2 className="w-4 h-4" />}
+              />
+              <AdminStatCard
+                title="Students"
+                value={(stats?.totalStudents ?? 0).toLocaleString()}
+                icon={<Users className="w-4 h-4" />}
+              />
+              <AdminStatCard
+                title="Teachers"
+                value={(stats?.totalTeachers ?? 0).toLocaleString()}
+                icon={<GraduationCap className="w-4 h-4" />}
+              />
+              <AdminStatCard
+                title="Active Subs"
+                value={(stats?.activeSubscriptions ?? 0).toString()}
+                icon={<CreditCard className="w-4 h-4" />}
+              />
+            </>
+          )}
         </div>
 
         {/* Quick Actions */}
