@@ -22,6 +22,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import {
   Table,
   TableBody,
   TableCell,
@@ -239,49 +247,49 @@ export default function SystemAnnouncementsPage() {
             />
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                New Announcement
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{editingAnnouncement ? 'Edit Announcement' : 'New System Announcement'}</DialogTitle>
-                <DialogDescription>
-                  This announcement will be visible to all users across all schools
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Title *</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="Announcement title"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="content">Content *</Label>
-                    <Textarea
-                      id="content"
-                      value={formData.content}
-                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                      placeholder="Write your announcement..."
-                      rows={4}
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+          {isMobile ? (
+            <Drawer open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DrawerTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Announcement
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="px-4 pb-6 max-h-[90dvh]">
+                <DrawerHeader className="px-0">
+                  <DrawerTitle>{editingAnnouncement ? 'Edit Announcement' : 'New System Announcement'}</DrawerTitle>
+                  <DrawerDescription>
+                    This announcement will be visible to all users across all schools
+                  </DrawerDescription>
+                </DrawerHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto">
+                  <div className="grid gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="priority">Priority</Label>
+                      <Label htmlFor="title-m">Title *</Label>
+                      <Input
+                        id="title-m"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Announcement title"
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="content-m">Content *</Label>
+                      <Textarea
+                        id="content-m"
+                        value={formData.content}
+                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                        placeholder="Write your announcement..."
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="priority-m">Priority</Label>
                       <Select
                         value={formData.priority}
                         onValueChange={(value: 'low' | 'normal' | 'high' | 'urgent') => 
@@ -301,50 +309,157 @@ export default function SystemAnnouncementsPage() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="expires">Expires On</Label>
+                      <Label htmlFor="expires-m">Expires On</Label>
                       <Input
-                        id="expires"
+                        id="expires-m"
                         type="date"
                         value={formData.expiresAt}
                         onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
                       />
                     </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Target Roles (leave empty for all)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {roleOptions.map((role) => (
-                        <Button
-                          key={role.value}
-                          type="button"
-                          variant={formData.targetRoles.includes(role.value) ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setFormData({
-                              ...formData,
-                              targetRoles: formData.targetRoles.includes(role.value)
-                                ? formData.targetRoles.filter((r) => r !== role.value)
-                                : [...formData.targetRoles, role.value],
-                            });
-                          }}
-                        >
-                          {role.label}
-                        </Button>
-                      ))}
+                    <div className="grid gap-2">
+                      <Label>Target Roles (leave empty for all)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {roleOptions.map((role) => (
+                          <Button
+                            key={role.value}
+                            type="button"
+                            variant={formData.targetRoles.includes(role.value) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                targetRoles: formData.targetRoles.includes(role.value)
+                                  ? formData.targetRoles.filter((r) => r !== role.value)
+                                  : [...formData.targetRoles, role.value],
+                              });
+                            }}
+                          >
+                            {role.label}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={submitting}>
-                    {submitting ? 'Saving...' : editingAnnouncement ? 'Update' : 'Publish'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? 'Saving...' : editingAnnouncement ? 'Update' : 'Publish'}
+                    </Button>
+                  </div>
+                </form>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Announcement
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{editingAnnouncement ? 'Edit Announcement' : 'New System Announcement'}</DialogTitle>
+                  <DialogDescription>
+                    This announcement will be visible to all users across all schools
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="title">Title *</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Announcement title"
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="content">Content *</Label>
+                      <Textarea
+                        id="content"
+                        value={formData.content}
+                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                        placeholder="Write your announcement..."
+                        rows={4}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="priority">Priority</Label>
+                        <Select
+                          value={formData.priority}
+                          onValueChange={(value: 'low' | 'normal' | 'high' | 'urgent') => 
+                            setFormData({ ...formData, priority: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {priorityOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="expires">Expires On</Label>
+                        <Input
+                          id="expires"
+                          type="date"
+                          value={formData.expiresAt}
+                          onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Target Roles (leave empty for all)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {roleOptions.map((role) => (
+                          <Button
+                            key={role.value}
+                            type="button"
+                            variant={formData.targetRoles.includes(role.value) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                targetRoles: formData.targetRoles.includes(role.value)
+                                  ? formData.targetRoles.filter((r) => r !== role.value)
+                                  : [...formData.targetRoles, role.value],
+                              });
+                            }}
+                          >
+                            {role.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={submitting}>
+                      {submitting ? 'Saving...' : editingAnnouncement ? 'Update' : 'Publish'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Announcements Table */}
