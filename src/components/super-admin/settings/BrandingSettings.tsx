@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Palette, Globe, ImageIcon, Loader2, Upload, Trash2, Eye } from 'lucide-react';
+import { Palette, Globe, ImageIcon, Loader2, Upload, Trash2 } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { toast } from 'sonner';
 
 const BRANDING_FALLBACK = {
@@ -23,7 +23,7 @@ const BRANDING_FALLBACK = {
   favicon_url: '',
 };
 
-const THEME_FALLBACK = { primary_color: '#0F766E', accent_color: '#E69500' };
+
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -101,50 +101,16 @@ function FileUploadZone({ label, hint, currentUrl, onUpload, onRemove, uploading
   );
 }
 
-interface ColorPickerFieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function ColorPickerField({ label, value, onChange }: ColorPickerFieldProps) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="flex gap-2 items-center">
-        <div className="relative shrink-0">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-10 h-10 rounded-md border cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0 [&::-moz-color-swatch]:rounded-md [&::-moz-color-swatch]:border-0"
-          />
-        </div>
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 font-mono text-sm"
-          maxLength={7}
-          placeholder="#000000"
-        />
-      </div>
-    </div>
-  );
-}
-
 export function BrandingSettings() {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
-  const qc = useQueryClient();
 
   const [branding, setBranding] = useState(BRANDING_FALLBACK);
-  const [theme, setTheme] = useState(THEME_FALLBACK);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
       setBranding(getSetting('branding', BRANDING_FALLBACK));
-      setTheme(getSetting('theme', THEME_FALLBACK));
     }
   }, [isLoading]);
 
@@ -257,72 +223,17 @@ export function BrandingSettings() {
         </CardContent>
       </Card>
 
-      {/* Theme & Colors */}
+      {/* Theme Info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary" />
             Theme & Colors
           </CardTitle>
-          <CardDescription>Customize the platform's look and feel. Changes are saved and applied on next deploy.</CardDescription>
+          <CardDescription>
+            Theme colors are now configured per school. Go to <strong>Schools → Edit School</strong> to set each school's primary and accent colors.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <ColorPickerField
-              label="Primary Color"
-              value={theme.primary_color}
-              onChange={(v) => setTheme(s => ({ ...s, primary_color: v }))}
-            />
-            <ColorPickerField
-              label="Accent Color"
-              value={theme.accent_color}
-              onChange={(v) => setTheme(s => ({ ...s, accent_color: v }))}
-            />
-          </div>
-
-          {/* Live Preview */}
-          <Separator />
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-muted-foreground" />
-              <Label className="text-sm text-muted-foreground">Live Preview</Label>
-            </div>
-            <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-md" style={{ backgroundColor: theme.primary_color }} />
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: theme.primary_color }}>
-                    {branding.platform_name || 'Platform Name'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{branding.tagline || 'Your tagline here'}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="px-4 py-1.5 rounded-md text-xs font-medium text-white"
-                  style={{ backgroundColor: theme.primary_color }}
-                >
-                  Primary Button
-                </button>
-                <button
-                  className="px-4 py-1.5 rounded-md text-xs font-medium text-white"
-                  style={{ backgroundColor: theme.accent_color }}
-                >
-                  Accent Button
-                </button>
-              </div>
-              <div className="flex gap-4 text-xs">
-                <span className="font-medium" style={{ color: theme.primary_color }}>Active Link</span>
-                <span className="text-muted-foreground">Inactive Link</span>
-                <span className="font-medium" style={{ color: theme.accent_color }}>CTA Link</span>
-              </div>
-            </div>
-          </div>
-
-          <Button disabled={saving} onClick={() => updateSetting.mutate({ key: 'theme', value: theme }, { onSuccess: () => qc.invalidateQueries({ queryKey: ['system-settings', 'theme-colors'] }) })}>
-            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save Theme
-          </Button>
-        </CardContent>
       </Card>
 
       {/* Logo & Favicon */}
