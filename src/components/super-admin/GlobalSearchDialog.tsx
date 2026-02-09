@@ -6,6 +6,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SearchResult {
   id: string;
@@ -23,6 +24,7 @@ interface GlobalSearchDialogProps {
 
 export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,25 +162,21 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
     </>
   );
 
-  return (
-    <>
-      {/* Mobile: Drawer from bottom */}
-      <div className="sm:hidden">
-        <Drawer open={open} onOpenChange={handleClose}>
-          <DrawerContent>
-            {searchContent}
-          </DrawerContent>
-        </Drawer>
-      </div>
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={handleClose}>
+        <DrawerContent>
+          {searchContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
-      {/* Desktop: Dialog */}
-      <div className="hidden sm:block">
-        <Dialog open={open} onOpenChange={handleClose}>
-          <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-            {searchContent}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+        {searchContent}
+      </DialogContent>
+    </Dialog>
   );
 }
