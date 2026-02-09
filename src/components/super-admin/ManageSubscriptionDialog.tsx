@@ -112,7 +112,6 @@ export function ManageSubscriptionDialog({
         .order('name')
         .then(({ data, error }) => {
           if (!error && data) {
-            // Filter out schools that already have subscriptions
             const available = data.filter(s => !existingSchoolIds.includes(s.id));
             setSchools(available);
           }
@@ -120,6 +119,21 @@ export function ManageSubscriptionDialog({
         });
     }
   }, [open, isEditing, existingSchoolIds]);
+
+  // Auto-fetch student count when school is selected
+  useEffect(() => {
+    if (!formData.schoolId || isEditing) return;
+    supabase
+      .from('students')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', formData.schoolId)
+      .eq('status', 'active')
+      .then(({ count }) => {
+        if (count !== null) {
+          setFormData(prev => ({ ...prev, studentCount: String(count) }));
+        }
+      });
+  }, [formData.schoolId, isEditing]);
 
   const studentCount = parseInt(formData.studentCount) || 0;
   const totalAmount = studentCount * PRICE_PER_STUDENT;
