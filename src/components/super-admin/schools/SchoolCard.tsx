@@ -11,6 +11,8 @@ interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  primary_color?: string | null;
+  accent_color?: string | null;
   created_at: string;
 }
 
@@ -50,6 +52,12 @@ export const SchoolCard = memo(function SchoolCard({
               <MapPin className="w-3 h-3" />
               {school.city}
             </span>
+            {(school as any).primary_color && (
+              <div className="flex gap-0.5 shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).primary_color }} />
+                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).accent_color || '#E69500' }} />
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-1 flex-shrink-0">

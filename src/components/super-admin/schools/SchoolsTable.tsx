@@ -19,6 +19,8 @@ interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  primary_color?: string | null;
+  accent_color?: string | null;
   created_at: string;
 }
 
@@ -64,7 +66,15 @@ export const SchoolsTable = memo(function SchoolsTable({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{school.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{school.name}</p>
+                    {(school as any).primary_color && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: (school as any).primary_color }} title="Primary" />
+                        <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: (school as any).accent_color || '#E69500' }} title="Accent" />
+                      </div>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">{school.address}</p>
                 </div>
               </div>

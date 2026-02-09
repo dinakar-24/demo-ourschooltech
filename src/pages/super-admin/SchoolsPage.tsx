@@ -4,7 +4,8 @@ import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building2, Loader2 } from 'lucide-react';
+import { Plus, Search, Building2 } from 'lucide-react';
+import { TableSkeleton, CardSkeleton, ErrorState } from '@/components/ui/data-states';
 import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
@@ -23,7 +24,7 @@ export default function SchoolsPage() {
     pagination.resetPage();
   }, [searchQuery]);
 
-  const { data: result, isLoading } = useSchools({ search: searchQuery, page: pagination.page, pageSize: pagination.pageSize });
+  const { data: result, isLoading, isError, refetch } = useSchools({ search: searchQuery, page: pagination.page, pageSize: pagination.pageSize });
   const schools = result?.data || [];
   const totalCount = result?.totalCount || 0;
   const createSchool = useCreateSchool();
@@ -109,9 +110,12 @@ export default function SchoolsPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-              </div>
+              <>
+                <div className="md:hidden"><CardSkeleton count={3} /></div>
+                <div className="hidden md:block"><TableSkeleton rows={5} columns={5} /></div>
+              </>
+            ) : isError ? (
+              <ErrorState onRetry={() => refetch()} />
             ) : schools.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
