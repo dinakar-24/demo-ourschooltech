@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +18,8 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { GlobalSearchDialog } from '@/components/super-admin/GlobalSearchDialog';
+import { NotificationsDropdown } from '@/components/super-admin/NotificationsDropdown';
 
 interface SuperAdminLayoutProps {
   children: ReactNode;
@@ -43,8 +44,21 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/');
+
+  // Keyboard shortcut ⌘K / Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -173,20 +187,18 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
             </div>
             
             <div className="flex items-center gap-1 md:gap-3">
-              <div className="hidden md:flex relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search..." 
-                  className="pl-9 w-64 bg-muted/50 border-none focus-visible:ring-1"
-                />
-              </div>
-              <Button variant="ghost" size="icon-sm" className="md:hidden">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 text-sm text-muted-foreground hover:bg-muted transition-colors w-64"
+              >
+                <Search className="w-4 h-4" />
+                <span>Search...</span>
+                <kbd className="ml-auto text-[10px] bg-background border rounded px-1.5 py-0.5">⌘K</kbd>
+              </button>
+              <Button variant="ghost" size="icon-sm" className="md:hidden" onClick={() => setSearchOpen(true)}>
                 <Search className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon-sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+              <NotificationsDropdown />
             </div>
           </div>
         </header>
@@ -195,6 +207,7 @@ export function SuperAdminLayout({ children, title }: SuperAdminLayoutProps) {
           {children}
         </main>
       </div>
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }
