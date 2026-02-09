@@ -138,7 +138,8 @@ export function ManageSubscriptionDialog({
   }, [formData.schoolId, isEditing]);
 
   const studentCount = parseInt(formData.studentCount) || 0;
-  const pricePerStudent = parseInt(formData.pricePerStudent) || 0;
+  const isTrial = formData.status === 'trial';
+  const pricePerStudent = isTrial ? 0 : (parseInt(formData.pricePerStudent) || 0);
   const totalAmount = studentCount * pricePerStudent;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,24 +245,26 @@ export function ManageSubscriptionDialog({
         />
       </div>
 
-      {/* Price Per Student */}
-      <div className="grid gap-2">
-        <Label htmlFor="pricePerStudent">
-          <span className="flex items-center gap-1.5">
-            <IndianRupee className="w-3.5 h-3.5" />
-            Price Per Student (₹) *
-          </span>
-        </Label>
-        <Input
-          id="pricePerStudent"
-          type="number"
-          min="1"
-          value={formData.pricePerStudent}
-          onChange={(e) => setFormData({ ...formData, pricePerStudent: e.target.value })}
-          placeholder="Enter price per student"
-          required
-        />
-      </div>
+      {/* Price Per Student (hidden for trial) */}
+      {formData.status !== 'trial' && (
+        <div className="grid gap-2">
+          <Label htmlFor="pricePerStudent">
+            <span className="flex items-center gap-1.5">
+              <IndianRupee className="w-3.5 h-3.5" />
+              Price Per Student (₹) *
+            </span>
+          </Label>
+          <Input
+            id="pricePerStudent"
+            type="number"
+            min="1"
+            value={formData.pricePerStudent}
+            onChange={(e) => setFormData({ ...formData, pricePerStudent: e.target.value })}
+            placeholder="Enter price per student"
+            required
+          />
+        </div>
+      )}
 
       {/* Status */}
       <div className="grid gap-2">
@@ -314,8 +317,8 @@ export function ManageSubscriptionDialog({
         </div>
       </div>
 
-      {/* Amount Preview */}
-      {studentCount > 0 && (
+      {/* Amount Preview (hidden for trial) */}
+      {studentCount > 0 && formData.status !== 'trial' && pricePerStudent > 0 && (
         <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Total Amount</span>
