@@ -16,7 +16,16 @@ import { Shield, Lock, Key, Loader2 } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const PASSWORD_FALLBACK = { min_length: 8, require_uppercase: true, require_special: true, expiry_days: 'never' };
-const SESSION_FALLBACK = { timeout_minutes: '60', require_2fa: false, ip_allowlisting: false, max_failed_attempts: 5 };
+const SESSION_FALLBACK = {
+  timeout_super_admin: '30',
+  timeout_school_admin: '60',
+  timeout_teacher: '480',
+  timeout_parent: '4320',
+  timeout_student: '4320',
+  require_2fa: false,
+  ip_allowlisting: false,
+  max_failed_attempts: 5,
+};
 
 export function SecuritySettings() {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
@@ -97,20 +106,35 @@ export function SecuritySettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Session Timeout</p>
-              <p className="text-sm text-muted-foreground">Auto-logout after inactivity</p>
-            </div>
-            <Select value={session.timeout_minutes} onValueChange={(v) => setSession(s => ({ ...s, timeout_minutes: v }))}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15 minutes</SelectItem>
-                <SelectItem value="30">30 minutes</SelectItem>
-                <SelectItem value="60">1 hour</SelectItem>
-                <SelectItem value="120">2 hours</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-1 mb-2">
+            <p className="font-medium">Session Timeout (per role)</p>
+            <p className="text-sm text-muted-foreground">Auto-logout after inactivity. Shorter for admins, longer for casual users.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { key: 'timeout_super_admin' as const, label: 'Super Admin' },
+              { key: 'timeout_school_admin' as const, label: 'School Admin' },
+              { key: 'timeout_teacher' as const, label: 'Teacher' },
+              { key: 'timeout_parent' as const, label: 'Parent' },
+              { key: 'timeout_student' as const, label: 'Student' },
+            ]).map((role) => (
+              <div key={role.key} className="flex items-center justify-between gap-2 rounded-lg border p-3">
+                <Label className="text-sm whitespace-nowrap">{role.label}</Label>
+                <Select value={session[role.key]} onValueChange={(v) => setSession(s => ({ ...s, [role.key]: v }))}>
+                  <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                    <SelectItem value="480">8 hours</SelectItem>
+                    <SelectItem value="1440">1 day</SelectItem>
+                    <SelectItem value="4320">3 days</SelectItem>
+                    <SelectItem value="10080">7 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
           </div>
           <Separator />
           <div className="flex items-center justify-between">
