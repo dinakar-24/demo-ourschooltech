@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Search, Bell, Pencil, Trash2, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { Plus, Search, Bell, Pencil, Trash2, AlertTriangle, Info, AlertCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -71,6 +72,7 @@ const roleOptions = [
 
 export default function SystemAnnouncementsPage() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const [announcements, setAnnouncements] = useState<SystemAnnouncement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,6 +86,14 @@ export default function SystemAnnouncementsPage() {
     targetRoles: [] as string[],
     expiresAt: '',
   });
+
+  // Delete confirmation state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingTitle, setDeletingTitle] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deleteVerifying, setDeleteVerifying] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -163,21 +173,44 @@ export default function SystemAnnouncementsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this announcement?')) return;
+  const openDeleteConfirm = (id: string, title: string) => {
+    setDeletingId(id);
+    setDeletingTitle(title);
+    setDeletePassword('');
+    setShowDeletePassword(false);
+    setDeleteConfirmOpen(true);
+  };
 
+  const handleDeleteConfirmed = async () => {
+    if (!deletingId || !deletePassword || !user?.email) return;
+
+    setDeleteVerifying(true);
     try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: deletePassword,
+      });
+
+      if (authError) {
+        toast.error('Incorrect password. Please try again.');
+        setDeleteVerifying(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('system_announcements')
         .delete()
-        .eq('id', id);
+        .eq('id', deletingId);
 
       if (error) throw error;
       toast.success('Announcement deleted');
+      setDeleteConfirmOpen(false);
       fetchAnnouncements();
     } catch (error: any) {
       console.error('Error deleting announcement:', error);
       toast.error(error.message || 'Failed to delete announcement');
+    } finally {
+      setDeleteVerifying(false);
     }
   };
 
@@ -498,7 +531,7 @@ export default function SystemAnnouncementsPage() {
                         <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(announcement)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => handleDelete(announcement.id)}>
+                        <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => openDeleteConfirm(announcement.id, announcement.title)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -577,7 +610,7 @@ export default function SystemAnnouncementsPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(announcement)}><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(announcement.id)}><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => openDeleteConfirm(announcement.id, announcement.title)}><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -589,6 +622,54 @@ export default function SystemAnnouncementsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-destructive" />
+              Delete Announcement
+            </DialogTitle>
+            <DialogDescription>
+              Permanently delete "{deletingTitle}". This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="delete-confirm-password">Enter your password to confirm</Label>
+              <div className="relative">
+                <Input
+                  id="delete-confirm-password"
+                  type={showDeletePassword ? 'text' : 'password'}
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  onKeyDown={(e) => e.key === 'Enter' && handleDeleteConfirmed()}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePassword(!showDeletePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirmed}
+                disabled={!deletePassword || deleteVerifying}
+              >
+                {deleteVerifying ? 'Verifying...' : 'Delete Announcement'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SuperAdminLayout>
   );
 }
