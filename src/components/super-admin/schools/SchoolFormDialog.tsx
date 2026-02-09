@@ -9,8 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Palette } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
+import { Separator } from '@/components/ui/separator';
 
 interface SchoolFormData {
   name: string;
@@ -20,6 +21,8 @@ interface SchoolFormData {
   phone: string;
   email: string;
   logo: string;
+  primary_color: string;
+  accent_color: string;
 }
 
 interface School {
@@ -31,6 +34,8 @@ interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  primary_color?: string | null;
+  accent_color?: string | null;
   created_at: string;
 }
 
@@ -50,6 +55,8 @@ const initialFormData: SchoolFormData = {
   phone: '',
   email: '',
   logo: '',
+  primary_color: '#0F766E',
+  accent_color: '#E69500',
 };
 
 export const SchoolFormDialog = memo(function SchoolFormDialog({
@@ -74,6 +81,8 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
           phone: editingSchool.phone || '',
           email: editingSchool.email || '',
           logo: editingSchool.logo || '',
+          primary_color: editingSchool.primary_color || '#0F766E',
+          accent_color: editingSchool.accent_color || '#E69500',
         });
         setLogoPreview(editingSchool.logo || null);
       } else {
@@ -187,6 +196,57 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
               </div>
             </div>
             
+            {/* Theme Colors */}
+            <Separator />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">School Theme Colors</Label>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Primary Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={formData.primary_color}
+                      onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                      className="w-9 h-9 rounded-md border cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0"
+                    />
+                    <Input
+                      value={formData.primary_color}
+                      onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                      className="flex-1 font-mono text-xs"
+                      maxLength={7}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Accent Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={formData.accent_color}
+                      onChange={(e) => handleFieldChange('accent_color', e.target.value)}
+                      className="w-9 h-9 rounded-md border cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0"
+                    />
+                    <Input
+                      value={formData.accent_color}
+                      onChange={(e) => handleFieldChange('accent_color', e.target.value)}
+                      className="flex-1 font-mono text-xs"
+                      maxLength={7}
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Mini preview */}
+              <div className="flex gap-2 items-center">
+                <button type="button" className="px-3 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: formData.primary_color }}>Primary</button>
+                <button type="button" className="px-3 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: formData.accent_color }}>Accent</button>
+              </div>
+            </div>
+            <Separator />
+
             {/* Logo Upload */}
             <div className="grid gap-2">
               <Label>School Logo (Optional)</Label>

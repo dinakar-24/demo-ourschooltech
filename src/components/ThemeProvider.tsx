@@ -1,6 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+
+interface ThemeColors {
+  primary_color: string;
+  accent_color: string;
+}
+
+const ThemeContext = createContext<ThemeColors | null>(null);
+export const useThemeColors = () => useContext(ThemeContext);
 
 function hexToHSL(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -45,8 +53,34 @@ function lighten(hex: string, amount: number): string | null {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function applyTheme(primary: string, accent: string) {
+  const root = document.documentElement;
+  const primaryHSL = hexToHSL(primary);
+  const accentHSL = hexToHSL(accent);
+
+  if (primaryHSL) {
+    root.style.setProperty('--primary', primaryHSL);
+    const hoverHex = darken(primary, 20);
+    const mutedHex = lighten(primary, 200);
+    if (hoverHex) root.style.setProperty('--primary-hover', hexToHSL(hoverHex)!);
+    if (mutedHex) root.style.setProperty('--primary-muted', hexToHSL(mutedHex)!);
+    root.style.setProperty('--ring', primaryHSL);
+    const sidebarPrimaryHex = lighten(primary, 40);
+    if (sidebarPrimaryHex) root.style.setProperty('--sidebar-primary', hexToHSL(sidebarPrimaryHex)!);
+  }
+
+  if (accentHSL) {
+    root.style.setProperty('--accent', accentHSL);
+    const hoverHex = darken(accent, 20);
+    const mutedHex = lighten(accent, 200);
+    if (hoverHex) root.style.setProperty('--accent-hover', hexToHSL(hoverHex)!);
+    if (mutedHex) root.style.setProperty('--accent-muted', hexToHSL(mutedHex)!);
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { data: theme } = useQuery({
+  // Fetch platform-level theme (fallback for super admin / no school)
+  const { data: platformTheme } = useQuery({
     queryKey: ['system-settings', 'theme-colors'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,38 +89,60 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         .eq('key', 'theme')
         .maybeSingle();
       if (error) throw error;
-      return (data as any)?.value as { primary_color: string; accent_color: string } | null;
+      return (data as any)?.value as ThemeColors | null;
     },
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch the current user's school colors
+  const { data: schoolTheme } = useQuery({
+    queryKey: ['school-theme-colors'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      // Get user's school_id from profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!profile?.school_id) return null;
+
+      const { data: school } = await supabase
+        .from('schools')
+        .select('primary_color, accent_color')
+        .eq('id', profile.school_id)
+        .maybeSingle();
+
+      if (!school) return null;
+      return {
+        primary_color: (school as any).primary_color || null,
+        accent_color: (school as any).accent_color || null,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // School colors take priority over platform colors
+  const activeTheme: ThemeColors | null = (() => {
+    // If user has school colors, use those
+    if (schoolTheme?.primary_color && schoolTheme?.accent_color) {
+      return schoolTheme as ThemeColors;
+    }
+    // Fall back to platform theme
+    return platformTheme || null;
+  })();
+
   useEffect(() => {
-    if (!theme) return;
-    const root = document.documentElement;
+    if (!activeTheme) return;
+    applyTheme(activeTheme.primary_color, activeTheme.accent_color);
+  }, [activeTheme]);
 
-    const primaryHSL = hexToHSL(theme.primary_color);
-    const accentHSL = hexToHSL(theme.accent_color);
-
-    if (primaryHSL) {
-      root.style.setProperty('--primary', primaryHSL);
-      const hoverHex = darken(theme.primary_color, 20);
-      const mutedHex = lighten(theme.primary_color, 200);
-      if (hoverHex) root.style.setProperty('--primary-hover', hexToHSL(hoverHex)!);
-      if (mutedHex) root.style.setProperty('--primary-muted', hexToHSL(mutedHex)!);
-      root.style.setProperty('--ring', primaryHSL);
-      // Sidebar active color
-      const sidebarPrimaryHex = lighten(theme.primary_color, 40);
-      if (sidebarPrimaryHex) root.style.setProperty('--sidebar-primary', hexToHSL(sidebarPrimaryHex)!);
-    }
-
-    if (accentHSL) {
-      root.style.setProperty('--accent', accentHSL);
-      const hoverHex = darken(theme.accent_color, 20);
-      const mutedHex = lighten(theme.accent_color, 200);
-      if (hoverHex) root.style.setProperty('--accent-hover', hexToHSL(hoverHex)!);
-      if (mutedHex) root.style.setProperty('--accent-muted', hexToHSL(mutedHex)!);
-    }
-  }, [theme]);
-
-  return <>{children}</>;
+  return (
+    <ThemeContext.Provider value={activeTheme}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }

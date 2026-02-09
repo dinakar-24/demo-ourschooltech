@@ -554,6 +554,7 @@ export type Database = {
       }
       schools: {
         Row: {
+          accent_color: string | null
           address: string
           city: string
           code: string
@@ -564,12 +565,14 @@ export type Database = {
           logo: string | null
           name: string
           phone: string | null
+          primary_color: string | null
           razorpay_account_id: string | null
           student_limit: number | null
           subscription_status: string | null
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           address: string
           city: string
           code: string
@@ -580,12 +583,14 @@ export type Database = {
           logo?: string | null
           name: string
           phone?: string | null
+          primary_color?: string | null
           razorpay_account_id?: string | null
           student_limit?: number | null
           subscription_status?: string | null
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           address?: string
           city?: string
           code?: string
@@ -596,6 +601,7 @@ export type Database = {
           logo?: string | null
           name?: string
           phone?: string | null
+          primary_color?: string | null
           razorpay_account_id?: string | null
           student_limit?: number | null
           subscription_status?: string | null
