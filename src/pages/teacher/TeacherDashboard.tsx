@@ -101,24 +101,24 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-2 gap-3">
           <AdminStatCard
             title="My Students"
-            value={loading ? '...' : stats.totalStudents.toLocaleString()}
+            value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
             icon={<Users className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Homework"
-            value={loading ? '...' : stats.totalHomework.toLocaleString()}
+            value={loading ? '...' : (stats?.totalHomework ?? 0).toLocaleString()}
             subtitle="posted"
             icon={<BookOpen className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Attendance"
-            value={loading ? '...' : `${stats.attendanceToday}%`}
+            value={loading ? '...' : `${stats?.attendanceToday ?? 0}%`}
             subtitle="today"
             icon={<ClipboardList className="w-4 h-4" />}
           />
           <AdminStatCard
             title="Pending"
-            value={loading ? '...' : `${stats.pendingMarks}`}
+            value={loading ? '...' : `${stats?.pendingMarks ?? 0}`}
             subtitle="tasks"
             icon={<AlertCircle className="w-4 h-4" />}
           />
