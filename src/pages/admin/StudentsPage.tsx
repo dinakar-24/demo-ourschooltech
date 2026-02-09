@@ -40,7 +40,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent } from '@/hooks/useStudents';
+import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent, Student } from '@/hooks/useStudents';
+import { EditStudentDialog } from '@/components/admin/EditStudentDialog';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -148,6 +149,7 @@ export default function StudentsPage() {
     setIsAddDialogOpen(false);
   };
 
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<{ id: string; userId: string | null; name: string } | null>(null);
 
   const handleDeleteConfirmed = async () => {
@@ -343,11 +345,7 @@ export default function StudentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => toast.info('View student details coming soon')}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info('Edit student coming soon')}>
+                            <DropdownMenuItem onClick={() => setEditingStudent(student)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -376,6 +374,12 @@ export default function StudentsPage() {
             />
           </CardContent>
         </Card>
+
+        <EditStudentDialog
+          student={editingStudent}
+          open={!!editingStudent}
+          onOpenChange={(open) => !open && setEditingStudent(null)}
+        />
 
         <AlertDialog open={!!deletingStudent} onOpenChange={(open) => !open && setDeletingStudent(null)}>
           <AlertDialogContent>

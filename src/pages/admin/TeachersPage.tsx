@@ -40,7 +40,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useTeachers, useTeacherStats, useTeacherSubjects, useDeleteTeacher } from '@/hooks/useTeachers';
+import { useTeachers, useTeacherStats, useTeacherSubjects, useDeleteTeacher, Teacher } from '@/hooks/useTeachers';
+import { EditTeacherDialog } from '@/components/admin/EditTeacherDialog';
 import { CreateTeacherDialog } from '@/components/admin/CreateTeacherDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
@@ -85,6 +86,7 @@ export default function TeachersPage() {
     queryClient.invalidateQueries({ queryKey: ['teachers'] });
   }, [queryClient]);
 
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [deletingTeacher, setDeletingTeacher] = useState<{ id: string; userId: string | null; name: string } | null>(null);
 
   const handleDeleteConfirmed = async () => {
@@ -205,10 +207,7 @@ export default function TeachersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => toast.info('View teacher details coming soon')}>
-                            <Eye className="w-4 h-4 mr-2" />View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
+                          <DropdownMenuItem onClick={() => setEditingTeacher(teacher)}>
                             <Edit className="w-4 h-4 mr-2" />Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => setDeletingTeacher({ id: teacher.id, userId: teacher.user_id, name: teacher.full_name })}>
@@ -311,10 +310,7 @@ export default function TeachersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => toast.info('View teacher details coming soon')}>
-                              <Eye className="w-4 h-4 mr-2" />View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
+                            <DropdownMenuItem onClick={() => setEditingTeacher(teacher)}>
                               <Edit className="w-4 h-4 mr-2" />Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive" onClick={() => setDeletingTeacher({ id: teacher.id, userId: teacher.user_id, name: teacher.full_name })}>
@@ -338,6 +334,12 @@ export default function TeachersPage() {
             />
           </CardContent>
         </Card>
+
+        <EditTeacherDialog
+          teacher={editingTeacher}
+          open={!!editingTeacher}
+          onOpenChange={(open) => !open && setEditingTeacher(null)}
+        />
 
         <CreateTeacherDialog
           open={isAddDialogOpen}

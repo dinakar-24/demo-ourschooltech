@@ -36,6 +36,7 @@ import AcademicYearsPage from "./pages/admin/AcademicYearsPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import SubscriptionPage from "./pages/admin/SubscriptionPage";
+import TimetablePage from "./pages/admin/TimetablePage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -107,6 +108,7 @@ function AppRoutes() {
       <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><FeesPage /></ProtectedRoute>} />
       <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><ExamsPage /></ProtectedRoute>} />
       <Route path="/admin/academic-years" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><AcademicYearsPage /></ProtectedRoute>} />
+      <Route path="/admin/timetable" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><TimetablePage /></ProtectedRoute>} />
       <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><ReportsPage /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SettingsPage /></ProtectedRoute>} />

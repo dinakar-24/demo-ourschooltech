@@ -9,6 +9,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, GraduationCap, CreditCard, ClipboardList } from 'lucide-react';
+import { useCurrentAcademicYear } from '@/hooks/useAcademicYears';
 
 export default function AdminDashboard() {
   const { user, school } = useAuth();
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: currentAcademicYear } = useCurrentAcademicYear();
   const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
 
   const formatCurrency = (amount: number) => {
@@ -63,7 +65,7 @@ export default function AdminDashboard() {
           </div>
           <div className="text-right shrink-0">
             <p className="text-xs text-muted-foreground">Academic Year</p>
-            <p className="text-sm font-semibold text-foreground">2024-25</p>
+            <p className="text-sm font-semibold text-foreground">{currentAcademicYear?.name || '—'}</p>
           </div>
         </div>
 
