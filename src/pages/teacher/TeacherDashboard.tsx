@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { Card, CardContent } from '@/components/ui/card';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ClipboardList, 
@@ -23,54 +23,29 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface TeacherStats {
-  totalStudents: number;
-  totalHomework: number;
-  attendanceToday: number;
-  pendingMarks: number;
-}
-
 export default function TeacherDashboard() {
   const { user, school } = useAuth();
   const schoolId = useEffectiveSchoolId();
-  const [stats, setStats] = useState<TeacherStats>({
-    totalStudents: 0,
-    totalHomework: 0,
-    attendanceToday: 0,
-    pendingMarks: 0,
-  });
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (schoolId && user?.id) {
-      fetchStats();
-    }
-  }, [schoolId, user?.id]);
-
-  const fetchStats = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const [homeworkRes, attendanceRes] = await Promise.all([
-        supabase.from('homework').select('id', { count: 'exact', head: true }).eq('assigned_by', user!.id),
-        supabase.from('attendance').select('status').eq('school_id', schoolId).eq('date', today),
-      ]);
-
-      const presentCount = attendanceRes.data?.filter(a => a.status === 'present').length || 0;
-      const totalAttendance = attendanceRes.data?.length || 0;
-      const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
-
-      setStats({
-        totalStudents: 156,
-        totalHomework: homeworkRes.count || 0,
-        attendanceToday: attendanceRate,
-        pendingMarks: 3,
+  const { data: stats, isLoading: loading } = useQuery({
+    queryKey: ['teacher-dashboard-stats', schoolId, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_teacher_dashboard_stats', {
+        _school_id: schoolId,
+        _teacher_user_id: user!.id,
       });
-    } catch (error) {
-      console.error('Error fetching teacher stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (error) throw error;
+      const r = data as any;
+      return {
+        totalStudents: 0,
+        totalHomework: Number(r?.totalHomework ?? 0),
+        attendanceToday: Number(r?.attendanceRate ?? 0),
+        pendingMarks: 0,
+      };
+    },
+    enabled: !!schoolId && !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const greeting = () => {
     const hour = new Date().getHours();

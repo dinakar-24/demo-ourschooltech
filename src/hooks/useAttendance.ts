@@ -78,22 +78,23 @@ export function useAttendanceSummary(date: Date) {
     queryFn: async (): Promise<AttendanceSummary> => {
       if (!schoolId) throw new Error('No school ID');
 
-      const { data, error } = await supabase
-        .from('attendance')
-        .select('status')
-        .eq('school_id', schoolId)
-        .eq('date', dateStr);
+      const { data, error } = await supabase.rpc('get_attendance_summary' as any, {
+        _school_id: schoolId,
+        _date: dateStr,
+      } as any);
 
       if (error) throw error;
 
+      const result = data as any;
       return {
-        present: data?.filter(a => a.status === 'present').length || 0,
-        absent: data?.filter(a => a.status === 'absent').length || 0,
-        late: data?.filter(a => a.status === 'late').length || 0,
-        total: data?.length || 0,
+        present: Number(result?.present ?? 0),
+        absent: Number(result?.absent ?? 0),
+        late: Number(result?.late ?? 0),
+        total: Number(result?.total ?? 0),
       };
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

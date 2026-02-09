@@ -1120,6 +1120,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_attendance_by_class: {
+        Args: { _date: string; _school_id: string }
+        Returns: Json
+      }
+      get_admin_dashboard_stats: { Args: { _school_id: string }; Returns: Json }
+      get_attendance_summary: {
+        Args: { _date: string; _school_id: string }
+        Returns: Json
+      }
+      get_distinct_cities: { Args: never; Returns: string[] }
+      get_fee_stats: { Args: { _school_id: string }; Returns: Json }
+      get_role_counts: { Args: never; Returns: Json }
+      get_super_admin_stats: { Args: never; Returns: Json }
+      get_teacher_dashboard_stats: {
+        Args: { _school_id: string; _teacher_user_id: string }
+        Returns: Json
+      }
       get_user_auth_data: { Args: { _user_id: string }; Returns: Json }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_role: {

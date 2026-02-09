@@ -20,61 +20,35 @@ export function useAdminAttendance(date: Date) {
     queryFn: async () => {
       if (!schoolId) return { classWise: [], totals: { present: 0, absent: 0, late: 0, total: 0 } };
 
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('id, class_name')
-        .eq('school_id', schoolId)
-        .eq('status', 'active');
+      const { data, error } = await supabase.rpc('get_admin_attendance_by_class' as any, {
+        _school_id: schoolId,
+        _date: dateStr,
+      } as any);
 
-      if (studentsError) throw studentsError;
+      if (error) throw error;
 
-      const { data: attendance, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('student_id, status')
-        .eq('school_id', schoolId)
-        .eq('date', dateStr);
+      const result = data as any;
+      const classWise: ClassAttendance[] = (result?.classWise || []).map((c: any) => ({
+        class: c.class_name,
+        present: Number(c.present ?? 0),
+        absent: Number(c.absent ?? 0),
+        late: Number(c.late ?? 0),
+        total: Number(c.total ?? 0),
+        percentage: Number(c.percentage ?? 0),
+      }));
 
-      if (attendanceError) throw attendanceError;
-
-      const attendanceMap = new Map(attendance?.map(a => [a.student_id, a.status]) || []);
-
-      const classGroups = new Map<string, { present: number; absent: number; late: number; total: number }>();
-
-      students?.forEach(student => {
-        const className = student.class_name;
-        if (!classGroups.has(className)) {
-          classGroups.set(className, { present: 0, absent: 0, late: 0, total: 0 });
-        }
-        
-        const group = classGroups.get(className)!;
-        group.total++;
-        
-        const status = attendanceMap.get(student.id);
-        if (status === 'present') group.present++;
-        else if (status === 'absent') group.absent++;
-        else if (status === 'late') group.late++;
-      });
-
-      const classWise: ClassAttendance[] = Array.from(classGroups.entries())
-        .map(([className, stats]) => ({
-          class: className,
-          ...stats,
-          percentage: stats.total > 0 ? Number(((stats.present / stats.total) * 100).toFixed(1)) : 0,
-        }))
-        .sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }));
-
-      const totals = classWise.reduce(
-        (acc, curr) => ({
-          present: acc.present + curr.present,
-          absent: acc.absent + curr.absent,
-          late: acc.late + curr.late,
-          total: acc.total + curr.total,
-        }),
-        { present: 0, absent: 0, late: 0, total: 0 }
-      );
+      const totals = result?.totals
+        ? {
+            present: Number(result.totals.present ?? 0),
+            absent: Number(result.totals.absent ?? 0),
+            late: Number(result.totals.late ?? 0),
+            total: Number(result.totals.total ?? 0),
+          }
+        : { present: 0, absent: 0, late: 0, total: 0 };
 
       return { classWise, totals };
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
   });
 }
