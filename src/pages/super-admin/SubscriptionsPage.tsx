@@ -238,13 +238,13 @@ export default function SubscriptionsPage() {
                 />
               </div>
               {/* Filter Tabs */}
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
+              <div className="flex gap-1.5 flex-wrap">
                 {filterTabs.map(tab => (
                   <Button
                     key={tab.value}
                     variant={statusFilter === tab.value ? 'default' : 'outline'}
                     size="sm"
-                    className="shrink-0 text-xs h-8"
+                    className="text-xs h-8"
                     onClick={() => setStatusFilter(tab.value)}
                   >
                     {tab.label}
@@ -265,11 +265,17 @@ export default function SubscriptionsPage() {
               <div className="text-center py-12 text-muted-foreground">
                 <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="font-medium">No subscriptions found</p>
-                <p className="text-sm mt-1">
+                <p className="text-sm mt-1 mb-4">
                   {statusFilter !== 'all'
                     ? `No ${statusFilter} subscriptions. Try changing the filter.`
-                    : 'Subscriptions will appear here when schools are billed'}
+                    : 'Create a subscription to get started'}
                 </p>
+                {statusFilter === 'all' && (
+                  <Button size="sm" onClick={() => { setEditingSubscription(null); setManageDialogOpen(true); }}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Create Subscription
+                  </Button>
+                )}
               </div>
             ) : isMobile ? (
               /* Mobile Card Layout */
