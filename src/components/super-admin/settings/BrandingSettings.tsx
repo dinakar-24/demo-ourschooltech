@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Palette, Globe, ImageIcon, Loader2, Upload, Trash2, Eye } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const BRANDING_FALLBACK = {
@@ -133,6 +134,7 @@ function ColorPickerField({ label, value, onChange }: ColorPickerFieldProps) {
 
 export function BrandingSettings() {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
+  const qc = useQueryClient();
 
   const [branding, setBranding] = useState(BRANDING_FALLBACK);
   const [theme, setTheme] = useState(THEME_FALLBACK);
@@ -317,7 +319,7 @@ export function BrandingSettings() {
             </div>
           </div>
 
-          <Button disabled={saving} onClick={() => updateSetting.mutate({ key: 'theme', value: theme })}>
+          <Button disabled={saving} onClick={() => updateSetting.mutate({ key: 'theme', value: theme }, { onSuccess: () => qc.invalidateQueries({ queryKey: ['system-settings', 'theme-colors'] }) })}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save Theme
           </Button>
         </CardContent>
