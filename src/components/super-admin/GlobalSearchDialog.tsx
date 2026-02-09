@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Building2, User, X, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -98,66 +99,86 @@ export function GlobalSearchDialog({ open, onOpenChange }: GlobalSearchDialogPro
     setResults([]);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b">
-          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search schools, users..."
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto"
-            autoFocus
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+  const searchContent = (
+    <>
+      <div className="flex items-center gap-2 px-4 py-3 border-b">
+        <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search schools, users..."
+          className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto"
+          autoFocus
+        />
+        {query && (
+          <button onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
-        <div className="max-h-80 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : results.length > 0 ? (
-            <div className="py-2">
-              {results.map((result) => (
-                <button
-                  key={`${result.type}-${result.id}`}
-                  onClick={() => handleSelect(result)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    {result.icon === 'school' ? (
-                      <Building2 className="w-4 h-4 text-primary" />
-                    ) : (
-                      <User className="w-4 h-4 text-primary" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{result.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{result.subtitle}</p>
-                  </div>
-                  <span className="text-[10px] uppercase font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                    {result.type}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : query.length >= 2 && !loading ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No results found for "{query}"
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              Type at least 2 characters to search
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      <div className="flex-1 overflow-y-auto max-h-[60vh] sm:max-h-80">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : results.length > 0 ? (
+          <div className="py-2">
+            {results.map((result) => (
+              <button
+                key={`${result.type}-${result.id}`}
+                onClick={() => handleSelect(result)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left"
+              >
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  {result.icon === 'school' ? (
+                    <Building2 className="w-4 h-4 text-primary" />
+                  ) : (
+                    <User className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{result.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{result.subtitle}</p>
+                </div>
+                <span className="text-[10px] uppercase font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                  {result.type}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : query.length >= 2 && !loading ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No results found for "{query}"
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            Type at least 2 characters to search
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile: Drawer from bottom */}
+      <div className="sm:hidden">
+        <Drawer open={open} onOpenChange={handleClose}>
+          <DrawerContent>
+            {searchContent}
+          </DrawerContent>
+        </Drawer>
+      </div>
+
+      {/* Desktop: Dialog */}
+      <div className="hidden sm:block">
+        <Dialog open={open} onOpenChange={handleClose}>
+          <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+            {searchContent}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
