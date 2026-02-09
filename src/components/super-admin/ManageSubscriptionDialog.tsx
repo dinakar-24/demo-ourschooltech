@@ -24,7 +24,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer';
-import { IndianRupee, Users, Calendar, Plus } from 'lucide-react';
+import { IndianRupee, Users, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreateSubscription, useUpdateSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ interface ManageSubscriptionDialogProps {
     school_id: string;
     school?: { name?: string; code?: string } | null;
     student_count: number;
+    price_per_student: number;
     status: string;
     start_date: string | null;
     end_date: string | null;
@@ -52,8 +53,6 @@ interface ManageSubscriptionDialogProps {
   /** Schools that already have subscriptions (to exclude from create) */
   existingSchoolIds?: string[];
 }
-
-const PRICE_PER_STUDENT = 250;
 
 export function ManageSubscriptionDialog({
   open,
@@ -73,6 +72,7 @@ export function ManageSubscriptionDialog({
   const [formData, setFormData] = useState({
     schoolId: '',
     studentCount: '',
+    pricePerStudent: '',
     status: 'active' as string,
     startDate: format(new Date(), 'yyyy-MM-dd'),
     endDate: format(addYears(new Date(), 1), 'yyyy-MM-dd'),
@@ -85,6 +85,7 @@ export function ManageSubscriptionDialog({
         setFormData({
           schoolId: existingSubscription.school_id,
           studentCount: String(existingSubscription.student_count),
+          pricePerStudent: String(existingSubscription.price_per_student || ''),
           status: existingSubscription.status,
           startDate: existingSubscription.start_date || format(new Date(), 'yyyy-MM-dd'),
           endDate: existingSubscription.end_date || format(addYears(new Date(), 1), 'yyyy-MM-dd'),
@@ -93,6 +94,7 @@ export function ManageSubscriptionDialog({
         setFormData({
           schoolId: '',
           studentCount: '',
+          pricePerStudent: '',
           status: 'active',
           startDate: format(new Date(), 'yyyy-MM-dd'),
           endDate: format(addYears(new Date(), 1), 'yyyy-MM-dd'),
@@ -136,7 +138,8 @@ export function ManageSubscriptionDialog({
   }, [formData.schoolId, isEditing]);
 
   const studentCount = parseInt(formData.studentCount) || 0;
-  const totalAmount = studentCount * PRICE_PER_STUDENT;
+  const pricePerStudent = parseInt(formData.pricePerStudent) || 0;
+  const totalAmount = studentCount * pricePerStudent;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +158,7 @@ export function ManageSubscriptionDialog({
         await updateSubscription.mutateAsync({
           id: existingSubscription.id,
           student_count: studentCount,
-          price_per_student: PRICE_PER_STUDENT,
+          price_per_student: pricePerStudent,
           total_amount: totalAmount,
           status: formData.status as any,
           start_date: formData.startDate,
@@ -169,7 +172,7 @@ export function ManageSubscriptionDialog({
             school_id: formData.schoolId,
             plan_type: 'yearly',
             student_count: studentCount,
-            price_per_student: PRICE_PER_STUDENT,
+            price_per_student: pricePerStudent,
             total_amount: totalAmount,
             status: formData.status as any,
             start_date: formData.startDate,
@@ -241,6 +244,25 @@ export function ManageSubscriptionDialog({
         />
       </div>
 
+      {/* Price Per Student */}
+      <div className="grid gap-2">
+        <Label htmlFor="pricePerStudent">
+          <span className="flex items-center gap-1.5">
+            <IndianRupee className="w-3.5 h-3.5" />
+            Price Per Student (₹) *
+          </span>
+        </Label>
+        <Input
+          id="pricePerStudent"
+          type="number"
+          min="1"
+          value={formData.pricePerStudent}
+          onChange={(e) => setFormData({ ...formData, pricePerStudent: e.target.value })}
+          placeholder="Enter price per student"
+          required
+        />
+      </div>
+
       {/* Status */}
       <div className="grid gap-2">
         <Label>Status</Label>
@@ -303,7 +325,7 @@ export function ManageSubscriptionDialog({
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {studentCount} students × ₹{PRICE_PER_STUDENT}/student/year
+            {studentCount} students × ₹{pricePerStudent}/student/year
           </p>
         </div>
       )}
