@@ -44,7 +44,7 @@ export function useTeachers(filters?: TeacherFilters) {
 
       let query = supabase
         .from('teachers')
-        .select('*, profiles:user_id(avatar_url)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 
