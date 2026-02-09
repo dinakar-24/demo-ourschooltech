@@ -7,16 +7,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,8 +24,13 @@ import {
   CheckCircle,
   KeyRound,
   Copy,
+  Eye,
+  EyeOff,
+  ShieldAlert,
 } from 'lucide-react';
 import { useManageUser } from '@/hooks/useManageUser';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface UserActionsMenuProps {
@@ -45,10 +40,11 @@ interface UserActionsMenuProps {
   isDisabled?: boolean;
   isSelf?: boolean;
   onActionComplete: (action?: string, userId?: string) => void;
-  // For edit dialog
   currentFullName?: string;
   currentPhone?: string;
 }
+
+type PendingAction = 'delete' | 'disable' | 'enable' | 'reset_password';
 
 export function UserActionsMenu({
   userId,
@@ -60,33 +56,98 @@ export function UserActionsMenu({
   currentFullName,
   currentPhone,
 }: UserActionsMenuProps) {
+  const { user } = useAuth();
   const { manageUser, isProcessing } = useManageUser();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [disableOpen, setDisableOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [resetOpen, setResetOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
   const [tempPassDialogOpen, setTempPassDialogOpen] = useState(false);
+
+  // Password confirmation state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const [editForm, setEditForm] = useState({
     full_name: currentFullName || userName,
     phone: currentPhone || '',
   });
 
-  const handleDelete = async () => {
-    const result = await manageUser({ action: 'delete', user_id: userId });
-    if (result.success) {
-      setDeleteOpen(false);
-      onActionComplete('delete', userId);
-    }
+  const actionLabels: Record<PendingAction, { title: string; description: string; button: string; variant: 'destructive' | 'default' }> = {
+    delete: {
+      title: 'Delete User',
+      description: `Permanently delete ${userName} (${userEmail}) and all associated data. This cannot be undone.`,
+      button: 'Delete User',
+      variant: 'destructive',
+    },
+    disable: {
+      title: 'Disable User',
+      description: `Prevent ${userName} from logging in. They won't lose any data.`,
+      button: 'Disable User',
+      variant: 'default',
+    },
+    enable: {
+      title: 'Enable User',
+      description: `Re-enable ${userName}'s access to the system.`,
+      button: 'Enable User',
+      variant: 'default',
+    },
+    reset_password: {
+      title: 'Reset Password',
+      description: `Generate a temporary password for ${userName}. You'll need to share it securely.`,
+      button: 'Reset Password',
+      variant: 'default',
+    },
   };
 
-  const handleToggleDisable = async () => {
-    const action = isDisabled ? 'enable' : 'disable';
-    const result = await manageUser({ action, user_id: userId });
-    if (result.success) {
-      setDisableOpen(false);
-      onActionComplete(action, userId);
+  const openConfirm = (action: PendingAction) => {
+    setPendingAction(action);
+    setPassword('');
+    setShowPassword(false);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    if (!pendingAction || !password || !user?.email) return;
+
+    setVerifying(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+
+      if (error) {
+        toast.error('Incorrect password. Please try again.');
+        setVerifying(false);
+        return;
+      }
+
+      if (pendingAction === 'delete') {
+        const result = await manageUser({ action: 'delete', user_id: userId });
+        if (result.success) {
+          setConfirmOpen(false);
+          onActionComplete('delete', userId);
+        }
+      } else if (pendingAction === 'disable' || pendingAction === 'enable') {
+        const result = await manageUser({ action: pendingAction, user_id: userId });
+        if (result.success) {
+          setConfirmOpen(false);
+          onActionComplete(pendingAction, userId);
+        }
+      } else if (pendingAction === 'reset_password') {
+        const result = await manageUser({ action: 'reset_password', user_id: userId });
+        if (result.success && result.temp_password) {
+          setTempPassword(result.temp_password);
+          setConfirmOpen(false);
+          setTempPassDialogOpen(true);
+        }
+      }
+    } catch {
+      toast.error('Verification failed');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -104,19 +165,12 @@ export function UserActionsMenu({
     }
   };
 
-  const handleResetPassword = async () => {
-    const result = await manageUser({ action: 'reset_password', user_id: userId });
-    if (result.success && result.temp_password) {
-      setTempPassword(result.temp_password);
-      setResetOpen(false);
-      setTempPassDialogOpen(true);
-    }
-  };
-
   const copyPassword = () => {
     navigator.clipboard.writeText(tempPassword);
     toast.success('Password copied to clipboard');
   };
+
+  const currentAction = pendingAction ? actionLabels[pendingAction] : null;
 
   return (
     <>
@@ -126,24 +180,27 @@ export function UserActionsMenu({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-48 bg-popover">
           <DropdownMenuItem onClick={() => { setEditForm({ full_name: currentFullName || userName, phone: currentPhone || '' }); setEditOpen(true); }}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Profile
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setResetOpen(true)}>
+          <DropdownMenuItem onClick={() => openConfirm('reset_password')}>
             <KeyRound className="w-4 h-4 mr-2" />
             Reset Password
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {!isSelf && (
-            <DropdownMenuItem onClick={() => setDisableOpen(true)} className={isDisabled ? 'text-green-600' : 'text-yellow-600'}>
+            <DropdownMenuItem
+              onClick={() => openConfirm(isDisabled ? 'enable' : 'disable')}
+              className={isDisabled ? 'text-green-600' : 'text-yellow-600'}
+            >
               {isDisabled ? <CheckCircle className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
               {isDisabled ? 'Enable User' : 'Disable User'}
             </DropdownMenuItem>
           )}
           {!isSelf && (
-            <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
+            <DropdownMenuItem onClick={() => openConfirm('delete')} className="text-destructive">
               <Trash2 className="w-4 h-4 mr-2" />
               Delete User
             </DropdownMenuItem>
@@ -151,43 +208,51 @@ export function UserActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to permanently delete <strong>{userName}</strong> ({userEmail})? This action cannot be undone and will remove all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isProcessing}>
-              {isProcessing ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Disable/Enable Confirmation */}
-      <AlertDialog open={disableOpen} onOpenChange={setDisableOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{isDisabled ? 'Enable' : 'Disable'} User</AlertDialogTitle>
-            <AlertDialogDescription>
-              {isDisabled
-                ? `This will re-enable ${userName}'s access to the system.`
-                : `This will prevent ${userName} from logging in. They won't lose any data.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleToggleDisable} disabled={isProcessing}>
-              {isProcessing ? 'Processing...' : isDisabled ? 'Enable' : 'Disable'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Password Confirmation Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-destructive" />
+              {currentAction?.title}
+            </DialogTitle>
+            <DialogDescription>{currentAction?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="confirm-password">Enter your password to confirm</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button
+                variant={currentAction?.variant === 'destructive' ? 'destructive' : 'default'}
+                onClick={handleConfirm}
+                disabled={!password || verifying || isProcessing}
+              >
+                {verifying || isProcessing ? 'Verifying...' : currentAction?.button}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -224,24 +289,6 @@ export function UserActionsMenu({
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Reset Password Confirmation */}
-      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset Password</AlertDialogTitle>
-            <AlertDialogDescription>
-              Generate a temporary password for <strong>{userName}</strong>. You'll need to share it with them securely.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetPassword} disabled={isProcessing}>
-              {isProcessing ? 'Resetting...' : 'Reset Password'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Temporary Password Display */}
       <Dialog open={tempPassDialogOpen} onOpenChange={setTempPassDialogOpen}>
