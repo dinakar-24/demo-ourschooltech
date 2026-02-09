@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { School, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { LoginShapes } from './LoginShapes';
+import appLogo from '@/assets/logo.png';
 
 interface LoginSplashProps {
   onGetStarted: () => void;
@@ -230,11 +231,11 @@ export function LoginSplash({ onGetStarted, onSuperAdmin }: LoginSplashProps) {
         {/* Brand */}
         <motion.div variants={item} className="mt-7 flex flex-col items-center text-center">
           <motion.div
-            className="w-18 h-18 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/25 mb-4"
+            className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/25 mb-4 overflow-hidden"
             animate={{ rotate: [0, 3, -3, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <School className="w-9 h-9 text-white" />
+            <img src={appLogo} alt="Our School Tech" className="w-14 h-14 object-contain" />
           </motion.div>
           <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">
             Our School Tech
