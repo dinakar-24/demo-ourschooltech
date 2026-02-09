@@ -40,14 +40,15 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Filter,
   RefreshCw,
-  Download,
+  Plus,
+  Pencil,
 } from 'lucide-react';
 import { useAllSubscriptions, useSubscriptionPayments } from '@/hooks/useSubscription';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { ManageSubscriptionDialog } from '@/components/super-admin/ManageSubscriptionDialog';
 
 type StatusFilter = 'all' | 'active' | 'expired' | 'pending' | 'trial';
 
@@ -55,6 +56,8 @@ export default function SubscriptionsPage() {
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<any>(null);
   const { data: subscriptions, isLoading, refetch } = useAllSubscriptions();
 
   const filteredSubscriptions = (subscriptions || []).filter(sub => {
@@ -215,9 +218,15 @@ export default function SubscriptionsPage() {
                   <CreditCard className="w-5 h-5 text-primary" />
                   All Subscriptions
                 </CardTitle>
-                <Button variant="ghost" size="icon-sm" onClick={() => refetch()} title="Refresh">
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="ghost" size="icon-sm" onClick={() => refetch()} title="Refresh">
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" onClick={() => { setEditingSubscription(null); setManageDialogOpen(true); }}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    {isMobile ? 'Add' : 'New Subscription'}
+                  </Button>
+                </div>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -293,11 +302,21 @@ export default function SubscriptionsPage() {
                           ? `Valid until ${format(new Date(subscription.end_date), 'MMM d, yyyy')}`
                           : 'No end date set'}
                       </div>
-                      <DetailsWrapper subscription={subscription}>
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Eye className="w-4 h-4 mr-1.5" />View Details
+                      <div className="flex gap-2">
+                        <DetailsWrapper subscription={subscription}>
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Eye className="w-4 h-4 mr-1.5" />Details
+                          </Button>
+                        </DetailsWrapper>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => { setEditingSubscription(subscription); setManageDialogOpen(true); }}
+                        >
+                          <Pencil className="w-4 h-4 mr-1.5" />Edit
                         </Button>
-                      </DetailsWrapper>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -353,11 +372,20 @@ export default function SubscriptionsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DetailsWrapper subscription={subscription}>
-                            <Button variant="ghost" size="sm">
-                              <Eye className="w-4 h-4 mr-1" />Details
+                          <div className="flex items-center justify-end gap-1">
+                            <DetailsWrapper subscription={subscription}>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="w-4 h-4 mr-1" />Details
+                              </Button>
+                            </DetailsWrapper>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setEditingSubscription(subscription); setManageDialogOpen(true); }}
+                            >
+                              <Pencil className="w-4 h-4 mr-1" />Edit
                             </Button>
-                          </DetailsWrapper>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -367,6 +395,20 @@ export default function SubscriptionsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Manage Subscription Dialog */}
+        <ManageSubscriptionDialog
+          open={manageDialogOpen}
+          onOpenChange={(open) => {
+            setManageDialogOpen(open);
+            if (!open) {
+              setEditingSubscription(null);
+              refetch();
+            }
+          }}
+          existingSubscription={editingSubscription}
+          existingSchoolIds={(subscriptions || []).map(s => s.school_id)}
+        />
       </div>
     </SuperAdminLayout>
   );
