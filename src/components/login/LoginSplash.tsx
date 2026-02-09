@@ -230,8 +230,8 @@ export function LoginSplash({ onGetStarted, onSuperAdmin }: LoginSplashProps) {
 
         {/* Brand */}
         <motion.div variants={item} className="mt-7 flex flex-col items-center text-center">
-          <div className="w-22 h-22 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/25 mb-4 overflow-hidden">
-            <img src={appLogo} alt="Our School Tech" className="w-18 h-18 object-contain" />
+          <div className="w-24 h-24 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/25 mb-4 overflow-hidden">
+            <img src={appLogo} alt="Our School Tech" className="w-20 h-20 object-contain" />
           </div>
           <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">
             Our School Tech
