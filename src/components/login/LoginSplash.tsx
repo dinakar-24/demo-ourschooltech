@@ -230,13 +230,9 @@ export function LoginSplash({ onGetStarted, onSuperAdmin }: LoginSplashProps) {
 
         {/* Brand */}
         <motion.div variants={item} className="mt-7 flex flex-col items-center text-center">
-          <motion.div
-            className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/25 mb-4 overflow-hidden"
-            animate={{ rotate: [0, 3, -3, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <img src={appLogo} alt="Our School Tech" className="w-14 h-14 object-contain" />
-          </motion.div>
+          <div className="w-28 h-28 rounded-2xl bg-white shadow-2xl border border-white/25 mb-4 overflow-hidden flex items-center justify-center">
+            <img src={appLogo} alt="Our School Tech" className="w-24 h-24 object-contain" />
+          </div>
           <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">
             Our School Tech
           </h1>
