@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { School, Search, MapPin, ArrowRight, ArrowLeft } from 'lucide-react';
+import appLogo from '@/assets/logo.png';
 import { Input } from '@/components/ui/input';
 import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
@@ -120,8 +121,8 @@ export default function LoginPage() {
           <ArrowLeft className="w-5 h-5" />
         </motion.button>
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-            <School className="w-4.5 h-4.5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center overflow-hidden">
+            <img src={appLogo} alt="Our School Tech" className="w-7 h-7 object-contain" />
           </div>
           <span className="text-base font-display font-bold text-white">Our School Tech</span>
         </div>
