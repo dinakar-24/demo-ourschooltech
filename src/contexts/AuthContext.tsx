@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { toast } from 'sonner';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -207,11 +209,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSchool(null);
-  };
+  }, []);
+
+  // Session timeout enforcement
+  const handleSessionTimeout = useCallback(() => {
+    toast.info('You have been logged out due to inactivity.');
+    logout();
+  }, [logout]);
+
+  useSessionTimeout(user?.role, handleSessionTimeout);
 
   return (
     <AuthContext.Provider value={{

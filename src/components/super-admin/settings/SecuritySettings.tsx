@@ -131,6 +131,7 @@ export function SecuritySettings() {
                     <SelectItem value="1440">1 day</SelectItem>
                     <SelectItem value="4320">3 days</SelectItem>
                     <SelectItem value="10080">7 days</SelectItem>
+                    <SelectItem value="43200">30 days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
