@@ -1,10 +1,13 @@
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AdminStatCard } from '@/components/admin/AdminStatCard';
+import { SuperAdminQuickActions } from '@/components/super-admin/SuperAdminQuickActions';
+import { RecentSchoolsList } from '@/components/super-admin/RecentSchoolsList';
+import { SubscriptionOverview } from '@/components/super-admin/SubscriptionOverview';
 import { useAuth } from '@/contexts/AuthContext';
-import { School, Users, GraduationCap, CreditCard, TrendingUp, Building2 } from 'lucide-react';
+import { Building2, Users, GraduationCap, CreditCard, School } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -25,89 +28,83 @@ export default function SuperAdminDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
-    <SuperAdminLayout title="Super Admin Dashboard">
-      <div className="space-y-6 animate-fade-up">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <SuperAdminLayout title="Dashboard">
+      <div className="space-y-5 pb-6 animate-fade-up">
+        {/* Greeting */}
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl md:text-2xl font-display font-bold text-foreground">
-              Welcome back, Super Admin! 🔐
+            <h2 className="text-lg font-bold text-foreground">
+              {greeting()}, {user?.name?.split(' ')[0] || 'Admin'}! 🔐
             </h2>
-            <p className="text-muted-foreground">
-              Here's an overview of all schools in the system.
+            <p className="text-sm text-muted-foreground">
+              System overview & management
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Total Schools"
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <AdminStatCard
+            title="Schools"
             value={loading ? '...' : (stats?.totalSchools ?? 0).toString()}
-            icon={<Building2 className="w-5 h-5" />}
+            icon={<Building2 className="w-4 h-4" />}
           />
-          <MetricCard
-            title="Total Students"
+          <AdminStatCard
+            title="Students"
             value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
-            icon={<Users className="w-5 h-5" />}
+            icon={<Users className="w-4 h-4" />}
           />
-          <MetricCard
-            title="Total Teachers"
+          <AdminStatCard
+            title="Teachers"
             value={loading ? '...' : (stats?.totalTeachers ?? 0).toLocaleString()}
-            icon={<GraduationCap className="w-5 h-5" />}
+            icon={<GraduationCap className="w-4 h-4" />}
           />
-          <MetricCard
-            title="Active Subscriptions"
+          <AdminStatCard
+            title="Active Subs"
             value={loading ? '...' : (stats?.activeSubscriptions ?? 0).toString()}
-            icon={<CreditCard className="w-5 h-5" />}
+            icon={<CreditCard className="w-4 h-4" />}
           />
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <School className="w-5 h-5 text-primary" />
-                Recent Schools
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(stats?.totalSchools ?? 0) === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No schools registered yet</p>
-                  <p className="text-sm mt-1">Add your first school to get started</p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">Schools will appear here</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-success" />
-                System Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Database</span>
-                  <span className="text-sm font-medium text-success">Healthy</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Authentication</span>
-                  <span className="text-sm font-medium text-success">Active</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Storage</span>
-                  <span className="text-sm font-medium text-success">Available</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick Actions */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+          <SuperAdminQuickActions />
         </div>
+
+        {/* Recent Schools */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <School className="w-4 h-4 text-primary" />
+              Recent Schools
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <RecentSchoolsList />
+          </CardContent>
+        </Card>
+
+        {/* Subscription Overview */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-primary" />
+              Subscription Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <SubscriptionOverview />
+          </CardContent>
+        </Card>
       </div>
     </SuperAdminLayout>
   );
