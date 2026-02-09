@@ -15,7 +15,7 @@ import {
 import { School, Users, Calendar, Loader2 } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
-const SCHOOL_DEFAULTS_FALLBACK = { student_limit: 500, subscription_plan: 'trial', trial_duration: 30, price_per_student: 100 };
+const SCHOOL_DEFAULTS_FALLBACK = { student_limit: 500, subscription_plan: 'yearly', trial_duration: 30, price_per_student: 250 };
 const ACADEMIC_DEFAULTS_FALLBACK = { session_start_month: 'april', timezone: 'asia-kolkata' };
 const ACCOUNT_DEFAULTS_FALLBACK = { auto_create_parents: true, require_email_verification: true, allow_self_registration: false };
 
