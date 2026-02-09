@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import appLogo from '@/assets/logo.png';
 
 interface SidebarProps {
   userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
@@ -116,12 +117,8 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              {userRole === 'super_admin' ? (
-                <Shield className="w-5 h-5 text-primary-foreground" />
-              ) : (
-                <School className="w-5 h-5 text-primary-foreground" />
-              )}
+            <div className="w-9 h-9 rounded-lg bg-sidebar-accent flex items-center justify-center overflow-hidden">
+              <img src={appLogo} alt="Our School Tech" className="w-7 h-7 object-contain" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">
