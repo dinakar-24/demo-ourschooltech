@@ -29,6 +29,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
+      // Validate selected role matches actual role (skip for super_admin OTP flow)
+      if (selectedRole && user.role !== selectedRole) {
+        setError(`Your account is registered as "${user.role.replace('_', ' ')}", not "${selectedRole.replace('_', ' ')}". Please select the correct role.`);
+        setLoading(false);
+        // Sign out the mismatched user
+        supabase.auth.signOut();
+        return;
+      }
+
       const paths: Record<UserRole, string> = {
         super_admin: '/super-admin/dashboard',
         school_admin: '/admin/dashboard',
@@ -38,7 +47,7 @@ export default function LoginPage() {
       };
       navigate(paths[user.role] || '/dashboard');
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, selectedRole]);
 
   useEffect(() => {
     const fetchSchools = async () => {
