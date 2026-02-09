@@ -26,6 +26,8 @@ export interface SchoolFormData {
   phone: string;
   email: string;
   logo: string;
+  primary_color: string;
+  accent_color: string;
 }
 
 interface SchoolFilters {
@@ -50,7 +52,7 @@ export function useSchools(filters?: SchoolFilters) {
     queryFn: async (): Promise<PaginatedSchools> => {
       let query = supabase
         .from('schools')
-        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, created_at', { count: 'exact' })
+        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, primary_color, accent_color, created_at', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (filters?.search) {
@@ -118,7 +120,7 @@ export function useCreateSchool() {
 
   return useMutation({
     mutationFn: async (formData: SchoolFormData & { logoPreview?: string | null }) => {
-      const schoolData = {
+      const schoolData: Record<string, unknown> = {
         name: formData.name,
         code: formData.code,
         address: formData.address,
@@ -126,12 +128,14 @@ export function useCreateSchool() {
         phone: formData.phone || null,
         email: formData.email || null,
         logo: formData.logoPreview || formData.logo || null,
+        primary_color: formData.primary_color || '#0F766E',
+        accent_color: formData.accent_color || '#E69500',
         is_active: true,
       };
 
       const { data, error } = await supabase
         .from('schools')
-        .insert(schoolData)
+        .insert(schoolData as any)
         .select()
         .single();
 
