@@ -8,6 +8,7 @@ import { Plus, Search, Building2 } from 'lucide-react';
 import { TableSkeleton, CardSkeleton, ErrorState } from '@/components/ui/data-states';
 import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
+import { DeleteSchoolDialog } from '@/components/super-admin/schools/DeleteSchoolDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
 import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 import { usePagination } from '@/hooks/usePagination';
@@ -33,6 +34,7 @@ export default function SchoolsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [deletingSchool, setDeletingSchool] = useState<School | null>(null);
 
   const handleOpenAddDialog = useCallback(() => {
     setEditingSchool(null);
@@ -44,12 +46,15 @@ export default function SchoolsPage() {
     setIsDialogOpen(true);
   }, []);
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
-      return;
-    }
-    await deleteSchoolMutation.mutateAsync(id);
-  }, [deleteSchoolMutation]);
+  const handleDelete = useCallback((school: School) => {
+    setDeletingSchool(school);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingSchool) return;
+    await deleteSchoolMutation.mutateAsync(deletingSchool.id);
+    setDeletingSchool(null);
+  }, [deleteSchoolMutation, deletingSchool]);
 
   const handleSubmit = useCallback(async (formData: SchoolFormData, logoPreview: string | null) => {
     try {
@@ -168,6 +173,14 @@ export default function SchoolsPage() {
           editingSchool={editingSchool}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <DeleteSchoolDialog
+          open={!!deletingSchool}
+          onOpenChange={(open) => !open && setDeletingSchool(null)}
+          schoolName={deletingSchool?.name || ''}
+          onConfirm={handleConfirmDelete}
         />
       </div>
     </SuperAdminLayout>
