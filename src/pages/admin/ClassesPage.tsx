@@ -32,6 +32,16 @@ import { useClasses, useCreateClass, useDeleteClass } from '@/hooks/useClasses';
 import { useTeachers } from '@/hooks/useTeachers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function ClassesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -69,10 +79,12 @@ export default function ClassesPage() {
     setIsAddDialogOpen(false);
   };
 
-  const handleDelete = async (classId: string) => {
-    if (confirm('Are you sure you want to delete this class? This will also delete all sections.')) {
-      await deleteClass.mutateAsync(classId);
-    }
+  const [deletingClass, setDeletingClass] = useState<{ id: string; name: string } | null>(null);
+
+  const handleDeleteConfirmed = async () => {
+    if (!deletingClass) return;
+    await deleteClass.mutateAsync(deletingClass.id);
+    setDeletingClass(null);
   };
 
   return (
@@ -213,7 +225,7 @@ export default function ClassesPage() {
                       <Button 
                         variant="ghost" 
                         size="icon-sm"
-                        onClick={() => handleDelete(cls.id)}
+                        onClick={() => setDeletingClass({ id: cls.id, name: cls.name })}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -266,6 +278,27 @@ export default function ClassesPage() {
             ))}
           </div>
         )}
+
+        <AlertDialog open={!!deletingClass} onOpenChange={(open) => !open && setDeletingClass(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Class</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deletingClass?.name}</strong>? This will also delete all its sections. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirmed}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

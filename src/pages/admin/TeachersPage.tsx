@@ -46,6 +46,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function TeachersPage() {
   const isMobile = useIsMobile();
@@ -75,16 +85,13 @@ export default function TeachersPage() {
     queryClient.invalidateQueries({ queryKey: ['teachers'] });
   }, [queryClient]);
 
-  const handleDelete = async (teacherId: string, userId: string | null) => {
-    if (confirm('Are you sure you want to delete this teacher? This will also remove their login account.')) {
-      await deleteTeacher.mutateAsync({ teacherId, userId });
-    }
-  };
+  const [deletingTeacher, setDeletingTeacher] = useState<{ id: string; userId: string | null; name: string } | null>(null);
 
-  const subjectsCount = new Set(teachers.flatMap(t => t.subjects || [])).size;
-  const avgClasses = teachers.length > 0 
-    ? Math.round(teachers.reduce((acc, t) => acc + (t.classes?.length || 0), 0) / teachers.length)
-    : 0;
+  const handleDeleteConfirmed = async () => {
+    if (!deletingTeacher) return;
+    await deleteTeacher.mutateAsync({ teacherId: deletingTeacher.id, userId: deletingTeacher.userId });
+    setDeletingTeacher(null);
+  };
 
   return (
     <AdminLayout title="Teachers">
@@ -110,13 +117,13 @@ export default function TeachersPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Subjects</p>
-              <p className="text-2xl font-bold text-primary">{subjectsCount}</p>
+              <p className="text-2xl font-bold text-primary">{stats?.uniqueSubjects ?? 0}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">Avg Classes</p>
-              <p className="text-2xl font-bold text-warning">{avgClasses}</p>
+              <p className="text-2xl font-bold text-warning">{stats?.avgClasses ?? 0}</p>
             </CardContent>
           </Card>
         </div>
@@ -204,7 +211,7 @@ export default function TeachersPage() {
                           <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
                             <Edit className="w-4 h-4 mr-2" />Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
+                          <DropdownMenuItem className="text-destructive" onClick={() => setDeletingTeacher({ id: teacher.id, userId: teacher.user_id, name: teacher.full_name })}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -310,7 +317,7 @@ export default function TeachersPage() {
                             <DropdownMenuItem onClick={() => toast.info('Edit teacher coming soon')}>
                               <Edit className="w-4 h-4 mr-2" />Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(teacher.id, teacher.user_id)}>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeletingTeacher({ id: teacher.id, userId: teacher.user_id, name: teacher.full_name })}>
                               <Trash2 className="w-4 h-4 mr-2" />Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -337,6 +344,27 @@ export default function TeachersPage() {
           onOpenChange={setIsAddDialogOpen}
           onSuccess={handleAddSuccess}
         />
+
+        <AlertDialog open={!!deletingTeacher} onOpenChange={(open) => !open && setDeletingTeacher(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Teacher</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deletingTeacher?.name}</strong>? This will also remove their login account. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirmed}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteTeacher.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
