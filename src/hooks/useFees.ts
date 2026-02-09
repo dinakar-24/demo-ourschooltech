@@ -108,23 +108,18 @@ export function useFeeStats() {
         return { totalDue: 0, collected: 0, pending: 0, overdue: 0 };
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase.rpc('get_fee_stats' as any, {
+        _school_id: schoolId,
+      } as any);
 
-      const [totalResult, collectedResult, pendingResult, overdueResult] = await Promise.all([
-        supabase.from('fees').select('amount').eq('school_id', schoolId),
-        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'paid'),
-        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'pending').gte('due_date', today),
-        supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'pending').lt('due_date', today),
-      ]);
+      if (error) throw error;
 
-      const sumAmounts = (data: { amount: number }[] | null) => 
-        (data || []).reduce((sum, f) => sum + Number(f.amount), 0);
-
+      const result = data as any;
       return {
-        totalDue: sumAmounts(totalResult.data),
-        collected: sumAmounts(collectedResult.data),
-        pending: sumAmounts(pendingResult.data),
-        overdue: sumAmounts(overdueResult.data),
+        totalDue: Number(result?.totalDue ?? 0),
+        collected: Number(result?.collected ?? 0),
+        pending: Number(result?.pending ?? 0),
+        overdue: Number(result?.overdue ?? 0),
       };
     },
     enabled: !!schoolId,

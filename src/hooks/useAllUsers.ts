@@ -50,39 +50,17 @@ export function useAllUsers({ page, pageSize, searchQuery, roleFilter }: UseAllU
 
   const fetchRoleCounts = useCallback(async () => {
     try {
-      // Get total profiles count
-      const { count: totalProfiles } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true });
-
-      // Get role counts from user_roles
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role');
-
-      const counts: Record<string, number> = {};
-      const usersWithRoles = new Set<string>();
-
-      // We need user_id too for no_role calculation
-      const { data: roleDataFull } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      (roleDataFull || []).forEach(r => {
-        counts[r.role] = (counts[r.role] || 0) + 1;
-        usersWithRoles.add(r.user_id);
-      });
-
-      const total = totalProfiles || 0;
-
+      const { data, error } = await supabase.rpc('get_role_counts' as any);
+      if (error) throw error;
+      const r = data as any;
       setRoleCounts({
-        all: total,
-        super_admin: counts['super_admin'] || 0,
-        school_admin: counts['school_admin'] || 0,
-        teacher: counts['teacher'] || 0,
-        parent: counts['parent'] || 0,
-        student: counts['student'] || 0,
-        no_role: total - usersWithRoles.size,
+        all: Number(r?.all ?? 0),
+        super_admin: Number(r?.super_admin ?? 0),
+        school_admin: Number(r?.school_admin ?? 0),
+        teacher: Number(r?.teacher ?? 0),
+        parent: Number(r?.parent ?? 0),
+        student: Number(r?.student ?? 0),
+        no_role: Number(r?.no_role ?? 0),
       });
     } catch (error) {
       console.error('Error fetching role counts:', error);

@@ -87,6 +87,7 @@ export function useStudents(filters?: {
       return { data: (data || []) as Student[], totalCount: count || 0 };
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -130,6 +131,7 @@ export function useStudentStats() {
       };
     },
     enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

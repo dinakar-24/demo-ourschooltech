@@ -3,55 +3,31 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { School, Users, GraduationCap, CreditCard, TrendingUp, Building2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
-interface DashboardStats {
-  totalSchools: number;
-  totalStudents: number;
-  totalTeachers: number;
-  totalAdmins: number;
-}
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalSchools: 0,
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalAdmins: 0,
+
+  const { data: stats, isLoading: loading } = useQuery({
+    queryKey: ['super-admin-dashboard-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_super_admin_stats' as any);
+      if (error) throw error;
+      const r = data as any;
+      return {
+        totalSchools: Number(r?.totalSchools ?? 0),
+        totalStudents: Number(r?.totalStudents ?? 0),
+        totalTeachers: Number(r?.totalTeachers ?? 0),
+        activeSubscriptions: Number(r?.activeSubscriptions ?? 0),
+      };
+    },
+    staleTime: 5 * 60 * 1000,
   });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const [schoolsRes, studentsRes, teachersRes] = await Promise.all([
-        supabase.from('schools').select('id', { count: 'exact' }),
-        supabase.from('students').select('id', { count: 'exact' }),
-        supabase.from('teachers').select('id', { count: 'exact' }),
-      ]);
-
-      setStats({
-        totalSchools: schoolsRes.count || 0,
-        totalStudents: studentsRes.count || 0,
-        totalTeachers: teachersRes.count || 0,
-        totalAdmins: 0,
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SuperAdminLayout title="Super Admin Dashboard">
       <div className="space-y-6 animate-fade-up">
-        {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h2 className="text-xl md:text-2xl font-display font-bold text-foreground">
@@ -63,31 +39,29 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* System-wide Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Total Schools"
-            value={loading ? '...' : stats.totalSchools.toString()}
+            value={loading ? '...' : (stats?.totalSchools ?? 0).toString()}
             icon={<Building2 className="w-5 h-5" />}
           />
           <MetricCard
             title="Total Students"
-            value={loading ? '...' : stats.totalStudents.toLocaleString()}
+            value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
             icon={<Users className="w-5 h-5" />}
           />
           <MetricCard
             title="Total Teachers"
-            value={loading ? '...' : stats.totalTeachers.toLocaleString()}
+            value={loading ? '...' : (stats?.totalTeachers ?? 0).toLocaleString()}
             icon={<GraduationCap className="w-5 h-5" />}
           />
           <MetricCard
             title="Active Subscriptions"
-            value="0"
+            value={loading ? '...' : (stats?.activeSubscriptions ?? 0).toString()}
             icon={<CreditCard className="w-5 h-5" />}
           />
         </div>
 
-        {/* Quick Stats Cards */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -97,7 +71,7 @@ export default function SuperAdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {stats.totalSchools === 0 ? (
+              {(stats?.totalSchools ?? 0) === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No schools registered yet</p>

@@ -102,16 +102,12 @@ export function useSchoolCities() {
   return useQuery({
     queryKey: ['school-cities'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('schools').select('city');
+      const { data, error } = await supabase.rpc('get_distinct_cities' as any);
 
       if (error) throw error;
 
-      const cities = new Set<string>();
-      data?.forEach(s => {
-        if (s.city) cities.add(s.city);
-      });
-
-      return ['All Cities', ...Array.from(cities).sort()];
+      const cities = (data as unknown as string[]) || [];
+      return ['All Cities', ...cities];
     },
     staleTime: 10 * 60 * 1000,
   });
