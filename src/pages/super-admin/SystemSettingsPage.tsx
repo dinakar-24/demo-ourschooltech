@@ -9,15 +9,15 @@ export default function SystemSettingsPage() {
   return (
     <SuperAdminLayout title="System Settings">
       <div className="space-y-6 animate-fade-up">
-        <Tabs defaultValue="defaults" className="space-y-6">
+        <Tabs defaultValue="accounts" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
-            <TabsTrigger value="defaults">Defaults</TabsTrigger>
+            <TabsTrigger value="accounts">Accounts</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="defaults">
+          <TabsContent value="accounts">
             <SchoolDefaultsSettings />
           </TabsContent>
 
