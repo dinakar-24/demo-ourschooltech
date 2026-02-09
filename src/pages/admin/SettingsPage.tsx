@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,16 +18,51 @@ import {
   School,
   Bell,
   Lock,
-  Users,
   Calendar,
   CreditCard,
-  Mail,
   Shield,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { school } = useAuth();
+  const schoolId = useEffectiveSchoolId();
+  const [saving, setSaving] = useState(false);
+
+  // School info form state
+  const [schoolName, setSchoolName] = useState(school?.name || '');
+  const [schoolAddress, setSchoolAddress] = useState(school?.address || '');
+  const [schoolCity, setSchoolCity] = useState(school?.city || '');
+  const [schoolEmail, setSchoolEmail] = useState('');
+  const [schoolPhone, setSchoolPhone] = useState('');
+
+  const handleSaveSchoolInfo = async () => {
+    if (!schoolId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          name: schoolName,
+          address: schoolAddress,
+          city: schoolCity,
+          email: schoolEmail,
+          phone: schoolPhone,
+        })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+      toast.success('School information updated successfully');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <AdminLayout title="Settings">
@@ -55,30 +91,33 @@ export default function SettingsPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>School Name</Label>
-                    <Input defaultValue={school?.name || ''} />
+                    <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label>School Code</Label>
-                    <Input defaultValue={school?.code || ''} />
+                    <Input defaultValue={school?.code || ''} disabled className="opacity-60" />
                   </div>
                   <div className="space-y-2">
                     <Label>Address</Label>
-                    <Input defaultValue={school?.address || ''} />
+                    <Input value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label>City</Label>
-                    <Input defaultValue={school?.city || ''} />
+                    <Input value={schoolCity} onChange={(e) => setSchoolCity(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input type="email" placeholder="school@example.com" />
+                    <Input type="email" value={schoolEmail} onChange={(e) => setSchoolEmail(e.target.value)} placeholder="school@example.com" />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone</Label>
-                    <Input placeholder="+91 XXXXX XXXXX" />
+                    <Input value={schoolPhone} onChange={(e) => setSchoolPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
                   </div>
                 </div>
-                <Button>Save Changes</Button>
+                <Button onClick={handleSaveSchoolInfo} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -165,22 +204,6 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Send notifications via email</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">SMS Notifications</p>
-                    <p className="text-sm text-muted-foreground">Send notifications via SMS</p>
-                  </div>
-                  <Switch />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
                     <p className="font-medium">Fee Reminders</p>
                     <p className="text-sm text-muted-foreground">Automatic reminders for pending fees</p>
                   </div>
@@ -194,36 +217,6 @@ export default function SettingsPage() {
                   </div>
                   <Switch defaultChecked />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  Email Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>SMTP Server</Label>
-                    <Input placeholder="smtp.example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Port</Label>
-                    <Input placeholder="587" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" placeholder="noreply@school.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Password</Label>
-                    <Input type="password" placeholder="••••••••" />
-                  </div>
-                </div>
-                <Button>Test Connection</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -253,14 +246,6 @@ export default function SettingsPage() {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Password Expiry</p>
-                    <p className="text-sm text-muted-foreground">Force password change after 90 days</p>
-                  </div>
-                  <Switch />
-                </div>
               </CardContent>
             </Card>
 
@@ -272,14 +257,6 @@ export default function SettingsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Two-Factor Authentication</p>
-                    <p className="text-sm text-muted-foreground">Require 2FA for admin accounts</p>
-                  </div>
-                  <Switch />
-                </div>
-                <Separator />
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Session Timeout</p>

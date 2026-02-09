@@ -2,23 +2,18 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Download,
-  FileText,
   Users,
   CreditCard,
   ClipboardList,
   Award,
   TrendingUp,
-  BarChart3,
-  PieChart,
+  FileText,
+  IndianRupee,
 } from 'lucide-react';
+import { useSchoolReportStats } from '@/hooks/useSchoolReportStats';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 const reportCategories = [
   {
@@ -26,9 +21,8 @@ const reportCategories = [
     icon: Users,
     color: 'bg-primary/10 text-primary',
     reports: [
-      { name: 'Student List Report', description: 'Complete list of all enrolled students' },
-      { name: 'Class-wise Report', description: 'Students categorized by class and section' },
-      { name: 'Admission Report', description: 'New admissions by date range' },
+      { name: 'Student List Report', description: 'Complete list of all enrolled students', key: 'student-list' },
+      { name: 'Class-wise Report', description: 'Students categorized by class and section', key: 'class-wise' },
     ],
   },
   {
@@ -36,9 +30,8 @@ const reportCategories = [
     icon: ClipboardList,
     color: 'bg-success/10 text-success',
     reports: [
-      { name: 'Daily Attendance', description: 'Day-wise attendance summary' },
-      { name: 'Monthly Report', description: 'Monthly attendance percentage' },
-      { name: 'Absentee Report', description: 'List of absent students' },
+      { name: 'Daily Attendance', description: 'Day-wise attendance summary', key: 'daily-attendance' },
+      { name: 'Absentee Report', description: 'List of absent students', key: 'absentee' },
     ],
   },
   {
@@ -46,9 +39,8 @@ const reportCategories = [
     icon: CreditCard,
     color: 'bg-warning/10 text-warning',
     reports: [
-      { name: 'Collection Report', description: 'Fee collection summary' },
-      { name: 'Pending Dues', description: 'List of pending fee payments' },
-      { name: 'Payment History', description: 'Complete payment transaction history' },
+      { name: 'Collection Report', description: 'Fee collection summary', key: 'fee-collection' },
+      { name: 'Pending Dues', description: 'List of pending fee payments', key: 'pending-dues' },
     ],
   },
   {
@@ -56,28 +48,35 @@ const reportCategories = [
     icon: Award,
     color: 'bg-info/10 text-info',
     reports: [
-      { name: 'Exam Results', description: 'Subject-wise exam results' },
-      { name: 'Report Cards', description: 'Generate student report cards' },
-      { name: 'Performance Analysis', description: 'Class-wise performance comparison' },
+      { name: 'Exam Results', description: 'Subject-wise exam results', key: 'exam-results' },
+      { name: 'Performance Analysis', description: 'Class-wise performance comparison', key: 'performance' },
     ],
   },
 ];
 
 export default function ReportsPage() {
+  const { data: stats, isLoading } = useSchoolReportStats();
+
+  const handleGenerate = (reportKey: string) => {
+    toast.info('Report generation is coming soon. This feature will export data as CSV/PDF.');
+  };
+
   return (
     <AdminLayout title="Reports">
       <div className="space-y-6 animate-fade-up">
-        {/* Quick Stats */}
+        {/* Quick Stats from real data */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-primary" />
+                  <Users className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">156</p>
-                  <p className="text-sm text-muted-foreground">Reports Generated</p>
+                  {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                    <p className="text-2xl font-bold">{stats?.totalStudents ?? 0}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Students</p>
                 </div>
               </div>
             </CardContent>
@@ -86,11 +85,13 @@ export default function ReportsPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                  <Download className="w-5 h-5 text-success" />
+                  <ClipboardList className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">89</p>
-                  <p className="text-sm text-muted-foreground">Downloads</p>
+                  {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                    <p className="text-2xl font-bold">{stats?.attendanceToday.present ?? 0}</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Present Today</p>
                 </div>
               </div>
             </CardContent>
@@ -99,11 +100,13 @@ export default function ReportsPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-warning" />
+                  <IndianRupee className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">12</p>
-                  <p className="text-sm text-muted-foreground">Custom Reports</p>
+                  {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                    <p className="text-2xl font-bold">₹{((stats?.totalFeeCollected ?? 0) / 1000).toFixed(0)}k</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Collected</p>
                 </div>
               </div>
             </CardContent>
@@ -111,43 +114,18 @@ export default function ReportsPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
-                  <PieChart className="w-5 h-5 text-info" />
+                <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">5</p>
-                  <p className="text-sm text-muted-foreground">Scheduled</p>
+                  {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                    <p className="text-2xl font-bold">₹{((stats?.totalFeePending ?? 0) / 1000).toFixed(0)}k</p>
+                  )}
+                  <p className="text-sm text-muted-foreground">Pending</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Select defaultValue="2024-25">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Academic Year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2024-25">2024-25</SelectItem>
-              <SelectItem value="2023-24">2023-24</SelectItem>
-              <SelectItem value="2022-23">2022-23</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Class" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              <SelectItem value="6">Class 6</SelectItem>
-              <SelectItem value="7">Class 7</SelectItem>
-              <SelectItem value="8">Class 8</SelectItem>
-              <SelectItem value="9">Class 9</SelectItem>
-              <SelectItem value="10">Class 10</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Report Categories */}
@@ -165,14 +143,14 @@ export default function ReportsPage() {
               <CardContent className="space-y-3">
                 {category.reports.map((report) => (
                   <div 
-                    key={report.name}
+                    key={report.key}
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                   >
                     <div>
                       <p className="font-medium text-sm">{report.name}</p>
                       <p className="text-xs text-muted-foreground">{report.description}</p>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleGenerate(report.key)}>
                       <Download className="w-4 h-4 mr-2" />
                       Generate
                     </Button>
@@ -195,7 +173,7 @@ export default function ReportsPage() {
             <p className="text-muted-foreground mb-4">
               Create custom reports by selecting specific data fields and filters.
             </p>
-            <Button>
+            <Button onClick={() => toast.info('Custom report builder coming soon')}>
               <FileText className="w-4 h-4 mr-2" />
               Create Custom Report
             </Button>

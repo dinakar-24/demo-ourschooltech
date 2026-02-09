@@ -1167,6 +1167,7 @@ export type Database = {
         Args: { _school_id: string; _teacher_user_id: string }
         Returns: Json
       }
+      get_teacher_stats: { Args: { _school_id: string }; Returns: Json }
       get_user_auth_data: { Args: { _user_id: string }; Returns: Json }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_role: {

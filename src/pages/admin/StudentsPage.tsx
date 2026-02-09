@@ -48,6 +48,16 @@ import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StudentCard } from '@/components/admin/StudentCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function StudentsPage() {
   const isMobile = useIsMobile();
@@ -138,10 +148,12 @@ export default function StudentsPage() {
     setIsAddDialogOpen(false);
   };
 
-  const handleDelete = async (studentId: string, userId: string | null) => {
-    if (confirm('Are you sure you want to delete this student? This will permanently remove all their data.')) {
-      await deleteStudent.mutateAsync({ studentId, userId });
-    }
+  const [deletingStudent, setDeletingStudent] = useState<{ id: string; userId: string | null; name: string } | null>(null);
+
+  const handleDeleteConfirmed = async () => {
+    if (!deletingStudent) return;
+    await deleteStudent.mutateAsync({ studentId: deletingStudent.id, userId: deletingStudent.userId });
+    setDeletingStudent(null);
   };
 
   return (
@@ -273,7 +285,7 @@ export default function StudentsPage() {
                   <StudentCard
                     key={student.id}
                     student={student}
-                    onDelete={handleDelete}
+                    onDelete={(id, userId) => setDeletingStudent({ id, userId, name: students.find(s => s.id === id)?.full_name || '' })}
                   />
                 ))}
               </div>
@@ -341,7 +353,7 @@ export default function StudentsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={() => handleDelete(student.id, student.user_id)}
+                              onClick={() => setDeletingStudent({ id: student.id, userId: student.user_id, name: student.full_name })}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
@@ -364,6 +376,27 @@ export default function StudentsPage() {
             />
           </CardContent>
         </Card>
+
+        <AlertDialog open={!!deletingStudent} onOpenChange={(open) => !open && setDeletingStudent(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Student</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deletingStudent?.name}</strong>? This will permanently remove all their data including attendance, fees, and results. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirmed}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

@@ -79,14 +79,17 @@ export function useTeacherStats() {
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
-      const { count: total, error: totalError } = await supabase
-        .from('teachers')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId);
+      const { data, error } = await supabase.rpc('get_teacher_stats' as any, {
+        _school_id: schoolId,
+      } as any);
 
-      if (totalError) throw totalError;
-
-      return { total: total || 0 };
+      if (error) throw error;
+      const result = data as any;
+      return {
+        total: Number(result?.total ?? 0),
+        uniqueSubjects: Number(result?.unique_subjects ?? 0),
+        avgClasses: Number(result?.avg_classes ?? 0),
+      };
     },
     enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
