@@ -55,18 +55,16 @@ export function useClasses() {
 
       if (sectionsError) throw sectionsError;
 
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('class_name, section')
-        .eq('school_id', schoolId)
-        .eq('status', 'active');
+      // Use RPC to get accurate student counts (avoids 1000-row limit)
+      const { data: countRows, error: countError } = await supabase
+        .rpc('get_student_counts_by_class', { p_school_id: schoolId });
 
-      if (studentsError) throw studentsError;
+      if (countError) throw countError;
 
       const studentCounts: Record<string, number> = {};
-      students?.forEach(s => {
-        const key = `${s.class_name}-${s.section}`;
-        studentCounts[key] = (studentCounts[key] || 0) + 1;
+      (countRows || []).forEach((r: { class_name: string; section: string; count: number }) => {
+        const key = `${r.class_name}-${r.section}`;
+        studentCounts[key] = r.count;
       });
 
       const classesWithSections: ClassWithSections[] = (classes || []).map(cls => ({

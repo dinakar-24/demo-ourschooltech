@@ -28,7 +28,7 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
-import { useClasses, useCreateClass, useDeleteClass } from '@/hooks/useClasses';
+import { useClasses, useCreateClass, useDeleteClass, useUpdateSection } from '@/hooks/useClasses';
 import { useTeachers } from '@/hooks/useTeachers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -49,9 +49,11 @@ export default function ClassesPage() {
   const [numSections, setNumSections] = useState('1');
 
   const { data: classes, isLoading } = useClasses();
-  const { data: teachers = [] } = useTeachers();
+  const { data: teachersData } = useTeachers();
+  const teachers = Array.isArray(teachersData) ? teachersData : teachersData?.data || [];
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
+  const updateSection = useUpdateSection();
 
   const totalStudents = classes?.reduce((acc, cls) => 
     acc + cls.sections.reduce((sAcc, sec) => sAcc + (sec.student_count || 0), 0), 0
@@ -251,7 +253,7 @@ export default function ClassesPage() {
                     cls.sections.map((section) => (
                       <div 
                         key={section.id} 
-                        className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -264,11 +266,29 @@ export default function ClassesPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Class Teacher:</span>
-                          <span className="font-medium">
-                            {section.teacher?.full_name || 'Not assigned'}
-                          </span>
+                          <GraduationCap className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground shrink-0">Class Teacher:</span>
+                          <Select
+                            value={section.class_teacher_id || 'unassigned'}
+                            onValueChange={(val) => {
+                              updateSection.mutate({
+                                id: section.id,
+                                classTeacherId: val === 'unassigned' ? null : val,
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-auto min-w-[140px]">
+                              <SelectValue placeholder="Assign teacher" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">Not assigned</SelectItem>
+                              {teachers.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     ))

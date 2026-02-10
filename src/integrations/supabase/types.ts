@@ -1162,6 +1162,14 @@ export type Database = {
       get_distinct_cities: { Args: never; Returns: string[] }
       get_fee_stats: { Args: { _school_id: string }; Returns: Json }
       get_role_counts: { Args: never; Returns: Json }
+      get_student_counts_by_class: {
+        Args: { p_school_id: string }
+        Returns: {
+          class_name: string
+          count: number
+          section: string
+        }[]
+      }
       get_super_admin_stats: { Args: never; Returns: Json }
       get_teacher_dashboard_stats: {
         Args: { _school_id: string; _teacher_user_id: string }
