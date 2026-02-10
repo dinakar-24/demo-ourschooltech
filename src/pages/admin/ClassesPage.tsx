@@ -162,16 +162,34 @@ export default function ClassesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Number of Sections</Label>
-                  <Select value={numSections} onValueChange={setNumSections}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sections" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <SelectItem key={n} value={n.toString()}>{n} Section{n > 1 ? 's' : ''}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                      <Button
+                        key={n}
+                        type="button"
+                        size="sm"
+                        variant={numSections === n.toString() ? 'default' : 'outline'}
+                        className="w-10 h-10"
+                        onClick={() => setNumSections(n.toString())}
+                      >
+                        {n}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-muted-foreground">Or enter custom:</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={26}
+                      className="w-20 h-8 text-sm"
+                      value={numSections}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (val >= 1 && val <= 26) setNumSections(e.target.value);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
