@@ -9,8 +9,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -32,6 +37,7 @@ import { useClasses, useCreateClass, useDeleteClass, useUpdateSection } from '@/
 import { useTeachers } from '@/hooks/useTeachers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +53,7 @@ export default function ClassesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [className, setClassName] = useState('');
   const [numSections, setNumSections] = useState('1');
+  const isMobile = useIsMobile();
 
   const { data: classes, isLoading } = useClasses();
   const { data: teachersData } = useTeachers();
@@ -88,6 +95,58 @@ export default function ClassesPage() {
     await deleteClass.mutateAsync(deletingClass.id);
     setDeletingClass(null);
   };
+  const addClassFormContent = (
+    <>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label>Class Name</Label>
+          <Input 
+            placeholder="e.g., Class 11" 
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Number of Sections</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              <Button
+                key={n}
+                type="button"
+                size="sm"
+                variant={numSections === n.toString() ? 'default' : 'outline'}
+                className="w-9 h-9 text-sm p-0"
+                onClick={() => setNumSections(n.toString())}
+              >
+                {n}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-muted-foreground">Custom:</span>
+            <Input
+              type="number"
+              min={1}
+              max={26}
+              className="w-16 h-8 text-sm"
+              value={numSections}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (val >= 1 && val <= 26) setNumSections(e.target.value);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+        <Button onClick={handleSubmit} disabled={createClass.isPending}>
+          {createClass.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Add Class
+        </Button>
+      </div>
+    </>
+  );
 
   return (
     <AdminLayout title="Classes & Sections">
@@ -140,68 +199,32 @@ export default function ClassesPage() {
 
         {/* Actions */}
         <div className="flex justify-end gap-2">
+          <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Class
+          </Button>
+        </div>
+
+        {/* Add Class - Drawer on mobile, Dialog on desktop */}
+        {isMobile ? (
+          <Drawer open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DrawerContent className="px-4 pb-6">
+              <DrawerHeader className="text-left px-0">
+                <DrawerTitle>Add New Class</DrawerTitle>
+              </DrawerHeader>
+              {addClassFormContent}
+            </DrawerContent>
+          </Drawer>
+        ) : (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Class
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Class</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Class Name</Label>
-                  <Input 
-                    placeholder="e.g., Class 11" 
-                    value={className}
-                    onChange={(e) => setClassName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Number of Sections</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <Button
-                        key={n}
-                        type="button"
-                        size="sm"
-                        variant={numSections === n.toString() ? 'default' : 'outline'}
-                        className="w-10 h-10"
-                        onClick={() => setNumSections(n.toString())}
-                      >
-                        {n}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-muted-foreground">Or enter custom:</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={26}
-                      className="w-20 h-8 text-sm"
-                      value={numSections}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (val >= 1 && val <= 26) setNumSections(e.target.value);
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={createClass.isPending}>
-                  {createClass.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Add Class
-                </Button>
-              </div>
+              {addClassFormContent}
             </DialogContent>
           </Dialog>
-        </div>
+        )}
 
         {/* Classes Grid */}
         {isLoading ? (
@@ -283,9 +306,11 @@ export default function ClassesPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <GraduationCap className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground shrink-0">Class Teacher:</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <GraduationCap className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground text-xs">Class Teacher:</span>
+                          </div>
                           <Select
                             value={section.class_teacher_id || 'unassigned'}
                             onValueChange={(val) => {
@@ -295,10 +320,10 @@ export default function ClassesPage() {
                               });
                             }}
                           >
-                            <SelectTrigger className="h-7 text-xs w-auto min-w-[140px]">
+                            <SelectTrigger className="h-8 text-xs w-full sm:w-auto sm:min-w-[160px]">
                               <SelectValue placeholder="Assign teacher" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-50 bg-popover">
                               <SelectItem value="unassigned">Not assigned</SelectItem>
                               {teachers.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>
