@@ -8,7 +8,7 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Plus, Loader2, User, Hash, Mail, Calendar, Droplets } from 'lucide-react';
+import { Plus, Loader2, User, Hash, Mail, Calendar, Droplets, IndianRupee } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,6 +29,9 @@ interface AddStudentDialogProps {
     alternate_phone: string;
     parent_email: string;
     blood_group: string;
+    fee_type: string;
+    fee_amount: string;
+    fee_due_date: string;
   };
   onInputChange: (field: string, value: string) => void;
   onSubmit: () => void;
@@ -44,6 +47,7 @@ const GENDERS = [
   { value: 'other', label: 'Other' },
 ];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Lab Fee', 'Library Fee', 'Sports Fee', 'Exam Fee'];
 
 function ChipSelectorWithInput({ 
   options, value, onChange, label, required, placeholder 
@@ -231,6 +235,37 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
         <div className="relative">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input type="date" value={formData.date_of_birth} onChange={(e) => onInputChange('date_of_birth', e.target.value)} className="pl-10 h-11" />
+        </div>
+      </div>
+
+      {/* Initial Fee Assignment */}
+      <div className="space-y-3 pt-3 border-t">
+        <div className="flex items-center gap-2">
+          <IndianRupee className="w-4 h-4 text-primary" />
+          <Label className="text-sm font-semibold text-primary">Initial Fee (Optional)</Label>
+        </div>
+        <ChipSelectorWithInput
+          label="Fee Type"
+          options={FEE_TYPES.map(f => ({ value: f, label: f }))}
+          value={formData.fee_type}
+          onChange={(v) => onInputChange('fee_type', v)}
+          placeholder="Or type custom fee type"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Amount (₹)</Label>
+            <div className="relative">
+              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="number" min="0" value={formData.fee_amount} onChange={(e) => onInputChange('fee_amount', e.target.value)} placeholder="Enter amount" className="pl-10 h-11" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Due Date</Label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="date" value={formData.fee_due_date} onChange={(e) => onInputChange('fee_due_date', e.target.value)} className="pl-10 h-11" />
+            </div>
+          </div>
         </div>
       </div>
 

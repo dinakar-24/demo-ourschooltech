@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent, Student } from '@/hooks/useStudents';
+import { useCreateFee } from '@/hooks/useFees';
 import { EditStudentDialog } from '@/components/admin/EditStudentDialog';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -87,6 +88,9 @@ export default function StudentsPage() {
     alternate_phone: '',
     parent_email: '',
     blood_group: '',
+    fee_type: '',
+    fee_amount: '',
+    fee_due_date: '',
   });
 
   // Fetch data
@@ -102,6 +106,7 @@ export default function StudentsPage() {
   const { data: stats, isLoading: statsLoading } = useStudentStats();
   const { data: classes } = useClasses();
   const createStudent = useCreateStudent();
+  const createFee = useCreateFee();
   const deleteStudent = useDeleteStudent();
 
   const classNames = ['All Classes', ...(classes?.map(c => c.name) || [])];
@@ -117,7 +122,7 @@ export default function StudentsPage() {
       return;
     }
 
-    await createStudent.mutateAsync({
+    const student = await createStudent.mutateAsync({
       full_name: formData.full_name,
       admission_number: formData.admission_number,
       class_name: formData.class_name,
@@ -132,6 +137,21 @@ export default function StudentsPage() {
       blood_group: formData.blood_group || undefined,
     });
 
+    // Create fee record if fee data was provided
+    if (formData.fee_type && formData.fee_amount && formData.fee_due_date && student?.id) {
+      try {
+        await createFee.mutateAsync({
+          student_id: student.id,
+          fee_type: formData.fee_type,
+          amount: parseFloat(formData.fee_amount),
+          due_date: formData.fee_due_date,
+        });
+        toast.success('Fee assigned successfully');
+      } catch {
+        toast.error('Student created but fee assignment failed');
+      }
+    }
+
     setFormData({
       full_name: '',
       admission_number: '',
@@ -145,6 +165,9 @@ export default function StudentsPage() {
       alternate_phone: '',
       parent_email: '',
       blood_group: '',
+      fee_type: '',
+      fee_amount: '',
+      fee_due_date: '',
     });
     setIsAddDialogOpen(false);
   };
