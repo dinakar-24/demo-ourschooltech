@@ -17,13 +17,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { TeacherCombobox } from '@/components/admin/TeacherCombobox';
 import {
   Plus,
   Users,
@@ -311,27 +305,16 @@ export default function ClassesPage() {
                             <GraduationCap className="w-4 h-4 text-muted-foreground shrink-0" />
                             <span className="text-muted-foreground text-xs">Class Teacher:</span>
                           </div>
-                          <Select
-                            value={section.class_teacher_id || 'unassigned'}
+                          <TeacherCombobox
+                            teachers={teachers}
+                            value={section.class_teacher_id || null}
                             onValueChange={(val) => {
                               updateSection.mutate({
                                 id: section.id,
-                                classTeacherId: val === 'unassigned' ? null : val,
+                                classTeacherId: val,
                               });
                             }}
-                          >
-                            <SelectTrigger className="h-8 text-xs w-full sm:w-auto sm:min-w-[160px]">
-                              <SelectValue placeholder="Assign teacher" />
-                            </SelectTrigger>
-                            <SelectContent className="z-50 bg-popover">
-                              <SelectItem value="unassigned">Not assigned</SelectItem>
-                              {teachers.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>
-                                  {t.full_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
                       </div>
                     ))
