@@ -71,6 +71,45 @@ export function useTeachers(filters?: TeacherFilters) {
   });
 }
 
+/** Lightweight hook to fetch ALL teachers (id + name only) for dropdowns/comboboxes. */
+export function useAllTeachersList() {
+  const schoolId = useEffectiveSchoolId();
+
+  return useQuery({
+    queryKey: ['teachers-list', schoolId],
+    queryFn: async (): Promise<{ id: string; full_name: string }[]> => {
+      if (!schoolId) throw new Error('No school ID');
+
+      const all: { id: string; full_name: string }[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('teachers')
+          .select('id, full_name')
+          .eq('school_id', schoolId)
+          .order('full_name')
+          .range(offset, offset + batchSize - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          all.push(...data);
+          offset += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return all;
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useTeacherStats() {
   const schoolId = useEffectiveSchoolId();
 

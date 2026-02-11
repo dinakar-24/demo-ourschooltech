@@ -28,7 +28,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useClasses, useCreateClass, useDeleteClass, useUpdateSection } from '@/hooks/useClasses';
-import { useTeachers } from '@/hooks/useTeachers';
+import { useAllTeachersList } from '@/hooks/useTeachers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -50,8 +50,7 @@ export default function ClassesPage() {
   const isMobile = useIsMobile();
 
   const { data: classes, isLoading } = useClasses();
-  const { data: teachersData } = useTeachers();
-  const teachers = Array.isArray(teachersData) ? teachersData : teachersData?.data || [];
+  const { data: teachers = [] } = useAllTeachersList();
   const createClass = useCreateClass();
   const deleteClass = useDeleteClass();
   const updateSection = useUpdateSection();
