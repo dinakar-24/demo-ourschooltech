@@ -371,11 +371,8 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Due Date *</Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                      <Input type="date" value={entry.due_date} onChange={(e) => updateFeeEntry(idx, 'due_date', e.target.value)} className="pl-8 h-9 text-sm" />
-                    </div>
+                    <Label className="text-xs text-muted-foreground">Due Date</Label>
+                    <Input type="date" value={entry.due_date} onChange={(e) => updateFeeEntry(idx, 'due_date', e.target.value)} className="h-9 text-sm" />
                   </div>
                 </div>
               </div>
