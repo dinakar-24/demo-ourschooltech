@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { FeeEntry } from '@/components/admin/AddStudentDialog';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,10 +89,8 @@ export default function StudentsPage() {
     alternate_phone: '',
     parent_email: '',
     blood_group: '',
-    fee_type: '',
-    fee_amount: '',
-    fee_due_date: '',
   });
+  const [feeEntries, setFeeEntries] = useState<FeeEntry[]>([]);
 
   // Fetch data
   const { data: result, isLoading: studentsLoading } = useStudents({
@@ -137,18 +136,24 @@ export default function StudentsPage() {
       blood_group: formData.blood_group || undefined,
     });
 
-    // Create fee record if fee data was provided
-    if (formData.fee_type && formData.fee_amount && formData.fee_due_date && student?.id) {
-      try {
-        await createFee.mutateAsync({
-          student_id: student.id,
-          fee_type: formData.fee_type,
-          amount: parseFloat(formData.fee_amount),
-          due_date: formData.fee_due_date,
-        });
-        toast.success('Fee assigned successfully');
-      } catch {
-        toast.error('Student created but fee assignment failed');
+    // Create fee records for each fee entry
+    if (student?.id && feeEntries.length > 0) {
+      for (const entry of feeEntries) {
+        if (entry.fee_type && entry.amount && entry.due_date) {
+          try {
+            await createFee.mutateAsync({
+              student_id: student.id,
+              fee_type: entry.fee_type,
+              amount: parseFloat(entry.amount),
+              due_date: entry.due_date,
+            });
+          } catch {
+            toast.error(`Fee assignment failed for ${entry.fee_type}`);
+          }
+        }
+      }
+      if (feeEntries.some(e => e.amount && e.due_date)) {
+        toast.success('Fees assigned successfully');
       }
     }
 
@@ -165,10 +170,8 @@ export default function StudentsPage() {
       alternate_phone: '',
       parent_email: '',
       blood_group: '',
-      fee_type: '',
-      fee_amount: '',
-      fee_due_date: '',
     });
+    setFeeEntries([]);
     setIsAddDialogOpen(false);
   };
 
@@ -273,6 +276,8 @@ export default function StudentsPage() {
             <AddStudentDialog
               classes={classes}
               formData={formData}
+              feeEntries={feeEntries}
+              onFeeEntriesChange={setFeeEntries}
               onInputChange={handleInputChange}
               onSubmit={handleSubmit}
               isPending={createStudent.isPending}
