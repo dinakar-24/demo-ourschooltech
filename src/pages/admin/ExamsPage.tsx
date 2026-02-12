@@ -297,9 +297,9 @@ export default function ExamsPage() {
         </div>
 
         {/* Search & Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between">
-          <div className="flex flex-col sm:flex-row gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search exams..."
@@ -309,14 +309,15 @@ export default function ExamsPage() {
               />
             </div>
             <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Class" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60 overflow-y-auto z-50 bg-popover">
                 {classNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          <div className="flex justify-end">
           {isMobile ? (
             <Drawer open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DrawerTrigger asChild>
@@ -354,6 +355,7 @@ export default function ExamsPage() {
               </DialogContent>
             </Dialog>
           )}
+          </div>
         </div>
 
         {/* Exams List */}
