@@ -18,7 +18,7 @@ export interface ParseResult {
 // Student required/optional fields
 export const STUDENT_FIELDS = {
   required: ['full_name', 'admission_number', 'class_name', 'section'],
-  optional: ['roll_number', 'parent_name', 'parent_phone', 'parent_email', 'gender', 'date_of_birth', 'blood_group', 'address', 'alternate_phone'],
+  optional: ['roll_number', 'gender', 'blood_group', 'parent_name', 'parent_phone', 'alternate_phone', 'parent_email', 'date_of_birth'],
 };
 
 export const TEACHER_FIELDS = {
@@ -243,14 +243,13 @@ export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): 
     sampleRow['class_name'] = 'Class 10';
     sampleRow['section'] = 'A';
     sampleRow['roll_number'] = '1';
+    sampleRow['gender'] = 'male';
+    sampleRow['blood_group'] = 'B+';
     sampleRow['parent_name'] = 'Suresh Sharma';
     sampleRow['parent_phone'] = '9876543210';
-    sampleRow['parent_email'] = 'suresh@email.com';
-    sampleRow['gender'] = 'male';
-    sampleRow['date_of_birth'] = '2010-05-15';
-    sampleRow['blood_group'] = 'B+';
-    sampleRow['address'] = '123 Main St, City';
     sampleRow['alternate_phone'] = '9876543211';
+    sampleRow['parent_email'] = 'suresh@email.com';
+    sampleRow['date_of_birth'] = '2010-05-15';
   } else if (type === 'teachers') {
     sampleRow['full_name'] = 'Priya Nair';
     sampleRow['employee_id'] = 'EMP001';
