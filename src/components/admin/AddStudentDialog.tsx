@@ -49,6 +49,74 @@ const GENDERS = [
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Lab Fee', 'Library Fee', 'Sports Fee', 'Exam Fee'];
 
+function MultiChipSelector({ 
+  options, values, onChange, label, placeholder 
+}: { 
+  options: { value: string; label: string }[]; 
+  values: string[]; 
+  onChange: (v: string[]) => void; 
+  label: string; 
+  placeholder?: string;
+}) {
+  const [customValue, setCustomValue] = useState('');
+
+  const toggleOption = (val: string) => {
+    onChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val]);
+  };
+
+  const addCustom = () => {
+    const trimmed = customValue.trim();
+    if (trimmed && !values.includes(trimmed)) {
+      onChange([...values, trimmed]);
+    }
+    setCustomValue('');
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => toggleOption(opt.value)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+              values.includes(opt.value)
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {/* Show custom values as removable chips */}
+      {values.filter(v => !options.some(o => o.value === v)).length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {values.filter(v => !options.some(o => o.value === v)).map(v => (
+            <span key={v} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+              {v}
+              <button type="button" onClick={() => onChange(values.filter(x => x !== v))} className="hover:text-destructive">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {placeholder && (
+        <Input
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          onBlur={addCustom}
+          placeholder={placeholder}
+          className="h-10 mt-1"
+        />
+      )}
+    </div>
+  );
+}
+
 function ChipSelectorWithInput({ 
   options, value, onChange, label, required, placeholder 
 }: { 
@@ -244,11 +312,11 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
           <IndianRupee className="w-4 h-4 text-primary" />
           <Label className="text-sm font-semibold text-primary">Initial Fee (Optional)</Label>
         </div>
-        <ChipSelectorWithInput
+        <MultiChipSelector
           label="Fee Type"
           options={FEE_TYPES.map(f => ({ value: f, label: f }))}
-          value={formData.fee_type}
-          onChange={(v) => onInputChange('fee_type', v)}
+          values={formData.fee_type ? formData.fee_type.split('||').filter(Boolean) : []}
+          onChange={(v) => onInputChange('fee_type', v.join('||'))}
           placeholder="Or type custom fee type"
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
