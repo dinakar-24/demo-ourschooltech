@@ -13,6 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerFooter,
+  DrawerClose,
+} from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -33,7 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Plus,
-  Calendar,
+  Calendar as CalendarIcon,
   BookOpen,
   FileText,
   Edit,
@@ -56,6 +65,9 @@ import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
 import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const SUBJECTS = [
   'Mathematics', 'Science', 'English', 'Hindi', 'Social Studies',
@@ -169,7 +181,7 @@ export default function ExamsPage() {
   const classNames = useMemo(() => ['All Classes', ...classes.map(c => c.name)], [classes]);
 
   const ExamFormFields = () => (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 py-2">
       <div className="space-y-2">
         <Label>Exam Name</Label>
         <Input
@@ -178,7 +190,7 @@ export default function ExamsPage() {
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Subject</Label>
           <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
@@ -198,16 +210,50 @@ export default function ExamsPage() {
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Exam Date</Label>
-          <Input type="date" value={formData.exam_date} onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })} />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.exam_date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.exam_date
+                  ? format(new Date(formData.exam_date), 'dd MMM yyyy')
+                  : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.exam_date ? new Date(formData.exam_date) : undefined}
+                onSelect={(date) => date && setFormData({ ...formData, exam_date: format(date, 'yyyy-MM-dd') })}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="space-y-2">
           <Label>Max Marks</Label>
           <Input type="number" value={formData.max_marks} onChange={(e) => setFormData({ ...formData, max_marks: parseInt(e.target.value) || 100 })} />
         </div>
       </div>
+    </div>
+  );
+
+  const FormActions = ({ onSubmit, onCancel, isPending, submitLabel }: { onSubmit: () => void; onCancel: () => void; isPending: boolean; submitLabel: string }) => (
+    <div className="flex gap-2 justify-end">
+      <Button variant="outline" onClick={onCancel}>Cancel</Button>
+      <Button onClick={onSubmit} disabled={isPending}>
+        {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        {submitLabel}
+      </Button>
     </div>
   );
 
@@ -271,25 +317,43 @@ export default function ExamsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={resetForm}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Exam
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Create New Examination</DialogTitle></DialogHeader>
-              <ExamFormFields />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={createExam.isPending}>
-                  {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {isMobile ? (
+            <Drawer open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DrawerTrigger asChild>
+                <Button size="sm" onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Create Exam
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader><DrawerTitle>Create New Examination</DrawerTitle></DrawerHeader>
+                <div className="px-4 pb-2"><ExamFormFields /></div>
+                <DrawerFooter className="pt-2">
+                  <Button onClick={handleCreate} disabled={createExam.isPending}>
+                    {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Create Exam
+                  </Button>
+                  <DrawerClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          ) : (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Exam
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader><DialogTitle>Create New Examination</DialogTitle></DialogHeader>
+                <ExamFormFields />
+                <FormActions onSubmit={handleCreate} onCancel={() => setIsAddDialogOpen(false)} isPending={createExam.isPending} submitLabel="Create Exam" />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Exams List */}
@@ -417,20 +481,32 @@ export default function ExamsPage() {
         </Card>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Edit Examination</DialogTitle></DialogHeader>
-          <ExamFormFields />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleEdit} disabled={updateExam.isPending}>
-              {updateExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save Changes
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Dialog/Drawer */}
+      {isMobile ? (
+        <Drawer open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DrawerContent>
+            <DrawerHeader><DrawerTitle>Edit Examination</DrawerTitle></DrawerHeader>
+            <div className="px-4 pb-2"><ExamFormFields /></div>
+            <DrawerFooter className="pt-2">
+              <Button onClick={handleEdit} disabled={updateExam.isPending}>
+                {updateExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle>Edit Examination</DialogTitle></DialogHeader>
+            <ExamFormFields />
+            <FormActions onSubmit={handleEdit} onCancel={() => setIsEditDialogOpen(false)} isPending={updateExam.isPending} submitLabel="Save Changes" />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
