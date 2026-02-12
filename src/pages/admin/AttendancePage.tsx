@@ -23,20 +23,25 @@ import {
   Clock,
   AlertCircle,
   Loader2,
+  Search,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { useAdminAttendance } from '@/hooks/useAdminAttendance';
 
 export default function AttendancePage() {
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date>(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
   const { data, isLoading
   } = useAdminAttendance(date);
 
-  const classWise = [...(data?.classWise || [])].sort((a, b) => {
-    const numA = parseInt(a.class.replace(/\D/g, '')) || 0;
-    const numB = parseInt(b.class.replace(/\D/g, '')) || 0;
-    return numA - numB;
-  });
+  const classWise = [...(data?.classWise || [])]
+    .filter(c => c.class.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      const numA = parseInt(a.class.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.class.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
   const totals = data?.totals || { present: 0, absent: 0, late: 0, total: 0 };
   const overallPercentage = totals.total > 0 
     ? ((totals.present / totals.total) * 100).toFixed(1) 
@@ -130,8 +135,17 @@ export default function AttendancePage() {
 
         {/* Class-wise Attendance Table */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle>Class-wise Attendance for {format(date, 'dd MMM yyyy')}</CardTitle>
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search class..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
