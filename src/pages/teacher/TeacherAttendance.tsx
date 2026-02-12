@@ -15,23 +15,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import {
   CalendarIcon,
-  Check,
-  X,
-  Clock,
   Users,
   Save,
   Loader2,
   AlertCircle,
   CheckCircle,
-  XCircle,
-  UserCheck,
-  UserX,
 } from 'lucide-react';
 import { useClassAttendance, useMarkAttendance } from '@/hooks/useAttendance';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 
 export default function TeacherAttendance() {
   const [date, setDate] = useState<Date>(new Date());
@@ -40,16 +33,11 @@ export default function TeacherAttendance() {
   const [localAttendance, setLocalAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
 
   const { data: classes } = useClasses();
-  const { data: classData, isLoading } = useClassAttendance(
-    date, 
-    selectedClass, 
-    selectedSection
-  );
+  const { data: classData, isLoading } = useClassAttendance(date, selectedClass, selectedSection);
   const markAttendance = useMarkAttendance();
 
   const selectedClassData = classes?.find(c => c.name === selectedClass);
   const sections = selectedClassData?.sections || [];
-
   const students = classData?.students || [];
   const existingAttendance = classData?.attendance || new Map();
   const isAlreadyMarked = classData?.isMarked || false;
@@ -63,16 +51,8 @@ export default function TeacherAttendance() {
 
   const markAll = (status: 'present' | 'absent') => {
     const newAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
-    students.forEach(s => {
-      newAttendance[s.id] = status;
-    });
+    students.forEach(s => { newAttendance[s.id] = status; });
     setLocalAttendance(newAttendance);
-  };
-
-  const cycleStatus = (id: string) => {
-    const current = getAttendanceStatus(id);
-    const next = current === 'present' ? 'absent' : current === 'absent' ? 'late' : 'present';
-    setLocalAttendance(prev => ({ ...prev, [id]: next }));
   };
 
   const setStatus = (id: string, status: 'present' | 'absent' | 'late') => {
@@ -84,12 +64,7 @@ export default function TeacherAttendance() {
       studentId: s.id,
       status: getAttendanceStatus(s.id),
     }));
-
-    await markAttendance.mutateAsync({
-      date: format(date, 'yyyy-MM-dd'),
-      records,
-    });
-
+    await markAttendance.mutateAsync({ date: format(date, 'yyyy-MM-dd'), records });
     setLocalAttendance({});
   };
 
@@ -97,69 +72,42 @@ export default function TeacherAttendance() {
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
   const lateCount = students.filter(s => getAttendanceStatus(s.id) === 'late').length;
   const attendancePercentage = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
-
   const classOptions = classes?.map(c => c.name) || [];
-
-  const statusConfig = {
-    present: { color: 'bg-success', textColor: 'text-success', bgColor: 'bg-success/10', icon: CheckCircle, label: 'P' },
-    absent: { color: 'bg-destructive', textColor: 'text-destructive', bgColor: 'bg-destructive/10', icon: XCircle, label: 'A' },
-    late: { color: 'bg-warning', textColor: 'text-warning', bgColor: 'bg-warning/10', icon: Clock, label: 'L' },
-  };
 
   return (
     <MobileLayout title="Mark Attendance" showBack>
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Date & Class Selection */}
-        <Card>
-          <CardContent className="p-3 space-y-3">
-            {/* Date picker row */}
+        <Card className="border-border/50">
+          <CardContent className="p-3 space-y-2.5">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                <Button variant="outline" className="w-full justify-start text-left font-normal h-10">
                   <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  <span className="font-medium">{format(date, 'EEEE, dd MMMM yyyy')}</span>
+                  <span className="font-medium text-sm">{format(date, 'EEE, dd MMM yyyy')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(d) => {
-                    if (d) { setDate(d); setLocalAttendance({}); }
-                  }}
+                  onSelect={(d) => { if (d) { setDate(d); setLocalAttendance({}); } }}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
-            
-            {/* Class & Section */}
             <div className="flex gap-2">
-              <Select value={selectedClass} onValueChange={(v) => {
-                setSelectedClass(v);
-                setSelectedSection('');
-                setLocalAttendance({});
-              }}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
+              <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection(''); setLocalAttendance({}); }}>
+                <SelectTrigger className="flex-1 h-10"><SelectValue placeholder="Select class" /></SelectTrigger>
                 <SelectContent>
-                  {classOptions.map(cls => (
-                    <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                  ))}
+                  {classOptions.map(cls => (<SelectItem key={cls} value={cls}>{cls}</SelectItem>))}
                 </SelectContent>
               </Select>
               {selectedClass && (
-                <Select value={selectedSection} onValueChange={(v) => {
-                  setSelectedSection(v);
-                  setLocalAttendance({});
-                }}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Section" />
-                  </SelectTrigger>
+                <Select value={selectedSection} onValueChange={(v) => { setSelectedSection(v); setLocalAttendance({}); }}>
+                  <SelectTrigger className="w-28 h-10"><SelectValue placeholder="Section" /></SelectTrigger>
                   <SelectContent>
-                    {sections.map(sec => (
-                      <SelectItem key={sec.id} value={sec.name}>Sec {sec.name}</SelectItem>
-                    ))}
+                    {sections.map(sec => (<SelectItem key={sec.id} value={sec.name}>Sec {sec.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
               )}
@@ -168,152 +116,111 @@ export default function TeacherAttendance() {
         </Card>
 
         {!selectedClass || !selectedSection ? (
-          <Card className="p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-primary" />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Users className="w-7 h-7 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-foreground">Select Class & Section</h3>
-            <p className="text-sm text-muted-foreground">
-              Choose a class and section above to start marking attendance
-            </p>
-          </Card>
+            <h3 className="text-base font-semibold text-foreground mb-1">Select Class & Section</h3>
+            <p className="text-sm text-muted-foreground">Choose above to start marking</p>
+          </div>
         ) : isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-28 w-full rounded-xl" />
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
-            ))}
+          <div className="space-y-2">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            {Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-14 w-full rounded-xl" />))}
           </div>
         ) : students.length === 0 ? (
-          <Card className="p-8 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2 text-foreground">No Students Found</h3>
-            <p className="text-sm text-muted-foreground">
-              No active students in this class and section.
-            </p>
-          </Card>
+          <div className="flex flex-col items-center py-16 text-center">
+            <AlertCircle className="w-10 h-10 text-muted-foreground/40 mb-3" />
+            <h3 className="text-base font-semibold text-foreground mb-1">No Students Found</h3>
+            <p className="text-sm text-muted-foreground">No active students in this class.</p>
+          </div>
         ) : (
           <>
             {isAlreadyMarked && (
-              <Alert className="border-primary/30 bg-primary/5">
+              <Alert className="border-primary/30 bg-primary/5 py-2">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                <AlertDescription className="text-primary">
-                  Attendance already marked. You can update it.
-                </AlertDescription>
+                <AlertDescription className="text-primary text-xs">Already marked. You can update it.</AlertDescription>
               </Alert>
             )}
 
-            {/* Stats Dashboard */}
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="p-4 pb-3">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-foreground">{selectedClass} - Sec {selectedSection}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {students.length} Students
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl font-bold text-foreground">{attendancePercentage}%</span>
-                    <span className="text-sm text-muted-foreground">Present</span>
-                  </div>
-                  <Progress value={attendancePercentage} className="h-2" />
+            {/* Compact Stats Bar */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-card border border-border/50 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">{selectedClass} - {selectedSection}</span>
+                  <span className="text-lg font-bold text-foreground">{attendancePercentage}%</span>
                 </div>
-                <div className="grid grid-cols-3 border-t divide-x divide-border">
-                  <button
-                    className="flex flex-col items-center gap-1 py-3 hover:bg-success/5 transition-colors"
-                    onClick={() => markAll('present')}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-success" />
-                      <span className="text-lg font-bold text-foreground">{presentCount}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">Present</span>
-                  </button>
-                  <button
-                    className="flex flex-col items-center gap-1 py-3 hover:bg-destructive/5 transition-colors"
-                    onClick={() => markAll('absent')}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-destructive" />
-                      <span className="text-lg font-bold text-foreground">{absentCount}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">Absent</span>
-                  </button>
-                  <div className="flex flex-col items-center gap-1 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-warning" />
-                      <span className="text-lg font-bold text-foreground">{lateCount}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">Late</span>
-                  </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${attendancePercentage}%` }} />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <button onClick={() => markAll('present')} className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg px-2.5 py-1.5 transition-colors">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-xs font-bold">{presentCount}</span>
+                </button>
+                <button onClick={() => markAll('absent')} className="flex items-center gap-1.5 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg px-2.5 py-1.5 transition-colors">
+                  <div className="w-2 h-2 rounded-full bg-destructive" />
+                  <span className="text-xs font-bold">{absentCount}</span>
+                </button>
+                <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg px-2.5 py-1.5">
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-xs font-bold">{lateCount}</span>
+                </div>
+              </div>
+            </div>
 
-            {/* Student List */}
-            <div className="space-y-2">
+            {/* Compact Student List */}
+            <div className="bg-card border border-border/50 rounded-xl overflow-hidden divide-y divide-border/50">
               {students.map((student) => {
                 const status = getAttendanceStatus(student.id);
-                const config = statusConfig[status];
                 return (
-                  <Card key={student.id} className="overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="flex items-center">
-                        {/* Student Info */}
-                        <div 
-                          className="flex-1 flex items-center gap-3 p-3 cursor-pointer active:bg-muted/50 transition-colors"
-                          onClick={() => cycleStatus(student.id)}
-                        >
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${config.bgColor} ${config.textColor}`}>
-                            {student.roll_number || '-'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-foreground truncate">{student.full_name}</p>
-                            <p className="text-xs text-muted-foreground">{student.admission_number}</p>
-                          </div>
-                        </div>
-                        
-                        {/* Status Buttons */}
-                        <div className="flex items-center gap-1 pr-3">
-                          {(['present', 'absent', 'late'] as const).map((s) => {
-                            const sc = statusConfig[s];
-                            const isActive = status === s;
-                            return (
-                              <button
-                                key={s}
-                                onClick={() => setStatus(student.id, s)}
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                                  isActive 
-                                    ? `${sc.color} text-white shadow-sm` 
-                                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                                }`}
-                              >
-                                {sc.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={student.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                    {/* Roll number */}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                      status === 'present' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                      status === 'absent' ? 'bg-destructive/10 text-destructive' :
+                      'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {student.roll_number || '-'}
+                    </div>
+                    {/* Name */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[13px] text-foreground truncate leading-tight">{student.full_name}</p>
+                      <p className="text-[11px] text-muted-foreground leading-tight">{student.admission_number}</p>
+                    </div>
+                    {/* Status Buttons */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(['present', 'absent', 'late'] as const).map((s) => {
+                        const isActive = status === s;
+                        const labels = { present: 'P', absent: 'A', late: 'L' };
+                        const activeStyles = {
+                          present: 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30',
+                          absent: 'bg-destructive text-white shadow-sm shadow-destructive/30',
+                          late: 'bg-amber-500 text-white shadow-sm shadow-amber-500/30',
+                        };
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => setStatus(student.id, s)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-all ${
+                              isActive ? activeStyles[s] : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {labels[s]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
 
             {/* Save Button */}
             <div className="sticky bottom-20 pt-2">
-              <Button 
-                className="w-full shadow-lg" 
-                size="lg" 
-                onClick={saveAttendance}
-                disabled={markAttendance.isPending}
-              >
-                {markAttendance.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
+              <Button className="w-full shadow-lg" size="lg" onClick={saveAttendance} disabled={markAttendance.isPending}>
+                {markAttendance.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Attendance
               </Button>
             </div>
