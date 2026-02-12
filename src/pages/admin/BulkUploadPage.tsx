@@ -28,6 +28,7 @@ import {
   Filter,
   Users,
   GraduationCap,
+  IndianRupee,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
@@ -42,10 +43,11 @@ import {
   ParsedRow,
   STUDENT_FIELDS,
   TEACHER_FIELDS,
+  FEE_FIELDS,
 } from '@/lib/bulk-upload-utils';
 import { useQueryClient } from '@tanstack/react-query';
 
-type UploadType = 'students' | 'teachers';
+type UploadType = 'students' | 'teachers' | 'fees';
 type Step = 'select' | 'preview' | 'uploading' | 'result';
 type RowFilter = 'all' | 'valid' | 'invalid';
 
@@ -172,8 +174,9 @@ export default function BulkUploadPage() {
       setStep('result');
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: [uploadType === 'students' ? 'students' : 'teachers'] });
+      queryClient.invalidateQueries({ queryKey: [uploadType === 'students' ? 'students' : uploadType === 'teachers' ? 'teachers' : 'fees'] });
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+      if (uploadType === 'fees') queryClient.invalidateQueries({ queryKey: ['fee-stats'] });
 
       if (result.errors.length === 0) {
         toast.success(`Successfully uploaded ${result.inserted} ${uploadType}`);
@@ -233,7 +236,7 @@ export default function BulkUploadPage() {
     setCurrentPage(1);
   };
 
-  const fields = uploadType === 'students' ? STUDENT_FIELDS : TEACHER_FIELDS;
+  const fields = uploadType === 'students' ? STUDENT_FIELDS : uploadType === 'teachers' ? TEACHER_FIELDS : FEE_FIELDS;
   const displayHeaders = [...fields.required, ...fields.optional].filter(
     f => parseResult?.headers.includes(f)
   );
@@ -246,7 +249,7 @@ export default function BulkUploadPage() {
           <>
             {/* Type selector */}
             <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as UploadType)}>
-              <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsList className="grid w-full max-w-lg grid-cols-3">
                 <TabsTrigger value="students" className="gap-2">
                   <Users className="w-4 h-4" />
                   Students
@@ -254,6 +257,10 @@ export default function BulkUploadPage() {
                 <TabsTrigger value="teachers" className="gap-2">
                   <GraduationCap className="w-4 h-4" />
                   Teachers
+                </TabsTrigger>
+                <TabsTrigger value="fees" className="gap-2">
+                  <IndianRupee className="w-4 h-4" />
+                  Fees
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -313,14 +320,18 @@ export default function BulkUploadPage() {
                   <p className="text-sm text-muted-foreground">
                     Download a pre-formatted template with sample data and correct headers.
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('students')}>
                       <Download className="w-4 h-4 mr-2" />
-                      Students Template
+                      Students
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('teachers')}>
                       <Download className="w-4 h-4 mr-2" />
-                      Teachers Template
+                      Teachers
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('fees')}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Fees
                     </Button>
                   </div>
                 </CardContent>

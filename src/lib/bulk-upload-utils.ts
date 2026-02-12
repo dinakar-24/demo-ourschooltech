@@ -26,6 +26,11 @@ export const TEACHER_FIELDS = {
   optional: ['email', 'phone', 'subjects', 'classes', 'qualification', 'joining_date'],
 };
 
+export const FEE_FIELDS = {
+  required: ['admission_number', 'fee_type', 'amount', 'due_date'],
+  optional: ['status', 'payment_method', 'paid_date', 'transaction_id'],
+};
+
 // Header aliases for flexible CSV column names
 const HEADER_ALIASES: Record<string, string> = {
   'name': 'full_name',
@@ -75,6 +80,19 @@ const HEADER_ALIASES: Record<string, string> = {
   'alt_phone': 'alternate_phone',
   'alternate_contact': 'alternate_phone',
   'sex': 'gender',
+  'fee type': 'fee_type',
+  'type': 'fee_type',
+  'amt': 'amount',
+  'due': 'due_date',
+  'due date': 'due_date',
+  'paid date': 'paid_date',
+  'paid': 'paid_date',
+  'payment method': 'payment_method',
+  'payment_mode': 'payment_method',
+  'mode': 'payment_method',
+  'txn id': 'transaction_id',
+  'txn_id': 'transaction_id',
+  'transaction': 'transaction_id',
 };
 
 function normalizeHeader(header: string): string {
@@ -126,9 +144,9 @@ export function parseFile(file: File): Promise<{ headers: string[]; rawRows: Rec
 
 export function validateRows(
   rawRows: Record<string, string>[],
-  type: 'students' | 'teachers'
+  type: 'students' | 'teachers' | 'fees'
 ): ParseResult {
-  const fields = type === 'students' ? STUDENT_FIELDS : TEACHER_FIELDS;
+  const fields = type === 'students' ? STUDENT_FIELDS : type === 'teachers' ? TEACHER_FIELDS : FEE_FIELDS;
   const allFields = [...fields.required, ...fields.optional];
   const rows: ParsedRow[] = [];
 
@@ -159,6 +177,24 @@ export function validateRows(
     if (type === 'teachers') {
       if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
         errors.push('Invalid email');
+      }
+    }
+
+    if (type === 'fees') {
+      if (row.amount && isNaN(Number(row.amount))) {
+        errors.push('amount must be a number');
+      }
+      if (row.amount && Number(row.amount) <= 0) {
+        errors.push('amount must be positive');
+      }
+      if (row.due_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.due_date)) {
+        errors.push('due_date must be YYYY-MM-DD');
+      }
+      if (row.paid_date && row.paid_date.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.paid_date)) {
+        errors.push('paid_date must be YYYY-MM-DD');
+      }
+      if (row.status && !['pending', 'paid', 'overdue'].includes(row.status.toLowerCase())) {
+        errors.push('status must be pending/paid/overdue');
       }
     }
 
@@ -195,8 +231,8 @@ export function generateErrorReport(rows: ParsedRow[], type: string): Blob {
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
-export function generateTemplate(type: 'students' | 'teachers'): Blob {
-  const fields = type === 'students' ? STUDENT_FIELDS : TEACHER_FIELDS;
+export function generateTemplate(type: 'students' | 'teachers' | 'fees'): Blob {
+  const fields = type === 'students' ? STUDENT_FIELDS : type === 'teachers' ? TEACHER_FIELDS : FEE_FIELDS;
   const headers = [...fields.required, ...fields.optional];
   const sampleRow: Record<string, string> = {};
   
@@ -214,7 +250,7 @@ export function generateTemplate(type: 'students' | 'teachers'): Blob {
     sampleRow['blood_group'] = 'B+';
     sampleRow['address'] = '123 Main St, City';
     sampleRow['alternate_phone'] = '9876543211';
-  } else {
+  } else if (type === 'teachers') {
     sampleRow['full_name'] = 'Priya Nair';
     sampleRow['employee_id'] = 'EMP001';
     sampleRow['email'] = 'priya@school.com';
@@ -223,11 +259,20 @@ export function generateTemplate(type: 'students' | 'teachers'): Blob {
     sampleRow['classes'] = 'Class 10, Class 11';
     sampleRow['qualification'] = 'M.Sc, B.Ed';
     sampleRow['joining_date'] = '2024-06-01';
+  } else {
+    sampleRow['admission_number'] = 'ADM001';
+    sampleRow['fee_type'] = 'Tuition';
+    sampleRow['amount'] = '5000';
+    sampleRow['due_date'] = '2026-04-01';
+    sampleRow['status'] = 'pending';
+    sampleRow['payment_method'] = '';
+    sampleRow['paid_date'] = '';
+    sampleRow['transaction_id'] = '';
   }
 
   const ws = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, type === 'students' ? 'Students' : 'Teachers');
+  XLSX.utils.book_append_sheet(wb, ws, type === 'students' ? 'Students' : type === 'teachers' ? 'Teachers' : 'Fees');
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
