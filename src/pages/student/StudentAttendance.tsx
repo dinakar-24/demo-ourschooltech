@@ -1,50 +1,30 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { AttendanceCalendar } from '@/components/attendance/AttendanceCalendar';
-
-const mockAttendance = {
-  overall: 94.5,
-  history: [
-    { date: '2024-01-20', status: 'present' as const },
-    { date: '2024-01-19', status: 'present' as const },
-    { date: '2024-01-18', status: 'absent' as const },
-    { date: '2024-01-17', status: 'present' as const },
-    { date: '2024-01-16', status: 'late' as const },
-    { date: '2024-01-15', status: 'present' as const },
-    { date: '2024-01-14', status: 'present' as const },
-    { date: '2024-01-13', status: 'present' as const },
-    { date: '2024-01-12', status: 'present' as const },
-    { date: '2024-01-11', status: 'present' as const },
-    { date: '2024-01-10', status: 'present' as const },
-    { date: '2024-01-09', status: 'present' as const },
-    { date: '2024-01-08', status: 'late' as const },
-    { date: '2024-01-07', status: 'present' as const },
-    { date: '2024-01-06', status: 'present' as const },
-    { date: '2024-01-05', status: 'present' as const },
-    { date: '2024-01-04', status: 'present' as const },
-    { date: '2024-01-03', status: 'absent' as const },
-    { date: '2024-01-02', status: 'present' as const },
-    { date: '2026-02-12', status: 'present' as const },
-    { date: '2026-02-11', status: 'present' as const },
-    { date: '2026-02-10', status: 'absent' as const },
-    { date: '2026-02-09', status: 'present' as const },
-    { date: '2026-02-08', status: 'present' as const },
-    { date: '2026-02-07', status: 'late' as const },
-    { date: '2026-02-06', status: 'present' as const },
-    { date: '2026-02-05', status: 'present' as const },
-    { date: '2026-02-04', status: 'present' as const },
-    { date: '2026-02-03', status: 'present' as const },
-  ],
-};
+import { useStudentProfile } from '@/hooks/useStudentData';
+import { useStudentAttendanceHistory } from '@/hooks/useStudentAttendanceHistory';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentAttendance() {
+  const { data: profile, isLoading: loadingProfile } = useStudentProfile();
+  const { data: attendance, isLoading: loadingAttendance } = useStudentAttendanceHistory(profile?.id);
+
+  const isLoading = loadingProfile || loadingAttendance;
+
   return (
     <MobileLayout title="My Attendance" showBack>
       <div className="p-4">
-        <AttendanceCalendar
-          records={mockAttendance.history}
-          overallPercentage={mockAttendance.overall}
-          label="Overall Attendance"
-        />
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-72 w-full rounded-xl" />
+          </div>
+        ) : (
+          <AttendanceCalendar
+            records={attendance?.records || []}
+            overallPercentage={attendance?.percentage || 0}
+            label="Overall Attendance"
+          />
+        )}
       </div>
     </MobileLayout>
   );
