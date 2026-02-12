@@ -23,6 +23,7 @@ import {
   Shield,
   UserCheck,
   ScrollText,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,6 +60,7 @@ const menuConfig = {
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Students', path: '/students', icon: Users },
     { label: 'Teachers', path: '/teachers', icon: GraduationCap },
+    { label: 'Bulk Upload', path: '/bulk-upload', icon: Upload },
     { label: 'Classes', path: '/classes', icon: BookOpen },
     { label: 'Academic Years', path: '/academic-years', icon: Calendar },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },

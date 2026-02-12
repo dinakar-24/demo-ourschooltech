@@ -38,6 +38,7 @@ import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import SubscriptionPage from "./pages/admin/SubscriptionPage";
 import TimetablePage from "./pages/admin/TimetablePage";
+import BulkUploadPage from "./pages/admin/BulkUploadPage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -116,6 +117,7 @@ function AppRoutes() {
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><ReportsPage /></SubscriptionGuard></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><SettingsPage /></SubscriptionGuard></ProtectedRoute>} />
       <Route path="/admin/subscription" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionPage /></ProtectedRoute>} />
+      <Route path="/admin/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BulkUploadPage /></SubscriptionGuard></ProtectedRoute>} />
       <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
       
       {/* Teacher Routes */}
