@@ -8,7 +8,10 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Plus, Loader2, User, Hash, Mail, Calendar, Droplets, IndianRupee } from 'lucide-react';
+import { Plus, Loader2, User, Hash, Mail, Calendar as CalendarIcon, Droplets, IndianRupee } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, parse } from 'date-fns';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -337,7 +340,7 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">Date of Birth</Label>
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input type="date" value={formData.date_of_birth} onChange={(e) => onInputChange('date_of_birth', e.target.value)} className="pl-10 h-11" />
         </div>
       </div>
@@ -372,7 +375,22 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Due Date</Label>
-                    <Input type="date" value={entry.due_date} onChange={(e) => updateFeeEntry(idx, 'due_date', e.target.value)} className="h-9 text-sm" />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn('w-full h-9 text-sm justify-start font-normal', !entry.due_date && 'text-muted-foreground')}>
+                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                          {entry.due_date ? format(parse(entry.due_date, 'yyyy-MM-dd', new Date()), 'dd MMM yyyy') : 'Pick date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={entry.due_date ? parse(entry.due_date, 'yyyy-MM-dd', new Date()) : undefined}
+                          onSelect={(date) => updateFeeEntry(idx, 'due_date', date ? format(date, 'yyyy-MM-dd') : '')}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               </div>
