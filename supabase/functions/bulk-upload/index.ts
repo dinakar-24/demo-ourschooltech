@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { type, records, school_id } = body as {
-      type: "students" | "teachers";
+      type: "students" | "teachers" | "fees";
       records: any[];
       school_id: string;
     };
@@ -246,6 +246,83 @@ Deno.serve(async (req) => {
                 .from("teachers")
                 .insert(validRecords[k]);
 
+              if (singleError) {
+                errors.push({ row: i + k + 1, error: singleError.message });
+              } else {
+                inserted++;
+              }
+            }
+          } else {
+            inserted += insertedData?.length || validRecords.length;
+          }
+        }
+      }
+    } else if (type === "fees") {
+      // Resolve admission numbers to student IDs
+      const admissionNumbers = records.map((r: any) => r.admission_number?.toString().trim()).filter(Boolean);
+      const uniqueAdmissions = [...new Set(admissionNumbers)];
+      
+      // Fetch student IDs in chunks of 1000
+      const studentMap = new Map<string, string>();
+      for (let c = 0; c < uniqueAdmissions.length; c += 1000) {
+        const chunk = uniqueAdmissions.slice(c, c + 1000);
+        const { data: students } = await supabase
+          .from("students")
+          .select("id, admission_number")
+          .eq("school_id", school_id)
+          .in("admission_number", chunk);
+        (students || []).forEach((s: any) => studentMap.set(s.admission_number, s.id));
+      }
+
+      for (let i = 0; i < records.length; i += BATCH_SIZE) {
+        const batch = records.slice(i, i + BATCH_SIZE);
+        const validRecords: any[] = [];
+
+        for (let j = 0; j < batch.length; j++) {
+          const r = batch[j];
+          const rowIndex = i + j + 1;
+
+          if (!r.admission_number?.trim() || !r.fee_type?.trim() || !r.amount || !r.due_date?.trim()) {
+            errors.push({ row: rowIndex, error: "Missing required fields (admission_number, fee_type, amount, due_date)" });
+            continue;
+          }
+
+          const studentId = studentMap.get(r.admission_number.trim());
+          if (!studentId) {
+            errors.push({ row: rowIndex, error: `Student not found: ${r.admission_number}` });
+            continue;
+          }
+
+          const amount = parseFloat(r.amount);
+          if (isNaN(amount) || amount <= 0) {
+            errors.push({ row: rowIndex, error: "Invalid amount" });
+            continue;
+          }
+
+          validRecords.push({
+            student_id: studentId,
+            school_id,
+            fee_type: r.fee_type.trim(),
+            amount,
+            due_date: r.due_date.trim(),
+            status: r.status?.trim().toLowerCase() || "pending",
+            payment_method: r.payment_method?.trim() || null,
+            paid_date: r.paid_date?.trim() || null,
+            transaction_id: r.transaction_id?.trim() || null,
+          });
+        }
+
+        if (validRecords.length > 0) {
+          const { error: insertError, data: insertedData } = await supabase
+            .from("fees")
+            .insert(validRecords)
+            .select("id");
+
+          if (insertError) {
+            for (let k = 0; k < validRecords.length; k++) {
+              const { error: singleError } = await supabase
+                .from("fees")
+                .insert(validRecords[k]);
               if (singleError) {
                 errors.push({ row: i + k + 1, error: singleError.message });
               } else {
