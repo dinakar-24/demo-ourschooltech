@@ -229,18 +229,19 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
   const sectionOptions = SECTIONS.map(s => ({ value: s, label: s }));
   const bloodGroupOptions = BLOOD_GROUPS.map(b => ({ value: b, label: b }));
 
-  const selectedFeeTypes = feeEntries.map(e => e.fee_type);
+  const safeFeeEntries = feeEntries || [];
+  const selectedFeeTypes = safeFeeEntries.map(e => e.fee_type);
 
   const handleFeeTypesChange = (types: string[]) => {
     const newEntries = types.map(t => {
-      const existing = feeEntries.find(e => e.fee_type === t);
+      const existing = safeFeeEntries.find(e => e.fee_type === t);
       return existing || { fee_type: t, amount: '', due_date: '' };
     });
     onFeeEntriesChange(newEntries);
   };
 
   const updateFeeEntry = (index: number, field: 'amount' | 'due_date', value: string) => {
-    const updated = [...feeEntries];
+    const updated = [...safeFeeEntries];
     updated[index] = { ...updated[index], [field]: value };
     onFeeEntriesChange(updated);
   };
@@ -356,9 +357,9 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
           placeholder="Or type custom fee type"
         />
         {/* Per-fee-type amount & due date */}
-        {feeEntries.length > 0 && (
+        {safeFeeEntries.length > 0 && (
           <div className="space-y-3">
-            {feeEntries.map((entry, idx) => (
+            {safeFeeEntries.map((entry, idx) => (
               <div key={entry.fee_type} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                 <p className="text-sm font-medium text-foreground">{entry.fee_type}</p>
                 <div className="grid grid-cols-2 gap-3">
