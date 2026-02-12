@@ -56,33 +56,49 @@ serve(async (req) => {
 
     let actualSubscriptionId = subscriptionId;
 
-    // Create subscription via admin client if doesn't exist
+    // Find or create subscription
     if (!actualSubscriptionId && schoolId) {
       const pricePerStudent = 250;
       const count = studentCount || 0;
       const total = count * pricePerStudent;
 
-      const { data: newSub, error: createError } = await adminClient
+      // Check if subscription already exists for this school
+      const { data: existingSub } = await adminClient
         .from('subscriptions')
-        .insert({
-          school_id: schoolId,
-          plan_type: 'yearly',
-          student_count: count,
-          price_per_student: pricePerStudent,
-          total_amount: total,
-          status: 'pending',
-        })
-        .select()
+        .select('id')
+        .eq('school_id', schoolId)
         .single();
 
-      if (createError) {
-        console.error('Failed to create subscription:', createError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create subscription' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (existingSub) {
+        actualSubscriptionId = existingSub.id;
+        // Update student count and total
+        await adminClient
+          .from('subscriptions')
+          .update({ student_count: count, total_amount: total, price_per_student: pricePerStudent })
+          .eq('id', existingSub.id);
+      } else {
+        const { data: newSub, error: createError } = await adminClient
+          .from('subscriptions')
+          .insert({
+            school_id: schoolId,
+            plan_type: 'yearly',
+            student_count: count,
+            price_per_student: pricePerStudent,
+            total_amount: total,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Failed to create subscription:', createError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to create subscription' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        actualSubscriptionId = newSub.id;
       }
-      actualSubscriptionId = newSub.id;
     }
 
     if (!actualSubscriptionId) {
