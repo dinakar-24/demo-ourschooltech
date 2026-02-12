@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,10 @@ import {
   Eye,
   EyeOff,
   Search,
+  ImagePlus,
+  X,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   useAnnouncements, 
   useAnnouncementStats,
@@ -60,6 +63,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -105,10 +109,17 @@ export default function AnnouncementsPage() {
     target_roles: [],
     expires_at: '',
     is_active: true,
+    image_url: null,
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setFormData({ title: '', content: '', target_roles: [], expires_at: '', is_active: true });
+    setFormData({ title: '', content: '', target_roles: [], expires_at: '', is_active: true, image_url: null });
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const toggleRole = (role: AppRole) => {
@@ -120,16 +131,54 @@ export default function AnnouncementsPage() {
     }));
   };
 
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return formData.image_url || null;
+    setUploadingImage(true);
+    try {
+      const ext = imageFile.name.split('.').pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('announcements').upload(path, imageFile);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('announcements').getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (err) {
+      toast.error('Failed to upload image');
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData(prev => ({ ...prev, image_url: null }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleCreate = async (publish: boolean) => {
     if (!formData.title || !formData.content || formData.target_roles.length === 0) return;
-    await createAnnouncement.mutateAsync({ ...formData, is_active: publish });
+    const imageUrl = await uploadImage();
+    await createAnnouncement.mutateAsync({ ...formData, is_active: publish, image_url: imageUrl });
     setIsAddDialogOpen(false);
     resetForm();
   };
 
   const handleEdit = async () => {
     if (!selectedAnnouncement) return;
-    await updateAnnouncement.mutateAsync({ id: selectedAnnouncement.id, ...formData });
+    const imageUrl = await uploadImage();
+    await updateAnnouncement.mutateAsync({ id: selectedAnnouncement.id, ...formData, image_url: imageUrl });
     setIsEditDialogOpen(false);
     setSelectedAnnouncement(null);
     resetForm();
@@ -154,7 +203,10 @@ export default function AnnouncementsPage() {
       target_roles: (announcement.target_roles || []) as AppRole[],
       expires_at: announcement.expires_at ? announcement.expires_at.split('T')[0] : '',
       is_active: announcement.is_active,
+      image_url: announcement.image_url || null,
     });
+    setImageFile(null);
+    setImagePreview(announcement.image_url || null);
     setIsEditDialogOpen(true);
   };
 
@@ -181,6 +233,41 @@ export default function AnnouncementsPage() {
           value={formData.content}
           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
         />
+      </div>
+      {/* Image Upload */}
+      <div className="space-y-2">
+        <Label>Photo (Optional)</Label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelect}
+        />
+        {imagePreview ? (
+          <div className="relative w-full max-w-xs">
+            <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg border border-border" />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute top-2 right-2 h-7 w-7"
+              onClick={removeImage}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full max-w-xs h-24 border-dashed flex flex-col gap-1"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="w-6 h-6 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Click to add image</span>
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -285,12 +372,12 @@ export default function AnnouncementsPage() {
               <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
               <FormFields />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleCreate(false)} disabled={createAnnouncement.isPending}>
-                  {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <Button variant="outline" onClick={() => handleCreate(false)} disabled={createAnnouncement.isPending || uploadingImage}>
+                  {(createAnnouncement.isPending || uploadingImage) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save as Draft
                 </Button>
-                <Button onClick={() => handleCreate(true)} disabled={createAnnouncement.isPending}>
-                  {createAnnouncement.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <Button onClick={() => handleCreate(true)} disabled={createAnnouncement.isPending || uploadingImage}>
+                  {(createAnnouncement.isPending || uploadingImage) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   <Send className="w-4 h-4 mr-2" />
                   Publish
                 </Button>
@@ -348,6 +435,9 @@ export default function AnnouncementsPage() {
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                             {announcement.content}
                           </p>
+                          {announcement.image_url && (
+                            <img src={announcement.image_url} alt="" className="w-full max-w-xs h-32 object-cover rounded-lg mb-2 border border-border" />
+                          )}
                           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />

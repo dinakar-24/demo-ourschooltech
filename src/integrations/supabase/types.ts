@@ -62,6 +62,7 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           school_id: string
           target_classes: string[] | null
@@ -74,6 +75,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           school_id: string
           target_classes?: string[] | null
@@ -86,6 +88,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           school_id?: string
           target_classes?: string[] | null
