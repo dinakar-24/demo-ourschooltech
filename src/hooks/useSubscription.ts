@@ -109,8 +109,18 @@ export function useCreateSubscription() {
       razorpayAccountId?: string;
       studentCount?: number;
     }) => {
+      // Fetch actual student count from DB for accuracy
+      let count = studentCount || 0;
+      if (!studentCount) {
+        const { count: dbCount } = await supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('status', 'active');
+        count = dbCount || 0;
+      }
+
       const pricePerStudent = 250;
-      const count = studentCount || 0;
       const totalAmount = count * pricePerStudent;
 
       const { data, error } = await supabase
