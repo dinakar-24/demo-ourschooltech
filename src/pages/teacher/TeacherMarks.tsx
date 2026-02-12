@@ -3,7 +3,6 @@ import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -11,15 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import {
   Save,
-  Users,
-  TrendingUp,
-  Award,
-  AlertTriangle,
   Loader2,
-  BookOpen,
+  TrendingUp,
+  TrendingDown,
+  Award,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,169 +56,127 @@ export default function TeacherMarks() {
     toast.success('Marks saved successfully!');
   };
 
-  const avgMarks = Object.values(marks).reduce((a, b) => a + b, 0) / Object.values(marks).length;
-  const passCount = Object.values(marks).filter(m => m >= 35).length;
-  const failCount = Object.values(marks).length - passCount;
-  const topperMarks = Math.max(...Object.values(marks));
-  const lowestMarks = Math.min(...Object.values(marks));
+  const marksValues = Object.values(marks);
+  const avgMarks = marksValues.reduce((a, b) => a + b, 0) / marksValues.length;
+  const passCount = marksValues.filter(m => m >= 35).length;
+  const failCount = marksValues.length - passCount;
+  const topperMarks = Math.max(...marksValues);
 
   const getGrade = (m: number) => {
-    if (m >= 90) return { label: 'A+', color: 'text-success' };
-    if (m >= 75) return { label: 'A', color: 'text-primary' };
-    if (m >= 60) return { label: 'B', color: 'text-info' };
-    if (m >= 45) return { label: 'C', color: 'text-warning' };
-    if (m >= 35) return { label: 'D', color: 'text-orange-500' };
-    return { label: 'F', color: 'text-destructive' };
+    if (m >= 90) return { label: 'A+', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' };
+    if (m >= 75) return { label: 'A', color: 'text-primary', bg: 'bg-primary/10' };
+    if (m >= 60) return { label: 'B', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-500/10' };
+    if (m >= 45) return { label: 'C', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10' };
+    if (m >= 35) return { label: 'D', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10' };
+    return { label: 'F', color: 'text-destructive', bg: 'bg-destructive/10' };
   };
 
   const getBarColor = (m: number) => {
-    if (m >= 75) return 'bg-success';
-    if (m >= 45) return 'bg-warning';
+    if (m >= 90) return 'bg-emerald-500';
+    if (m >= 75) return 'bg-primary';
+    if (m >= 60) return 'bg-sky-500';
+    if (m >= 45) return 'bg-amber-500';
     if (m >= 35) return 'bg-orange-500';
     return 'bg-destructive';
   };
 
   return (
     <MobileLayout title="Enter Marks" showBack>
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Filters */}
-        <Card>
-          <CardContent className="p-3 space-y-3">
+        <Card className="border-border/50">
+          <CardContent className="p-3 space-y-2.5">
             <Select value={selectedExam} onValueChange={setSelectedExam}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {exams.map(exam => (
-                  <SelectItem key={exam} value={exam}>{exam}</SelectItem>
-                ))}
+                {exams.map(exam => (<SelectItem key={exam} value={exam}>{exam}</SelectItem>))}
               </SelectContent>
             </Select>
             <div className="flex gap-2">
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="flex-1 h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {classes.map(cls => (
-                    <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                  ))}
+                  {classes.map(cls => (<SelectItem key={cls} value={cls}>{cls}</SelectItem>))}
                 </SelectContent>
               </Select>
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="flex-1 h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {subjects.map(sub => (
-                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
+                  {subjects.map(sub => (<SelectItem key={sub} value={sub}>{sub}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Dashboard */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="p-4 pb-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-semibold text-foreground">{selectedSubject}</span>
-                <Badge variant="outline" className="text-xs">Max: {maxMarks}</Badge>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-foreground">{avgMarks.toFixed(1)}</span>
-                <span className="text-sm text-muted-foreground">avg marks</span>
-              </div>
+        {/* Stats Row */}
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-card border border-border/50 rounded-xl p-2.5 text-center">
+            <span className="text-lg font-bold text-foreground">{avgMarks.toFixed(0)}</span>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Average</p>
+          </div>
+          <div className="bg-card border border-border/50 rounded-xl p-2.5 text-center">
+            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{passCount}</span>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Pass</p>
+          </div>
+          <div className="bg-card border border-border/50 rounded-xl p-2.5 text-center">
+            <span className="text-lg font-bold text-destructive">{failCount}</span>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Fail</p>
+          </div>
+          <div className="bg-card border border-border/50 rounded-xl p-2.5 text-center">
+            <div className="flex items-center justify-center gap-0.5">
+              <Award className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-lg font-bold text-foreground">{topperMarks}</span>
             </div>
-            <div className="grid grid-cols-4 border-t divide-x divide-border">
-              <div className="flex flex-col items-center py-3">
-                <span className="text-lg font-bold text-foreground">{mockStudents.length}</span>
-                <span className="text-[10px] text-muted-foreground">Total</span>
-              </div>
-              <div className="flex flex-col items-center py-3">
-                <span className="text-lg font-bold text-success">{passCount}</span>
-                <span className="text-[10px] text-muted-foreground">Pass</span>
-              </div>
-              <div className="flex flex-col items-center py-3">
-                <span className="text-lg font-bold text-destructive">{failCount}</span>
-                <span className="text-[10px] text-muted-foreground">Fail</span>
-              </div>
-              <div className="flex flex-col items-center py-3">
-                <span className="text-lg font-bold text-primary">{topperMarks}</span>
-                <span className="text-[10px] text-muted-foreground">Highest</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Highest</p>
+          </div>
+        </div>
 
         {/* Student Marks List */}
-        <div className="space-y-2">
+        <div className="bg-card border border-border/50 rounded-xl overflow-hidden divide-y divide-border/50">
           {mockStudents.map((student) => {
             const grade = getGrade(marks[student.id]);
             const percentage = (marks[student.id] / maxMarks) * 100;
             const barColor = getBarColor(marks[student.id]);
-            
+
             return (
-              <Card key={student.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold ${
-                          marks[student.id] >= 75 ? 'bg-success/10 text-success' :
-                          marks[student.id] >= 35 ? 'bg-warning/10 text-warning' :
-                          'bg-destructive/10 text-destructive'
-                        }`}>
-                          {student.rollNo}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-foreground">{student.name}</p>
-                          <span className={`text-xs font-semibold ${grade.color}`}>
-                            Grade {grade.label}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={marks[student.id]}
-                          onChange={(e) => updateMarks(student.id, e.target.value)}
-                          className="w-16 h-9 text-center text-sm font-semibold"
-                          min={0}
-                          max={maxMarks}
-                        />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">/{maxMarks}</span>
-                      </div>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${barColor}`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+              <div key={student.id} className="px-3 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  {/* Roll + Grade badge */}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${grade.bg} ${grade.color}`}>
+                    {student.rollNo}
                   </div>
-                </CardContent>
-              </Card>
+                  {/* Name + Grade */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[13px] text-foreground truncate leading-tight">{student.name}</p>
+                    <span className={`text-[11px] font-semibold ${grade.color}`}>Grade {grade.label}</span>
+                  </div>
+                  {/* Marks Input */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Input
+                      type="number"
+                      value={marks[student.id]}
+                      onChange={(e) => updateMarks(student.id, e.target.value)}
+                      className="w-14 h-8 text-center text-sm font-semibold px-1"
+                      min={0}
+                      max={maxMarks}
+                    />
+                    <span className="text-[11px] text-muted-foreground">/{maxMarks}</span>
+                  </div>
+                </div>
+                {/* Thin progress bar */}
+                <div className="w-full h-1 bg-muted rounded-full overflow-hidden mt-2">
+                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${percentage}%` }} />
+                </div>
+              </div>
             );
           })}
         </div>
 
         {/* Save Button */}
         <div className="sticky bottom-20 pt-2">
-          <Button 
-            className="w-full shadow-lg" 
-            size="lg" 
-            onClick={saveMarks}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
+          <Button className="w-full shadow-lg" size="lg" onClick={saveMarks} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save Marks
           </Button>
         </div>
