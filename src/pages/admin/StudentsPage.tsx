@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { FeeEntry } from '@/components/admin/AddStudentDialog';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,8 +42,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useStudents, useStudentStats, useCreateStudent, useDeleteStudent, Student } from '@/hooks/useStudents';
+import { useStudents, useStudentStats, useDeleteStudent, Student } from '@/hooks/useStudents';
 import { useCreateFee } from '@/hooks/useFees';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { CredentialsDialog, type CreatedAccount } from '@/components/admin/CredentialsDialog';
 import { EditStudentDialog } from '@/components/admin/EditStudentDialog';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,11 +68,17 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function StudentsPage() {
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const schoolId = useEffectiveSchoolId();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All Classes');
   const [selectedSection, setSelectedSection] = useState('All Sections');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>([]);
+  const [credentialsStudentName, setCredentialsStudentName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const pagination = usePagination(25);
   
   // Reset to page 1 when filters change
@@ -104,7 +115,6 @@ export default function StudentsPage() {
   const totalCount = result?.totalCount || 0;
   const { data: stats, isLoading: statsLoading } = useStudentStats();
   const { data: classes } = useClasses();
-  const createStudent = useCreateStudent();
   const createFee = useCreateFee();
   const deleteStudent = useDeleteStudent();
 
@@ -120,59 +130,68 @@ export default function StudentsPage() {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (!schoolId) {
+      toast.error('No school found');
+      return;
+    }
 
-    const student = await createStudent.mutateAsync({
-      full_name: formData.full_name,
-      admission_number: formData.admission_number,
-      class_name: formData.class_name,
-      section: formData.section,
-      roll_number: formData.roll_number ? parseInt(formData.roll_number) : undefined,
-      gender: formData.gender || undefined,
-      date_of_birth: formData.date_of_birth || undefined,
-      parent_name: formData.parent_name || undefined,
-      parent_phone: formData.parent_phone || undefined,
-      alternate_phone: formData.alternate_phone || undefined,
-      parent_email: formData.parent_email || undefined,
-      blood_group: formData.blood_group || undefined,
-    });
+    setIsCreating(true);
+    try {
+      const response = await supabase.functions.invoke('create-student-with-accounts', {
+        body: {
+          ...formData,
+          roll_number: formData.roll_number ? parseInt(formData.roll_number) : undefined,
+          school_id: schoolId,
+        },
+      });
 
-    // Create fee records for each fee entry
-    if (student?.id && feeEntries.length > 0) {
-      for (const entry of feeEntries) {
-        if (entry.fee_type && entry.amount && entry.due_date) {
-          try {
-            await createFee.mutateAsync({
-              student_id: student.id,
-              fee_type: entry.fee_type,
-              amount: parseFloat(entry.amount),
-              due_date: entry.due_date,
-            });
-          } catch {
-            toast.error(`Fee assignment failed for ${entry.fee_type}`);
+      if (response.error) throw new Error(response.error.message || 'Failed to create student');
+      if (!response.data?.success) throw new Error(response.data?.error || 'Failed to create student');
+
+      const student = response.data.student;
+
+      // Create fee records
+      if (student?.id && feeEntries.length > 0) {
+        for (const entry of feeEntries) {
+          if (entry.fee_type && entry.amount && entry.due_date) {
+            try {
+              await createFee.mutateAsync({
+                student_id: student.id,
+                fee_type: entry.fee_type,
+                amount: parseFloat(entry.amount),
+                due_date: entry.due_date,
+              });
+            } catch {
+              toast.error(`Fee assignment failed for ${entry.fee_type}`);
+            }
           }
         }
       }
-      if (feeEntries.some(e => e.amount && e.due_date)) {
-        toast.success('Fees assigned successfully');
-      }
-    }
 
-    setFormData({
-      full_name: '',
-      admission_number: '',
-      class_name: '',
-      section: '',
-      roll_number: '',
-      gender: '',
-      date_of_birth: '',
-      parent_name: '',
-      parent_phone: '',
-      alternate_phone: '',
-      parent_email: '',
-      blood_group: '',
-    });
-    setFeeEntries([]);
-    setIsAddDialogOpen(false);
+      // Show credentials dialog
+      const accounts = response.data.created_accounts || [];
+      if (accounts.length > 0) {
+        setCredentialsStudentName(formData.full_name);
+        setCreatedAccounts(accounts);
+      }
+
+      toast.success('Student added successfully');
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+
+      setFormData({
+        full_name: '', admission_number: '', class_name: '', section: '',
+        roll_number: '', gender: '', date_of_birth: '', parent_name: '',
+        parent_phone: '', alternate_phone: '', parent_email: '', blood_group: '',
+      });
+      setFeeEntries([]);
+      setIsAddDialogOpen(false);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to add student';
+      toast.error(msg);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -280,7 +299,7 @@ export default function StudentsPage() {
               onFeeEntriesChange={setFeeEntries}
               onInputChange={handleInputChange}
               onSubmit={handleSubmit}
-              isPending={createStudent.isPending}
+              isPending={isCreating}
               isOpen={isAddDialogOpen}
               onOpenChange={setIsAddDialogOpen}
             />
@@ -429,6 +448,13 @@ export default function StudentsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <CredentialsDialog
+          open={createdAccounts.length > 0}
+          onOpenChange={(open) => { if (!open) setCreatedAccounts([]); }}
+          accounts={createdAccounts}
+          studentName={credentialsStudentName}
+        />
       </div>
     </AdminLayout>
   );
