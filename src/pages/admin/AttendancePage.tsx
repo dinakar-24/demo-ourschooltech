@@ -32,7 +32,11 @@ export default function AttendancePage() {
   const { data, isLoading
   } = useAdminAttendance(date);
 
-  const classWise = data?.classWise || [];
+  const classWise = [...(data?.classWise || [])].sort((a, b) => {
+    const numA = parseInt(a.class.replace(/\D/g, '')) || 0;
+    const numB = parseInt(b.class.replace(/\D/g, '')) || 0;
+    return numA - numB;
+  });
   const totals = data?.totals || { present: 0, absent: 0, late: 0, total: 0 };
   const overallPercentage = totals.total > 0 
     ? ((totals.present / totals.total) * 100).toFixed(1) 
