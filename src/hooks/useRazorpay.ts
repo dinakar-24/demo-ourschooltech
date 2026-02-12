@@ -59,23 +59,27 @@
      });
    };
  
-   const initiatePayment = async ({
-     subscriptionId,
-     amount,
-     schoolName,
-     userEmail,
-     userName,
-     onSuccess,
-     onError,
-   }: {
-     subscriptionId: string;
-     amount: number;
-     schoolName: string;
-     userEmail?: string;
-     userName?: string;
-     onSuccess?: () => void;
-     onError?: (error: string) => void;
-   }) => {
+    const initiatePayment = async ({
+      subscriptionId,
+      amount,
+      schoolName,
+      userEmail,
+      userName,
+      schoolId,
+      studentCount,
+      onSuccess,
+      onError,
+    }: {
+      subscriptionId?: string;
+      amount: number;
+      schoolName: string;
+      userEmail?: string;
+      userName?: string;
+      schoolId?: string;
+      studentCount?: number;
+      onSuccess?: () => void;
+      onError?: (error: string) => void;
+    }) => {
      setIsLoading(true);
  
      try {
@@ -92,9 +96,9 @@
        }
  
        // Create order via edge function
-       const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-         body: { subscriptionId, amount },
-       });
+        const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
+          body: { subscriptionId, amount, schoolId, studentCount },
+        });
  
        if (error) throw error;
        if (!data?.orderId) throw new Error('Failed to create payment order');

@@ -15,7 +15,7 @@ import {
   Loader2,
   History
 } from 'lucide-react';
-import { useSubscription, useSubscriptionPayments, useCreateSubscription } from '@/hooks/useSubscription';
+import { useSubscription, useSubscriptionPayments } from '@/hooks/useSubscription';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { useSubscriptionPricing } from '@/hooks/useSubscriptionPricing';
@@ -49,7 +49,6 @@ export default function SubscriptionPage() {
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
   const { data: dbStudentCount = 0, isLoading: studentsLoading } = useStudentCount();
-  const createSubscription = useCreateSubscription();
   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
   const { pricePerStudent } = useSubscriptionPricing();
   const studentCount = subscription?.student_count || dbStudentCount;
@@ -64,35 +63,25 @@ export default function SubscriptionPage() {
      ? differenceInDays(new Date(subscription.end_date), new Date())
      : 0;
  
-   const handlePayment = async () => {
-     if (totalAmount <= 0) {
-       return;
-     }
-     
-     let subscriptionId = subscription?.id;
- 
-     // Create subscription if doesn't exist
-     if (!subscriptionId) {
-       const actualCount = dbStudentCount || 0;
-       const result = await createSubscription.mutateAsync({
-         schoolId: user?.schoolId || '',
-         studentCount: actualCount,
-       });
-       subscriptionId = result.id;
-     }
- 
-     initiatePayment({
-       subscriptionId,
-       amount: totalAmount,
-       schoolName: user?.schoolName || 'School',
-       userEmail: user?.email,
-       userName: user?.name,
-       onSuccess: () => {
-         queryClient.invalidateQueries({ queryKey: ['subscription'] });
-         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
-       },
-     });
-   };
+    const handlePayment = async () => {
+      if (totalAmount <= 0) {
+        return;
+      }
+
+      initiatePayment({
+        subscriptionId: subscription?.id,
+        amount: totalAmount,
+        schoolName: user?.schoolName || 'School',
+        userEmail: user?.email,
+        userName: user?.name,
+        schoolId: user?.schoolId || '',
+        studentCount: dbStudentCount,
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['subscription'] });
+          queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
+        },
+      });
+    };
  
    const getStatusBadge = () => {
      if (isActive) {
@@ -257,10 +246,10 @@ export default function SubscriptionPage() {
                <Button 
                  size="lg" 
                  onClick={handlePayment}
-                  disabled={paymentLoading || isProcessing || createSubscription.isPending || totalAmount <= 0}
-                  className="min-w-48"
-               >
-                 {(paymentLoading || isProcessing || createSubscription.isPending) ? (
+                   disabled={paymentLoading || isProcessing || totalAmount <= 0}
+                   className="min-w-48"
+                >
+                  {(paymentLoading || isProcessing) ? (
                    <>
                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                      Processing...
