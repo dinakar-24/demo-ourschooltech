@@ -1162,6 +1162,47 @@ export type Database = {
           },
         ]
       }
+      timetable_images: {
+        Row: {
+          class_name: string
+          created_at: string
+          id: string
+          image_url: string
+          school_id: string
+          section: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          class_name: string
+          created_at?: string
+          id?: string
+          image_url: string
+          school_id: string
+          section?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          school_id?: string
+          section?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_images_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
