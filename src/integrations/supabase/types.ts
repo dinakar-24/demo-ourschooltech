@@ -329,6 +329,7 @@ export type Database = {
           id: string
           paid_date: string | null
           payment_method: string | null
+          receipt_number: string | null
           school_id: string
           status: string
           student_id: string
@@ -343,6 +344,7 @@ export type Database = {
           id?: string
           paid_date?: string | null
           payment_method?: string | null
+          receipt_number?: string | null
           school_id: string
           status?: string
           student_id: string
@@ -357,6 +359,7 @@ export type Database = {
           id?: string
           paid_date?: string | null
           payment_method?: string | null
+          receipt_number?: string | null
           school_id?: string
           status?: string
           student_id?: string
@@ -548,6 +551,38 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_receipt_counters: {
+        Row: {
+          id: string
+          last_receipt_number: number
+          prefix: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_receipt_number?: number
+          prefix?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_receipt_number?: number
+          prefix?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_receipt_counters_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -1150,6 +1185,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       get_admin_attendance_by_class: {
         Args: { _date: string; _school_id: string }
         Returns: Json
