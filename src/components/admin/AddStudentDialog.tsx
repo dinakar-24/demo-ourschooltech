@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from 'react'; // fee types with descriptions
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,6 +55,7 @@ const FEE_TYPES = [
   { value: 'Sports Fee', label: 'Sports Fee', desc: 'Sports equipment & activities' },
   { value: 'Exam Fee', label: 'Exam Fee', desc: 'Examination & assessment charges' },
 ];
+
 
 function MultiChipSelector({ 
   options, values, onChange, label, placeholder, required
