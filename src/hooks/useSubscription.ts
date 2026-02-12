@@ -43,9 +43,9 @@ export function useSubscription() {
         .from('subscriptions')
         .select('*')
         .eq('school_id', user.schoolId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data as Subscription | null;
     },
     enabled: !!user?.schoolId,

@@ -16,23 +16,43 @@ import {
   History
 } from 'lucide-react';
 import { useSubscription, useSubscriptionPayments, useCreateSubscription } from '@/hooks/useSubscription';
-import { useStudents } from '@/hooks/useStudents';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { useSubscriptionPricing } from '@/hooks/useSubscriptionPricing';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { format, differenceInDays } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
+
+function useStudentCount() {
+  const schoolId = useEffectiveSchoolId();
+  return useQuery({
+    queryKey: ['student-count', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return 0;
+      const { count, error } = await supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .eq('status', 'active');
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!schoolId,
+  });
+}
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
-  const { data: studentsResult, isLoading: studentsLoading } = useStudents({ page: 1, pageSize: 1 });
+  const { data: dbStudentCount = 0, isLoading: studentsLoading } = useStudentCount();
   const createSubscription = useCreateSubscription();
   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
   const { pricePerStudent } = useSubscriptionPricing();
-  const studentCount = subscription?.student_count || studentsResult?.totalCount || 0;
+  const studentCount = subscription?.student_count || dbStudentCount;
   const totalAmount = studentCount * pricePerStudent;
  
    const isActive = subscription?.status === 'active';
@@ -53,7 +73,7 @@ export default function SubscriptionPage() {
  
      // Create subscription if doesn't exist
      if (!subscriptionId) {
-       const actualCount = studentsResult?.totalCount || 0;
+       const actualCount = dbStudentCount || 0;
        const result = await createSubscription.mutateAsync({
          schoolId: user?.schoolId || '',
          studentCount: actualCount,
