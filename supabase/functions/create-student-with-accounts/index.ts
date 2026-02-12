@@ -106,90 +106,80 @@ Deno.serve(async (req) => {
       return newUser.user.id;
     }
 
-    // ── 1. Create student auth account ──
-    const studentEmail = `${admission_number.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.school`;
+    // Use the parent_email (user's own Gmail) for both student and parent
+    const userEmail = parent_email?.trim();
+    if (!userEmail) {
+      // No email provided — create student record without auth accounts
+      const { data: studentRecord, error: studentError } = await supabaseAdmin
+        .from("students")
+        .insert({
+          school_id, full_name, admission_number, class_name, section,
+          roll_number: roll_number || null, gender: gender || null,
+          date_of_birth: date_of_birth || null, parent_name: parent_name || null,
+          parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
+          parent_email: null, blood_group: blood_group || null, status: "active",
+        })
+        .select().single();
+
+      if (studentError) throw new Error(`Failed to create student: ${studentError.message}`);
+
+      return new Response(
+        JSON.stringify({ success: true, student: studentRecord, created_accounts: [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // ── Create single auth account with provided email ──
     const studentPassword = `Student@${admission_number}`;
+    const parentPassword = "Parent@123";
 
-    const studentUserId = await ensureAuthUser(studentEmail, studentPassword, full_name);
+    const userId = await ensureAuthUser(userEmail, studentPassword, full_name);
 
-    // Update student profile
+    // Update profile
     await supabaseAdmin.from("profiles").update({
       school_id, full_name, class_name, section,
-    }).eq("id", studentUserId);
+      phone: parent_phone || null,
+    }).eq("id", userId);
 
-    // Assign student role
-    await supabaseAdmin.from("user_roles").insert({ user_id: studentUserId, role: "student" });
+    // Assign both student and parent roles
+    await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "student" });
+
+    // Check if parent role already exists
+    const { data: existingParentRole } = await supabaseAdmin
+      .from("user_roles").select("id").eq("user_id", userId).eq("role", "parent").single();
+    if (!existingParentRole) {
+      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "parent" });
+    }
 
     createdAccounts.push({
       role: "Student",
-      email: studentEmail,
+      email: userEmail,
       password: studentPassword,
       name: full_name,
     });
 
-    // ── 2. Create student record ──
+    createdAccounts.push({
+      role: "Parent",
+      email: userEmail,
+      password: parentPassword,
+      name: parent_name || `Parent of ${full_name}`,
+    });
+
+    // ── Create student record ──
     const { data: studentRecord, error: studentError } = await supabaseAdmin
       .from("students")
       .insert({
-        user_id: studentUserId,
-        school_id,
-        full_name,
-        admission_number,
-        class_name,
-        section,
-        roll_number: roll_number || null,
-        gender: gender || null,
-        date_of_birth: date_of_birth || null,
-        parent_name: parent_name || null,
-        parent_phone: parent_phone || null,
-        alternate_phone: alternate_phone || null,
-        parent_email: parent_email || null,
-        blood_group: blood_group || null,
-        status: "active",
+        user_id: userId, school_id, full_name, admission_number, class_name, section,
+        roll_number: roll_number || null, gender: gender || null,
+        date_of_birth: date_of_birth || null, parent_name: parent_name || null,
+        parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
+        parent_email: userEmail, blood_group: blood_group || null, status: "active",
       })
-      .select()
-      .single();
+      .select().single();
 
     if (studentError) {
       console.error("Student insert error:", studentError);
       throw new Error(`Failed to create student record: ${studentError.message}`);
-    }
-
-    // ── 3. Create parent auth account (if email provided) ──
-    if (parent_email && parent_email.trim()) {
-      const parentPassword = "Parent@123";
-      const parentName = parent_name || `Parent of ${full_name}`;
-
-      try {
-        const parentUserId = await ensureAuthUser(parent_email.trim(), parentPassword, parentName);
-
-        await supabaseAdmin.from("profiles").update({
-          school_id, full_name: parentName, phone: parent_phone || null,
-          class_name: class_name, // for reference
-        }).eq("id", parentUserId);
-
-        // Check if parent role already assigned
-        const { data: existingRole } = await supabaseAdmin
-          .from("user_roles")
-          .select("id")
-          .eq("user_id", parentUserId)
-          .eq("role", "parent")
-          .single();
-
-        if (!existingRole) {
-          await supabaseAdmin.from("user_roles").insert({ user_id: parentUserId, role: "parent" });
-        }
-
-        createdAccounts.push({
-          role: "Parent",
-          email: parent_email.trim(),
-          password: parentPassword,
-          name: parentName,
-        });
-      } catch (parentErr) {
-        console.error("Parent account creation failed:", parentErr);
-        // Don't fail the whole operation, just log it
-      }
     }
 
     return new Response(
