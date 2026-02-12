@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,20 @@ interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
   loading: boolean;
   error: string;
+  resetKey?: string | null;
 }
 
-export function LoginForm({ onSubmit, loading, error }: LoginFormProps) {
+export function LoginForm({ onSubmit, loading, error, resetKey }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Reset fields when role changes
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+  }, [resetKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

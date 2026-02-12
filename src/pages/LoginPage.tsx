@@ -257,7 +257,7 @@ export default function LoginPage() {
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ type: 'spring', damping: 22 }}
                       >
-                        <LoginForm onSubmit={handleLogin} loading={loading} error={error} />
+                        <LoginForm onSubmit={handleLogin} loading={loading} error={error} resetKey={selectedRole} />
                       </motion.div>
                     )}
                   </AnimatePresence>
