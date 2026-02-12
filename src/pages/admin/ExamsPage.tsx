@@ -72,6 +72,8 @@ import { cn } from '@/lib/utils';
 const SUBJECTS = [
   'Mathematics', 'Science', 'English', 'Hindi', 'Social Studies',
   'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Physical Education',
+  'Economics', 'Accountancy', 'Business Studies', 'Geography', 'History',
+  'Sanskrit', 'Urdu', 'Art', 'Music',
 ];
 
 export default function ExamsPage() {
@@ -193,12 +195,29 @@ export default function ExamsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Subject</Label>
-          <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
-            <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
-            <SelectContent>
-              {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {SUBJECTS.map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setFormData({ ...formData, subject: s })}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                  formData.subject === s
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/50 text-foreground border-border hover:bg-muted"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <Input
+            placeholder="Or type custom subject..."
+            value={!SUBJECTS.includes(formData.subject) ? formData.subject : ''}
+            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+            className="text-sm"
+          />
         </div>
         <div className="space-y-2">
           <Label>Class</Label>
