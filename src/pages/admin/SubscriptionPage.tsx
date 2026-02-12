@@ -28,11 +28,11 @@ export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
-  const { data: studentsResult, isLoading: studentsLoading } = useStudents();
+  const { data: studentsResult, isLoading: studentsLoading } = useStudents({ page: 1, pageSize: 1 });
   const createSubscription = useCreateSubscription();
   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
   const { pricePerStudent } = useSubscriptionPricing();
-  const studentCount = studentsResult?.totalCount || 0;
+  const studentCount = subscription?.student_count || studentsResult?.totalCount || 0;
   const totalAmount = studentCount * pricePerStudent;
  
    const isActive = subscription?.status === 'active';
@@ -45,13 +45,18 @@ export default function SubscriptionPage() {
      : 0;
  
    const handlePayment = async () => {
+     if (totalAmount <= 0) {
+       return;
+     }
+     
      let subscriptionId = subscription?.id;
  
      // Create subscription if doesn't exist
      if (!subscriptionId) {
+       const actualCount = studentsResult?.totalCount || 0;
        const result = await createSubscription.mutateAsync({
          schoolId: user?.schoolId || '',
-         studentCount,
+         studentCount: actualCount,
        });
        subscriptionId = result.id;
      }
@@ -232,8 +237,8 @@ export default function SubscriptionPage() {
                <Button 
                  size="lg" 
                  onClick={handlePayment}
-                 disabled={paymentLoading || isProcessing || createSubscription.isPending}
-                 className="min-w-48"
+                  disabled={paymentLoading || isProcessing || createSubscription.isPending || totalAmount <= 0}
+                  className="min-w-48"
                >
                  {(paymentLoading || isProcessing || createSubscription.isPending) ? (
                    <>
