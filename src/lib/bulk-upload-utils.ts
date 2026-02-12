@@ -231,11 +231,12 @@ export function generateErrorReport(rows: ParsedRow[], type: string): Blob {
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
-export function generateTemplate(type: 'students' | 'teachers' | 'fees'): Blob {
+export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): Promise<Blob> {
+  const ExcelJS = await import('exceljs');
   const fields = type === 'students' ? STUDENT_FIELDS : type === 'teachers' ? TEACHER_FIELDS : FEE_FIELDS;
   const headers = [...fields.required, ...fields.optional];
+
   const sampleRow: Record<string, string> = {};
-  
   if (type === 'students') {
     sampleRow['full_name'] = 'Rahul Sharma';
     sampleRow['admission_number'] = 'ADM001';
@@ -270,9 +271,41 @@ export function generateTemplate(type: 'students' | 'teachers' | 'fees'): Blob {
     sampleRow['transaction_id'] = '';
   }
 
-  const ws = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, type === 'students' ? 'Students' : type === 'teachers' ? 'Teachers' : 'Fees');
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-  return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const wb = new ExcelJS.Workbook();
+  const sheetName = type === 'students' ? 'Students' : type === 'teachers' ? 'Teachers' : 'Fees';
+  const ws = wb.addWorksheet(sheetName, {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  // Add columns with auto-fit widths
+  ws.columns = headers.map(h => {
+    const dataLen = (sampleRow[h] || '').length;
+    return { header: h, key: h, width: Math.max(h.length, dataLen) + 4 };
+  });
+
+  // Style header row
+  const headerRow = ws.getRow(1);
+  headerRow.height = 24;
+  headerRow.eachCell((cell, colNumber) => {
+    const h = headers[colNumber - 1];
+    cell.font = {
+      bold: true,
+      size: 11,
+      color: { argb: fields.required.includes(h) ? 'FFDC2626' : 'FF1A1A1A' },
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0FE' } };
+    cell.border = { bottom: { style: 'thin', color: { argb: 'FFB0B0B0' } } };
+  });
+
+  // Add sample data row (greyed out as hint)
+  const values = headers.map(h => sampleRow[h] || '');
+  const dataRow = ws.addRow(values);
+  dataRow.eachCell(cell => {
+    cell.font = { size: 10, italic: true, color: { argb: 'FF999999' } };
+    cell.alignment = { horizontal: 'left', vertical: 'middle' };
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }

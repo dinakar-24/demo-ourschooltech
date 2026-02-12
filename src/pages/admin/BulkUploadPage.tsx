@@ -190,8 +190,8 @@ export default function BulkUploadPage() {
     }
   }, [parseResult, schoolId, uploadType, queryClient]);
 
-  const handleDownloadTemplate = (type: UploadType) => {
-    const blob = generateTemplate(type);
+  const handleDownloadTemplate = async (type: UploadType) => {
+    const blob = await generateTemplate(type);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
