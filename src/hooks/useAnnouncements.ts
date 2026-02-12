@@ -19,6 +19,7 @@ export interface Announcement {
   created_by: string | null;
   created_at: string;
   school_id: string;
+  image_url: string | null;
 }
 
 export interface AnnouncementFormData {
@@ -28,6 +29,7 @@ export interface AnnouncementFormData {
   target_classes?: string[];
   expires_at?: string;
   is_active: boolean;
+  image_url?: string | null;
 }
 
 interface AnnouncementFilters {
@@ -129,6 +131,7 @@ export function useCreateAnnouncement() {
           target_classes: formData.target_classes || null,
           expires_at: formData.expires_at || null,
           is_active: formData.is_active,
+          image_url: formData.image_url || null,
           school_id: schoolId,
           created_by: user?.id || null,
         })
