@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -9,37 +9,142 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Clock, BookOpen } from 'lucide-react';
+import { Clock, Upload, Trash2, ImageIcon, ZoomIn, X, Loader2 } from 'lucide-react';
 import { useClasses } from '@/hooks/useClasses';
-import { useIsMobile } from '@/hooks/use-mobile';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const PERIODS = [
-  { label: 'Period 1', time: '8:00 - 8:45' },
-  { label: 'Period 2', time: '8:45 - 9:30' },
-  { label: 'Period 3', time: '9:30 - 10:15' },
-  { label: 'Break', time: '10:15 - 10:30' },
-  { label: 'Period 4', time: '10:30 - 11:15' },
-  { label: 'Period 5', time: '11:15 - 12:00' },
-  { label: 'Period 6', time: '12:00 - 12:45' },
-  { label: 'Lunch', time: '12:45 - 1:30' },
-  { label: 'Period 7', time: '1:30 - 2:15' },
-  { label: 'Period 8', time: '2:15 - 3:00' },
-];
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function TimetablePage() {
-  const isMobile = useIsMobile();
   const { data: classes } = useClasses();
+  const schoolId = useEffectiveSchoolId();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('A');
+  const [showFullscreen, setShowFullscreen] = useState(false);
 
   const classNames = classes?.map(c => c.name) || [];
   const selectedClassData = classes?.find(c => c.name === selectedClass);
   const sections = selectedClassData?.sections.map(s => s.name) || ['A'];
 
+  // Fetch timetable image for selected class/section
+  const { data: timetableImage, isLoading: loadingImage } = useQuery({
+    queryKey: ['timetable-image', schoolId, selectedClass, selectedSection],
+    queryFn: async () => {
+      if (!schoolId || !selectedClass) return null;
+      const { data, error } = await supabase
+        .from('timetable_images' as any)
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('class_name', selectedClass)
+        .eq('section', selectedSection)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as { id: string; image_url: string; updated_at: string } | null;
+    },
+    enabled: !!schoolId && !!selectedClass,
+  });
+
+  // Upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!schoolId || !selectedClass) throw new Error('Select a class first');
+
+      const ext = file.name.split('.').pop();
+      const path = `${schoolId}/${selectedClass}-${selectedSection}.${ext}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('timetables')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('timetables').getPublicUrl(path);
+      const imageUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Upsert to DB
+      const { error: dbError } = await supabase
+        .from('timetable_images' as any)
+        .upsert({
+          school_id: schoolId,
+          class_name: selectedClass,
+          section: selectedSection,
+          image_url: imageUrl,
+        } as any, { onConflict: 'school_id,class_name,section' });
+      if (dbError) throw dbError;
+
+      return imageUrl;
+    },
+    onSuccess: () => {
+      toast.success('Timetable uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: ['timetable-image'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Upload failed');
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!schoolId || !selectedClass || !timetableImage) throw new Error('Nothing to delete');
+
+      // Delete from storage
+      const path = `${schoolId}/${selectedClass}-${selectedSection}`;
+      // List files matching this prefix to find exact file
+      const { data: files } = await supabase.storage.from('timetables').list(schoolId, {
+        search: `${selectedClass}-${selectedSection}`,
+      });
+      if (files?.length) {
+        await supabase.storage.from('timetables').remove(
+          files.map(f => `${schoolId}/${f.name}`)
+        );
+      }
+
+      // Delete from DB
+      const { error } = await supabase
+        .from('timetable_images' as any)
+        .delete()
+        .eq('id', (timetableImage as any).id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Timetable removed');
+      queryClient.invalidateQueries({ queryKey: ['timetable-image'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Delete failed');
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be under 10MB');
+      return;
+    }
+
+    uploadMutation.mutate(file);
+    e.target.value = '';
+  };
+
+  const isUploading = uploadMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
+
   return (
     <AdminLayout title="Timetable">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-5 animate-fade-up pb-6">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection('A'); }}>
@@ -68,95 +173,125 @@ export default function TimetablePage() {
           <Card className="p-12 text-center">
             <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-lg font-semibold mb-2">Select a Class</h3>
-            <p className="text-muted-foreground">
-              Choose a class and section above to view or manage the timetable.
+            <p className="text-muted-foreground text-sm">
+              Choose a class and section above to view or upload the timetable.
             </p>
           </Card>
+        ) : loadingImage ? (
+          <Card className="p-12 text-center">
+            <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+          </Card>
+        ) : timetableImage ? (
+          /* Show uploaded timetable */
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="relative group">
+                <img
+                  src={(timetableImage as any).image_url}
+                  alt={`Timetable for ${selectedClass} - Section ${selectedSection}`}
+                  className="w-full h-auto cursor-pointer"
+                  onClick={() => setShowFullscreen(true)}
+                />
+                {/* Overlay actions */}
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="shadow-lg h-9 w-9"
+                    onClick={() => setShowFullscreen(true)}
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 flex items-center justify-between border-t">
+                <div>
+                  <p className="font-semibold text-sm">{selectedClass} - Section {selectedSection}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Updated {new Date((timetableImage as any).updated_at).toLocaleDateString('en-IN')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Upload className="w-4 h-4 mr-1.5" />}
+                    Replace
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => deleteMutation.mutate()}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1.5" />}
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
-          <>
-            {/* Timetable Info */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  {selectedClass} - Section {selectedSection}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Timetable management is being set up. Below is the period structure for this class.
-                </p>
-
-                {isMobile ? (
-                  /* Mobile: Day-wise cards */
-                  <div className="space-y-4">
-                    {DAYS.map(day => (
-                      <div key={day} className="border rounded-lg overflow-hidden">
-                        <div className="bg-muted/50 px-4 py-2">
-                          <p className="font-medium text-sm">{day}</p>
-                        </div>
-                        <div className="divide-y">
-                          {PERIODS.map((period) => (
-                            <div key={period.label} className="flex items-center justify-between px-4 py-2.5">
-                              <div>
-                                <p className="text-sm font-medium">{period.label}</p>
-                                <p className="text-xs text-muted-foreground">{period.time}</p>
-                              </div>
-                              {period.label === 'Break' || period.label === 'Lunch' ? (
-                                <Badge variant="outline" className="text-xs">{period.label}</Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">Not assigned</Badge>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+          /* Upload prompt */
+          <Card
+            className="border-2 border-dashed cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <CardContent className="p-10 text-center">
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-12 h-12 mx-auto text-primary mb-4 animate-spin" />
+                  <h3 className="text-lg font-semibold mb-1">Uploading...</h3>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <ImageIcon className="w-8 h-8 text-primary" />
                   </div>
-                ) : (
-                  /* Desktop: Table grid */
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-3 font-medium text-muted-foreground w-[140px]">Period</th>
-                          {DAYS.map(day => (
-                            <th key={day} className="text-center p-3 font-medium text-muted-foreground">{day}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {PERIODS.map((period) => (
-                          <tr key={period.label} className={`border-b ${
-                            period.label === 'Break' || period.label === 'Lunch' 
-                              ? 'bg-muted/30' 
-                              : 'hover:bg-muted/20'
-                          }`}>
-                            <td className="p-3">
-                              <p className="font-medium">{period.label}</p>
-                              <p className="text-xs text-muted-foreground">{period.time}</p>
-                            </td>
-                            {DAYS.map(day => (
-                              <td key={day} className="p-3 text-center">
-                                {period.label === 'Break' || period.label === 'Lunch' ? (
-                                  <span className="text-xs text-muted-foreground italic">{period.label}</span>
-                                ) : (
-                                  <div className="p-2 rounded-lg bg-muted/30 text-xs text-muted-foreground cursor-pointer hover:bg-primary/10 transition-colors">
-                                    Not assigned
-                                  </div>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
+                  <h3 className="text-lg font-semibold mb-1">Upload Timetable</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload a photo or image of the timetable for {selectedClass} - Section {selectedSection}
+                  </p>
+                  <Button size="sm" variant="outline" className="pointer-events-none">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Image
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-3">Supports JPG, PNG, WebP • Max 10MB</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Fullscreen viewer */}
+        <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-auto">
+            <button
+              onClick={() => setShowFullscreen(false)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center shadow-lg"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {timetableImage && (
+              <img
+                src={(timetableImage as any).image_url}
+                alt="Timetable"
+                className="w-full h-auto"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
