@@ -1,6 +1,5 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParentData } from '@/hooks/useParentData';
@@ -10,9 +9,10 @@ import {
   AlertCircle, 
   Clock,
   IndianRupee,
-  Download,
   TrendingUp,
   Loader2,
+  Receipt,
+  Building2,
 } from 'lucide-react';
 
 export default function ParentFees() {
@@ -21,7 +21,6 @@ export default function ParentFees() {
   
   const childName = childProfile?.full_name || user?.childName || 'Your Child';
   
-  // Calculate fee stats
   const feeStats = {
     pending: fees.filter(f => f.status === 'pending').reduce((sum, f) => sum + Number(f.amount), 0),
     paid: fees.filter(f => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0),
@@ -53,7 +52,7 @@ export default function ParentFees() {
         {/* Summary Card */}
         <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-primary-foreground/70 text-sm">Pending Fees</p>
                 <p className="text-3xl font-bold mt-1">₹{feeStats.pending.toLocaleString()}</p>
@@ -63,9 +62,10 @@ export default function ParentFees() {
               </div>
             </div>
             {feeStats.pending > 0 && (
-              <Button className="w-full bg-white text-primary hover:bg-white/90">
-                Pay Now
-              </Button>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-white/10 text-sm">
+                <Building2 className="w-4 h-4 flex-shrink-0" />
+                <span>Please visit the school office to make payment</span>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -128,9 +128,10 @@ export default function ParentFees() {
                           Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}
                         </span>
                       </div>
-                      <Button className="w-full mt-3" size="sm">
-                        Pay ₹{Number(fee.amount).toLocaleString()}
-                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                        <Building2 className="w-3 h-3" />
+                        Pay at school office · Cash / UPI / Bank Transfer / Cheque
+                      </p>
                     </CardContent>
                   </Card>
                 );
@@ -164,10 +165,17 @@ export default function ParentFees() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">₹{Number(payment.amount).toLocaleString()}</p>
-                      <Button variant="ghost" size="sm" className="text-xs text-primary p-0 h-auto">
-                        <Download className="w-3 h-3 mr-1" />
-                        Receipt
-                      </Button>
+                      {(payment as any).receipt_number && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
+                          <Receipt className="w-3 h-3" />
+                          {(payment as any).receipt_number}
+                        </p>
+                      )}
+                      {(payment as any).payment_method && (
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {(payment as any).payment_method}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

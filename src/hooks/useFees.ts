@@ -15,6 +15,7 @@ export interface FeeRecord {
   status: string;
   payment_method: string | null;
   transaction_id: string | null;
+  receipt_number: string | null;
   created_at: string;
   updated_at: string;
   student?: {

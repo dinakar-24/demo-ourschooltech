@@ -1,39 +1,39 @@
- import { AdminLayout } from '@/components/layout/AdminLayout';
- import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
- import { Badge } from '@/components/ui/badge';
- import { Button } from '@/components/ui/button';
- import { Skeleton } from '@/components/ui/skeleton';
- import { 
-   CreditCard, 
-   Calendar, 
-   Users, 
-   IndianRupee, 
-   CheckCircle, 
-   AlertTriangle,
-   Clock,
-   XCircle,
-   Loader2,
-   History
- } from 'lucide-react';
- import { useSubscription, useSubscriptionPayments, useCreateSubscription } from '@/hooks/useSubscription';
- import { useStudents } from '@/hooks/useStudents';
- import { useAuth } from '@/contexts/AuthContext';
- import { useRazorpay } from '@/hooks/useRazorpay';
- import { format, differenceInDays } from 'date-fns';
- import { useQueryClient } from '@tanstack/react-query';
- 
- const PRICE_PER_STUDENT = 250;
- 
- export default function SubscriptionPage() {
-   const { user } = useAuth();
-   const queryClient = useQueryClient();
+import { AdminLayout } from '@/components/layout/AdminLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  CreditCard, 
+  Calendar, 
+  Users, 
+  IndianRupee, 
+  CheckCircle, 
+  AlertTriangle,
+  Clock,
+  XCircle,
+  Loader2,
+  History
+} from 'lucide-react';
+import { useSubscription, useSubscriptionPayments, useCreateSubscription } from '@/hooks/useSubscription';
+import { useStudents } from '@/hooks/useStudents';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRazorpay } from '@/hooks/useRazorpay';
+import { useSubscriptionPricing } from '@/hooks/useSubscriptionPricing';
+import { format, differenceInDays } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
+
+export default function SubscriptionPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
   const { data: studentsResult, isLoading: studentsLoading } = useStudents();
   const createSubscription = useCreateSubscription();
   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
+  const { pricePerStudent } = useSubscriptionPricing();
   const studentCount = studentsResult?.totalCount || 0;
-   const totalAmount = studentCount * PRICE_PER_STUDENT;
+  const totalAmount = studentCount * pricePerStudent;
  
    const isActive = subscription?.status === 'active';
    const isTrial = subscription?.status === 'trial';
@@ -158,8 +158,8 @@
                    <CreditCard className="w-5 h-5 text-primary" />
                    Annual Subscription
                  </CardTitle>
-                 <CardDescription>
-                   ₹{PRICE_PER_STUDENT} per student per year
+              <CardDescription>
+                  ₹{pricePerStudent} per student per year
                  </CardDescription>
                </div>
                {getStatusBadge()}
@@ -176,13 +176,13 @@
                  <p className="text-2xl font-bold">{studentCount}</p>
                </div>
  
-               <div className="p-4 rounded-xl bg-muted/50">
-                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                   <IndianRupee className="w-4 h-4" />
-                   <span className="text-sm">Per Student</span>
-                 </div>
-                 <p className="text-2xl font-bold">₹{PRICE_PER_STUDENT}</p>
-               </div>
+                <div className="p-4 rounded-xl bg-muted/50">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <IndianRupee className="w-4 h-4" />
+                    <span className="text-sm">Per Student</span>
+                  </div>
+                  <p className="text-2xl font-bold">₹{pricePerStudent}</p>
+                </div>
  
                <div className="p-4 rounded-xl bg-primary/10">
                  <div className="flex items-center gap-2 text-primary mb-1">
@@ -207,13 +207,17 @@
  
              {/* Subscription Details */}
              {subscription && (
-               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/30">
-                 <div>
-                   <p className="text-sm text-muted-foreground">Plan Type</p>
-                   <p className="font-medium capitalize">{subscription.plan_type}</p>
-                 </div>
-                 <div>
-                   <p className="text-sm text-muted-foreground">Start Date</p>
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/30">
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan Type</p>
+                  <p className="font-medium capitalize">{subscription.plan_type}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Price per Student</p>
+                  <p className="font-medium">₹{pricePerStudent}/year</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Start Date</p>
                    <p className="font-medium">
                      {subscription.start_date 
                        ? format(new Date(subscription.start_date), 'MMM d, yyyy')

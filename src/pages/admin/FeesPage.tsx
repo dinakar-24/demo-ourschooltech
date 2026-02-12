@@ -42,6 +42,7 @@ import {
   Receipt,
   Send,
   Loader2,
+  Printer,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,6 +55,8 @@ import { useStudentSearch } from '@/hooks/useStudentSearch';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useGenerateReceipt } from '@/hooks/useReceiptGeneration';
+import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -69,6 +72,8 @@ export default function FeesPage() {
   const [selectedFeeId, setSelectedFeeId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [transactionId, setTransactionId] = useState('');
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [receiptFee, setReceiptFee] = useState<any>(null);
 
   const pagination = usePagination(25);
   const debouncedSearch = useDebounce(searchInput, 400);
@@ -102,6 +107,23 @@ export default function FeesPage() {
 
   const recordPayment = useRecordPayment();
   const createFee = useCreateFee();
+  const generateReceipt = useGenerateReceipt();
+
+  const handleGenerateReceipt = async (fee: any) => {
+    if (fee.receipt_number) {
+      // Already has receipt, just show it
+      setReceiptFee(fee);
+      setReceiptDialogOpen(true);
+      return;
+    }
+    try {
+      const updatedFee = await generateReceipt.mutateAsync(fee.id);
+      setReceiptFee(updatedFee);
+      setReceiptDialogOpen(true);
+    } catch (error) {
+      // error handled by hook
+    }
+  };
 
   const handleRecordPayment = async () => {
     if (!selectedFeeId) return;
@@ -419,9 +441,11 @@ export default function FeesPage() {
                               <CreditCard className="w-4 h-4 mr-2" />Record Payment
                             </DropdownMenuItem>
                           )}
-                          {record.status === 'paid' && (
-                            <DropdownMenuItem><Receipt className="w-4 h-4 mr-2" />Receipt</DropdownMenuItem>
-                          )}
+                            {record.status === 'paid' && (
+                              <DropdownMenuItem onClick={() => handleGenerateReceipt(record)}>
+                                <Receipt className="w-4 h-4 mr-2" />{record.receipt_number ? 'View Receipt' : 'Generate Receipt'}
+                              </DropdownMenuItem>
+                            )}
                           <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Remind</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -483,7 +507,9 @@ export default function FeesPage() {
                               </DropdownMenuItem>
                             )}
                             {record.status === 'paid' && (
-                              <DropdownMenuItem><Receipt className="w-4 h-4 mr-2" />Generate Receipt</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGenerateReceipt(record)}>
+                                <Receipt className="w-4 h-4 mr-2" />{(record as any).receipt_number ? 'View Receipt' : 'Generate Receipt'}
+                              </DropdownMenuItem>
                             )}
                             <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Send Reminder</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -547,6 +573,13 @@ export default function FeesPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Receipt Dialog */}
+        <FeeReceiptDialog
+          open={receiptDialogOpen}
+          onOpenChange={setReceiptDialogOpen}
+          fee={receiptFee}
+        />
       </div>
     </AdminLayout>
   );
