@@ -217,8 +217,11 @@ export default function TeacherAttendance() {
               })}
             </div>
 
+            {/* Spacer for sticky button */}
+            <div className="h-16" />
+
             {/* Save Button */}
-            <div className="sticky bottom-20 pt-2">
+            <div className="fixed bottom-20 left-0 right-0 px-4 pb-2 z-10">
               <Button className="w-full shadow-lg" size="lg" onClick={saveAttendance} disabled={markAttendance.isPending}>
                 {markAttendance.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Attendance
