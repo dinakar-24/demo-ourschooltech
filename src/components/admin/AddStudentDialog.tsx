@@ -14,6 +14,12 @@ import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
+export interface FeeEntry {
+  fee_type: string;
+  amount: string;
+  due_date: string;
+}
+
 interface AddStudentDialogProps {
   classes: { id: string; name: string }[] | undefined;
   formData: {
@@ -29,10 +35,9 @@ interface AddStudentDialogProps {
     alternate_phone: string;
     parent_email: string;
     blood_group: string;
-    fee_type: string;
-    fee_amount: string;
-    fee_due_date: string;
   };
+  feeEntries: FeeEntry[];
+  onFeeEntriesChange: (entries: FeeEntry[]) => void;
   onInputChange: (field: string, value: string) => void;
   onSubmit: () => void;
   isPending: boolean;
@@ -210,8 +215,10 @@ function ChipSelector({
   );
 }
 
-function StudentFormContent({ formData, onInputChange, onSubmit, isPending, classes, onClose }: {
+function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputChange, onSubmit, isPending, classes, onClose }: {
   formData: AddStudentDialogProps['formData'];
+  feeEntries: FeeEntry[];
+  onFeeEntriesChange: (entries: FeeEntry[]) => void;
   onInputChange: (field: string, value: string) => void;
   onSubmit: () => void;
   isPending: boolean;
@@ -221,6 +228,22 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
   const classOptions = (classes || []).map(c => ({ value: c.name, label: c.name }));
   const sectionOptions = SECTIONS.map(s => ({ value: s, label: s }));
   const bloodGroupOptions = BLOOD_GROUPS.map(b => ({ value: b, label: b }));
+
+  const selectedFeeTypes = feeEntries.map(e => e.fee_type);
+
+  const handleFeeTypesChange = (types: string[]) => {
+    const newEntries = types.map(t => {
+      const existing = feeEntries.find(e => e.fee_type === t);
+      return existing || { fee_type: t, amount: '', due_date: '' };
+    });
+    onFeeEntriesChange(newEntries);
+  };
+
+  const updateFeeEntry = (index: number, field: 'amount' | 'due_date', value: string) => {
+    const updated = [...feeEntries];
+    updated[index] = { ...updated[index], [field]: value };
+    onFeeEntriesChange(updated);
+  };
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4 px-4 sm:px-6 pb-6">
@@ -318,7 +341,7 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
         </div>
       </div>
 
-      {/* Initial Fee Assignment */}
+      {/* Fee Assignment */}
       <div className="space-y-3 pt-3 border-t">
         <div className="flex items-center gap-2">
           <IndianRupee className="w-4 h-4 text-primary" />
@@ -328,26 +351,36 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
           label="Fee Type"
           required
           options={FEE_TYPES}
-          values={formData.fee_type ? formData.fee_type.split('||').filter(Boolean) : []}
-          onChange={(v) => onInputChange('fee_type', v.join('||'))}
+          values={selectedFeeTypes}
+          onChange={handleFeeTypesChange}
           placeholder="Or type custom fee type"
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Amount (₹) <span className="text-destructive">*</span></Label>
-            <div className="relative">
-              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="number" min="0" value={formData.fee_amount} onChange={(e) => onInputChange('fee_amount', e.target.value)} placeholder="Enter amount" className="pl-10 h-11" />
-            </div>
+        {/* Per-fee-type amount & due date */}
+        {feeEntries.length > 0 && (
+          <div className="space-y-3">
+            {feeEntries.map((entry, idx) => (
+              <div key={entry.fee_type} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-sm font-medium text-foreground">{entry.fee_type}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Amount (₹) *</Label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <Input type="number" min="0" value={entry.amount} onChange={(e) => updateFeeEntry(idx, 'amount', e.target.value)} placeholder="Amount" className="pl-8 h-9 text-sm" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Due Date *</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <Input type="date" value={entry.due_date} onChange={(e) => updateFeeEntry(idx, 'due_date', e.target.value)} className="pl-8 h-9 text-sm" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Due Date <span className="text-destructive">*</span></Label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="date" value={formData.fee_due_date} onChange={(e) => onInputChange('fee_due_date', e.target.value)} className="pl-10 h-11" />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -362,7 +395,7 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
   );
 }
 
-export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, isPending, isOpen, onOpenChange }: AddStudentDialogProps) {
+export function AddStudentDialog({ classes, formData, feeEntries, onFeeEntriesChange, onInputChange, onSubmit, isPending, isOpen, onOpenChange }: AddStudentDialogProps) {
   const isMobile = useIsMobile();
 
   const triggerButton = (
@@ -384,6 +417,8 @@ export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, i
     </div>
   );
 
+  const formProps = { formData, feeEntries, onFeeEntriesChange, onInputChange, onSubmit, isPending, classes };
+
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={onOpenChange}>
@@ -395,7 +430,7 @@ export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, i
           </DrawerHeader>
           {headerContent}
           <div className="overflow-y-auto">
-            <StudentFormContent formData={formData} onInputChange={onInputChange} onSubmit={onSubmit} isPending={isPending} classes={classes} onClose={() => onOpenChange(false)} />
+            <StudentFormContent {...formProps} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -411,7 +446,7 @@ export function AddStudentDialog({ classes, formData, onInputChange, onSubmit, i
           <DialogDescription>Fill in the student details</DialogDescription>
         </DialogHeader>
         {headerContent}
-        <StudentFormContent formData={formData} onInputChange={onInputChange} onSubmit={onSubmit} isPending={isPending} classes={classes} onClose={() => onOpenChange(false)} />
+        <StudentFormContent {...formProps} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
