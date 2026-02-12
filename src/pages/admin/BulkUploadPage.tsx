@@ -243,23 +243,23 @@ export default function BulkUploadPage() {
 
   return (
     <AdminLayout title="Bulk Upload">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         {/* Step: Select File */}
         {step === 'select' && (
           <>
             {/* Type selector */}
             <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as UploadType)}>
               <TabsList className="grid w-full max-w-lg grid-cols-3">
-                <TabsTrigger value="students" className="gap-2">
-                  <Users className="w-4 h-4" />
+                <TabsTrigger value="students" className="gap-1.5 text-xs sm:text-sm">
+                  <Users className="w-3.5 h-3.5" />
                   Students
                 </TabsTrigger>
-                <TabsTrigger value="teachers" className="gap-2">
-                  <GraduationCap className="w-4 h-4" />
+                <TabsTrigger value="teachers" className="gap-1.5 text-xs sm:text-sm">
+                  <GraduationCap className="w-3.5 h-3.5" />
                   Teachers
                 </TabsTrigger>
-                <TabsTrigger value="fees" className="gap-2">
-                  <IndianRupee className="w-4 h-4" />
+                <TabsTrigger value="fees" className="gap-1.5 text-xs sm:text-sm">
+                  <IndianRupee className="w-3.5 h-3.5" />
                   Fees
                 </TabsTrigger>
               </TabsList>
@@ -267,9 +267,9 @@ export default function BulkUploadPage() {
 
             {/* Upload area */}
             <Card>
-              <CardContent className="p-8">
+              <CardContent className="p-4 sm:p-6">
                 <div
-                  className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                  className="border-2 border-dashed border-border rounded-xl p-6 sm:p-10 text-center hover:border-primary/50 transition-colors cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <input
@@ -280,89 +280,61 @@ export default function BulkUploadPage() {
                     onChange={handleFileSelect}
                   />
                   {isParsing ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                      <p className="text-lg font-medium">Parsing file...</p>
-                      <p className="text-sm text-muted-foreground">Validating records</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                      <p className="text-base font-medium">Parsing file...</p>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                        <Upload className="w-8 h-8 text-primary" />
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Upload className="w-6 h-6 text-primary" />
                       </div>
-                      <div>
-                        <p className="text-lg font-semibold">
-                          Upload {uploadType === 'students' ? 'Students' : 'Teachers'} File
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Drag & drop or click to browse. Supports CSV and Excel (.xlsx, .xls)
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Maximum 10,000 records per file • Max 20MB
-                        </p>
-                      </div>
+                      <p className="text-base font-semibold">
+                        Upload {uploadType === 'students' ? 'Students' : uploadType === 'teachers' ? 'Teachers' : 'Fees'} File
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        CSV or Excel (.xlsx, .xls) • Max 10,000 rows • 20MB
+                      </p>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Template downloads & field info */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
+            {/* Template download + Required fields — combined into single card */}
+            <Card>
+              <CardContent className="p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold flex items-center gap-2">
                     <FileSpreadsheet className="w-4 h-4 text-primary" />
                     Download Template
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Download a pre-formatted template with sample data and correct headers.
                   </p>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('students')}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Students
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('teachers')}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Teachers
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate('fees')}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Fees
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Required Fields</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs font-semibold text-destructive mb-1">Required *</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {fields.required.map(f => (
-                          <Badge key={f} variant="destructive" className="text-[11px]">{f}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">Optional</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {fields.optional.map(f => (
-                          <Badge key={f} variant="outline" className="text-[11px]">{f}</Badge>
-                        ))}
-                      </div>
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadTemplate(uploadType)}>
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    {uploadType === 'students' ? 'Students' : uploadType === 'teachers' ? 'Teachers' : 'Fees'}
+                  </Button>
+                </div>
+                
+                <div className="border-t pt-3 space-y-2">
+                  <div>
+                    <p className="text-xs font-semibold text-destructive mb-1.5">Required *</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fields.required.map(f => (
+                        <Badge key={f} variant="destructive" className="text-[10px] h-5">{f}</Badge>
+                      ))}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">Optional</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fields.optional.map(f => (
+                        <Badge key={f} variant="outline" className="text-[10px] h-5">{f}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </>
         )}
 
