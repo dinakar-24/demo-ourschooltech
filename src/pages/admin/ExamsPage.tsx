@@ -195,29 +195,28 @@ export default function ExamsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Subject</Label>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {SUBJECTS.map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setFormData({ ...formData, subject: s })}
-                className={cn(
-                  "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
-                  formData.subject === s
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/50 text-foreground border-border hover:bg-muted"
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <Input
-            placeholder="Or type custom subject..."
-            value={!SUBJECTS.includes(formData.subject) ? formData.subject : ''}
-            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-            className="text-sm"
-          />
+          <Select value={SUBJECTS.includes(formData.subject) ? formData.subject : '__custom'} onValueChange={(v) => {
+            if (v === '__custom') {
+              setFormData({ ...formData, subject: '' });
+            } else {
+              setFormData({ ...formData, subject: v });
+            }
+          }}>
+            <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto z-50 bg-popover">
+              {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              <SelectItem value="__custom">Other (type below)</SelectItem>
+            </SelectContent>
+          </Select>
+          {(!SUBJECTS.includes(formData.subject)) && (
+            <Input
+              placeholder="Type custom subject..."
+              value={formData.subject}
+              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              className="text-sm mt-2"
+              autoFocus
+            />
+          )}
         </div>
         <div className="space-y-2">
           <Label>Class</Label>
