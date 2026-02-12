@@ -47,16 +47,24 @@ const GENDERS = [
   { value: 'other', label: 'Other' },
 ];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Lab Fee', 'Library Fee', 'Sports Fee', 'Exam Fee'];
+const FEE_TYPES = [
+  { value: 'Tuition Fee', label: 'Tuition Fee', desc: 'Monthly academic & classroom charges' },
+  { value: 'Transport Fee', label: 'Transport Fee', desc: 'School bus / van service charges' },
+  { value: 'Lab Fee', label: 'Lab Fee', desc: 'Science & computer lab usage' },
+  { value: 'Library Fee', label: 'Library Fee', desc: 'Library membership & book access' },
+  { value: 'Sports Fee', label: 'Sports Fee', desc: 'Sports equipment & activities' },
+  { value: 'Exam Fee', label: 'Exam Fee', desc: 'Examination & assessment charges' },
+];
 
 function MultiChipSelector({ 
-  options, values, onChange, label, placeholder 
+  options, values, onChange, label, placeholder, required
 }: { 
-  options: { value: string; label: string }[]; 
+  options: { value: string; label: string; desc?: string }[]; 
   values: string[]; 
   onChange: (v: string[]) => void; 
   label: string; 
   placeholder?: string;
+  required?: boolean;
 }) {
   const [customValue, setCustomValue] = useState('');
 
@@ -74,21 +82,24 @@ function MultiChipSelector({
 
   return (
     <div className="space-y-2">
-      <Label className="text-sm font-medium">{label}</Label>
-      <div className="flex flex-wrap gap-2">
+      <Label className="text-sm font-medium">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {options.map(opt => (
           <button
             key={opt.value}
             type="button"
             onClick={() => toggleOption(opt.value)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+              "flex flex-col items-start px-3 py-2 rounded-lg text-left border transition-colors",
               values.includes(opt.value)
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                ? "bg-primary/10 text-primary border-primary ring-1 ring-primary/30"
+                : "bg-muted/50 text-foreground border-border hover:bg-muted"
             )}
           >
-            {opt.label}
+            <span className="text-sm font-medium">{opt.label}</span>
+            {opt.desc && <span className="text-[11px] text-muted-foreground leading-tight">{opt.desc}</span>}
           </button>
         ))}
       </div>
@@ -310,25 +321,26 @@ function StudentFormContent({ formData, onInputChange, onSubmit, isPending, clas
       <div className="space-y-3 pt-3 border-t">
         <div className="flex items-center gap-2">
           <IndianRupee className="w-4 h-4 text-primary" />
-          <Label className="text-sm font-semibold text-primary">Initial Fee (Optional)</Label>
+          <Label className="text-sm font-semibold text-primary">Fee Assignment <span className="text-destructive">*</span></Label>
         </div>
         <MultiChipSelector
           label="Fee Type"
-          options={FEE_TYPES.map(f => ({ value: f, label: f }))}
+          required
+          options={FEE_TYPES}
           values={formData.fee_type ? formData.fee_type.split('||').filter(Boolean) : []}
           onChange={(v) => onInputChange('fee_type', v.join('||'))}
           placeholder="Or type custom fee type"
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Amount (₹)</Label>
+            <Label className="text-sm font-medium">Amount (₹) <span className="text-destructive">*</span></Label>
             <div className="relative">
               <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="number" min="0" value={formData.fee_amount} onChange={(e) => onInputChange('fee_amount', e.target.value)} placeholder="Enter amount" className="pl-10 h-11" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Due Date</Label>
+            <Label className="text-sm font-medium">Due Date <span className="text-destructive">*</span></Label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="date" value={formData.fee_due_date} onChange={(e) => onInputChange('fee_due_date', e.target.value)} className="pl-10 h-11" />
