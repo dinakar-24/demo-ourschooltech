@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [allSchools, setAllSchools] = useState<SchoolType[]>([]);
+
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -47,21 +47,8 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user, navigate, selectedRole]);
 
-  useEffect(() => {
-    const fetchSchools = async () => {
-      const { data, error } = await supabase.rpc('search_schools_public', { _query: '' });
-      if (!error && data) {
-        setAllSchools((data as any[]).map(s => ({
-          id: s.id, name: s.name, code: s.code,
-          logo: s.logo || undefined, address: '', city: s.city,
-        })));
-      }
-    };
-    fetchSchools();
-  }, []);
-
   const { schools: searchResults, isLoading: searchLoading } = useSchoolSearch(searchQuery);
-  const displaySchools = searchQuery.trim() ? searchResults : allSchools;
+  const displaySchools = searchQuery.trim() ? searchResults : [];
 
   const handleSelectSchool = (school: SchoolType) => {
     setSelectedSchool(school);
