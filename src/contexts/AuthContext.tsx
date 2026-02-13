@@ -285,7 +285,7 @@ export function useSchoolSearch(query: string): { schools: School[]; isLoading: 
       setIsLoading(false);
     };
 
-    const debounce = setTimeout(searchSchools, 300);
+    const debounce = setTimeout(searchSchools, 150);
     return () => clearTimeout(debounce);
   }, [query]);
 

@@ -29,11 +29,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Validate selected role matches actual role (skip for super_admin OTP flow)
       if (selectedRole && user.role !== selectedRole) {
         setError(`Your account is registered as "${user.role.replace('_', ' ')}", not "${selectedRole.replace('_', ' ')}". Please select the correct role.`);
         setLoading(false);
-        // Sign out the mismatched user
         supabase.auth.signOut();
         return;
       }
@@ -51,11 +49,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     const fetchSchools = async () => {
-      const { data, error } = await supabase.from('schools').select('*').limit(10);
+      const { data, error } = await supabase.rpc('search_schools_public', { _query: '' });
       if (!error && data) {
-        setAllSchools(data.map(s => ({
+        setAllSchools((data as any[]).map(s => ({
           id: s.id, name: s.name, code: s.code,
-          logo: s.logo || undefined, address: s.address, city: s.city,
+          logo: s.logo || undefined, address: '', city: s.city,
         })));
       }
     };
