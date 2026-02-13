@@ -72,24 +72,31 @@ const menuConfig = {
   ],
   teacher: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Students', path: '/students', icon: Users },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Homework', path: '/homework', icon: FileText },
     { label: 'Marks', path: '/marks', icon: BarChart3 },
-    { label: 'Profile', path: '/profile', icon: Users },
+    { label: 'Timetable', path: '/timetable', icon: Clock },
+    { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
   parent: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    { label: 'Homework', path: '/homework', icon: BookOpen },
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: Users },
   ],
   student: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Homework', path: '/homework', icon: FileText },
+    { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'Profile', path: '/profile', icon: Users },
+    { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
 };
 
