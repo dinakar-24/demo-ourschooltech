@@ -45,21 +45,21 @@ const navConfig = {
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Homework', path: '/homework', icon: FileText },
     { label: 'Marks', path: '/marks', icon: BarChart3 },
-    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
+    { label: 'More', path: '/announcements', icon: MoreHorizontal },
   ],
   parent: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
+    { label: 'More', path: '/announcements', icon: MoreHorizontal },
   ],
   student: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Homework', path: '/homework', icon: FileText },
     { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'Profile', path: '/profile', icon: MoreHorizontal },
+    { label: 'More', path: '/announcements', icon: MoreHorizontal },
   ],
 };
 
