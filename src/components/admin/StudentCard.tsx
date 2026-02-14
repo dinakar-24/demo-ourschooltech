@@ -21,6 +21,7 @@ interface Student {
   parent_phone: string | null;
   status: string | null;
   user_id: string | null;
+  avatar_url?: string | null;
   profiles?: { avatar_url: string | null } | null;
 }
 
@@ -30,7 +31,7 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, onDelete }: StudentCardProps) {
-  const avatarUrl = (student as any).profiles?.avatar_url;
+  const avatarUrl = student.avatar_url || (student as any).profiles?.avatar_url;
   const initials = student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
