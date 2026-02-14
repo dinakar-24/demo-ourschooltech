@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -14,6 +15,7 @@ export function LoginForm({ onSubmit, loading, error, resetKey }: LoginFormProps
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Reset fields when role changes
   useEffect(() => {
@@ -105,10 +107,12 @@ export function LoginForm({ onSubmit, loading, error, resetKey }: LoginFormProps
       </motion.button>
 
       <div className="text-center pt-1">
-        <button type="button" className="text-white/40 hover:text-white/70 text-sm transition-colors">
+        <button type="button" onClick={() => setShowForgotPassword(true)} className="text-white/40 hover:text-white/70 text-sm transition-colors">
           🔒 Forgot password?
         </button>
       </div>
+
+      <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
     </motion.form>
   );
 }
