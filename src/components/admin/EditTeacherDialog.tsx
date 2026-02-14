@@ -20,6 +20,7 @@ import { useUpdateTeacher, Teacher } from '@/hooks/useTeachers';
 import { useClasses } from '@/hooks/useClasses';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 
 const SUBJECTS = [
   'Mathematics', 'Science', 'English', 'Hindi', 'Social Studies',
@@ -52,6 +53,7 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
     subjects: [] as string[],
     classes: [] as string[],
     joining_date: '',
+    avatar_url: null as string | null,
   });
 
   const [subjectInput, setSubjectInput] = useState('');
@@ -66,6 +68,7 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
         subjects: teacher.subjects || [],
         classes: teacher.classes || [],
         joining_date: teacher.joining_date || '',
+        avatar_url: teacher.avatar_url || null,
       });
     }
   }, [teacher]);
@@ -110,13 +113,24 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
       subjects: form.subjects.length > 0 ? form.subjects : null,
       classes: form.classes.length > 0 ? form.classes : null,
       joining_date: form.joining_date || null,
-    });
+      avatar_url: form.avatar_url,
+    } as any);
 
     onOpenChange(false);
   };
 
   const formContent = (
     <div className="space-y-4">
+      {/* Profile Photo */}
+      <AvatarUpload
+        value={form.avatar_url}
+        onChange={(url) => setForm(f => ({ ...f, avatar_url: url }))}
+        fallback={form.full_name}
+        folder="teachers"
+        size="lg"
+        className="mb-2"
+      />
+
       {/* Name - full width */}
       <div className="space-y-2">
         <Label>Full Name *</Label>
