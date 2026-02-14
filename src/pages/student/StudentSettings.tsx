@@ -2,16 +2,27 @@ import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
 import { Bell, Moon, Globe } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from 'sonner';
 
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'हिन्दी (Hindi)' },
+  { code: 'te', label: 'తెలుగు (Telugu)' },
+  { code: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'ta', label: 'தமிழ் (Tamil)' },
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'ml', label: 'മലയാളം (Malayalam)' },
+];
+
 export default function StudentSettings() {
   const { isSubscribed, isSupported, subscribe, permission } = usePushNotifications();
-  const [darkMode, setDarkMode] = useState(() => {
-    return document.documentElement.classList.contains('dark');
-  });
+  const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+  const [language, setLanguage] = useState(() => localStorage.getItem('app-language') || 'en');
 
   const handleDarkModeToggle = (checked: boolean) => {
     setDarkMode(checked);
@@ -85,11 +96,27 @@ export default function StudentSettings() {
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <Globe className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium text-sm">Language</p>
-                  <p className="text-xs text-muted-foreground">English</p>
-                </div>
+                <p className="font-medium text-sm">Language</p>
               </div>
+              <Select
+                value={language}
+                onValueChange={(val) => {
+                  setLanguage(val);
+                  localStorage.setItem('app-language', val);
+                  toast.success(`Language set to ${LANGUAGES.find(l => l.code === val)?.label}`);
+                }}
+              >
+                <SelectTrigger className="w-[140px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
