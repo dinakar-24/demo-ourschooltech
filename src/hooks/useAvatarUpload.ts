@@ -2,6 +2,42 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+async function compressImage(file: File, maxSize = 200, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      // Resize to fit within maxSize x maxSize
+      if (width > height) {
+        if (width > maxSize) { height = Math.round((height * maxSize) / width); width = maxSize; }
+      } else {
+        if (height > maxSize) { width = Math.round((width * maxSize) / height); height = maxSize; }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Try WebP first, fallback to JPEG
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else canvas.toBlob(
+            (jpgBlob) => jpgBlob ? resolve(jpgBlob) : reject(new Error('Compression failed')),
+            'image/jpeg', quality
+          );
+        },
+        'image/webp', quality
+      );
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export function useAvatarUpload() {
   const [uploading, setUploading] = useState(false);
 
@@ -9,22 +45,24 @@ export function useAvatarUpload() {
     try {
       setUploading(true);
 
-      // Validate file
       if (!file.type.startsWith('image/')) {
         toast.error('Please upload an image file');
         return null;
       }
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image must be less than 2MB');
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be less than 5MB');
         return null;
       }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${folder}/${crypto.randomUUID()}.${fileExt}`;
+      // Compress & resize before uploading
+      const compressed = await compressImage(file, 200, 0.8);
+      const ext = compressed.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${folder}/${crypto.randomUUID()}.${ext}`;
 
-      const { error } = await supabase.storage.from('avatars').upload(fileName, file, {
+      const { error } = await supabase.storage.from('avatars').upload(fileName, compressed, {
         cacheControl: '3600',
         upsert: false,
+        contentType: compressed.type,
       });
 
       if (error) throw error;
@@ -42,7 +80,6 @@ export function useAvatarUpload() {
 
   const deleteAvatar = async (url: string): Promise<boolean> => {
     try {
-      // Extract path from URL
       const path = url.split('/avatars/')[1];
       if (!path) return false;
 
