@@ -2,12 +2,53 @@ import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Moon, Globe } from 'lucide-react';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { toast } from 'sonner';
 
 export default function StudentSettings() {
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { isSubscribed, isSupported, subscribe, permission } = usePushNotifications();
+  const [darkMode, setDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const handleDarkModeToggle = (checked: boolean) => {
+    setDarkMode(checked);
+    if (checked) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
+  // Restore theme on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark');
+      setDarkMode(true);
+    }
+  }, []);
+
+  const handleNotificationToggle = async (checked: boolean) => {
+    if (checked) {
+      if (!isSupported) {
+        toast.error('Push notifications are not supported on this device');
+        return;
+      }
+      const success = await subscribe();
+      if (success) {
+        toast.success('Push notifications enabled!');
+      } else if (permission === 'denied') {
+        toast.error('Notifications blocked. Please enable them in your browser settings.');
+      }
+    } else {
+      toast.info('To disable notifications, update your browser notification settings.');
+    }
+  };
 
   return (
     <MobileLayout title="App Settings" showBack>
@@ -23,8 +64,9 @@ export default function StudentSettings() {
               </div>
               <Switch
                 id="notifications"
-                checked={notifications}
-                onCheckedChange={setNotifications}
+                checked={isSubscribed}
+                onCheckedChange={handleNotificationToggle}
+                disabled={!isSupported}
               />
             </div>
             <div className="flex items-center justify-between p-4">
@@ -37,7 +79,7 @@ export default function StudentSettings() {
               <Switch
                 id="darkMode"
                 checked={darkMode}
-                onCheckedChange={setDarkMode}
+                onCheckedChange={handleDarkModeToggle}
               />
             </div>
             <div className="flex items-center justify-between p-4">
