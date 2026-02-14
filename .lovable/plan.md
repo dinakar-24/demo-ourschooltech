@@ -1,149 +1,118 @@
-# School ERP SaaS - Implementation Progress
 
-## ✅ Phase 1: Database Schema - COMPLETED
 
-### New Tables Created (Migration Applied)
-- [x] `academic_years` - Academic year tracking with start/end dates
-- [x] `classes` - Class management with display order
-- [x] `sections` - Section management with class teacher assignment
-- [x] `homework` - Homework assignments with attachments support
-- [x] `subscriptions` - School subscription management (Razorpay integration ready)
-- [x] `subscription_payments` - Payment tracking for subscriptions
-- [x] `fee_structures` - Fee templates per class/academic year
-- [x] `student_fee_overrides` - Individual concessions/scholarships
-- [x] `student_promotions` - Student promotion history
+# In-App Push Notifications System
 
-### Schema Updates Applied
-- [x] `schools` table: added razorpay_account_id, is_active, subscription_status, student_limit
-- [x] `students` table: added academic_year_id, status, roll_number
-- [x] All RLS policies applied for multi-tenant security
-- [x] Performance indexes created
+## What This Does
+Converts your app into an installable app (PWA) so parents, students, and teachers get **real push notifications on their phone's lock screen and notification panel** -- just like WhatsApp or any other app. Zero SMS/WhatsApp cost.
 
----
+## How It Works for Users
+1. Parent/student/teacher opens your app in their phone browser
+2. App prompts "Install Our School Tech" -- they tap Install
+3. App icon appears on their home screen (looks like a real app)
+4. When school admin marks attendance, posts homework, or sends announcement -- a notification pops up on their phone instantly, even if the app is closed
 
-## ✅ Phase 2-4: Core Functionality - COMPLETED
+## What Gets Built
 
-### React Hooks Created
-| Hook | Status | Purpose |
-|------|--------|---------|
-| `useClasses` | ✅ Done | Fetch classes with sections and student counts |
-| `useStudents` | ✅ Done | Fetch/manage students with filters and CRUD |
-| `useAcademicYears` | ✅ Done | Academic year management |
-| `useSubscription` | ✅ Done | Subscription status checking |
-| `useHomework` | ✅ Done | Homework management for teachers |
-| `useAttendance` | ✅ Done | Attendance tracking and marking |
-| `useParentData` | ✅ Done | Parent dashboard data (child info, stats) |
-| `useStudentData` | ✅ Done | Student dashboard data (profile, stats) |
+### Part 1: Make the App Installable (PWA Setup)
+- Install `vite-plugin-pwa` to generate service worker automatically
+- Add app manifest with your school logo, theme colors, app name
+- Add mobile meta tags (theme-color, apple-touch-icon) to index.html
+- App becomes installable from browser to home screen
 
-### Pages Connected to Database
-| Page | Status | Features |
-|------|--------|----------|
-| `StudentsPage` | ✅ Done | Real student data, CRUD, stats, search, filters |
-| `ClassesPage` | ✅ Done | Real classes/sections, create/delete, student counts |
-| `TeacherAttendance` | ✅ Done | Saves attendance to database, marks all, toggle status |
-| `TeacherHomework` | ✅ Done | Saves homework to database, lists assigned homework |
-| `ParentDashboard` | ✅ Done | Fetches linked child, attendance stats, pending fees |
-| `StudentDashboard` | ✅ Done | Fetches student profile, homework, attendance |
+### Part 2: Push Notification Backend
+- Create a `push_subscriptions` table to store each user's device push token
+- Create a `notifications` table to store all notifications (who, what, read/unread)
+- Create an edge function `send-push-notification` that sends Web Push notifications to subscribed devices
+- Uses free **VAPID keys** (no third-party service needed, completely free)
 
----
+### Part 3: Notification Permission and Subscription (Frontend)
+- On first login, prompt user to "Allow Notifications"
+- Save their push subscription to the database
+- Show a notification bell with unread count in the MobileLayout header
+- Notification center page showing all past notifications (read/unread)
 
-## ✅ Phase 5: Additional Pages - COMPLETED
+### Part 4: Auto-Trigger Notifications on Events
+Notifications are sent automatically when:
+- Student marked **absent** --> parent gets notified
+- New **homework** assigned --> student gets notified
+- **Fee due date** approaching --> parent gets notified
+- New **announcement** posted --> all targeted roles get notified
+- **Exam results** published --> student and parent get notified
 
-### Admin Pages Connected
-- [x] `FeesPage` - Connected to fees table with real stats, payment recording
-- [x] `AttendancePage` (Admin) - Connected to attendance table for overview
-- [x] `ExamsPage` - Connected to exams/results tables with CRUD operations
-- [x] `AnnouncementsPage` - Connected to announcements table with publish/draft
+These triggers are implemented via database triggers or within existing mutation hooks.
 
-### Parent Pages Connected
-- [x] `ParentFees` - Real fee data, payment history, pending amounts
+### Part 5: Install Prompt
+- Create an `/install` page with instructions for installing the app
+- Show a smart install banner on first few visits
 
 ---
 
-## 📋 Phase 6: Pending - Razorpay Integration
+## Technical Details
 
-### Prerequisites
-- [ ] Add RAZORPAY_KEY_ID secret
-- [ ] Add RAZORPAY_KEY_SECRET secret
-- [ ] Add RAZORPAY_WEBHOOK_SECRET secret
+### New Database Tables
 
-### Edge Functions
-- [ ] `create-razorpay-order` - Create subscription payment order
-- [ ] `verify-razorpay-payment` - Webhook handler for payment verification
+**`push_subscriptions`**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | References profiles |
+| school_id | uuid | References schools |
+| endpoint | text | Push API endpoint URL |
+| p256dh | text | Push encryption key |
+| auth | text | Push auth secret |
+| device_info | text | Browser/device identifier |
+| created_at | timestamp | When subscribed |
 
-### UI Components
-- [ ] School Admin subscription page (`/admin/subscription`)
-- [ ] Super Admin subscription management (`/super-admin/subscriptions`)
-- [ ] Subscription enforcement middleware
+**`notifications`**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Target user |
+| school_id | uuid | School context |
+| title | text | Notification title |
+| body | text | Notification message |
+| type | text | attendance, homework, fee, announcement, result |
+| reference_id | uuid | ID of related record |
+| is_read | boolean | Read status |
+| created_at | timestamp | When created |
 
----
+### New Files
+- `vite.config.ts` -- updated with VitePWA plugin
+- `index.html` -- updated with PWA meta tags
+- `public/manifest.json` -- auto-generated by VitePWA
+- `src/hooks/usePushNotifications.ts` -- subscription management hook
+- `src/hooks/useNotifications.ts` -- fetch/mark-read notifications
+- `src/components/notifications/NotificationBell.tsx` -- bell icon with unread badge
+- `src/components/notifications/NotificationCenter.tsx` -- full notification list page
+- `src/pages/student/StudentNotifications.tsx` -- student notification page
+- `src/pages/parent/ParentNotifications.tsx` -- parent notification page
+- `src/pages/teacher/TeacherNotifications.tsx` -- teacher notification page
+- `supabase/functions/send-push-notification/index.ts` -- edge function for Web Push
+- `src/lib/vapid.ts` -- VAPID public key config
 
-## ✅ Phase 7: Academic Year & Promotion - PARTIALLY COMPLETE
+### Modified Files
+- `src/components/layout/MobileLayout.tsx` -- add notification bell with live unread count
+- `src/App.tsx` -- add notification routes, register service worker
+- `src/contexts/AuthContext.tsx` -- trigger push subscription after login
+- Existing hooks (`useAnnouncements`, attendance marking, homework creation) -- add notification triggers
 
-- [x] Academic year management UI for School Admin
-- [ ] Student promotion interface (bulk operations)
-- [ ] Promotion options: Promote, Detain, Graduate, Deactivate
-- [ ] Promotion history tracking
+### Edge Function: `send-push-notification`
+- Receives: `user_ids[]`, `title`, `body`, `type`, `reference_id`
+- Looks up push subscriptions for those users
+- Sends Web Push using VAPID keys (free, no API costs)
+- Stores notification record in `notifications` table
 
----
+### VAPID Keys
+- Generated once and stored as edge function secrets
+- VAPID_PUBLIC_KEY (also used in frontend)
+- VAPID_PRIVATE_KEY (edge function only)
+- No third-party service needed -- Web Push API is completely free
 
-## 📋 Phase 8: Pending - Fee Management Enhancements
+### RLS Policies
+- `push_subscriptions`: Users can only manage their own subscriptions
+- `notifications`: Users can only read/update their own notifications
+- Edge function uses service role key to insert notifications for any user
 
-- [ ] Fee structure management UI
-- [ ] Student fee overrides UI (concessions/scholarships)
-- [ ] Fee concession approval workflow
-- [ ] Audit trail for fee changes
+### Realtime
+- Enable realtime on `notifications` table so new notifications appear instantly in the bell badge without page refresh
 
----
-
-## 📋 Phase 9: Pending - Super Admin SaaS Features
-
-- [x] Subscriptions management page - View all school subscriptions
-- [ ] Revenue dashboard with Recharts
-- [ ] School activation/suspension controls
-- [ ] "Login as School Admin" impersonation
-- [ ] Enhanced audit logs view
-
----
-
-## Business Rules Status
-
-| Rule | Status | Notes |
-|------|--------|-------|
-| ₹250/student/year | Schema Ready | `subscriptions.price_per_student = 250` |
-| Yearly billing only | Schema Ready | `subscriptions.plan_type = 'yearly'` |
-| Direct to school bank | Pending | Razorpay Route sub-accounts |
-| No parent payments | ✅ Implemented | No payment UI for parents |
-| Read-only on expiry | Pending | Enforcement middleware needed |
-| Academic year tracking | Schema Ready | UI pending |
-| Fee audit trail | Schema Ready | UI pending |
-
----
-
-## Files Created in This Session
-
-### New Hooks
-- `src/hooks/useClasses.ts`
-- `src/hooks/useStudents.ts`
-- `src/hooks/useAcademicYears.ts`
-- `src/hooks/useSubscription.ts`
-- `src/hooks/useHomework.ts`
-- `src/hooks/useAttendance.ts`
-- `src/hooks/useParentData.ts`
-- `src/hooks/useStudentData.ts`
-
-### Updated Pages
-- `src/pages/admin/StudentsPage.tsx` - Connected to database
-- `src/pages/admin/ClassesPage.tsx` - Connected to database
-- `src/pages/teacher/TeacherAttendance.tsx` - Saves to database
-- `src/pages/teacher/TeacherHomework.tsx` - Saves to database
-- `src/pages/parent/ParentDashboard.tsx` - Fetches real data
-- `src/pages/student/StudentDashboard.tsx` - Fetches real data
-
----
-
-## Security Notes
-- All new tables have RLS policies enforced
-- School data isolation via school_id in all queries
-- Role-based access control working for all 5 roles
-- Razorpay webhook signature verification (pending implementation)
