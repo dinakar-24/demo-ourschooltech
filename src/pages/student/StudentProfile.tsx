@@ -39,8 +39,6 @@ export default function StudentProfile() {
   const menuItems = [
     { label: 'Notification Settings', icon: Bell, href: '/student/notifications' },
     { label: 'My Timetable', icon: Calendar, href: '/student/timetable' },
-    { label: 'My Subjects', icon: BookOpen, href: '/student/subjects' },
-    { label: 'App Settings', icon: Settings, href: '/student/settings' },
   ];
 
   return (
