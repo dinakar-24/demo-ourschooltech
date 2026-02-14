@@ -59,8 +59,9 @@ import { useGenerateReceipt } from '@/hooks/useReceiptGeneration';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFeeTypes } from '@/hooks/useSections';
 
-const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee', 'Library Fee', 'Activity Fee', 'Other'];
+const DEFAULT_FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee', 'Library Fee', 'Activity Fee', 'Other'];
 
 export default function FeesPage() {
   const isMobile = useIsMobile();
@@ -109,6 +110,11 @@ export default function FeesPage() {
   const recordPayment = useRecordPayment();
   const createFee = useCreateFee();
   const generateReceipt = useGenerateReceipt();
+  const { data: dynamicFeeTypes } = useFeeTypes();
+  
+  // Merge default + dynamic fee types, deduplicated
+  const allFeeTypes = [...new Set([...DEFAULT_FEE_TYPES, ...(dynamicFeeTypes || [])])].sort();
+  const feeTypes = ['All Types', ...allFeeTypes];
 
   const handleGenerateReceipt = async (fee: any) => {
     if (fee.receipt_number) {

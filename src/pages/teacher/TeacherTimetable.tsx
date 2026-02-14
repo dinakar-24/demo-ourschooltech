@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { Clock, Download, ZoomIn, X, ImageOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useClasses } from '@/hooks/useClasses';
+import { useSections } from '@/hooks/useSections';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,10 +31,19 @@ export default function TeacherTimetable() {
   const teacherClasses = classNames; // show all available classes
 
   const [selectedClass, setSelectedClass] = useState(teacherClasses[0] || '');
-  const [selectedSection, setSelectedSection] = useState('A');
+  const [selectedSection, setSelectedSection] = useState('');
 
   const selectedClassData = classes?.find(c => c.name === selectedClass);
-  const sections = selectedClassData?.sections.map(s => s.name) || ['A'];
+  const { data: dynamicSections } = useSections(selectedClass);
+  const classSections = selectedClassData?.sections.map(s => s.name) || [];
+  const sections = classSections.length > 0 ? classSections : (dynamicSections || ['A']);
+
+  // Auto-select first section
+  useEffect(() => {
+    if (sections.length > 0 && !sections.includes(selectedSection)) {
+      setSelectedSection(sections[0]);
+    }
+  }, [selectedClass, sections]);
 
   const { data: timetableImage, isLoading } = useQuery({
     queryKey: ['timetable-image', schoolId, selectedClass, selectedSection],
@@ -75,7 +85,7 @@ export default function TeacherTimetable() {
       <div className="p-4 space-y-4">
         {/* Class selector */}
         <div className="flex gap-2">
-          <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection('A'); }}>
+          <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); }}>
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="Select Class" />
             </SelectTrigger>
@@ -107,7 +117,7 @@ export default function TeacherTimetable() {
                   key={cls}
                   variant={cls === selectedClass ? 'default' : 'outline'}
                   className="cursor-pointer"
-                  onClick={() => { setSelectedClass(cls); setSelectedSection('A'); }}
+                  onClick={() => { setSelectedClass(cls); }}
                 >
                   {cls}
                 </Badge>

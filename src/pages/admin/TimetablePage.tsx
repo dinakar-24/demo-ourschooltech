@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Clock, Upload, Trash2, ImageIcon, ZoomIn, X, Loader2 } from 'lucide-react';
 import { useClasses } from '@/hooks/useClasses';
+import { useSections } from '@/hooks/useSections';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,12 +25,21 @@ export default function TimetablePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSection, setSelectedSection] = useState('A');
+  const [selectedSection, setSelectedSection] = useState('');
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   const classNames = classes?.map(c => c.name) || [];
   const selectedClassData = classes?.find(c => c.name === selectedClass);
-  const sections = selectedClassData?.sections.map(s => s.name) || ['A'];
+  const { data: dynamicSections } = useSections(selectedClass);
+  const classSections = selectedClassData?.sections.map(s => s.name) || [];
+  const sections = classSections.length > 0 ? classSections : (dynamicSections || ['A']);
+
+  // Auto-select first section when class changes
+  useEffect(() => {
+    if (sections.length > 0 && !sections.includes(selectedSection)) {
+      setSelectedSection(sections[0]);
+    }
+  }, [selectedClass, sections]);
 
   // Fetch timetable image for selected class/section
   const { data: timetableImage, isLoading: loadingImage } = useQuery({
@@ -147,7 +157,7 @@ export default function TimetablePage() {
       <div className="space-y-5 animate-fade-up pb-6">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection('A'); }}>
+          <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Class" />
             </SelectTrigger>
