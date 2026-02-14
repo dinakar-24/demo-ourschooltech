@@ -13,20 +13,22 @@ import {
 } from 'lucide-react';
 import { useStudentProfile, useStudentHomework } from '@/hooks/useStudentData';
 import { format, isPast, isToday } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentHomework() {
+  const { t } = useTranslation();
   const { data: profile } = useStudentProfile();
   const { data: homework, isLoading } = useStudentHomework(profile?.class_name, profile?.section);
 
   const getStatusBadge = (dueDate: string) => {
     const due = new Date(dueDate);
     if (isToday(due)) {
-      return <Badge className="bg-warning text-warning-foreground">Due Today</Badge>;
+      return <Badge className="bg-warning text-warning-foreground">{t('homeworkPage.dueToday')}</Badge>;
     }
     if (isPast(due)) {
-      return <Badge variant="destructive">Overdue</Badge>;
+      return <Badge variant="destructive">{t('homeworkPage.overdue')}</Badge>;
     }
-    return <Badge className="bg-primary text-primary-foreground">Upcoming</Badge>;
+    return <Badge className="bg-primary text-primary-foreground">{t('homeworkPage.upcoming')}</Badge>;
   };
 
   const overdueCount = homework?.filter(h => isPast(new Date(h.due_date)) && !isToday(new Date(h.due_date))).length ?? 0;
@@ -34,7 +36,7 @@ export default function StudentHomework() {
   const upcomingCount = homework?.filter(h => !isPast(new Date(h.due_date)) && !isToday(new Date(h.due_date))).length ?? 0;
 
   return (
-    <MobileLayout title="Homework" showBack>
+    <MobileLayout title={t('homeworkPage.title')} showBack>
       <div className="p-4 space-y-4">
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">
@@ -42,21 +44,21 @@ export default function StudentHomework() {
             <CardContent className="p-3 text-center">
               <AlertCircle className="w-5 h-5 text-destructive mx-auto mb-1" />
               <p className="text-lg font-bold">{overdueCount}</p>
-              <p className="text-xs text-muted-foreground">Overdue</p>
+              <p className="text-xs text-muted-foreground">{t('homeworkPage.overdue')}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
               <Clock className="w-5 h-5 text-warning mx-auto mb-1" />
               <p className="text-lg font-bold">{dueTodayCount}</p>
-              <p className="text-xs text-muted-foreground">Due Today</p>
+              <p className="text-xs text-muted-foreground">{t('homeworkPage.dueToday')}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
               <CheckCircle className="w-5 h-5 text-primary mx-auto mb-1" />
               <p className="text-lg font-bold">{upcomingCount}</p>
-              <p className="text-xs text-muted-foreground">Upcoming</p>
+              <p className="text-xs text-muted-foreground">{t('homeworkPage.upcoming')}</p>
             </CardContent>
           </Card>
         </div>
@@ -78,8 +80,8 @@ export default function StudentHomework() {
           <Card>
             <CardContent className="p-8 text-center">
               <BookX className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium text-muted-foreground">No homework assigned</p>
-              <p className="text-sm text-muted-foreground mt-1">Check back later for new assignments</p>
+              <p className="font-medium text-muted-foreground">{t('homeworkPage.noHomework')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('homeworkPage.checkBackLater')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -107,7 +109,6 @@ export default function StudentHomework() {
                       <p className="text-sm text-muted-foreground mb-3">{hw.description}</p>
                     )}
 
-                    {/* Show attached photos if any */}
                     {hw.attachments && hw.attachments.length > 0 && (
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         {hw.attachments.map((url, i) => (
@@ -121,12 +122,12 @@ export default function StudentHomework() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
-                        Due: {format(new Date(hw.due_date), 'dd MMM yyyy')}
+                        {t('homeworkPage.due')} {format(new Date(hw.due_date), 'dd MMM yyyy')}
                       </div>
                       {hw.attachments && hw.attachments.length > 0 && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <ImageIcon className="w-3 h-3" />
-                          {hw.attachments.length} photo{hw.attachments.length > 1 ? 's' : ''}
+                          {hw.attachments.length} {hw.attachments.length > 1 ? t('homeworkPage.photos') : t('homeworkPage.photo')}
                         </div>
                       )}
                     </div>

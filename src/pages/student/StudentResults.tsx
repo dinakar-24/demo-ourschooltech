@@ -1,19 +1,19 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStudentProfile, useStudentResults } from '@/hooks/useStudentData';
 import { 
   Award, 
   FileText,
-  Star,
   Trophy,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentResults() {
+  const { t } = useTranslation();
   const { data: student } = useStudentProfile();
   const { data: results, isLoading } = useStudentResults(student?.id);
 
@@ -35,25 +35,13 @@ export default function StudentResults() {
     return 'F';
   };
 
-  // Group results by exam name
   const examGroups = results?.reduce((acc, r) => {
     const examName = r.exam?.name || 'Unknown Exam';
     if (!acc[examName]) {
-      acc[examName] = {
-        name: examName,
-        date: r.exam?.exam_date,
-        subjects: [],
-        totalMarks: 0,
-        totalMax: 0,
-      };
+      acc[examName] = { name: examName, date: r.exam?.exam_date, subjects: [], totalMarks: 0, totalMax: 0 };
     }
     const max = r.exam?.max_marks || 100;
-    acc[examName].subjects.push({
-      name: r.exam?.subject || 'Unknown',
-      marks: r.marks_obtained,
-      total: max,
-      grade: r.grade || getGrade(r.marks_obtained, max),
-    });
+    acc[examName].subjects.push({ name: r.exam?.subject || 'Unknown', marks: r.marks_obtained, total: max, grade: r.grade || getGrade(r.marks_obtained, max) });
     acc[examName].totalMarks += r.marks_obtained;
     acc[examName].totalMax += max;
     return acc;
@@ -65,7 +53,7 @@ export default function StudentResults() {
   const latestGrade = latestExam ? getGrade(latestExam.totalMarks, latestExam.totalMax) : '-';
 
   return (
-    <MobileLayout title="My Results" showBack>
+    <MobileLayout title={t('resultsPage.title')} showBack>
       <div className="p-4 space-y-4">
         {isLoading ? (
           <>
@@ -75,14 +63,11 @@ export default function StudentResults() {
         ) : !results?.length ? (
           <Card className="p-10 text-center">
             <Trophy className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2 text-foreground">No Results Yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Your exam results will appear here once they are published.
-            </p>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">{t('resultsPage.noResults')}</h3>
+            <p className="text-sm text-muted-foreground">{t('resultsPage.resultsWillAppear')}</p>
           </Card>
         ) : (
           <>
-            {/* Latest Exam Summary */}
             {latestExam && (
               <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
                 <CardContent className="p-5">
@@ -92,7 +77,7 @@ export default function StudentResults() {
                       <p className="text-4xl font-bold">{latestPercentage}%</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge className="bg-white/20 text-white">
-                          Grade: {latestGrade}
+                          {t('resultsPage.grade')}: {latestGrade}
                         </Badge>
                         {latestExam.date && (
                           <span className="text-sm text-primary-foreground/70">
@@ -109,11 +94,10 @@ export default function StudentResults() {
               </Card>
             )}
 
-            {/* Subject-wise Marks for Latest Exam */}
             {latestExam && (
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Subject-wise Marks
+                  {t('resultsPage.subjectWiseMarks')}
                 </h3>
                 <Card>
                   <CardContent className="p-4 space-y-4">
@@ -130,10 +114,7 @@ export default function StudentResults() {
                             </Badge>
                           </div>
                         </div>
-                        <Progress 
-                          value={(subject.marks / subject.total) * 100} 
-                          className="h-2"
-                        />
+                        <Progress value={(subject.marks / subject.total) * 100} className="h-2" />
                       </div>
                     ))}
                   </CardContent>
@@ -141,11 +122,10 @@ export default function StudentResults() {
               </div>
             )}
 
-            {/* Previous Exams */}
             {examList.length > 1 && (
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Previous Exams
+                  {t('resultsPage.previousExams')}
                 </h3>
                 <div className="space-y-2">
                   {examList.slice(1).map((exam, i) => {

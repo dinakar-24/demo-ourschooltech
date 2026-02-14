@@ -15,15 +15,15 @@ import { useStudentProfile, useStudentAttendanceStats, useStudentHomework } from
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { data: student, isLoading: studentLoading } = useStudentProfile();
   const { data: attendanceStats, isLoading: attendanceLoading } = useStudentAttendanceStats(student?.id);
   const { data: homework, isLoading: homeworkLoading } = useStudentHomework(student?.class_name, student?.section);
   const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({ status: 'active', pageSize: 3 });
-
-  const isLoading = studentLoading;
 
   const studentInfo = student ? {
     name: student.full_name,
@@ -31,7 +31,7 @@ export default function StudentDashboard() {
     section: student.section,
     rollNo: student.roll_number || '-',
   } : {
-    name: user?.name || 'Student',
+    name: user?.name || t('common.student'),
     class: 'N/A',
     section: 'N/A',
     rollNo: '-',
@@ -66,7 +66,7 @@ export default function StudentDashboard() {
                   )}
                 </div>
                 <div>
-                  <p className="text-primary-foreground/70 text-sm">Hello,</p>
+                  <p className="text-primary-foreground/70 text-sm">{t('dashboard.hello')}</p>
                   <h2 className="text-xl font-bold">{studentInfo.name}</h2>
                   <p className="text-sm text-primary-foreground/80">
                     {studentInfo.class} - {studentInfo.section}
@@ -82,10 +82,8 @@ export default function StudentDashboard() {
             <CardContent className="p-4 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-warning" />
               <div>
-                <p className="font-medium text-foreground">Profile Not Linked</p>
-                <p className="text-sm text-muted-foreground">
-                  Contact your school admin to link your student profile.
-                </p>
+                <p className="font-medium text-foreground">{t('dashboard.profileNotLinked')}</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.contactAdmin')}</p>
               </div>
             </CardContent>
           </Card>
@@ -102,7 +100,7 @@ export default function StudentDashboard() {
                 ) : (
                   <p className="text-lg font-bold">{attendance}%</p>
                 )}
-                <p className="text-xs text-muted-foreground">Attendance</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.attendance')}</p>
               </CardContent>
             </Card>
           </Link>
@@ -116,7 +114,7 @@ export default function StudentDashboard() {
                 ) : (
                   <p className="text-lg font-bold">{pendingHomework}</p>
                 )}
-                <p className="text-xs text-muted-foreground">Pending HW</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.pendingHW')}</p>
               </CardContent>
             </Card>
           </Link>
@@ -126,7 +124,7 @@ export default function StudentDashboard() {
               <CardContent className="p-3 text-center">
                 <Award className="w-6 h-6 text-primary mx-auto mb-1" />
                 <p className="text-lg font-bold">A+</p>
-                <p className="text-xs text-muted-foreground">Last Grade</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.lastGrade')}</p>
               </CardContent>
             </Card>
           </Link>
@@ -136,7 +134,7 @@ export default function StudentDashboard() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Timetable
+              {t('dashboard.timetable')}
             </h3>
           </div>
           <Link to="/student/timetable">
@@ -146,9 +144,9 @@ export default function StudentDashboard() {
                   <Calendar className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-sm">View Your Timetable</p>
+                  <p className="font-medium text-sm">{t('dashboard.viewTimetable')}</p>
                   <p className="text-xs text-muted-foreground">
-                    {student ? `${student.class_name} - ${student.section}` : 'View class schedule'}
+                    {student ? `${student.class_name} - ${student.section}` : t('dashboard.viewClassSchedule')}
                   </p>
                 </div>
                 <ImageIcon className="w-4 h-4 text-muted-foreground" />
@@ -161,10 +159,10 @@ export default function StudentDashboard() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Pending Homework
+              {t('dashboard.pendingHomework')}
             </h3>
             <Link to="/student/homework" className="text-sm text-primary font-medium">
-              View All
+              {t('common.viewAll')}
             </Link>
           </div>
           <div className="space-y-2">
@@ -180,7 +178,7 @@ export default function StudentDashboard() {
             ) : homework?.length === 0 ? (
               <Card>
                 <CardContent className="p-4 text-center text-muted-foreground">
-                  No pending homework! 🎉
+                  {t('dashboard.noPendingHomework')}
                 </CardContent>
               </Card>
             ) : (
@@ -197,7 +195,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <span className="text-xs text-warning font-medium">
-                      Due {format(new Date(hw.due_date), 'dd MMM')}
+                      {t('dashboard.due')} {format(new Date(hw.due_date), 'dd MMM')}
                     </span>
                   </CardContent>
                 </Card>
@@ -206,14 +204,14 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Announcements - Real Data */}
+        {/* Announcements */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Announcements
+              {t('dashboard.announcements')}
             </h3>
             <Link to="/student/announcements" className="text-sm text-primary font-medium">
-              View All
+              {t('common.viewAll')}
             </Link>
           </div>
           <div className="space-y-2">
@@ -229,7 +227,7 @@ export default function StudentDashboard() {
             ) : announcements.length === 0 ? (
               <Card>
                 <CardContent className="p-4 text-center text-muted-foreground">
-                  No announcements yet
+                  {t('dashboard.noAnnouncements')}
                 </CardContent>
               </Card>
             ) : (
