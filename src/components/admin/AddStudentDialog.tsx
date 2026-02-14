@@ -440,13 +440,13 @@ export function AddStudentDialog({ classes, formData, feeEntries, onFeeEntriesCh
     return (
       <Drawer open={isOpen} onOpenChange={onOpenChange}>
         <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
-        <DrawerContent className="max-h-[90dvh]">
+        <DrawerContent className="max-h-[90dvh] bg-background">
           <DrawerHeader className="sr-only">
             <DrawerTitle>Add New Student</DrawerTitle>
             <DrawerDescription>Fill in the student details</DrawerDescription>
           </DrawerHeader>
           {headerContent}
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto flex-1 min-h-0 bg-background">
             <StudentFormContent {...formProps} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>
