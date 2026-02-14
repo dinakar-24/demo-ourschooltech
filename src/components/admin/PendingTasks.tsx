@@ -18,12 +18,17 @@ export function PendingTasks() {
   }, [schoolId]);
 
   const fetchData = async () => {
-    const [feesRes] = await Promise.all([
-      supabase.from('fees').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('status', 'pending'),
-    ]);
+    // Count distinct students with pending fees, not total fee records
+    const { data: pendingStudents } = await supabase
+      .from('fees')
+      .select('student_id')
+      .eq('school_id', schoolId!)
+      .eq('status', 'pending');
+    
+    const uniqueStudents = new Set(pendingStudents?.map(f => f.student_id) || []);
     
     setData({
-      pendingFees: feesRes.count || 0,
+      pendingFees: uniqueStudents.size,
       pendingExams: 0,
     });
   };
