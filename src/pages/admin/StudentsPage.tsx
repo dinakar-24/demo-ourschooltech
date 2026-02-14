@@ -79,6 +79,8 @@ export default function StudentsPage() {
   const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>([]);
   const [credentialsStudentName, setCredentialsStudentName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const pagination = usePagination(25);
   
   // Reset to page 1 when filters change
@@ -203,6 +205,26 @@ export default function StudentsPage() {
     setDeletingStudent(null);
   };
 
+  const handleDeleteAll = async () => {
+    if (!schoolId) return;
+    setIsDeletingAll(true);
+    try {
+      const response = await supabase.functions.invoke('delete-all-students', {
+        body: { school_id: schoolId },
+      });
+      if (response.error) throw new Error(response.error.message);
+      if (!response.data?.success) throw new Error(response.data?.error || 'Failed');
+      toast.success(`Deleted ${response.data.deleted_count} students`);
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete all students');
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllConfirm(false);
+    }
+  };
+
   return (
     <AdminLayout title="Students">
       <div className="space-y-6 animate-fade-up">
@@ -283,7 +305,7 @@ export default function StudentsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm">
               <Upload className="w-4 h-4 mr-2" />
               Import
@@ -292,6 +314,12 @@ export default function StudentsPage() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
+            {(stats?.total || 0) > 0 && (
+              <Button variant="destructive" size="sm" onClick={() => setShowDeleteAllConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete All
+              </Button>
+            )}
             <AddStudentDialog
               classes={classes}
               formData={formData}
@@ -444,6 +472,28 @@ export default function StudentsPage() {
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete All Students</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>ALL {stats?.total || 0} students</strong> from this school? This will permanently remove all student records, their auth accounts, attendance, fees, and results. <span className="text-destructive font-semibold">This action cannot be undone.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAll}
+                disabled={isDeletingAll}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeletingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                {isDeletingAll ? 'Deleting...' : 'Delete All Students'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
