@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { getSupabaseRange } from './usePagination';
+import { sendNotification } from '@/lib/send-notification';
 
 export interface FeeRecord {
   id: string;
@@ -191,9 +192,51 @@ export function useCreateFee() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['fees'] });
       queryClient.invalidateQueries({ queryKey: ['fee-stats'] });
+
+      // Notify student and parent about new fee due
+      if (schoolId && data) {
+        supabase
+          .from('students')
+          .select('user_id, parent_email, full_name')
+          .eq('id', data.student_id)
+          .single()
+          .then(({ data: student }) => {
+            if (!student) return;
+
+            const notifyIds: string[] = [];
+            if (student.user_id) notifyIds.push(student.user_id);
+
+            const sendToStudent = () => {
+              if (notifyIds.length > 0) {
+                sendNotification({
+                  userIds: notifyIds,
+                  title: 'Fee Due',
+                  body: `₹${data.amount} ${data.fee_type} fee due by ${data.due_date}`,
+                  type: 'fee',
+                  referenceId: data.id,
+                  schoolId,
+                });
+              }
+            };
+
+            if (student.parent_email) {
+              supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', student.parent_email)
+                .maybeSingle()
+                .then(({ data: parent }) => {
+                  if (parent) notifyIds.push(parent.id);
+                  sendToStudent();
+                });
+            } else {
+              sendToStudent();
+            }
+          });
+      }
     },
   });
 }
