@@ -235,11 +235,39 @@ export function useUpdateTeacher() {
         .single();
 
       if (error) throw error;
+
+      // Sync class_teacher_id on sections when classes are updated
+      if (updates.classes && data.school_id) {
+        const assignedClasses = updates.classes || [];
+        // For each assigned "ClassName-Section", set this teacher as class_teacher
+        for (const cls of assignedClasses) {
+          const parts = cls.split('-');
+          if (parts.length === 2) {
+            const [className, sectionName] = parts;
+            // Find the class id
+            const { data: classRow } = await supabase
+              .from('classes')
+              .select('id')
+              .eq('school_id', data.school_id)
+              .eq('name', className)
+              .maybeSingle();
+            if (classRow) {
+              await supabase
+                .from('sections')
+                .update({ class_teacher_id: id })
+                .eq('class_id', classRow.id)
+                .eq('name', sectionName);
+            }
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
       toast.success('Teacher updated successfully');
     },
     onError: (error: Error) => {
