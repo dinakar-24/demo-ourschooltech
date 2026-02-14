@@ -7,6 +7,11 @@ const en = {
     results: 'Results',
     profile: 'Profile',
     more: 'More',
+    marks: 'Marks',
+    students: 'Students',
+    timetable: 'Timetable',
+    announcements: 'Announcements',
+    fees: 'Fees',
   },
   // Common
   common: {
@@ -16,9 +21,37 @@ const en = {
     loading: 'Loading...',
     signOut: 'Sign Out',
     student: 'Student',
+    teacher: 'Teacher',
+    parent: 'Parent',
+    admin: 'Admin',
     noData: 'No data available',
+    present: 'Present',
+    absent: 'Absent',
+    late: 'Late',
+    search: 'Search',
+    cancel: 'Cancel',
+    post: 'Post',
+    view: 'View',
+    edit: 'Edit',
+    download: 'Download',
+    active: 'Active',
+    completed: 'Completed',
+    pending: 'Pending',
+    overdue: 'Overdue',
+    today: 'Today',
+    section: 'Section',
+    class: 'Class',
+    subject: 'Subject',
+    rollNo: 'Roll No.',
+    grade: 'Grade',
   },
-  // Dashboard
+  // Greetings
+  greetings: {
+    morning: 'Good morning',
+    afternoon: 'Good afternoon',
+    evening: 'Good evening',
+  },
+  // Student Dashboard
   dashboard: {
     hello: 'Hello,',
     attendance: 'Attendance',
@@ -35,12 +68,12 @@ const en = {
     contactAdmin: 'Contact your school admin to link your student profile.',
     due: 'Due',
   },
-  // Attendance
+  // Student Attendance
   attendancePage: {
     title: 'My Attendance',
     overallAttendance: 'Overall Attendance',
   },
-  // Homework
+  // Student Homework
   homeworkPage: {
     title: 'Homework',
     overdue: 'Overdue',
@@ -52,7 +85,7 @@ const en = {
     photo: 'photo',
     photos: 'photos',
   },
-  // Results
+  // Student Results
   resultsPage: {
     title: 'My Results',
     noResults: 'No Results Yet',
@@ -70,12 +103,18 @@ const en = {
     timetableNotUploaded: "Your school admin hasn't uploaded the timetable for {{className}} yet.",
     tapToFullscreen: 'Tap image to view fullscreen',
     updated: 'Updated',
+    selectClass: 'Select a Class',
+    chooseClassToView: 'Choose a class above to view its timetable.',
+    myClasses: 'My Classes',
+    notUploadedYet: "The timetable for {{className}} - Section {{section}} hasn't been uploaded yet.",
   },
   // Announcements
   announcementsPage: {
     title: 'Announcements',
     noAnnouncements: 'No Announcements',
     allCaughtUp: "You're all caught up!",
+    nothingNew: 'Nothing new right now',
+    nothingNewMoment: 'Nothing new at the moment',
   },
   // Subjects
   subjectsPage: {
@@ -96,7 +135,7 @@ const en = {
     disableNotifications: 'To disable notifications, update your browser notification settings.',
     languageSet: 'Language set to {{language}}',
   },
-  // Profile
+  // Student Profile
   profilePage: {
     title: 'Profile',
     notificationSettings: 'Notification Settings',
@@ -108,6 +147,171 @@ const en = {
     parent: 'Parent:',
     bloodGroup: 'Blood Group',
     gender: 'Gender',
+  },
+
+  // ====== TEACHER ======
+  teacher: {
+    dashboard: {
+      myStudents: 'My Students',
+      homework: 'Homework',
+      posted: 'posted',
+      attendance: 'Attendance',
+      pending: 'Pending',
+      tasks: 'tasks',
+      quickActions: 'Quick Actions',
+      pendingTasks: 'Pending Tasks',
+      todaysSchedule: "Today's Schedule",
+      markAttendance: 'Mark attendance for {{className}}',
+      reviewSubmissions: 'Review {{count}} homework submissions',
+      enterMarks: 'Enter marks for {{className}} exam',
+      classes: 'Classes',
+    },
+    attendance: {
+      title: 'Mark Attendance',
+      selectClass: 'Select class',
+      selectSection: 'Select Class & Section',
+      chooseToStart: 'Choose above to start marking',
+      noStudents: 'No Students Found',
+      noActiveStudents: 'No active students in this class.',
+      alreadyMarked: 'Already marked. You can update it.',
+      saveAttendance: 'Save Attendance',
+    },
+    homework: {
+      title: 'Homework',
+      postNew: 'Post New Homework',
+      postHomework: 'Post Homework',
+      noHomework: 'No Homework Posted',
+      postFirst: 'Post your first homework assignment.',
+      classRequired: 'Class *',
+      sectionOptional: 'Section',
+      allSections: 'All sections',
+      subjectRequired: 'Subject *',
+      selectSubject: 'Select subject',
+      titleRequired: 'Title *',
+      titlePlaceholder: 'e.g., Chapter 5 Exercises',
+      description: 'Description',
+      descriptionPlaceholder: 'Describe the homework...',
+      dueDateRequired: 'Due Date *',
+      photosMax: 'Photos (Max 5)',
+      addPhotos: 'Add Photos',
+      maxPhotos: 'Maximum 5 photos allowed',
+      tooLarge: '{{name}} is too large (max 5MB)',
+      posted: 'Posted',
+    },
+    marks: {
+      title: 'Enter Marks',
+      filterByClass: 'Filter by class',
+      allClasses: 'All Classes',
+      selectExam: 'Select exam',
+      selectAnExam: 'Select an Exam',
+      chooseExam: 'Choose an exam above to start entering marks',
+      noStudents: 'No Students Found',
+      noActiveIn: 'No active students in {{className}}.',
+      alreadyEntered: 'Marks already entered. You can update them.',
+      average: 'Average',
+      pass: 'Pass',
+      fail: 'Fail',
+      highest: 'Highest',
+      saveMarks: 'Save Marks',
+      savedSuccess: 'Marks saved successfully!',
+    },
+    students: {
+      title: 'Students',
+      searchStudents: 'Search students...',
+      noStudents: 'No Students Found',
+      selectOrAdjust: 'Select a class or adjust filters',
+    },
+    timetable: {
+      title: 'Timetable',
+      selectClass: 'Select Class',
+      selectSection: 'Section',
+    },
+    announcements: {
+      title: 'Announcements',
+      noAnnouncements: 'No Announcements',
+      nothingNew: 'Nothing new right now',
+    },
+    profile: {
+      title: 'Profile',
+      notificationSettings: 'Notification Settings',
+      mySchedule: 'My Schedule',
+      mySubjects: 'My Subjects',
+      appSettings: 'App Settings',
+      students: 'Students',
+      classes: 'Classes',
+      subjects: 'Subjects',
+    },
+  },
+
+  // ====== PARENT ======
+  parent: {
+    dashboard: {
+      attendance: 'Attendance',
+      pendingFees: 'Pending Fees',
+      results: 'Results',
+      notices: 'Notices',
+      noChildLinked: 'No Child Linked',
+      contactAdmin: 'Contact your school admin to link your child\'s account.',
+      feePaymentDue: 'Fee Payment Due',
+      pendingAmount: '₹{{amount}} pending',
+      recentUpdates: 'Recent Updates',
+      thisMonth: 'This Month',
+      viewDetails: 'View Details',
+    },
+    attendance: {
+      title: 'Attendance',
+      childAttendance: "{{name}}'s Attendance",
+    },
+    fees: {
+      title: 'Fees',
+      pendingFees: 'Pending Fees',
+      visitSchool: 'Please visit the school office to make payment',
+      paidThisYear: 'Paid This Year',
+      paidOnTime: 'Paid on Time',
+      pendingUpcoming: 'Pending & Upcoming',
+      paymentHistory: 'Payment History',
+      payAtSchool: 'Pay at school office · Cash / UPI / Bank Transfer / Cheque',
+      noFeeRecords: 'No fee records found',
+      paid: 'Paid',
+    },
+    homework: {
+      title: 'Homework',
+      noPending: 'No Pending Homework',
+      allCaughtUp: 'Your child is all caught up! 🎉',
+    },
+    results: {
+      title: 'Results',
+      subjectWiseMarks: 'Subject-wise Marks',
+      reportCard: 'Report Card',
+      previousExams: 'Previous Exams',
+      rank: 'Rank',
+    },
+    announcements: {
+      title: 'Announcements',
+      noAnnouncements: 'No Announcements',
+      nothingNew: 'Nothing new at the moment',
+    },
+    profile: {
+      title: 'Profile',
+      wardDetails: 'WARD DETAILS',
+      notificationSettings: 'Notification Settings',
+      documents: 'Documents',
+      helpSupport: 'Help & Support',
+      appSettings: 'App Settings',
+    },
+  },
+
+  // ====== ADMIN ======
+  admin: {
+    dashboard: {
+      title: 'Dashboard',
+      students: 'Students',
+      teachers: 'Teachers',
+      feeCollected: 'Fee Collected',
+      attendance: 'Attendance',
+      quickActions: 'Quick Actions',
+      academicYear: 'Academic Year',
+    },
   },
 };
 
