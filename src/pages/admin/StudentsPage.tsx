@@ -168,14 +168,18 @@ export default function StudentsPage() {
 
       // Create fee records
       if (student?.id && feeEntries.length > 0) {
+        const defaultDueDate = new Date();
+        defaultDueDate.setMonth(defaultDueDate.getMonth() + 1);
+        const defaultDueDateStr = defaultDueDate.toISOString().split('T')[0];
+
         for (const entry of feeEntries) {
-          if (entry.fee_type && entry.amount && entry.due_date) {
+          if (entry.fee_type && entry.amount) {
             try {
               await createFee.mutateAsync({
                 student_id: student.id,
                 fee_type: entry.fee_type,
                 amount: parseFloat(entry.amount),
-                due_date: entry.due_date,
+                due_date: entry.due_date || defaultDueDateStr,
               });
             } catch {
               toast.error(`Fee assignment failed for ${entry.fee_type}`);
