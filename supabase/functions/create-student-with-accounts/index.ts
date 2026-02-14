@@ -18,6 +18,7 @@ interface CreateStudentRequest {
   alternate_phone?: string;
   parent_email?: string;
   blood_group?: string;
+  avatar_url?: string;
   school_id: string;
 }
 
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
     const {
       full_name, admission_number, class_name, section, roll_number,
       gender, date_of_birth, parent_name, parent_phone, alternate_phone,
-      parent_email, blood_group, school_id,
+      parent_email, blood_group, avatar_url, school_id,
     } = body;
 
     if (!full_name || !admission_number || !class_name || !section || !school_id) {
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
           roll_number: roll_number || null, gender: gender || null,
           date_of_birth: date_of_birth || null, parent_name: parent_name || null,
           parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
-          parent_email: null, blood_group: blood_group || null, status: "active",
+          parent_email: null, blood_group: blood_group || null, avatar_url: avatar_url || null, status: "active",
         })
         .select().single();
 
@@ -173,7 +174,7 @@ Deno.serve(async (req) => {
         roll_number: roll_number || null, gender: gender || null,
         date_of_birth: date_of_birth || null, parent_name: parent_name || null,
         parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
-        parent_email: userEmail, blood_group: blood_group || null, status: "active",
+        parent_email: userEmail, blood_group: blood_group || null, avatar_url: avatar_url || null, status: "active",
       })
       .select().single();
 

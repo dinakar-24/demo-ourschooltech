@@ -38,6 +38,7 @@ interface AddStudentDialogProps {
     alternate_phone: string;
     parent_email: string;
     blood_group: string;
+    avatar_url: string;
   };
   feeEntries: FeeEntry[];
   onFeeEntriesChange: (entries: FeeEntry[]) => void;
@@ -253,7 +254,7 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4 px-4 sm:px-6 pb-6">
       {/* Avatar */}
       <div className="flex justify-center">
-        <AvatarUpload value={null} onChange={() => {}} fallback={formData.full_name} folder="students" />
+        <AvatarUpload value={formData.avatar_url || null} onChange={(url) => onInputChange('avatar_url', url || '')} fallback={formData.full_name} folder="students" />
       </div>
 
       {/* Full Name & Admission Number */}

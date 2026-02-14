@@ -112,6 +112,7 @@ export default function StudentsPage() {
     alternate_phone: '',
     parent_email: '',
     blood_group: '',
+    avatar_url: '',
   });
   const [feeEntries, setFeeEntries] = useState<FeeEntry[]>([]);
 
@@ -195,6 +196,7 @@ export default function StudentsPage() {
         full_name: '', admission_number: '', class_name: '', section: '',
         roll_number: '', gender: '', date_of_birth: '', parent_name: '',
         parent_phone: '', alternate_phone: '', parent_email: '', blood_group: '',
+        avatar_url: '',
       });
       setFeeEntries([]);
       setIsAddDialogOpen(false);
