@@ -45,7 +45,7 @@ export function useTeachers(filters?: TeacherFilters) {
 
       let query = supabase
         .from('teachers')
-        .select('*, profiles:user_id(avatar_url)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 
@@ -65,11 +65,23 @@ export function useTeachers(filters?: TeacherFilters) {
       const { data, error, count } = await query;
 
       if (error) throw error;
-      // Flatten profiles join into avatar_url
+
+      // Fetch avatar_url from profiles for teachers that have user_id
+      const userIds = (data || []).map(t => t.user_id).filter(Boolean) as string[];
+      let avatarMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, avatar_url')
+          .in('id', userIds);
+        (profiles || []).forEach(p => {
+          if (p.avatar_url) avatarMap[p.id] = p.avatar_url;
+        });
+      }
+
       const teachers = (data || []).map((t: any) => ({
         ...t,
-        avatar_url: t.profiles?.avatar_url || null,
-        profiles: undefined,
+        avatar_url: t.user_id ? avatarMap[t.user_id] || null : null,
       })) as Teacher[];
       return { data: teachers, totalCount: count || 0 };
     },
