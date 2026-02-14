@@ -2,24 +2,26 @@ import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-  ClipboardList, 
   BookOpen,
   Award,
   Bell,
-  Clock,
   CheckCircle,
   AlertCircle,
+  Calendar,
+  ImageIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStudentProfile, useStudentAttendanceStats, useStudentHomework } from '@/hooks/useStudentData';
+import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { data: student, isLoading: studentLoading } = useStudentProfile();
   const { data: attendanceStats, isLoading: attendanceLoading } = useStudentAttendanceStats(student?.id);
   const { data: homework, isLoading: homeworkLoading } = useStudentHomework(student?.class_name, student?.section);
+  const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({ status: 'active', pageSize: 3 });
 
   const isLoading = studentLoading;
 
@@ -37,13 +39,7 @@ export default function StudentDashboard() {
 
   const attendance = attendanceStats?.percentage || 0;
   const pendingHomework = homework?.length || 0;
-
-  const todaySchedule = [
-    { subject: 'Mathematics', time: '9:00 - 9:45', teacher: 'Mrs. Sharma', status: 'completed' },
-    { subject: 'Science', time: '10:00 - 10:45', teacher: 'Mr. Gupta', status: 'completed' },
-    { subject: 'English', time: '11:00 - 11:45', teacher: 'Ms. Patel', status: 'ongoing' },
-    { subject: 'Hindi', time: '12:00 - 12:45', teacher: 'Mrs. Verma', status: 'upcoming' },
-  ];
+  const announcements = announcementsData?.data || [];
 
   return (
     <MobileLayout>
@@ -136,43 +132,29 @@ export default function StudentDashboard() {
           </Link>
         </div>
 
-        {/* Today's Schedule */}
+        {/* Timetable Link */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Today's Classes
+              Timetable
             </h3>
-            <Link to="/student/timetable" className="text-sm text-primary font-medium">
-              Full Timetable
-            </Link>
           </div>
-          <div className="space-y-2">
-            {todaySchedule.map((cls, i) => (
-              <Card key={i} className={cls.status === 'ongoing' ? 'border-primary bg-primary/5' : ''}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                      cls.status === 'completed' ? 'bg-success/10 text-success' :
-                      cls.status === 'ongoing' ? 'bg-primary text-primary-foreground' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {cls.subject.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{cls.subject}</p>
-                      <p className="text-xs text-muted-foreground">{cls.teacher}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium">{cls.time}</p>
-                    {cls.status === 'ongoing' && (
-                      <span className="text-xs text-primary font-medium">Now</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Link to="/student/timetable">
+            <Card className="hover:shadow-md transition-shadow border-primary/20 bg-primary/5">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">View Your Timetable</p>
+                  <p className="text-xs text-muted-foreground">
+                    {student ? `${student.class_name} - ${student.section}` : 'View class schedule'}
+                  </p>
+                </div>
+                <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Pending Homework */}
@@ -224,7 +206,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Announcements */}
+        {/* Announcements - Real Data */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -234,22 +216,45 @@ export default function StudentDashboard() {
               View All
             </Link>
           </div>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
-                  <Bell className="w-4 h-4 text-info" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Annual Sports Day</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Sports Day will be held on 28th January. All students must participate.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Posted 2 hours ago</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            {announcementsLoading ? (
+              Array.from({ length: 2 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-3 w-3/4" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : announcements.length === 0 ? (
+              <Card>
+                <CardContent className="p-4 text-center text-muted-foreground">
+                  No announcements yet
+                </CardContent>
+              </Card>
+            ) : (
+              announcements.map((ann) => (
+                <Card key={ann.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
+                        <Bell className="w-4 h-4 text-info" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm">{ann.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {ann.content}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(ann.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </MobileLayout>
