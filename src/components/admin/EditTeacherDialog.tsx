@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, X } from 'lucide-react';
 import { useUpdateTeacher, Teacher } from '@/hooks/useTeachers';
+import { useClasses } from '@/hooks/useClasses';
 import { toast } from 'sonner';
 
 const SUBJECTS = [
@@ -27,7 +28,14 @@ interface EditTeacherDialogProps {
 
 export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDialogProps) {
   const updateTeacher = useUpdateTeacher();
+  const { data: dbClasses } = useClasses();
 
+  // Build class-section options from DB
+  const classOptions = (dbClasses || []).flatMap(cls =>
+    cls.sections.length > 0
+      ? cls.sections.map(sec => `${cls.name}-${sec.name}`)
+      : [cls.name]
+  );
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -39,7 +47,6 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
   });
 
   const [subjectInput, setSubjectInput] = useState('');
-  const [classInput, setClassInput] = useState('');
 
   useEffect(() => {
     if (teacher) {
@@ -71,11 +78,13 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
     }
   };
 
-  const addClass = () => {
-    if (classInput.trim() && !form.classes.includes(classInput.trim())) {
-      setForm(f => ({ ...f, classes: [...f.classes, classInput.trim()] }));
-      setClassInput('');
-    }
+  const toggleClass = (cls: string) => {
+    setForm(f => ({
+      ...f,
+      classes: f.classes.includes(cls)
+        ? f.classes.filter(c => c !== cls)
+        : [...f.classes, cls],
+    }));
   };
 
   const handleSave = async () => {
@@ -165,29 +174,25 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
             </div>
           </div>
 
-          {/* Classes */}
+          {/* Classes from DB */}
           <div className="space-y-2">
             <Label>Assigned Classes</Label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {form.classes.map(cls => (
-                <Badge key={cls} variant="secondary" className="text-xs">
-                  {cls}
-                  <button onClick={() => setForm(f => ({ ...f, classes: f.classes.filter(c => c !== cls) }))} className="ml-1">
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g., Class 10-A"
-                value={classInput}
-                onChange={e => setClassInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addClass())}
-                className="flex-1"
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addClass}>Add</Button>
-            </div>
+            {classOptions.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {classOptions.map(cls => (
+                  <Badge
+                    key={cls}
+                    variant={form.classes.includes(cls) ? 'default' : 'outline'}
+                    className="cursor-pointer text-xs"
+                    onClick={() => toggleClass(cls)}
+                  >
+                    {cls}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No classes configured yet. Add classes from the Classes & Sections page.</p>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
