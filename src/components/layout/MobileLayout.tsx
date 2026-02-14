@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -27,29 +28,30 @@ interface MobileLayoutProps {
   onBack?: () => void;
 }
 
-const navConfig: Record<UserRole, Array<{ label: string; href: string; icon: typeof LayoutDashboard }>> = {
+// Nav config uses translation keys for labels
+const navConfigKeys: Record<UserRole, Array<{ labelKey: string; href: string; icon: typeof LayoutDashboard }>> = {
   super_admin: [],
   school_admin: [],
   teacher: [
-    { label: 'Home', href: '/teacher/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/teacher/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/teacher/homework', icon: BookOpen },
-    { label: 'Marks', href: '/teacher/marks', icon: FileText },
-    { label: 'Profile', href: '/teacher/profile', icon: User },
+    { labelKey: 'nav.home', href: '/teacher/dashboard', icon: LayoutDashboard },
+    { labelKey: 'nav.attendance', href: '/teacher/attendance', icon: ClipboardList },
+    { labelKey: 'nav.homework', href: '/teacher/homework', icon: BookOpen },
+    { labelKey: 'nav.results', href: '/teacher/marks', icon: FileText },
+    { labelKey: 'nav.profile', href: '/teacher/profile', icon: User },
   ],
   parent: [
-    { label: 'Home', href: '/parent/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/parent/attendance', icon: ClipboardList },
-    { label: 'Fees', href: '/parent/fees', icon: CreditCard },
-    { label: 'Results', href: '/parent/results', icon: Award },
-    { label: 'Profile', href: '/parent/profile', icon: User },
+    { labelKey: 'nav.home', href: '/parent/dashboard', icon: LayoutDashboard },
+    { labelKey: 'nav.attendance', href: '/parent/attendance', icon: ClipboardList },
+    { labelKey: 'nav.homework', href: '/parent/fees', icon: CreditCard },
+    { labelKey: 'nav.results', href: '/parent/results', icon: Award },
+    { labelKey: 'nav.profile', href: '/parent/profile', icon: User },
   ],
   student: [
-    { label: 'Home', href: '/student/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/student/attendance', icon: ClipboardList },
-    { label: 'Homework', href: '/student/homework', icon: BookOpen },
-    { label: 'Results', href: '/student/results', icon: Award },
-    { label: 'Profile', href: '/student/profile', icon: User },
+    { labelKey: 'nav.home', href: '/student/dashboard', icon: LayoutDashboard },
+    { labelKey: 'nav.attendance', href: '/student/attendance', icon: ClipboardList },
+    { labelKey: 'nav.homework', href: '/student/homework', icon: BookOpen },
+    { labelKey: 'nav.results', href: '/student/results', icon: Award },
+    { labelKey: 'nav.profile', href: '/student/profile', icon: User },
   ],
 };
 
@@ -57,6 +59,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
   const { user, school, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   // Fetch avatar from profiles table as fallback
   const { data: profileAvatar } = useQuery({
@@ -77,7 +80,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
   const avatarUrl = user?.avatar || profileAvatar;
 
   const role = user?.role || 'student';
-  const navItems = navConfig[role] || [];
+  const navItems = navConfigKeys[role] || [];
 
   const handleLogout = () => {
     logout();
@@ -154,7 +157,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
                 )}
               >
                 <item.icon className={cn("w-5 h-5", isActive && "text-primary")} />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
               </Link>
             );
           })}

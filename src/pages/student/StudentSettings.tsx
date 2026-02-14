@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Moon, Globe } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -20,9 +21,9 @@ const LANGUAGES = [
 ];
 
 export default function StudentSettings() {
+  const { t, i18n } = useTranslation();
   const { isSubscribed, isSupported, subscribe, permission } = usePushNotifications();
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
-  const [language, setLanguage] = useState(() => localStorage.getItem('app-language') || 'en');
 
   const handleDarkModeToggle = (checked: boolean) => {
     setDarkMode(checked);
@@ -35,7 +36,6 @@ export default function StudentSettings() {
     }
   };
 
-  // Restore theme on mount
   useEffect(() => {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') {
@@ -47,22 +47,29 @@ export default function StudentSettings() {
   const handleNotificationToggle = async (checked: boolean) => {
     if (checked) {
       if (!isSupported) {
-        toast.error('Push notifications are not supported on this device');
+        toast.error(t('settingsPage.notificationsNotSupported'));
         return;
       }
       const success = await subscribe();
       if (success) {
-        toast.success('Push notifications enabled!');
+        toast.success(t('settingsPage.notificationsEnabled'));
       } else if (permission === 'denied') {
-        toast.error('Notifications blocked. Please enable them in your browser settings.');
+        toast.error(t('settingsPage.notificationsBlocked'));
       }
     } else {
-      toast.info('To disable notifications, update your browser notification settings.');
+      toast.info(t('settingsPage.disableNotifications'));
     }
   };
 
+  const handleLanguageChange = (val: string) => {
+    i18n.changeLanguage(val);
+    localStorage.setItem('app-language', val);
+    const langLabel = LANGUAGES.find(l => l.code === val)?.label || val;
+    toast.success(t('settingsPage.languageSet', { language: langLabel }));
+  };
+
   return (
-    <MobileLayout title="App Settings" showBack>
+    <MobileLayout title={t('settingsPage.title')} showBack>
       <div className="p-4 space-y-4">
         <Card>
           <CardContent className="p-0 divide-y divide-border">
@@ -70,7 +77,7 @@ export default function StudentSettings() {
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-muted-foreground" />
                 <Label htmlFor="notifications" className="font-medium cursor-pointer">
-                  Push Notifications
+                  {t('settingsPage.pushNotifications')}
                 </Label>
               </div>
               <Switch
@@ -84,7 +91,7 @@ export default function StudentSettings() {
               <div className="flex items-center gap-3">
                 <Moon className="w-5 h-5 text-muted-foreground" />
                 <Label htmlFor="darkMode" className="font-medium cursor-pointer">
-                  Dark Mode
+                  {t('settingsPage.darkMode')}
                 </Label>
               </div>
               <Switch
@@ -96,15 +103,11 @@ export default function StudentSettings() {
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <Globe className="w-5 h-5 text-muted-foreground" />
-                <p className="font-medium text-sm">Language</p>
+                <p className="font-medium text-sm">{t('settingsPage.language')}</p>
               </div>
               <Select
-                value={language}
-                onValueChange={(val) => {
-                  setLanguage(val);
-                  localStorage.setItem('app-language', val);
-                  toast.success(`Language set to ${LANGUAGES.find(l => l.code === val)?.label}`);
-                }}
+                value={i18n.language}
+                onValueChange={handleLanguageChange}
               >
                 <SelectTrigger className="w-[140px] h-9">
                   <SelectValue />
@@ -122,7 +125,7 @@ export default function StudentSettings() {
         </Card>
 
         <p className="text-xs text-center text-muted-foreground">
-          App Version 1.0.0
+          {t('settingsPage.appVersion')} 1.0.0
         </p>
       </div>
     </MobileLayout>

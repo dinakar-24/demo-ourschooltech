@@ -5,14 +5,16 @@ import { useStudentProfile, useStudentAnnouncements } from '@/hooks/useStudentDa
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentAnnouncements() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: student } = useStudentProfile();
   const { data: announcements, isLoading } = useStudentAnnouncements(user?.schoolId, student?.class_name);
 
   return (
-    <MobileLayout title="Announcements" showBack>
+    <MobileLayout title={t('announcementsPage.title')} showBack>
       <div className="p-4 space-y-3">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
@@ -21,8 +23,8 @@ export default function StudentAnnouncements() {
         ) : announcements?.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <Bell className="w-12 h-12 text-muted-foreground/40 mb-3" />
-            <h3 className="font-semibold">No Announcements</h3>
-            <p className="text-sm text-muted-foreground">You're all caught up!</p>
+            <h3 className="font-semibold">{t('announcementsPage.noAnnouncements')}</h3>
+            <p className="text-sm text-muted-foreground">{t('announcementsPage.allCaughtUp')}</p>
           </div>
         ) : (
           announcements?.map((a) => (

@@ -4,13 +4,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Clock, Download, ZoomIn, X, ImageOff } from 'lucide-react';
+import { Download, ZoomIn, X, ImageOff } from 'lucide-react';
 import { useStudentProfile } from '@/hooks/useStudentData';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentTimetable() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: student, isLoading: studentLoading } = useStudentProfile();
   const [showFullscreen, setShowFullscreen] = useState(false);
@@ -50,7 +52,6 @@ export default function StudentTimetable() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // fallback: open in new tab
       window.open((timetableImage as any).image_url, '_blank');
     }
   };
@@ -58,22 +59,21 @@ export default function StudentTimetable() {
   const loading = studentLoading || isLoading;
 
   return (
-    <MobileLayout title="Timetable" showBack>
+    <MobileLayout title={t('timetablePage.title')} showBack>
       <div className="p-4 space-y-4">
-        {/* Class Info */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">My Timetable</h2>
+            <h2 className="text-lg font-bold text-foreground">{t('timetablePage.myTimetable')}</h2>
             {student && (
               <p className="text-sm text-muted-foreground">
-                {className} - Section {section}
+                {className} - {t('timetablePage.section')} {section}
               </p>
             )}
           </div>
           {timetableImage && (
             <Button size="sm" variant="outline" onClick={handleDownload}>
               <Download className="w-4 h-4 mr-1.5" />
-              Save
+              {t('common.save')}
             </Button>
           )}
         </div>
@@ -90,7 +90,7 @@ export default function StudentTimetable() {
               <div className="relative group">
                 <img
                   src={(timetableImage as any).image_url}
-                  alt={`Timetable for ${className} - Section ${section}`}
+                  alt={`Timetable for ${className} - ${t('timetablePage.section')} ${section}`}
                   className="w-full h-auto cursor-pointer"
                   onClick={() => setShowFullscreen(true)}
                 />
@@ -107,7 +107,7 @@ export default function StudentTimetable() {
               </div>
               <div className="p-3 border-t text-center">
                 <p className="text-xs text-muted-foreground">
-                  Tap image to view fullscreen • Updated {new Date((timetableImage as any).updated_at).toLocaleDateString('en-IN')}
+                  {t('timetablePage.tapToFullscreen')} • {t('timetablePage.updated')} {new Date((timetableImage as any).updated_at).toLocaleDateString('en-IN')}
                 </p>
               </div>
             </CardContent>
@@ -115,15 +115,14 @@ export default function StudentTimetable() {
         ) : (
           <Card className="p-10 text-center">
             <ImageOff className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2 text-foreground">No Timetable Available</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">{t('timetablePage.noTimetable')}</h3>
             <p className="text-sm text-muted-foreground">
-              Your school admin hasn't uploaded the timetable for {className || 'your class'} yet.
+              {t('timetablePage.timetableNotUploaded', { className: className || 'your class' })}
             </p>
           </Card>
         )}
       </div>
 
-      {/* Fullscreen viewer */}
       <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-auto">
           <button
