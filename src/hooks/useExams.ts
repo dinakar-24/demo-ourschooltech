@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
+import { sendNotification } from '@/lib/send-notification';
 
 export interface Exam {
   id: string;
@@ -276,6 +277,54 @@ export function useSaveResult() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['exam-results', variables.examId] });
       toast.success('Result saved');
+
+      // Notify student and parent about exam result
+      supabase
+        .from('exams')
+        .select('name, subject, school_id')
+        .eq('id', variables.examId)
+        .single()
+        .then(({ data: exam }) => {
+          if (!exam) return;
+
+          supabase
+            .from('students')
+            .select('user_id, parent_email')
+            .eq('id', variables.studentId)
+            .single()
+            .then(({ data: student }) => {
+              if (!student) return;
+
+              const notifyIds: string[] = [];
+              if (student.user_id) notifyIds.push(student.user_id);
+
+              const doSend = () => {
+                if (notifyIds.length > 0) {
+                  sendNotification({
+                    userIds: notifyIds,
+                    title: 'Result Published',
+                    body: `${exam.name} - ${exam.subject}: ${variables.marksObtained} marks${variables.grade ? ` (${variables.grade})` : ''}`,
+                    type: 'result',
+                    schoolId: exam.school_id,
+                  });
+                }
+              };
+
+              if (student.parent_email) {
+                supabase
+                  .from('profiles')
+                  .select('id')
+                  .eq('email', student.parent_email)
+                  .maybeSingle()
+                  .then(({ data: parent }) => {
+                    if (parent) notifyIds.push(parent.id);
+                    doSend();
+                  });
+              } else {
+                doSend();
+              }
+            });
+        });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to save result');
