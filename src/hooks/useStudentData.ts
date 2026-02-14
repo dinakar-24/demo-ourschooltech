@@ -11,6 +11,14 @@ export interface StudentProfile {
   admission_number: string;
   school_id: string;
   avatar_url: string | null;
+  parent_name: string | null;
+  parent_phone: string | null;
+  parent_email: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  blood_group: string | null;
+  address: string | null;
+  alternate_phone: string | null;
 }
 
 export interface StudentAttendanceStats {
