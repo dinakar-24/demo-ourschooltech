@@ -10,6 +10,7 @@ export interface StudentProfile {
   roll_number: number | null;
   admission_number: string;
   school_id: string;
+  avatar_url: string | null;
 }
 
 export interface StudentAttendanceStats {

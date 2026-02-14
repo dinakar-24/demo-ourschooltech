@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -87,6 +88,12 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
                 <ChevronLeft className="w-5 h-5" />
               </Button>
             )}
+            <Avatar className="w-8 h-8 border border-primary-foreground/20">
+              <AvatarImage src={user?.avatar} alt={user?.name} />
+              <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
+                {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <h1 className="text-base font-semibold">
                 {title || school?.name}
