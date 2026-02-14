@@ -5,6 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +19,7 @@ import { Loader2, X } from 'lucide-react';
 import { useUpdateTeacher, Teacher } from '@/hooks/useTeachers';
 import { useClasses } from '@/hooks/useClasses';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SUBJECTS = [
   'Mathematics', 'Science', 'English', 'Hindi', 'Social Studies',
@@ -29,13 +36,14 @@ interface EditTeacherDialogProps {
 export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDialogProps) {
   const updateTeacher = useUpdateTeacher();
   const { data: dbClasses } = useClasses();
+  const isMobile = useIsMobile();
 
-  // Build class-section options from DB
   const classOptions = (dbClasses || []).flatMap(cls =>
     cls.sections.length > 0
       ? cls.sections.map(sec => `${cls.name}-${sec.name}`)
       : [cls.name]
   );
+
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -107,101 +115,129 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
     onOpenChange(false);
   };
 
+  const formContent = (
+    <div className="space-y-4">
+      {/* Name - full width */}
+      <div className="space-y-2">
+        <Label>Full Name *</Label>
+        <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
+      </div>
+
+      {/* Email & Phone - stack on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Email</Label>
+          <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+        </div>
+        <div className="space-y-2">
+          <Label>Phone</Label>
+          <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+        </div>
+      </div>
+
+      {/* Qualification & Joining Date - stack on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Qualification</Label>
+          <Input value={form.qualification} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))} />
+        </div>
+        <div className="space-y-2">
+          <Label>Joining Date</Label>
+          <Input type="date" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} />
+        </div>
+      </div>
+
+      {/* Subjects */}
+      <div className="space-y-2">
+        <Label>Subjects</Label>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {SUBJECTS.slice(0, 10).map(sub => (
+            <Badge
+              key={sub}
+              variant={form.subjects.includes(sub) ? 'default' : 'outline'}
+              className="cursor-pointer text-xs"
+              onClick={() => toggleSubject(sub)}
+            >
+              {sub}
+            </Badge>
+          ))}
+        </div>
+        {form.subjects.filter(s => !SUBJECTS.slice(0, 10).includes(s)).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {form.subjects.filter(s => !SUBJECTS.slice(0, 10).includes(s)).map(sub => (
+              <Badge key={sub} variant="default" className="text-xs">
+                {sub}
+                <button onClick={() => toggleSubject(sub)} className="ml-1"><X className="w-3 h-3" /></button>
+              </Badge>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom subject"
+            value={subjectInput}
+            onChange={e => setSubjectInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubject())}
+            className="flex-1"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCustomSubject}>Add</Button>
+        </div>
+      </div>
+
+      {/* Classes from DB */}
+      <div className="space-y-2">
+        <Label>Assigned Classes</Label>
+        {classOptions.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {classOptions.map(cls => (
+              <Badge
+                key={cls}
+                variant={form.classes.includes(cls) ? 'default' : 'outline'}
+                className="cursor-pointer text-xs"
+                onClick={() => toggleClass(cls)}
+              >
+                {cls}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No classes configured yet. Add classes from the Classes & Sections page.</p>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-background pb-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        <Button onClick={handleSave} disabled={updateTeacher.isPending}>
+          {updateTeacher.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="px-4 pb-6 max-h-[85dvh] flex flex-col bg-background">
+          <DrawerHeader className="text-left px-0">
+            <DrawerTitle>Edit Teacher</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {formContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Teacher</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 col-span-2">
-              <Label>Full Name *</Label>
-              <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Qualification</Label>
-              <Input value={form.qualification} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Joining Date</Label>
-              <Input type="date" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} />
-            </div>
-          </div>
-
-          {/* Subjects */}
-          <div className="space-y-2">
-            <Label>Subjects</Label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {SUBJECTS.slice(0, 10).map(sub => (
-                <Badge
-                  key={sub}
-                  variant={form.subjects.includes(sub) ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs"
-                  onClick={() => toggleSubject(sub)}
-                >
-                  {sub}
-                </Badge>
-              ))}
-            </div>
-            {form.subjects.filter(s => !SUBJECTS.slice(0, 10).includes(s)).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {form.subjects.filter(s => !SUBJECTS.slice(0, 10).includes(s)).map(sub => (
-                  <Badge key={sub} variant="default" className="text-xs">
-                    {sub}
-                    <button onClick={() => toggleSubject(sub)} className="ml-1"><X className="w-3 h-3" /></button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add custom subject"
-                value={subjectInput}
-                onChange={e => setSubjectInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubject())}
-                className="flex-1"
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addCustomSubject}>Add</Button>
-            </div>
-          </div>
-
-          {/* Classes from DB */}
-          <div className="space-y-2">
-            <Label>Assigned Classes</Label>
-            {classOptions.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {classOptions.map(cls => (
-                  <Badge
-                    key={cls}
-                    variant={form.classes.includes(cls) ? 'default' : 'outline'}
-                    className="cursor-pointer text-xs"
-                    onClick={() => toggleClass(cls)}
-                  >
-                    {cls}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No classes configured yet. Add classes from the Classes & Sections page.</p>
-            )}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={updateTeacher.isPending}>
-            {updateTeacher.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
+        {formContent}
       </DialogContent>
     </Dialog>
   );
