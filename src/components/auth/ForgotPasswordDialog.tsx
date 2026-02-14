@@ -54,7 +54,22 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     const { data, error: fnError } = await supabase.functions.invoke('send-password-reset-otp', {
       body: { email: email.trim() },
     });
-    if (fnError) throw new Error(fnError.message);
+    if (fnError) {
+      // Try to parse error message from the response
+      const errMsg = typeof fnError === 'object' && 'context' in fnError 
+        ? (fnError as any).context?.body 
+        : fnError.message;
+      // Try to extract JSON error from the message
+      try {
+        const parsed = JSON.parse(errMsg || '{}');
+        throw new Error(parsed.error || 'Failed to send OTP');
+      } catch (parseErr) {
+        if (parseErr instanceof SyntaxError) {
+          throw new Error(errMsg || 'Failed to send OTP');
+        }
+        throw parseErr;
+      }
+    }
     if (!data?.success) throw new Error(data?.error || 'Failed to send OTP');
   };
 
