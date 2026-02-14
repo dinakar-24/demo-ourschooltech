@@ -5,6 +5,7 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { getSupabaseRange } from './usePagination';
+import { sendNotification } from '@/lib/send-notification';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -141,10 +142,49 @@ export function useCreateAnnouncement() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
       toast.success(variables.is_active ? 'Announcement published!' : 'Announcement saved as draft');
+
+      // Notify targeted users when announcement is active
+      if (variables.is_active && schoolId && data) {
+        const targetRoles = variables.target_roles;
+
+        if (targetRoles?.length) {
+          // Get all users with the targeted roles in this school
+          supabase
+            .from('user_roles')
+            .select('user_id')
+            .in('role', targetRoles)
+            .then(({ data: roleUsers }) => {
+              if (!roleUsers?.length) return;
+
+              const roleUserIds = roleUsers.map(r => r.user_id);
+
+              // Filter to users in this school
+              supabase
+                .from('profiles')
+                .select('id')
+                .eq('school_id', schoolId)
+                .in('id', roleUserIds)
+                .then(({ data: schoolUsers }) => {
+                  if (!schoolUsers?.length) return;
+
+                  const userIds = schoolUsers.map(u => u.id);
+
+                  sendNotification({
+                    userIds,
+                    title: 'New Announcement',
+                    body: variables.title,
+                    type: 'announcement',
+                    referenceId: data.id,
+                    schoolId,
+                  });
+                });
+            });
+        }
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create announcement');

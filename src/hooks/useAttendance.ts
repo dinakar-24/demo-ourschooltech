@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { sendNotification } from '@/lib/send-notification';
 
 export interface AttendanceRecord {
   id: string;
@@ -181,11 +182,52 @@ export function useMarkAttendance() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
       queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
       toast.success('Attendance saved successfully');
+
+      // Notify parents of absent students
+      const absentStudentIds = variables.records
+        .filter(r => r.status === 'absent')
+        .map(r => r.studentId);
+
+      if (absentStudentIds.length > 0 && schoolId) {
+        // Look up parent user IDs for absent students
+        supabase
+          .from('students')
+          .select('full_name, parent_email')
+          .in('id', absentStudentIds)
+          .then(({ data: students }) => {
+            if (!students?.length) return;
+
+            const parentEmails = students
+              .map(s => s.parent_email)
+              .filter(Boolean) as string[];
+
+            if (!parentEmails.length) return;
+
+            supabase
+              .from('profiles')
+              .select('id')
+              .in('email', parentEmails)
+              .then(({ data: parents }) => {
+                if (!parents?.length) return;
+
+                const parentUserIds = parents.map(p => p.id);
+                const absentNames = students.map(s => s.full_name).join(', ');
+
+                sendNotification({
+                  userIds: parentUserIds,
+                  title: 'Absence Alert',
+                  body: `Your child (${absentNames}) was marked absent on ${variables.date}`,
+                  type: 'attendance',
+                  schoolId,
+                });
+              });
+          });
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to save attendance');
