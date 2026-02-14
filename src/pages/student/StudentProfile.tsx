@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStudentProfile } from '@/hooks/useStudentData';
+import { useStudentProfile, useStudentAttendanceStats } from '@/hooks/useStudentData';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  User,
   Mail,
   Phone,
   GraduationCap,
@@ -19,13 +19,17 @@ import {
   Bell,
   Calendar,
   BookOpen,
+  MapPin,
+  Hash,
+  Users,
 } from 'lucide-react';
 
 export default function StudentProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: student } = useStudentProfile();
+  const { data: student, isLoading } = useStudentProfile();
+  const { data: attendanceStats } = useStudentAttendanceStats(student?.id);
 
   const handleLogout = () => {
     logout();
@@ -45,43 +49,77 @@ export default function StudentProfile() {
         {/* Profile Card */}
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-4 mb-4">
-              <AvatarUpload
-                value={student?.avatar_url || user?.avatar}
-                onChange={async (url) => {
-                  if (user?.id) {
-                    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
-                  }
-                  if (student?.id) {
-                    await supabase.from('students').update({ avatar_url: url }).eq('id', student.id);
-                  }
-                  queryClient.invalidateQueries({ queryKey: ['student-profile'] });
-                }}
-                fallback={user?.name}
-                size="lg"
-                folder="students"
-              />
-              <div>
-                <h2 className="text-lg font-bold">{user?.name}</h2>
-                <p className="text-sm text-muted-foreground">Roll No. 15</p>
-                <Badge variant="secondary" className="mt-1">Student</Badge>
+            {isLoading ? (
+              <div className="flex items-center gap-4 mb-4">
+                <Skeleton className="w-16 h-16 rounded-full" />
+                <div>
+                  <Skeleton className="h-5 w-32 mb-2" />
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
               </div>
-            </div>
-            
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center gap-3 text-sm">
-                <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                <span>{user?.className} - {user?.section}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <span>{user?.email}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="w-4 h-4 text-muted-foreground" />
-                <span>+91 98765 43210</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-4 mb-4">
+                  <AvatarUpload
+                    value={student?.avatar_url || user?.avatar}
+                    onChange={async (url) => {
+                      if (user?.id) {
+                        await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+                      }
+                      if (student?.id) {
+                        await supabase.from('students').update({ avatar_url: url }).eq('id', student.id);
+                      }
+                      queryClient.invalidateQueries({ queryKey: ['student-profile'] });
+                      queryClient.invalidateQueries({ queryKey: ['profile-avatar'] });
+                    }}
+                    fallback={user?.name}
+                    size="lg"
+                    folder="students"
+                  />
+                  <div>
+                    <h2 className="text-lg font-bold">{student?.full_name || user?.name}</h2>
+                    {student?.roll_number && (
+                      <p className="text-sm text-muted-foreground">Roll No. {student.roll_number}</p>
+                    )}
+                    <Badge variant="secondary" className="mt-1">Student</Badge>
+                  </div>
+                </div>
+                
+                <div className="space-y-3 pt-4 border-t">
+                  <div className="flex items-center gap-3 text-sm">
+                    <GraduationCap className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{student?.class_name || user?.className} - {student?.section || user?.section}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Hash className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>Adm. No: {student?.admission_number || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{user?.email}</span>
+                  </div>
+                  {student?.parent_phone && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>{student.parent_phone}</span>
+                    </div>
+                  )}
+                  {student?.parent_name && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>Parent: {student.parent_name}</span>
+                    </div>
+                  )}
+                  {student?.address && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="line-clamp-2">{student.address}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -89,20 +127,20 @@ export default function StudentProfile() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="p-3 text-center">
-              <p className="text-2xl font-bold text-success">94.5%</p>
+              <p className="text-2xl font-bold text-success">{attendanceStats?.percentage || 0}%</p>
               <p className="text-xs text-muted-foreground">Attendance</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <p className="text-2xl font-bold text-primary">A+</p>
-              <p className="text-xs text-muted-foreground">Last Grade</p>
+              <p className="text-2xl font-bold text-primary">{student?.blood_group || '-'}</p>
+              <p className="text-xs text-muted-foreground">Blood Group</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <p className="text-2xl font-bold text-warning">2</p>
-              <p className="text-xs text-muted-foreground">Pending HW</p>
+              <p className="text-2xl font-bold text-warning">{student?.gender || '-'}</p>
+              <p className="text-xs text-muted-foreground">Gender</p>
             </CardContent>
           </Card>
         </div>
@@ -113,6 +151,7 @@ export default function StudentProfile() {
             {menuItems.map((item) => (
               <button
                 key={item.label}
+                onClick={() => navigate(item.href)}
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
