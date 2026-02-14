@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
 
 interface Student {
   id: string;
@@ -27,17 +26,19 @@ interface Student {
 
 interface StudentCardProps {
   student: Student;
+  onView: (student: Student) => void;
+  onEdit: (student: Student) => void;
   onDelete: (id: string, userId: string | null) => void;
 }
 
-export function StudentCard({ student, onDelete }: StudentCardProps) {
+export function StudentCard({ student, onView, onEdit, onDelete }: StudentCardProps) {
   const avatarUrl = student.avatar_url || (student as any).profiles?.avatar_url;
   const initials = student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
     <div className="p-4 space-y-2.5">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => onView(student)}>
           <Avatar className="w-10 h-10 shrink-0">
             <AvatarImage src={avatarUrl} alt={student.full_name} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -60,11 +61,11 @@ export function StudentCard({ student, onDelete }: StudentCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => toast.info('View student details coming soon')}>
+              <DropdownMenuItem onClick={() => onView(student)}>
                 <Eye className="w-4 h-4 mr-2" />
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toast.info('Edit student coming soon')}>
+              <DropdownMenuItem onClick={() => onEdit(student)}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
               </DropdownMenuItem>
