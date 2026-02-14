@@ -1,5 +1,6 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { Card, CardContent } from '@/components/ui/card';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
@@ -26,6 +27,7 @@ import { Link } from 'react-router-dom';
 export default function TeacherDashboard() {
   const { user, school } = useAuth();
   const schoolId = useEffectiveSchoolId();
+  const { t } = useTranslation();
 
   const { data: stats, isLoading: loading } = useQuery({
     queryKey: ['teacher-dashboard-stats', schoolId, user?.id],
@@ -49,20 +51,20 @@ export default function TeacherDashboard() {
 
   const greeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return t('greetings.morning');
+    if (hour < 17) return t('greetings.afternoon');
+    return t('greetings.evening');
   };
 
   const quickActions = [
-    { label: 'Attendance', icon: ClipboardList, href: '/teacher/attendance', color: 'bg-emerald-500' },
-    { label: 'Homework', icon: BookOpen, href: '/teacher/homework', color: 'bg-blue-500' },
-    { label: 'Marks', icon: FileText, href: '/teacher/marks', color: 'bg-amber-500' },
-    { label: 'Notices', icon: Bell, href: '/teacher/announcements', color: 'bg-rose-500' },
-    { label: 'Results', icon: BarChart3, href: '/teacher/marks', color: 'bg-purple-500' },
-    { label: 'Timetable', icon: Clock, href: '/teacher/timetable', color: 'bg-teal-500' },
-    { label: 'Students', icon: Users, href: '/teacher/students', color: 'bg-indigo-500' },
-    { label: 'Profile', icon: GraduationCap, href: '/teacher/profile', color: 'bg-primary' },
+    { label: t('nav.attendance'), icon: ClipboardList, href: '/teacher/attendance', color: 'bg-emerald-500' },
+    { label: t('nav.homework'), icon: BookOpen, href: '/teacher/homework', color: 'bg-blue-500' },
+    { label: t('nav.marks'), icon: FileText, href: '/teacher/marks', color: 'bg-amber-500' },
+    { label: t('nav.announcements'), icon: Bell, href: '/teacher/announcements', color: 'bg-rose-500' },
+    { label: t('nav.results'), icon: BarChart3, href: '/teacher/marks', color: 'bg-purple-500' },
+    { label: t('nav.timetable'), icon: Clock, href: '/teacher/timetable', color: 'bg-teal-500' },
+    { label: t('nav.students'), icon: Users, href: '/teacher/students', color: 'bg-indigo-500' },
+    { label: t('nav.profile'), icon: GraduationCap, href: '/teacher/profile', color: 'bg-primary' },
   ];
 
   const todayClasses = [
@@ -100,33 +102,33 @@ export default function TeacherDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <AdminStatCard
-            title="My Students"
+            title={t('teacher.dashboard.myStudents')}
             value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
             icon={<Users className="w-4 h-4" />}
           />
           <AdminStatCard
-            title="Homework"
+            title={t('teacher.dashboard.homework')}
             value={loading ? '...' : (stats?.totalHomework ?? 0).toLocaleString()}
-            subtitle="posted"
+            subtitle={t('teacher.dashboard.posted')}
             icon={<BookOpen className="w-4 h-4" />}
           />
           <AdminStatCard
-            title="Attendance"
+            title={t('teacher.dashboard.attendance')}
             value={loading ? '...' : `${stats?.attendanceToday ?? 0}%`}
-            subtitle="today"
+            subtitle={t('common.today')}
             icon={<ClipboardList className="w-4 h-4" />}
           />
           <AdminStatCard
-            title="Pending"
+            title={t('teacher.dashboard.pending')}
             value={loading ? '...' : `${stats?.pendingMarks ?? 0}`}
-            subtitle="tasks"
+            subtitle={t('teacher.dashboard.tasks')}
             icon={<AlertCircle className="w-4 h-4" />}
           />
         </div>
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t('teacher.dashboard.quickActions')}</h3>
           <div className="grid grid-cols-4 gap-3">
             {quickActions.map((action) => (
               <Link 
@@ -147,7 +149,7 @@ export default function TeacherDashboard() {
 
         {/* Pending Tasks */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Pending Tasks</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t('teacher.dashboard.pendingTasks')}</h3>
           <Card>
             <CardContent className="divide-y divide-border p-0">
               {pendingTasks.map((task, i) => (
@@ -168,8 +170,8 @@ export default function TeacherDashboard() {
         {/* Today's Schedule */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">Today's Schedule</h3>
-            <span className="text-xs text-primary font-medium">View All</span>
+            <h3 className="text-sm font-semibold text-foreground">{t('teacher.dashboard.todaysSchedule')}</h3>
+            <span className="text-xs text-primary font-medium">{t('common.viewAll')}</span>
           </div>
           <div className="space-y-2">
             {todayClasses.map((cls, i) => (
