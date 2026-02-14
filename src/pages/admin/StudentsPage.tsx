@@ -57,6 +57,7 @@ import { toast } from 'sonner';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSections } from '@/hooks/useSections';
 import { StudentCard } from '@/components/admin/StudentCard';
 import {
   AlertDialog,
@@ -133,21 +134,8 @@ export default function StudentsPage() {
   const deleteStudent = useDeleteStudent();
 
   const classNames = ['All Classes', ...(classes?.map(c => c.name) || [])];
-
-  // Build dynamic sections list from actual student data + sections table
-  const [allSections, setAllSections] = useState<string[]>([]);
-  useEffect(() => {
-    if (!schoolId) return;
-    supabase
-      .from('students')
-      .select('section')
-      .eq('school_id', schoolId)
-      .then(({ data }) => {
-        const unique = [...new Set((data || []).map(d => d.section).filter(Boolean))].sort();
-        setAllSections(unique.length > 0 ? unique : ['A', 'B', 'C', 'D']);
-      });
-  }, [schoolId, totalCount]);
-  const sections = ['All Sections', ...allSections];
+  const { data: dynamicSections } = useSections();
+  const sections = ['All Sections', ...(dynamicSections || ['A', 'B', 'C', 'D'])];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

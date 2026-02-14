@@ -88,7 +88,7 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
 
   const classNames = classes?.map(c => c.name) || [];
   const selectedClassData = classes?.find(c => c.name === form.class_name);
-  const sections = selectedClassData?.sections.map(s => s.name) || ['A', 'B', 'C'];
+  const sections = selectedClassData?.sections.map(s => s.name) || ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
