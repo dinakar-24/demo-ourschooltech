@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
+import { sendNotification } from '@/lib/send-notification';
 
 export interface Homework {
   id: string;
@@ -124,10 +125,54 @@ export function useCreateHomework() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['homework'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-homework'] });
       toast.success('Homework posted successfully');
+
+      // Notify students in the target class
+      if (schoolId && data) {
+        // Get class name for the notification
+        supabase
+          .from('classes')
+          .select('name')
+          .eq('id', variables.class_id)
+          .single()
+          .then(({ data: classData }) => {
+            const className = classData?.name || 'your class';
+
+            // Find student user_ids in this class
+            let studentQuery = supabase
+              .from('students')
+              .select('user_id')
+              .eq('school_id', schoolId)
+              .eq('status', 'active')
+              .not('user_id', 'is', null);
+
+            if (classData?.name) {
+              studentQuery = studentQuery.eq('class_name', classData.name);
+            }
+
+            studentQuery.then(({ data: students }) => {
+              if (!students?.length) return;
+
+              const studentUserIds = students
+                .map(s => s.user_id)
+                .filter(Boolean) as string[];
+
+              if (studentUserIds.length > 0) {
+                sendNotification({
+                  userIds: studentUserIds,
+                  title: 'New Homework',
+                  body: `${variables.title} - ${variables.subject} (Due: ${variables.due_date})`,
+                  type: 'homework',
+                  referenceId: data.id,
+                  schoolId,
+                });
+              }
+            });
+          });
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to post homework');
