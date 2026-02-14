@@ -43,7 +43,7 @@ const menuItems = [
     icon: Users,
     children: [
       { label: 'All Students', href: '/admin/students' },
-      { label: 'Add Student', href: '/admin/students/add' },
+      { label: 'Add Student', href: '/admin/students?action=add' },
       { label: 'Bulk Upload', href: '/admin/students/bulk-upload' },
     ]
   },
