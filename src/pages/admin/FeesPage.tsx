@@ -60,7 +60,7 @@ import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee'];
+const feeTypes = ['All Types', 'Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee', 'Library Fee', 'Activity Fee', 'Other'];
 
 export default function FeesPage() {
   const isMobile = useIsMobile();
@@ -87,6 +87,7 @@ export default function FeesPage() {
   const [newFee, setNewFee] = useState({
     student_id: '',
     fee_type: '',
+    custom_fee_type: '',
     amount: '',
     due_date: '',
   });
@@ -145,7 +146,8 @@ export default function FeesPage() {
   };
 
   const handleAddFee = async () => {
-    if (!newFee.student_id || !newFee.fee_type || !newFee.amount || !newFee.due_date) {
+    const effectiveFeeType = newFee.fee_type === 'Other' ? newFee.custom_fee_type.trim() : newFee.fee_type;
+    if (!newFee.student_id || !effectiveFeeType || !newFee.amount || !newFee.due_date) {
       toast.error('Please fill all fields');
       return;
     }
@@ -153,13 +155,13 @@ export default function FeesPage() {
     try {
       await createFee.mutateAsync({
         student_id: newFee.student_id,
-        fee_type: newFee.fee_type,
+        fee_type: effectiveFeeType,
         amount: Number(newFee.amount),
         due_date: newFee.due_date,
       });
       toast.success('Fee record created');
       setIsAddDialogOpen(false);
-      setNewFee({ student_id: '', fee_type: '', amount: '', due_date: '' });
+      setNewFee({ student_id: '', fee_type: '', custom_fee_type: '', amount: '', due_date: '' });
       studentSearch.setSearchInput('');
     } catch (error) {
       toast.error('Failed to create fee record');
@@ -293,7 +295,7 @@ export default function FeesPage() {
               setIsAddDialogOpen(open);
               if (!open) {
                 studentSearch.setSearchInput('');
-                setNewFee({ student_id: '', fee_type: '', amount: '', due_date: '' });
+                setNewFee({ student_id: '', fee_type: '', custom_fee_type: '', amount: '', due_date: '' });
               }
             }}>
               <DialogTrigger asChild>
@@ -355,7 +357,7 @@ export default function FeesPage() {
                     <Label>Fee Type</Label>
                     <Select
                       value={newFee.fee_type}
-                      onValueChange={(v) => setNewFee({ ...newFee, fee_type: v })}
+                      onValueChange={(v) => setNewFee({ ...newFee, fee_type: v, custom_fee_type: '' })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select fee type" />
@@ -366,6 +368,14 @@ export default function FeesPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {newFee.fee_type === 'Other' && (
+                      <Input
+                        placeholder="Enter custom fee type name"
+                        value={newFee.custom_fee_type}
+                        onChange={(e) => setNewFee({ ...newFee, custom_fee_type: e.target.value })}
+                        className="mt-2"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Amount (₹)</Label>
