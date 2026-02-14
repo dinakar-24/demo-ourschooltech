@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, KeyRound, Lock, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2, X } from 'lucide-react';
@@ -21,7 +21,16 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  // Cooldown timer effect
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const reset = () => {
     setStep('email');
@@ -32,11 +41,21 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     setShowPassword(false);
     setError('');
     setLoading(false);
+    setResending(false);
+    setCooldown(0);
   };
 
   const handleClose = () => {
     reset();
     onClose();
+  };
+
+  const sendOTP = async () => {
+    const { data, error: fnError } = await supabase.functions.invoke('send-password-reset-otp', {
+      body: { email: email.trim() },
+    });
+    if (fnError) throw new Error(fnError.message);
+    if (!data?.success) throw new Error(data?.error || 'Failed to send OTP');
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -45,17 +64,29 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     setLoading(true);
     setError('');
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('send-password-reset-otp', {
-        body: { email: email.trim() },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to send OTP');
+      await sendOTP();
       toast.success('OTP sent to your email');
+      setCooldown(60);
       setStep('otp');
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (cooldown > 0 || resending) return;
+    setResending(true);
+    setError('');
+    try {
+      await sendOTP();
+      toast.success('OTP resent to your email');
+      setCooldown(60);
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -300,13 +331,30 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
                     {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Resetting...</> : <><Lock className="w-4 h-4" /> Reset Password</>}
                   </motion.button>
 
-                  <button
-                    type="button"
-                    onClick={() => { setStep('email'); setError(''); setOtp(''); }}
-                    className="w-full text-center text-white/40 hover:text-white/70 text-sm transition-colors flex items-center justify-center gap-1"
-                  >
-                    <ArrowLeft className="w-3 h-3" /> Change email
-                  </button>
+                  {/* Resend OTP */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => { setStep('email'); setError(''); setOtp(''); }}
+                      className="text-white/40 hover:text-white/70 text-sm transition-colors flex items-center gap-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" /> Change email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendOTP}
+                      disabled={cooldown > 0 || resending}
+                      className="text-sm transition-colors disabled:text-white/25 text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      {resending ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</>
+                      ) : cooldown > 0 ? (
+                        <span className="text-white/30">Resend in {cooldown}s</span>
+                      ) : (
+                        <>Resend OTP</>
+                      )}
+                    </button>
+                  </div>
                 </motion.form>
               )}
 
