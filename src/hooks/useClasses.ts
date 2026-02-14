@@ -177,18 +177,64 @@ export function useUpdateSection() {
       id: string; 
       classTeacherId?: string | null;
     }) => {
+      // Get the section info (class_id, name, school_id) + class name
+      const { data: section, error: secError } = await supabase
+        .from('sections')
+        .select('id, name, class_id, school_id, class_teacher_id')
+        .eq('id', id)
+        .single();
+      if (secError) throw secError;
+
+      const { data: classRow } = await supabase
+        .from('classes')
+        .select('name')
+        .eq('id', section.class_id)
+        .single();
+
+      const classSection = classRow ? `${classRow.name}-${section.name}` : null;
+
+      // If there was a previous teacher, remove this class-section from their classes array
+      if (section.class_teacher_id && section.class_teacher_id !== classTeacherId && classSection) {
+        const { data: oldTeacher } = await supabase
+          .from('teachers')
+          .select('id, classes')
+          .eq('id', section.class_teacher_id)
+          .maybeSingle();
+        if (oldTeacher) {
+          const updatedClasses = (oldTeacher.classes || []).filter((c: string) => c !== classSection);
+          await supabase.from('teachers').update({ classes: updatedClasses }).eq('id', oldTeacher.id);
+        }
+      }
+
+      // Update the section's class_teacher_id
       const { data, error } = await supabase
         .from('sections')
         .update({ class_teacher_id: classTeacherId })
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+
+      // Add this class-section to the new teacher's classes array
+      if (classTeacherId && classSection) {
+        const { data: newTeacher } = await supabase
+          .from('teachers')
+          .select('id, classes')
+          .eq('id', classTeacherId)
+          .maybeSingle();
+        if (newTeacher) {
+          const currentClasses = newTeacher.classes || [];
+          if (!currentClasses.includes(classSection)) {
+            await supabase.from('teachers').update({ classes: [...currentClasses, classSection] }).eq('id', newTeacher.id);
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
       toast.success('Section updated successfully');
     },
     onError: (error: Error) => {
