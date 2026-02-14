@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, GraduationCap } from 'lucide-react';
 import { useUpdateTeacher, Teacher } from '@/hooks/useTeachers';
 import { useClasses } from '@/hooks/useClasses';
+import { useUpdateSection } from '@/hooks/useClasses';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
@@ -36,14 +37,29 @@ interface EditTeacherDialogProps {
 
 export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDialogProps) {
   const updateTeacher = useUpdateTeacher();
+  const updateSection = useUpdateSection();
   const { data: dbClasses } = useClasses();
   const isMobile = useIsMobile();
+
+  // Build all section options with IDs
+  const allSections = useMemo(() => {
+    return (dbClasses || []).flatMap(cls =>
+      cls.sections.map(sec => ({
+        id: sec.id,
+        label: `${cls.name} - ${sec.name}`,
+        classTeacherId: sec.class_teacher_id,
+      }))
+    );
+  }, [dbClasses]);
 
   const classOptions = (dbClasses || []).flatMap(cls =>
     cls.sections.length > 0
       ? cls.sections.map(sec => `${cls.name}-${sec.name}`)
       : [cls.name]
   );
+
+  // Track which sections this teacher is class teacher of
+  const [classTeacherSections, setClassTeacherSections] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -70,8 +86,13 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
         joining_date: teacher.joining_date || '',
         avatar_url: teacher.avatar_url || null,
       });
+      // Find sections where this teacher is class teacher
+      const teacherSectionIds = allSections
+        .filter(s => s.classTeacherId === teacher.id)
+        .map(s => s.id);
+      setClassTeacherSections(teacherSectionIds);
     }
-  }, [teacher]);
+  }, [teacher, allSections]);
 
   const toggleSubject = (sub: string) => {
     setForm(f => ({
@@ -98,6 +119,14 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
     }));
   };
 
+  const toggleClassTeacherSection = (sectionId: string) => {
+    setClassTeacherSections(prev =>
+      prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
+
   const handleSave = async () => {
     if (!teacher || !form.full_name) {
       toast.error('Name is required');
@@ -115,6 +144,24 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
       joining_date: form.joining_date || null,
       avatar_url: form.avatar_url,
     } as any);
+
+    // Sync class teacher assignments
+    // Find original sections this teacher was class teacher of
+    const originalSectionIds = allSections
+      .filter(s => s.classTeacherId === teacher.id)
+      .map(s => s.id);
+
+    // Sections to remove this teacher from
+    const toRemove = originalSectionIds.filter(id => !classTeacherSections.includes(id));
+    // Sections to add this teacher to
+    const toAdd = classTeacherSections.filter(id => !originalSectionIds.includes(id));
+
+    for (const sectionId of toRemove) {
+      await updateSection.mutateAsync({ id: sectionId, classTeacherId: null });
+    }
+    for (const sectionId of toAdd) {
+      await updateSection.mutateAsync({ id: sectionId, classTeacherId: teacher.id });
+    }
 
     onOpenChange(false);
   };
@@ -198,7 +245,7 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
         </div>
       </div>
 
-      {/* Classes from DB */}
+      {/* Assigned Classes */}
       <div className="space-y-2">
         <Label>Assigned Classes</Label>
         {classOptions.length > 0 ? (
@@ -215,15 +262,49 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No classes configured yet. Add classes from the Classes & Sections page.</p>
+          <p className="text-sm text-muted-foreground">No classes configured yet.</p>
+        )}
+      </div>
+
+      {/* Class Teacher of - NEW */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5">
+          <GraduationCap className="w-4 h-4" />
+          Class Teacher of
+        </Label>
+        {allSections.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {allSections.map(sec => {
+              const isSelected = classTeacherSections.includes(sec.id);
+              const assignedToOther = sec.classTeacherId && sec.classTeacherId !== teacher?.id;
+              return (
+                <Badge
+                  key={sec.id}
+                  variant={isSelected ? 'default' : 'outline'}
+                  className={`cursor-pointer text-xs ${assignedToOther ? 'opacity-50' : ''}`}
+                  onClick={() => {
+                    if (assignedToOther) {
+                      toast.info(`This section already has a class teacher assigned`);
+                      return;
+                    }
+                    toggleClassTeacherSection(sec.id);
+                  }}
+                >
+                  {sec.label}
+                </Badge>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No sections configured yet.</p>
         )}
       </div>
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-background pb-2">
         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button onClick={handleSave} disabled={updateTeacher.isPending}>
-          {updateTeacher.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        <Button onClick={handleSave} disabled={updateTeacher.isPending || updateSection.isPending}>
+          {(updateTeacher.isPending || updateSection.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Save Changes
         </Button>
       </div>
