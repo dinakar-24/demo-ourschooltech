@@ -67,6 +67,8 @@ import StudentResults from "./pages/student/StudentResults";
 import StudentProfile from "./pages/student/StudentProfile";
 import StudentTimetable from "./pages/student/StudentTimetable";
 import StudentAnnouncements from "./pages/student/StudentAnnouncements";
+import StudentSubjects from "./pages/student/StudentSubjects";
+import StudentSettings from "./pages/student/StudentSettings";
 
 // Shared Pages
 import NotificationsPage from "./pages/NotificationsPage";
@@ -158,6 +160,8 @@ function AppRoutes() {
       <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
       <Route path="/student/timetable" element={<ProtectedRoute allowedRoles={['student']}><StudentTimetable /></ProtectedRoute>} />
       <Route path="/student/announcements" element={<ProtectedRoute allowedRoles={['student']}><StudentAnnouncements /></ProtectedRoute>} />
+      <Route path="/student/subjects" element={<ProtectedRoute allowedRoles={['student']}><StudentSubjects /></ProtectedRoute>} />
+      <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['student']}><StudentSettings /></ProtectedRoute>} />
       <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
       <Route path="/student/notifications" element={<ProtectedRoute allowedRoles={['student']}><NotificationsPage /></ProtectedRoute>} />
       <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
