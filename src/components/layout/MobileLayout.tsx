@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -56,6 +58,24 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Fetch avatar from profiles table as fallback
+  const { data: profileAvatar } = useQuery({
+    queryKey: ['profile-avatar', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      // Check profiles table first
+      const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
+      if (profile?.avatar_url) return profile.avatar_url;
+      // For students, also check students table
+      const { data: student } = await supabase.from('students').select('avatar_url').eq('user_id', user.id).maybeSingle();
+      return student?.avatar_url || null;
+    },
+    enabled: !!user?.id && !user?.avatar,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const avatarUrl = user?.avatar || profileAvatar;
+
   const role = user?.role || 'student';
   const navItems = navConfig[role] || [];
 
@@ -89,7 +109,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
               </Button>
             )}
             <Avatar className="w-8 h-8 border border-primary-foreground/20">
-              <AvatarImage src={user?.avatar} alt={user?.name} />
+              <AvatarImage src={avatarUrl} alt={user?.name} />
               <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
                 {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </AvatarFallback>
