@@ -5,12 +5,12 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   LayoutDashboard,
   ClipboardList,
   CreditCard,
   FileText,
-  Bell,
   User,
   BookOpen,
   Award,
@@ -127,14 +127,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
           </div>
           
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon-sm" 
-              className="relative text-primary-foreground hover:bg-primary-foreground/10"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
-            </Button>
+            <NotificationBell />
           </div>
         </div>
       </header>
