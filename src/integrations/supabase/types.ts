@@ -834,6 +834,7 @@ export type Database = {
           address: string | null
           admission_number: string
           alternate_phone: string | null
+          avatar_url: string | null
           blood_group: string | null
           class_name: string
           created_at: string
@@ -856,6 +857,7 @@ export type Database = {
           address?: string | null
           admission_number: string
           alternate_phone?: string | null
+          avatar_url?: string | null
           blood_group?: string | null
           class_name: string
           created_at?: string
@@ -878,6 +880,7 @@ export type Database = {
           address?: string | null
           admission_number?: string
           alternate_phone?: string | null
+          avatar_url?: string | null
           blood_group?: string | null
           class_name?: string
           created_at?: string
