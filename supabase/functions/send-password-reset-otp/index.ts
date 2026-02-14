@@ -36,10 +36,9 @@ serve(async (req) => {
     );
 
     if (!existingUser) {
-      // Don't reveal whether email exists - return success anyway
       return new Response(
-        JSON.stringify({ success: true, message: "If this email is registered, you will receive an OTP" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "No account found with this email address" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
