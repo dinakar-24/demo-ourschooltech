@@ -49,7 +49,7 @@ interface AddStudentDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const SECTIONS = ['A', 'B', 'C', 'D'];
+const DEFAULT_SECTIONS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const GENDERS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
@@ -230,7 +230,7 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
   onClose: () => void;
 }) {
   const classOptions = (classes || []).map(c => ({ value: c.name, label: c.name }));
-  const sectionOptions = SECTIONS.map(s => ({ value: s, label: s }));
+  const sectionOptions = DEFAULT_SECTIONS.map(s => ({ value: s, label: s }));
   const bloodGroupOptions = BLOOD_GROUPS.map(b => ({ value: b, label: b }));
 
   const safeFeeEntries = feeEntries || [];
