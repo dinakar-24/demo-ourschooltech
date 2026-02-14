@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FeeEntry } from '@/components/admin/AddStudentDialog';
 import { AdminLayout } from '@/components/layout/AdminLayout';
@@ -72,6 +73,7 @@ export default function StudentsPage() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All Classes');
   const [selectedSection, setSelectedSection] = useState('All Sections');
@@ -83,6 +85,14 @@ export default function StudentsPage() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const pagination = usePagination(25);
   
+  // Open add dialog from sidebar link
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setIsAddDialogOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     pagination.resetPage();
