@@ -3,10 +3,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect } from 'react';
-import { Bell, Moon, Globe } from 'lucide-react';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Bell, Globe } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTranslation } from 'react-i18next';
 
 const LANGUAGES = [
@@ -23,26 +22,6 @@ const LANGUAGES = [
 export default function StudentSettings() {
   const { t, i18n } = useTranslation();
   const { isSubscribed, isSupported, subscribe, permission } = usePushNotifications();
-  const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
-
-  const handleDarkModeToggle = (checked: boolean) => {
-    setDarkMode(checked);
-    if (checked) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
-  useEffect(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark') {
-      document.documentElement.classList.add('dark');
-      setDarkMode(true);
-    }
-  }, []);
 
   const handleNotificationToggle = async (checked: boolean) => {
     if (checked) {
@@ -85,19 +64,6 @@ export default function StudentSettings() {
                 checked={isSubscribed}
                 onCheckedChange={handleNotificationToggle}
                 disabled={!isSupported}
-              />
-            </div>
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <Moon className="w-5 h-5 text-muted-foreground" />
-                <Label htmlFor="darkMode" className="font-medium cursor-pointer">
-                  {t('settingsPage.darkMode')}
-                </Label>
-              </div>
-              <Switch
-                id="darkMode"
-                checked={darkMode}
-                onCheckedChange={handleDarkModeToggle}
               />
             </div>
             <div className="flex items-center justify-between p-4">
