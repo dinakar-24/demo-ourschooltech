@@ -62,8 +62,12 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-                  {studentInfo.name.split(' ').map(n => n[0]).join('')}
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold overflow-hidden">
+                  {(student?.avatar_url || user?.avatar) ? (
+                    <img src={student?.avatar_url || user?.avatar} alt={studentInfo.name} className="w-full h-full object-cover" />
+                  ) : (
+                    studentInfo.name.split(' ').map(n => n[0]).join('')
+                  )}
                 </div>
                 <div>
                   <p className="text-primary-foreground/70 text-sm">Hello,</p>
