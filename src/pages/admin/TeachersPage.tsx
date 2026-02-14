@@ -189,7 +189,7 @@ export default function TeachersPage() {
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 shrink-0">
                           <Avatar className="w-10 h-10">
-                            <AvatarImage src={(teacher as any).profiles?.avatar_url} alt={teacher.full_name} />
+                            <AvatarImage src={teacher.avatar_url || undefined} alt={teacher.full_name} />
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                               {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </AvatarFallback>
@@ -258,7 +258,7 @@ export default function TeachersPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="w-8 h-8 flex-shrink-0">
-                            <AvatarImage src={(teacher as any).profiles?.avatar_url} alt={teacher.full_name} />
+                            <AvatarImage src={teacher.avatar_url || undefined} alt={teacher.full_name} />
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                               {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </AvatarFallback>
