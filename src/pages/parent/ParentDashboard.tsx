@@ -60,8 +60,12 @@ export default function ParentDashboard() {
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                  {childInfo.name.split(' ').map(n => n[0]).join('')}
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold overflow-hidden">
+                  {(child?.avatar_url || user?.avatar) ? (
+                    <img src={child?.avatar_url || user?.avatar} alt={childInfo.name} className="w-full h-full object-cover" />
+                  ) : (
+                    childInfo.name.split(' ').map(n => n[0]).join('')
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">{childInfo.name}</h2>

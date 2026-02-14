@@ -6,6 +6,7 @@ import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   User,
   Mail,
@@ -22,6 +23,7 @@ import {
 export default function ParentProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleLogout = () => {
     logout();
@@ -48,6 +50,7 @@ export default function ParentProfile() {
                   if (user?.id) {
                     await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
                   }
+                  queryClient.invalidateQueries({ queryKey: ['parent-child'] });
                 }}
                 fallback={user?.name}
                 size="lg"
