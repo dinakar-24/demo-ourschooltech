@@ -58,6 +58,21 @@ serve(async (req) => {
       );
     }
 
+    // Rate limiting: max 3 OTP requests per email per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabaseAdmin
+      .from("password_reset_otp")
+      .select("id", { count: "exact", head: true })
+      .eq("email", email.toLowerCase())
+      .gte("created_at", oneHourAgo);
+
+    if ((recentCount ?? 0) >= 3) {
+      return new Response(
+        JSON.stringify({ error: "Too many OTP requests. Please try again after some time." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
