@@ -237,14 +237,20 @@ export function useUpdateTeacher() {
       if (error) throw error;
 
       // Sync class_teacher_id on sections when classes are updated
-      if (updates.classes && data.school_id) {
+      if (updates.classes !== undefined && data.school_id) {
+        // First, clear this teacher from ALL sections they were previously assigned to
+        await supabase
+          .from('sections')
+          .update({ class_teacher_id: null })
+          .eq('school_id', data.school_id)
+          .eq('class_teacher_id', id);
+
+        // Then assign to new sections
         const assignedClasses = updates.classes || [];
-        // For each assigned "ClassName-Section", set this teacher as class_teacher
         for (const cls of assignedClasses) {
           const parts = cls.split('-');
           if (parts.length === 2) {
             const [className, sectionName] = parts;
-            // Find the class id
             const { data: classRow } = await supabase
               .from('classes')
               .select('id')
