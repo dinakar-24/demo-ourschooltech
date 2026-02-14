@@ -133,7 +133,21 @@ export default function StudentsPage() {
   const deleteStudent = useDeleteStudent();
 
   const classNames = ['All Classes', ...(classes?.map(c => c.name) || [])];
-  const sections = ['All Sections', 'A', 'B', 'C', 'D'];
+
+  // Build dynamic sections list from actual student data + sections table
+  const [allSections, setAllSections] = useState<string[]>([]);
+  useEffect(() => {
+    if (!schoolId) return;
+    supabase
+      .from('students')
+      .select('section')
+      .eq('school_id', schoolId)
+      .then(({ data }) => {
+        const unique = [...new Set((data || []).map(d => d.section).filter(Boolean))].sort();
+        setAllSections(unique.length > 0 ? unique : ['A', 'B', 'C', 'D']);
+      });
+  }, [schoolId, totalCount]);
+  const sections = ['All Sections', ...allSections];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
