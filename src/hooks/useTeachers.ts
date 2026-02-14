@@ -18,6 +18,7 @@ export interface Teacher {
   qualification: string | null;
   joining_date: string | null;
   created_at: string;
+  avatar_url?: string | null;
 }
 
 interface TeacherFilters {
@@ -44,7 +45,7 @@ export function useTeachers(filters?: TeacherFilters) {
 
       let query = supabase
         .from('teachers')
-        .select('*', { count: 'exact' })
+        .select('*, profiles:user_id(avatar_url)', { count: 'exact' })
         .eq('school_id', schoolId)
         .order('full_name', { ascending: true });
 
@@ -64,7 +65,13 @@ export function useTeachers(filters?: TeacherFilters) {
       const { data, error, count } = await query;
 
       if (error) throw error;
-      return { data: (data || []) as Teacher[], totalCount: count || 0 };
+      // Flatten profiles join into avatar_url
+      const teachers = (data || []).map((t: any) => ({
+        ...t,
+        avatar_url: t.profiles?.avatar_url || null,
+        profiles: undefined,
+      })) as Teacher[];
+      return { data: teachers, totalCount: count || 0 };
     },
     enabled: !!schoolId,
     staleTime: 5 * 60 * 1000,
@@ -207,10 +214,10 @@ export function useUpdateTeacher() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Teacher> & { id: string }) => {
+    mutationFn: async ({ id, avatar_url, created_at, ...updates }: Partial<Teacher> & { id: string }) => {
       const { data, error } = await supabase
         .from('teachers')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
