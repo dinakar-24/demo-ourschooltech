@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudentProfile } from '@/hooks/useStudentData';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   User,
   Mail,
@@ -22,6 +24,8 @@ import {
 export default function StudentProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: student } = useStudentProfile();
 
   const handleLogout = () => {
     logout();
@@ -43,11 +47,15 @@ export default function StudentProfile() {
           <CardContent className="p-5">
             <div className="flex items-center gap-4 mb-4">
               <AvatarUpload
-                value={user?.avatar}
+                value={student?.avatar_url || user?.avatar}
                 onChange={async (url) => {
                   if (user?.id) {
                     await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
                   }
+                  if (student?.id) {
+                    await supabase.from('students').update({ avatar_url: url }).eq('id', student.id);
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['student-profile'] });
                 }}
                 fallback={user?.name}
                 size="lg"
