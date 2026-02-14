@@ -50,6 +50,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { CredentialsDialog, type CreatedAccount } from '@/components/admin/CredentialsDialog';
 import { EditStudentDialog } from '@/components/admin/EditStudentDialog';
+import { ViewStudentDialog } from '@/components/admin/ViewStudentDialog';
 import { useClasses } from '@/hooks/useClasses';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -209,6 +210,7 @@ export default function StudentsPage() {
   };
 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<{ id: string; userId: string | null; name: string } | null>(null);
 
   const handleDeleteConfirmed = async () => {
@@ -374,6 +376,8 @@ export default function StudentsPage() {
                   <StudentCard
                     key={student.id}
                     student={student}
+                    onView={(s) => setViewingStudent(s as any)}
+                    onEdit={(s) => setEditingStudent(s as any)}
                     onDelete={(id, userId) => setDeletingStudent({ id, userId, name: students.find(s => s.id === id)?.full_name || '' })}
                   />
                 ))}
@@ -400,7 +404,7 @@ export default function StudentsPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="w-8 h-8 flex-shrink-0">
-                            <AvatarImage src={(student as any).profiles?.avatar_url} alt={student.full_name} />
+                            <AvatarImage src={(student as any).avatar_url || (student as any).profiles?.avatar_url} alt={student.full_name} />
                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                               {student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </AvatarFallback>
@@ -432,6 +436,10 @@ export default function StudentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setViewingStudent(student)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setEditingStudent(student)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
@@ -461,6 +469,12 @@ export default function StudentsPage() {
             />
           </CardContent>
         </Card>
+
+        <ViewStudentDialog
+          student={viewingStudent}
+          open={!!viewingStudent}
+          onOpenChange={(open) => !open && setViewingStudent(null)}
+        />
 
         <EditStudentDialog
           student={editingStudent}
