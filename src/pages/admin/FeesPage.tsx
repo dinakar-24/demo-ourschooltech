@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,212 +6,93 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
-  Search,
-  Plus,
-  Download,
-  CreditCard,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  IndianRupee,
-  MoreVertical,
-  Eye,
-  Receipt,
-  Send,
-  Loader2,
-  Printer,
+  Search, Plus, Download, CreditCard, TrendingUp, AlertCircle, CheckCircle,
+  IndianRupee, ChevronDown, ChevronRight, Receipt, Loader2, CalendarDays,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useFees, useFeeStats, useRecordPayment, useCreateFee } from '@/hooks/useFees';
-import { useStudentSearch } from '@/hooks/useStudentSearch';
+import { useFeeInvoices, useInvoiceStats, useFeeTerms, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useGenerateReceipt } from '@/hooks/useReceiptGeneration';
-import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
-import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFeeTypes } from '@/hooks/useSections';
-
-const DEFAULT_FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Exam Fee', 'Lab Fee', 'Sports Fee', 'Library Fee', 'Activity Fee', 'Other'];
+import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
+import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
+import { CreateTermDialog } from '@/components/fees/CreateTermDialog';
+import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 
 export default function FeesPage() {
   const isMobile = useIsMobile();
   const [searchInput, setSearchInput] = useState('');
-  const [selectedType, setSelectedType] = useState('All Types');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [selectedFeeId, setSelectedFeeId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [transactionId, setTransactionId] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Dialogs
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [termDialogOpen, setTermDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState<FeeInvoice | null>(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [receiptFee, setReceiptFee] = useState<any>(null);
+  const [receiptPayment, setReceiptPayment] = useState<FeePayment | null>(null);
+  const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
 
   const pagination = usePagination(25);
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  // Reset page on filter change
-  useEffect(() => {
-    pagination.resetPage();
-  }, [debouncedSearch, selectedType, selectedStatus]);
+  useEffect(() => { pagination.resetPage(); }, [debouncedSearch, selectedStatus, selectedTerm]);
 
-  // New fee form state
-  const [newFee, setNewFee] = useState({
-    student_id: '',
-    fee_type: '',
-    custom_fee_type: '',
-    amount: '',
-    due_date: '',
-  });
-
-  const { data: feesResult, isLoading } = useFees({
+  const { data: invoicesResult, isLoading } = useFeeInvoices({
     status: selectedStatus,
-    feeType: selectedType,
     search: debouncedSearch,
+    termId: selectedTerm,
     page: pagination.page,
     pageSize: pagination.pageSize,
   });
-  const fees = feesResult?.data || [];
-  const totalCount = feesResult?.totalCount || 0;
-  const { data: stats } = useFeeStats();
+  const invoices = invoicesResult?.data || [];
+  const totalCount = invoicesResult?.totalCount || 0;
+  const { data: stats } = useInvoiceStats();
+  const { data: terms } = useFeeTerms();
 
-  // Search-as-you-type student selector for Add Fee dialog
-  const studentSearch = useStudentSearch();
-
-  const recordPayment = useRecordPayment();
-  const createFee = useCreateFee();
-  const generateReceipt = useGenerateReceipt();
-  const { data: dynamicFeeTypes } = useFeeTypes();
-  
-  // Merge default + dynamic fee types, deduplicated
-  const allFeeTypes = [...new Set([...DEFAULT_FEE_TYPES, ...(dynamicFeeTypes || [])])].sort();
-  const feeTypes = ['All Types', ...allFeeTypes];
-
-  const handleGenerateReceipt = async (fee: any) => {
-    if (fee.receipt_number) {
-      // Already has receipt, just show it
-      setReceiptFee(fee);
-      setReceiptDialogOpen(true);
-      return;
-    }
-    try {
-      const updatedFee = await generateReceipt.mutateAsync(fee.id);
-      setReceiptFee(updatedFee);
-      setReceiptDialogOpen(true);
-    } catch (error) {
-      // error handled by hook
-    }
+  const openPayment = (inv: FeeInvoice) => {
+    setPaymentInvoice(inv);
+    setPaymentDialogOpen(true);
   };
 
-  const handleRecordPayment = async () => {
-    if (!selectedFeeId) return;
-
-    try {
-      await recordPayment.mutateAsync({
-        feeId: selectedFeeId,
-        paymentMethod,
-        transactionId: transactionId || undefined,
-      });
-      toast.success('Payment recorded successfully');
-      setIsPaymentDialogOpen(false);
-      setSelectedFeeId(null);
-      setPaymentMethod('cash');
-      setTransactionId('');
-    } catch (error) {
-      toast.error('Failed to record payment');
-    }
-  };
-
-  const handleAddFee = async () => {
-    const effectiveFeeType = newFee.fee_type === 'Other' ? newFee.custom_fee_type.trim() : newFee.fee_type;
-    if (!newFee.student_id || !effectiveFeeType || !newFee.amount || !newFee.due_date) {
-      toast.error('Please fill all fields');
-      return;
-    }
-
-    try {
-      await createFee.mutateAsync({
-        student_id: newFee.student_id,
-        fee_type: effectiveFeeType,
-        amount: Number(newFee.amount),
-        due_date: newFee.due_date,
-      });
-      toast.success('Fee record created');
-      setIsAddDialogOpen(false);
-      setNewFee({ student_id: '', fee_type: '', custom_fee_type: '', amount: '', due_date: '' });
-      studentSearch.setSearchInput('');
-    } catch (error) {
-      toast.error('Failed to create fee record');
-    }
-  };
-
-  const openPaymentDialog = (feeId: string) => {
-    setSelectedFeeId(feeId);
-    setIsPaymentDialogOpen(true);
+  const openReceipt = (payment: FeePayment, invoice: FeeInvoice) => {
+    setReceiptPayment(payment);
+    setReceiptInvoice(invoice);
+    setReceiptDialogOpen(true);
   };
 
   const getStatusBadge = (status: string, dueDate: string) => {
     const today = new Date().toISOString().split('T')[0];
     const isOverdue = status === 'pending' && dueDate < today;
-
-    if (status === 'paid') {
-      return <Badge className="bg-success text-success-foreground">Paid</Badge>;
-    }
-    if (isOverdue) {
-      return <Badge variant="destructive">Overdue</Badge>;
-    }
-    if (status === 'pending') {
-      return <Badge variant="secondary">Pending</Badge>;
-    }
-    if (status === 'partial') {
-      return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
-    }
-    return <Badge variant="outline">{status}</Badge>;
+    if (status === 'paid') return <Badge className="bg-success text-success-foreground">Paid</Badge>;
+    if (isOverdue) return <Badge variant="destructive">Overdue</Badge>;
+    if (status === 'partial') return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
+    return <Badge variant="secondary">Pending</Badge>;
   };
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-    if (amount >= 1000) return `₹${(amount / 1000).toFixed(0)}K`;
-    return `₹${amount.toLocaleString()}`;
+  const fmt = (n: number) => {
+    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
+    return `₹${n.toLocaleString()}`;
   };
 
-  const collectionRate = stats && stats.totalDue > 0
-    ? ((stats.collected / stats.totalDue) * 100).toFixed(0)
-    : '0';
+  const collectionRate = stats && stats.totalDue > 0 ? ((stats.collected / stats.totalDue) * 100).toFixed(0) : '0';
 
   return (
     <AdminLayout title="Fees Management">
       <div className="space-y-6 animate-fade-up">
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
@@ -220,7 +101,7 @@ export default function FeesPage() {
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-success">{formatCurrency(stats?.collected || 0)}</p>
+              <p className="text-2xl font-bold text-success">{fmt(stats?.collected || 0)}</p>
               <p className="text-sm text-muted-foreground">Collected</p>
             </CardContent>
           </Card>
@@ -231,7 +112,7 @@ export default function FeesPage() {
                   <AlertCircle className="w-4 h-4 text-warning" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-warning">{formatCurrency(stats?.pending || 0)}</p>
+              <p className="text-2xl font-bold text-warning">{fmt(stats?.pending || 0)}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </CardContent>
           </Card>
@@ -242,7 +123,7 @@ export default function FeesPage() {
                   <AlertCircle className="w-4 h-4 text-destructive" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-destructive">{formatCurrency(stats?.overdue || 0)}</p>
+              <p className="text-2xl font-bold text-destructive">{fmt(stats?.overdue || 0)}</p>
               <p className="text-sm text-muted-foreground">Overdue</p>
             </CardContent>
           </Card>
@@ -259,25 +140,21 @@ export default function FeesPage() {
           </Card>
         </div>
 
-        {/* Actions Bar */}
+        {/* Actions */}
         <div className="flex flex-col md:flex-row gap-4 justify-between">
           <div className="flex flex-col sm:flex-row gap-3 flex-1">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, admission no..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-9"
-              />
+              <Input placeholder="Search student..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
             </div>
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Fee Type" />
+            <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Term" />
               </SelectTrigger>
               <SelectContent>
-                {feeTypes.map(type => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                <SelectItem value="all">All Terms</SelectItem>
+                {(terms || []).map(t => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -289,131 +166,22 @@ export default function FeesPage() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
+              <CalendarDays className="w-4 h-4 mr-2" /> Add Term
             </Button>
-            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-              setIsAddDialogOpen(open);
-              if (!open) {
-                studentSearch.setSearchInput('');
-                setNewFee({ student_id: '', fee_type: '', custom_fee_type: '', amount: '', due_date: '' });
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Fee
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Fee Record</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Student</Label>
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Search student by name or admission no (min 2 chars)..."
-                        value={studentSearch.searchInput}
-                        onChange={(e) => {
-                          studentSearch.setSearchInput(e.target.value);
-                          if (!e.target.value) setNewFee(prev => ({ ...prev, student_id: '' }));
-                        }}
-                      />
-                      {studentSearch.isLoading && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Searching...
-                        </div>
-                      )}
-                      {studentSearch.hasSearched && !studentSearch.isLoading && studentSearch.students.length === 0 && (
-                        <p className="text-sm text-muted-foreground p-2">No students found</p>
-                      )}
-                      {studentSearch.students.length > 0 && (
-                        <div className="max-h-40 overflow-y-auto border rounded-md divide-y">
-                          {studentSearch.students.map(s => (
-                            <button
-                              key={s.id}
-                              type="button"
-                              className={`w-full text-left p-2 text-sm hover:bg-muted transition-colors ${
-                                newFee.student_id === s.id ? 'bg-primary/10 text-primary font-medium' : ''
-                              }`}
-                              onClick={() => {
-                                setNewFee(prev => ({ ...prev, student_id: s.id }));
-                                studentSearch.setSearchInput(s.full_name);
-                              }}
-                            >
-                              <span className="font-medium">{s.full_name}</span>
-                              <span className="text-muted-foreground ml-2">
-                                ({s.admission_number}) · {s.class_name}-{s.section}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fee Type</Label>
-                    <Select
-                      value={newFee.fee_type}
-                      onValueChange={(v) => setNewFee({ ...newFee, fee_type: v, custom_fee_type: '' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select fee type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {feeTypes.slice(1).map(type => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {newFee.fee_type === 'Other' && (
-                      <Input
-                        placeholder="Enter custom fee type name"
-                        value={newFee.custom_fee_type}
-                        onChange={(e) => setNewFee({ ...newFee, custom_fee_type: e.target.value })}
-                        className="mt-2"
-                      />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      type="number"
-                      placeholder="Enter amount"
-                      value={newFee.amount}
-                      onChange={(e) => setNewFee({ ...newFee, amount: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Due Date</Label>
-                    <Input
-                      type="date"
-                      value={newFee.due_date}
-                      onChange={(e) => setNewFee({ ...newFee, due_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddFee} disabled={createFee.isPending || !newFee.student_id}>
-                    {createFee.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Add Record
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Create Invoice
+            </Button>
           </div>
         </div>
 
-        {/* Fee Records Table */}
+        {/* Invoice List */}
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
@@ -428,56 +196,85 @@ export default function FeesPage() {
                   </div>
                 ))}
               </div>
-            ) : fees.length === 0 ? (
+            ) : invoices.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">No fee records found</p>
-                <p className="text-sm mt-1">
-                  {debouncedSearch ? 'Try a different search term' : 'Create fee records for students to track payments'}
-                </p>
+                <p className="font-medium">No fee invoices found</p>
+                <p className="text-sm mt-1">Create terms first, then create invoices for students</p>
               </div>
             ) : isMobile ? (
-              /* Mobile Card Layout */
+              /* Mobile */
               <div className="divide-y">
-                {fees.map((record) => (
-                  <div key={record.id} className="p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{record.student?.full_name || 'Unknown'}</p>
-                        <p className="text-xs text-muted-foreground">{record.student?.admission_number || '-'} · {record.student?.class_name}-{record.student?.section}</p>
+                {invoices.map((inv) => (
+                  <Collapsible
+                    key={inv.id}
+                    open={expandedId === inv.id}
+                    onOpenChange={(open) => setExpandedId(open ? inv.id : null)}
+                  >
+                    <div className="p-4 space-y-2">
+                      <CollapsibleTrigger className="w-full text-left">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex items-start gap-2">
+                            {expandedId === inv.id ? <ChevronDown className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />}
+                            <div>
+                              <p className="font-medium text-sm truncate">{inv.student?.full_name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{inv.student?.admission_number} · {inv.student?.class_name}-{inv.student?.section}</p>
+                            </div>
+                          </div>
+                          {getStatusBadge(inv.status, inv.due_date)}
+                        </div>
+                      </CollapsibleTrigger>
+                      <div className="flex items-center justify-between text-sm pl-6">
+                        <div>
+                          <span className="text-muted-foreground">{inv.term?.name || 'N/A'}</span>
+                          <span className="mx-2">·</span>
+                          <span className="text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <span className="font-medium">₹{Number(inv.total_amount).toLocaleString()}</span>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View</DropdownMenuItem>
-                          {record.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => openPaymentDialog(record.id)}>
-                              <CreditCard className="w-4 h-4 mr-2" />Record Payment
-                            </DropdownMenuItem>
+                      <div className="flex justify-between items-center text-xs text-muted-foreground pl-6">
+                        <span>Paid: ₹{Number(inv.paid_amount).toLocaleString()} | Balance: ₹{Number(inv.balance).toLocaleString()}</span>
+                        {inv.status !== 'paid' && (
+                          <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); openPayment(inv); }}>
+                            <CreditCard className="w-3 h-3 mr-1" /> Pay
+                          </Button>
+                        )}
+                      </div>
+
+                      <CollapsibleContent>
+                        <div className="mt-3 pl-6 space-y-3">
+                          {/* Components */}
+                          <div className="rounded-lg border bg-muted/30 p-3">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Fee Components</p>
+                            {(inv.components || []).map(c => (
+                              <div key={c.id} className="flex justify-between text-sm py-0.5">
+                                <span>{c.fee_type}</span>
+                                <span>₹{Number(c.amount).toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Payments */}
+                          {(inv.payments || []).length > 0 && (
+                            <div className="rounded-lg border bg-success/5 p-3">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Payment History</p>
+                              {(inv.payments || []).map(p => (
+                                <div key={p.id} className="flex justify-between items-center text-sm py-1">
+                                  <div>
+                                    <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                                    <span className="text-muted-foreground ml-2 capitalize text-xs">{p.payment_method}</span>
+                                    <span className="text-muted-foreground ml-2 text-xs">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+                                  </div>
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
+                                    <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
                           )}
-                            {record.status === 'paid' && (
-                              <DropdownMenuItem onClick={() => handleGenerateReceipt(record)}>
-                                <Receipt className="w-4 h-4 mr-2" />{record.receipt_number ? 'View Receipt' : 'Generate Receipt'}
-                              </DropdownMenuItem>
-                            )}
-                          <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Remind</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div>
-                        <span className="text-muted-foreground">{record.fee_type}</span>
-                        <span className="mx-2">·</span>
-                        <span className="text-muted-foreground">{new Date(record.due_date).toLocaleDateString('en-IN')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium flex items-center"><IndianRupee className="w-3 h-3" />{Number(record.amount).toLocaleString()}</span>
-                        {getStatusBadge(record.status, record.due_date)}
-                      </div>
-                    </div>
-                  </div>
+                  </Collapsible>
                 ))}
               </div>
             ) : (
@@ -485,53 +282,99 @@ export default function FeesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8"></TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead>Fee Type</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead>Term</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Paid</TableHead>
+                    <TableHead>Balance</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-[120px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {fees.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{record.student?.full_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground">{record.student?.admission_number || '-'}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{record.student?.class_name}-{record.student?.section}</TableCell>
-                      <TableCell>{record.fee_type}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center"><IndianRupee className="w-3 h-3" />{Number(record.amount).toLocaleString()}</div>
-                      </TableCell>
-                      <TableCell>{new Date(record.due_date).toLocaleDateString('en-IN')}</TableCell>
-                      <TableCell>{getStatusBadge(record.status, record.due_date)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm"><MoreVertical className="w-4 h-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />View Details</DropdownMenuItem>
-                            {record.status !== 'paid' && (
-                              <DropdownMenuItem onClick={() => openPaymentDialog(record.id)}>
-                                <CreditCard className="w-4 h-4 mr-2" />Record Payment
-                              </DropdownMenuItem>
-                            )}
-                            {record.status === 'paid' && (
-                              <DropdownMenuItem onClick={() => handleGenerateReceipt(record)}>
-                                <Receipt className="w-4 h-4 mr-2" />{(record as any).receipt_number ? 'View Receipt' : 'Generate Receipt'}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Send Reminder</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                  {invoices.map((inv) => (
+                    <Fragment key={inv.id}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setExpandedId(expandedId === inv.id ? null : inv.id)}
+                      >
+                        <TableCell>
+                          {expandedId === inv.id
+                            ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{inv.student?.full_name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground">{inv.student?.admission_number}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{inv.student?.class_name}-{inv.student?.section}</TableCell>
+                        <TableCell>{inv.term?.name || 'N/A'}</TableCell>
+                        <TableCell className="font-medium">₹{Number(inv.total_amount).toLocaleString()}</TableCell>
+                        <TableCell className="text-success">₹{Number(inv.paid_amount).toLocaleString()}</TableCell>
+                        <TableCell className="text-destructive font-medium">₹{Number(inv.balance).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(inv.due_date).toLocaleDateString('en-IN')}</TableCell>
+                        <TableCell>{getStatusBadge(inv.status, inv.due_date)}</TableCell>
+                        <TableCell>
+                          {inv.status !== 'paid' && (
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); openPayment(inv); }}>
+                              <CreditCard className="w-3 h-3 mr-1" /> Pay
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {/* Expanded Detail Row */}
+                      {expandedId === inv.id && (
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={10} className="p-0">
+                            <div className="p-4 grid md:grid-cols-2 gap-4">
+                              {/* Components */}
+                              <div className="rounded-lg border bg-card p-4">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Fee Components</h4>
+                                <div className="space-y-1">
+                                  {(inv.components || []).map(c => (
+                                    <div key={c.id} className="flex justify-between text-sm py-1 border-b last:border-0">
+                                      <span>{c.fee_type}</span>
+                                      <span className="font-medium">₹{Number(c.amount).toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                  <div className="flex justify-between text-sm pt-2 font-semibold">
+                                    <span>Total</span>
+                                    <span>₹{Number(inv.total_amount).toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Payments */}
+                              <div className="rounded-lg border bg-card p-4">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Payments ({(inv.payments || []).length})</h4>
+                                {(inv.payments || []).length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No payments recorded yet</p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {(inv.payments || []).map(p => (
+                                      <div key={p.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0">
+                                        <div>
+                                          <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                                          <span className="text-muted-foreground ml-2 capitalize text-xs">{p.payment_method}</span>
+                                          <div className="text-xs text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</div>
+                                        </div>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
+                                          <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
@@ -547,55 +390,11 @@ export default function FeesPage() {
           </CardContent>
         </Card>
 
-        {/* Payment Recording Dialog */}
-        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Record Payment</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="upi">UPI</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="neft">NEFT/RTGS</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Transaction ID (Optional)</Label>
-                <Input
-                  placeholder="Enter transaction/reference ID"
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleRecordPayment} disabled={recordPayment.isPending}>
-                {recordPayment.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Confirm Payment
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Receipt Dialog */}
-        <FeeReceiptDialog
-          open={receiptDialogOpen}
-          onOpenChange={setReceiptDialogOpen}
-          fee={receiptFee}
-        />
+        {/* Dialogs */}
+        <CreateTermDialog open={termDialogOpen} onOpenChange={setTermDialogOpen} />
+        <CreateInvoiceDialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen} />
+        <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} />
+        <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
       </div>
     </AdminLayout>
   );
