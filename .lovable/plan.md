@@ -1,3 +1,4 @@
+
 # Multi-Tenant Subdomain Architecture with Role-Based Separate PWAs
 
 ## Overview
@@ -202,35 +203,3 @@ For school code "greenwood":
 
 
 4 separately installable PWA apps per school, each with the school's own logo and colors.
-
-Add this validation in TenantContext:
-
-&nbsp;
-
-If hostname equals base domain (no subdomain):
-
-&nbsp;
-
-tenant = null
-
-isSubdomain = false
-
-&nbsp;
-
-&nbsp;
-
-But if hostname has unexpected format (like test.evil.com via preview link):
-
-&nbsp;
-
-Block it.
-
-&nbsp;
-
-Example:
-
-&nbsp;
-
-If hostname does not end with .ourschooltech.com
-
-→ Show error.
