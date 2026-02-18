@@ -1,6 +1,7 @@
 import { Bell, Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface TopBarProps {
   title?: string;
@@ -8,6 +9,8 @@ interface TopBarProps {
 }
 
 export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
+  const { tenant, isSubdomain } = useTenant();
+
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-border px-4 md:px-6 py-3">
       <div className="flex items-center justify-between gap-4">
@@ -20,6 +23,9 @@ export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
           >
             <Menu className="w-5 h-5" />
           </Button>
+          {isSubdomain && tenant?.logo && (
+            <img src={tenant.logo} alt={tenant.name} className="w-8 h-8 rounded-lg object-contain hidden md:block" />
+          )}
           <h1 className="text-lg md:text-xl font-display font-semibold text-foreground">{title}</h1>
         </div>
 

@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "favicon.ico"],
+      // Dynamic manifest is injected at runtime for subdomain tenants
+      // Static manifest serves as fallback for main domain
+      injectManifest: undefined,
       manifest: {
         name: "Our School Tech",
         short_name: "SchoolTech",

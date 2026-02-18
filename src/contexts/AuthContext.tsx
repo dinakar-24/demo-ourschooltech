@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { SessionWarningBanner } from '@/components/layout/SessionWarningBanner';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
@@ -48,6 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { tenant, isSubdomain } = useTenant();
+
+  // Cross-tenant validation: sign out if user's school doesn't match subdomain
+  const validateTenant = useCallback(async (userData: User) => {
+    if (isSubdomain && tenant) {
+      if (userData.schoolId !== tenant.schoolId) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSchool(null);
+        toast.error('Your account does not belong to this school. Please use the correct school portal.');
+        return false;
+      }
+    }
+    return true;
+  }, [isSubdomain, tenant]);
 
   // Fetch user profile, role, and school in a single optimized query
   const fetchUserData = async (supabaseUser: SupabaseUser) => {
@@ -111,8 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(async () => {
             const data = await fetchUserData(session.user);
             if (data) {
-              setUser(data.user);
-              setSchool(data.school);
+              const isValid = await validateTenant(data.user);
+              if (isValid) {
+                setUser(data.user);
+                setSchool(data.school);
+              }
             }
             setIsLoading(false);
           }, 0);
@@ -129,8 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         const data = await fetchUserData(session.user);
         if (data) {
-          setUser(data.user);
-          setSchool(data.school);
+          const isValid = await validateTenant(data.user);
+          if (isValid) {
+            setUser(data.user);
+            setSchool(data.school);
+          }
         }
       }
       setIsLoading(false);
@@ -139,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [validateTenant]);
 
   const selectSchool = (selectedSchool: School) => {
     setSchool(selectedSchool);
@@ -158,7 +180,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message);
     }
 
-    // User data will be fetched by the auth state listener
+    // Post-login cross-tenant validation will happen in the auth state listener
+    // after user data is fetched
   };
 
   const signup = async (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => {

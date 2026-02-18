@@ -1584,6 +1584,7 @@ export type Database = {
         Returns: number
       }
       get_role_counts: { Args: never; Returns: Json }
+      get_school_by_code: { Args: { _code: string }; Returns: Json }
       get_student_counts_by_class: {
         Args: { p_school_id: string }
         Returns: {

@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
@@ -13,6 +14,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles, requireImpersonation }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { isImpersonating } = useImpersonation();
+  const { isSubdomain } = useTenant();
   const location = useLocation();
 
   if (isLoading) {
@@ -24,6 +26,15 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   }
 
   if (!isAuthenticated) {
+    if (isSubdomain) {
+      // On subdomain, redirect to the role-specific login based on path
+      const rolePath = location.pathname.split('/')[1]; // admin, teacher, parent, student
+      const validRoles = ['admin', 'teacher', 'parent', 'student'];
+      if (validRoles.includes(rolePath)) {
+        return <Navigate to={`/${rolePath}`} replace />;
+      }
+      return <Navigate to="/" replace />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
