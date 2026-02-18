@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import appLogo from '@/assets/logo.png';
 
 interface SidebarProps {
@@ -104,6 +105,11 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const { logout } = useAuth();
+  const { tenant, isSubdomain } = useTenant();
+
+  // Use tenant branding on subdomains
+  const displayLogo = isSubdomain && tenant?.logo ? tenant.logo : appLogo;
+  const displayName = isSubdomain && tenant ? tenant.name : (userRole === 'super_admin' ? 'Super Admin' : schoolName);
 
   const menuItems = menuConfig[userRole];
   const prefix = rolePrefix[userRole];
@@ -127,11 +133,11 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         {!isCollapsed && (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src={appLogo} alt="Our School Tech" className="w-10 h-10 object-contain drop-shadow-md" />
+              <img src={displayLogo} alt={displayName} className="w-10 h-10 object-contain drop-shadow-md" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">
-                {userRole === 'super_admin' ? 'Super Admin' : schoolName}
+                {displayName}
               </p>
               <p className="text-xs text-sidebar-foreground/70 capitalize">{userRole.replace('_', ' ')}</p>
             </div>
@@ -175,7 +181,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
           isCollapsed && "justify-center"
         )}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center">
-            <img src={appLogo} alt="Our School Tech" className="w-9 h-9 object-contain" />
+            <img src={displayLogo} alt={displayName} className="w-9 h-9 object-contain" />
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
