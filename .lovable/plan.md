@@ -1,53 +1,38 @@
 
-# Multi-Tenant Subdomain Architecture with Role-Based Separate PWAs
+# Multi-Tenant Subdomain Architecture — Production SaaS
 
-## Status: ✅ IMPLEMENTED
+## Status: ✅ IMPLEMENTED (v2 - Single Login)
 
-## What Was Done
+## Architecture Summary
 
-### Database
-- Created `get_school_by_code(code text)` RPC — SECURITY DEFINER, returns non-sensitive fields only, active schools only.
+### Single Login Flow (v2)
+- Subdomains show ONE login form (no role buttons)
+- After auth, role is auto-detected and user is redirected to correct dashboard
+- Cross-tenant validation enforces school_id match
 
-### New Files Created
-| File | Purpose |
-|------|---------|
-| `src/contexts/TenantContext.tsx` | Subdomain detection, school lookup via RPC, CSS branding |
-| `src/pages/login/RoleLoginPage.tsx` | Role-specific login page with unique gradients per role |
-| `src/pages/login/SubdomainLanding.tsx` | Branded landing with 4 role navigation buttons |
-| `src/pages/TenantErrorPage.tsx` | Error page for invalid/inactive subdomains |
-| `src/hooks/useDynamicManifest.ts` | Runtime PWA manifest generation per school per role |
+### Database Enhancements
+- Extended `schools` table: `secondary_color`, `background_color`, `splash_screen_image_url`, `app_display_name`, `app_short_name`
+- Performance indexes on: `attendance(school_id, date)`, `fees(school_id, status)`, `students(school_id, class_name)`, `students(school_id, status)`, `fee_invoices(school_id, student_id)`, `homework(school_id, class_id)`, `exams(school_id, class_name)`
+- Unique index on `schools.code` (subdomain)
+- Updated `get_school_by_code` RPC with all new fields
 
-### Modified Files
-| File | Change |
-|------|--------|
-| `src/App.tsx` | Wrapped in TenantProvider, tenant-aware routing with role entry points |
-| `src/contexts/AuthContext.tsx` | Cross-tenant validation (sign out if school_id mismatch) |
-| `src/components/auth/ProtectedRoute.tsx` | Subdomain-aware redirects on auth failure |
-| `src/components/layout/Sidebar.tsx` | Dynamic school branding from tenant context |
-| `src/components/layout/TopBar.tsx` | Dynamic school logo/name on subdomains |
-| `src/hooks/useEffectiveSchoolId.ts` | Falls back to tenant school ID |
-| `vite.config.ts` | PWA config note for dynamic manifest |
-
-## How It Works
-
-### On Subdomain (e.g., greenwood.ourschooltech.com)
-- `/` → Branded landing with 4 role buttons
-- `/admin` → Admin login (if not authenticated) or redirect to dashboard
-- `/teacher` → Teacher login or dashboard
-- `/parent` → Parent login or dashboard
-- `/student` → Student login or dashboard
-- `/super-admin/*` → Blocked with error page
-
-### On Main Domain (ourschooltech.com)
-- Everything works exactly as before
-- `/super-admin/*` available
+### Dynamic Branding
+- CSS variables: `--primary`, `--accent`, `--secondary` injected per tenant
+- Dynamic favicon, page title, theme-color meta tag
+- Splash screen component (`SchoolSplashScreen`) for PWA standalone mode
+- Dynamic PWA manifest with `app_display_name` and `app_short_name`
 
 ### Security
-- RLS enforces school_id isolation (already in place)
-- Post-login validation: user.school_id must match subdomain's school
-- Mismatch → immediate sign-out + error
+- RLS enforces school_id isolation on all tables
+- Post-login validation: user.school_id must match subdomain school
+- Super Admin blocked on all subdomains
+- Single login prevents role enumeration
 
-### DNS Setup (Per School)
-1. Add A record: `schoolcode` → `185.158.133.1`
-2. Add `schoolcode.ourschooltech.com` in project domain settings
-3. SSL auto-provisions
+### Files
+| File | Purpose |
+|------|---------|
+| `src/contexts/TenantContext.tsx` | Subdomain detection, branding, favicon, title |
+| `src/pages/login/SubdomainLanding.tsx` | Single login form (no role buttons) |
+| `src/components/splash/SchoolSplashScreen.tsx` | PWA splash screen per school |
+| `src/hooks/useDynamicManifest.ts` | Runtime manifest with app_display_name support |
+| `src/components/auth/ProtectedRoute.tsx` | Redirects to `/` on subdomain when unauthenticated |

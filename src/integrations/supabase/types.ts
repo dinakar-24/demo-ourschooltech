@@ -926,6 +926,9 @@ export type Database = {
         Row: {
           accent_color: string | null
           address: string
+          app_display_name: string | null
+          app_short_name: string | null
+          background_color: string | null
           city: string
           code: string
           created_at: string
@@ -937,6 +940,8 @@ export type Database = {
           phone: string | null
           primary_color: string | null
           razorpay_account_id: string | null
+          secondary_color: string | null
+          splash_screen_image_url: string | null
           student_limit: number | null
           subscription_status: string | null
           updated_at: string
@@ -944,6 +949,9 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           address: string
+          app_display_name?: string | null
+          app_short_name?: string | null
+          background_color?: string | null
           city: string
           code: string
           created_at?: string
@@ -955,6 +963,8 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           razorpay_account_id?: string | null
+          secondary_color?: string | null
+          splash_screen_image_url?: string | null
           student_limit?: number | null
           subscription_status?: string | null
           updated_at?: string
@@ -962,6 +972,9 @@ export type Database = {
         Update: {
           accent_color?: string | null
           address?: string
+          app_display_name?: string | null
+          app_short_name?: string | null
+          background_color?: string | null
           city?: string
           code?: string
           created_at?: string
@@ -973,6 +986,8 @@ export type Database = {
           phone?: string | null
           primary_color?: string | null
           razorpay_account_id?: string | null
+          secondary_color?: string | null
+          splash_screen_image_url?: string | null
           student_limit?: number | null
           subscription_status?: string | null
           updated_at?: string

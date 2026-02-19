@@ -16,7 +16,6 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import TenantErrorPage from "./pages/TenantErrorPage";
 import SubdomainLanding from "./pages/login/SubdomainLanding";
-import RoleLoginPage from "./pages/login/RoleLoginPage";
 
 // Super Admin Pages
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
@@ -96,31 +95,12 @@ function AuthRedirect() {
     return <Navigate to={getRoleDashboard(user.role)} replace />;
   }
 
-  // On subdomain, show landing; on main domain, go to login
+  // On subdomain, show single login page; on main domain, go to login
   if (isSubdomain) {
     return <SubdomainLanding />;
   }
   
   return <Navigate to="/login" replace />;
-}
-
-// Role entry point: shows login if not authenticated, redirects to dashboard if authenticated
-function RoleEntryPoint({ role, expectedRole }: { role: string; expectedRole: string }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated && user && user.role === expectedRole) {
-    return <Navigate to={getRoleDashboard(user.role)} replace />;
-  }
-
-  return <RoleLoginPage role={role} />;
 }
 
 // Dynamic manifest handler
@@ -160,13 +140,14 @@ function AppRoutes() {
         <Route path="/" element={<AuthRedirect />} />
         <Route path="/login" element={isSubdomain ? <Navigate to="/" replace /> : <LoginPage />} />
 
-        {/* Subdomain role entry points (login or redirect to dashboard) */}
+        {/* On subdomain, /login redirects to root (single login) */}
+        {/* Role paths on subdomain redirect to root login or dashboard */}
         {isSubdomain && (
           <>
-            <Route path="/admin" element={<RoleEntryPoint role="admin" expectedRole="school_admin" />} />
-            <Route path="/teacher" element={<RoleEntryPoint role="teacher" expectedRole="teacher" />} />
-            <Route path="/parent" element={<RoleEntryPoint role="parent" expectedRole="parent" />} />
-            <Route path="/student" element={<RoleEntryPoint role="student" expectedRole="student" />} />
+            <Route path="/admin" element={<AuthRedirect />} />
+            <Route path="/teacher" element={<AuthRedirect />} />
+            <Route path="/parent" element={<AuthRedirect />} />
+            <Route path="/student" element={<AuthRedirect />} />
           </>
         )}
 
