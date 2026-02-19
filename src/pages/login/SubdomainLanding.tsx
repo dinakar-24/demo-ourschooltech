@@ -1,84 +1,150 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { Shield, GraduationCap, Users, BookOpen } from 'lucide-react';
-
-const roles = [
-  {
-    key: 'admin',
-    label: 'Admin',
-    description: 'School management & operations',
-    icon: Shield,
-    gradient: 'from-red-500 to-orange-500',
-    hoverGradient: 'hover:from-red-600 hover:to-orange-600',
-  },
-  {
-    key: 'teacher',
-    label: 'Teacher',
-    description: 'Classes, attendance & homework',
-    icon: GraduationCap,
-    gradient: 'from-blue-500 to-cyan-500',
-    hoverGradient: 'hover:from-blue-600 hover:to-cyan-600',
-  },
-  {
-    key: 'parent',
-    label: 'Parent',
-    description: 'Fees, results & announcements',
-    icon: Users,
-    gradient: 'from-emerald-500 to-teal-500',
-    hoverGradient: 'hover:from-emerald-600 hover:to-teal-600',
-  },
-  {
-    key: 'student',
-    label: 'Student',
-    description: 'Timetable, homework & results',
-    icon: BookOpen,
-    gradient: 'from-amber-500 to-orange-500',
-    hoverGradient: 'hover:from-amber-600 hover:to-orange-600',
-  },
-];
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { getRoleDashboard } from '@/components/auth/ProtectedRoute';
 
 export default function SubdomainLanding() {
   const { tenant } = useTenant();
+  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // If already authenticated, redirect to dashboard
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: tenant?.backgroundColor || '#ffffff' }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && user) {
+    navigate(getRoleDashboard(user.role), { replace: true });
+    return null;
+  }
 
   if (!tenant) return null;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4">
-      {/* School branding */}
-      <div className="text-center mb-10">
-        {tenant.logo ? (
-          <img
-            src={tenant.logo}
-            alt={tenant.name}
-            className="w-20 h-20 mx-auto rounded-2xl object-contain mb-4 shadow-lg"
-          />
-        ) : (
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 shadow-lg">
-            <span className="text-3xl font-bold text-primary">
-              {tenant.name.charAt(0)}
-            </span>
-          </div>
-        )}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{tenant.name}</h1>
-        <p className="text-gray-500 mt-2">Select your portal to continue</p>
-      </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
 
-      {/* Role buttons */}
-      <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-        {roles.map((role) => (
-          <button
-            key={role.key}
-            onClick={() => navigate(`/${role.key}`)}
-            className={`bg-gradient-to-br ${role.gradient} ${role.hoverGradient} text-white rounded-2xl p-6 flex flex-col items-center gap-3 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]`}
-          >
-            <role.icon className="w-8 h-8" />
-            <div>
-              <p className="font-semibold text-lg">{role.label}</p>
-              <p className="text-xs text-white/80 mt-0.5">{role.description}</p>
+    setIsSubmitting(true);
+    try {
+      await login(email, password);
+      // AuthContext handles role detection and validation
+      // ProtectedRoute will redirect to the correct dashboard
+    } catch (err: any) {
+      toast.error(err.message || 'Login failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        background: `linear-gradient(135deg, ${tenant.primaryColor}15 0%, ${tenant.backgroundColor || '#ffffff'} 50%, ${tenant.accentColor}10 100%)`,
+      }}
+    >
+      <div className="w-full max-w-md">
+        {/* Card */}
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8">
+          {/* School branding */}
+          <div className="text-center mb-8">
+            {tenant.logo ? (
+              <img
+                src={tenant.logo}
+                alt={tenant.name}
+                className="w-20 h-20 mx-auto rounded-2xl object-contain mb-4 shadow-lg"
+              />
+            ) : (
+              <div
+                className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-4 shadow-lg"
+                style={{ backgroundColor: `${tenant.primaryColor}15` }}
+              >
+                <span className="text-3xl font-bold" style={{ color: tenant.primaryColor }}>
+                  {tenant.name.charAt(0)}
+                </span>
+              </div>
+            )}
+            <h1 className="text-2xl font-bold text-gray-900">
+              {tenant.appDisplayName || tenant.name}
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
+          </div>
+
+          {/* Single Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-gray-700">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-gray-50 border-gray-200"
+                autoComplete="email"
+              />
             </div>
-          </button>
-        ))}
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-gray-700">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-gray-50 border-gray-200 pr-10"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+              style={{ backgroundColor: tenant.primaryColor }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-xs text-gray-400 mt-6">
+            {tenant.name} School Portal
+          </p>
+        </div>
       </div>
     </div>
   );

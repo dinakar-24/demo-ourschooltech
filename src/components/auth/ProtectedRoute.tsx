@@ -27,12 +27,7 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
 
   if (!isAuthenticated) {
     if (isSubdomain) {
-      // On subdomain, redirect to the role-specific login based on path
-      const rolePath = location.pathname.split('/')[1]; // admin, teacher, parent, student
-      const validRoles = ['admin', 'teacher', 'parent', 'student'];
-      if (validRoles.includes(rolePath)) {
-        return <Navigate to={`/${rolePath}`} replace />;
-      }
+      // On subdomain, always redirect to root (single login page)
       return <Navigate to="/" replace />;
     }
     return <Navigate to="/login" state={{ from: location }} replace />;

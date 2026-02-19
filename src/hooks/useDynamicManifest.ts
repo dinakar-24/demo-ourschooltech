@@ -12,21 +12,26 @@ export function useDynamicManifest(currentRole?: string) {
   const { tenant, isSubdomain } = useTenant();
 
   useEffect(() => {
-    if (!isSubdomain || !tenant || !currentRole) return;
+    if (!isSubdomain || !tenant) return;
 
-    const roleLabel = roleLabels[currentRole] || currentRole;
-    const dashboardPath = currentRole === 'admin' ? '/admin/dashboard' : `/${currentRole}/dashboard`;
+    const roleLabel = currentRole ? (roleLabels[currentRole] || currentRole) : '';
+    const dashboardPath = currentRole
+      ? (currentRole === 'admin' ? '/admin/dashboard' : `/${currentRole}/dashboard`)
+      : '/';
+
+    const appName = tenant.appDisplayName || tenant.name;
+    const shortName = tenant.appShortName || tenant.code.toUpperCase();
 
     const manifest = {
-      name: `${tenant.name} - ${roleLabel}`,
-      short_name: `${tenant.code.toUpperCase()} ${roleLabel}`,
-      description: `${tenant.name} ${roleLabel} Portal`,
+      name: roleLabel ? `${appName} - ${roleLabel}` : appName,
+      short_name: roleLabel ? `${shortName} ${roleLabel}` : shortName,
+      description: `${appName}${roleLabel ? ` ${roleLabel} Portal` : ''}`,
       theme_color: tenant.primaryColor,
-      background_color: '#F8FAFC',
+      background_color: tenant.backgroundColor || '#ffffff',
       display: 'standalone' as const,
       orientation: 'portrait' as const,
       start_url: dashboardPath,
-      scope: `/${currentRole}`,
+      scope: '/',
       icons: tenant.logo
         ? [
             { src: tenant.logo, sizes: '192x192', type: 'image/png' },
@@ -41,26 +46,15 @@ export function useDynamicManifest(currentRole?: string) {
     const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
-    // Remove existing manifest link
     const existing = document.querySelector('link[rel="manifest"]');
-    if (existing) {
-      existing.remove();
-    }
+    if (existing) existing.remove();
 
-    // Add new manifest link
     const link = document.createElement('link');
     link.rel = 'manifest';
     link.href = url;
     document.head.appendChild(link);
 
-    // Also update theme-color meta tag
-    let metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (!metaTheme) {
-      metaTheme = document.createElement('meta');
-      metaTheme.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaTheme);
-    }
-    metaTheme.setAttribute('content', tenant.primaryColor);
+    // Theme-color is now handled in TenantContext
 
     return () => {
       URL.revokeObjectURL(url);
