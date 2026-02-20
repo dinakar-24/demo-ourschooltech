@@ -1,6 +1,9 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Building2, MapPin, Pencil, Trash2, Eye } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
+import { toast } from 'sonner';
+
+const BASE_DOMAIN = 'ourschooltech.com';
 
 interface School {
   id: string;
@@ -29,6 +32,13 @@ export const SchoolCard = memo(function SchoolCard({
   onDelete,
   onImpersonate,
 }: SchoolCardProps) {
+  const subdomainUrl = `https://${school.code}.${BASE_DOMAIN}`;
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(subdomainUrl);
+    toast.success('Subdomain URL copied!');
+  };
+
   return (
     <div className="flex flex-col gap-3 p-4 rounded-lg border bg-card">
       <div className="flex items-center gap-3">
@@ -58,6 +68,16 @@ export const SchoolCard = memo(function SchoolCard({
                 <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: school.accent_color || '#E69500' }} />
               </div>
             )}
+          </div>
+          {/* Subdomain URL */}
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-muted-foreground font-mono truncate">{subdomainUrl}</span>
+            <button onClick={handleCopyUrl} className="text-muted-foreground hover:text-foreground shrink-0">
+              <Copy className="w-3 h-3" />
+            </button>
+            <a href={subdomainUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0">
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         </div>
       </div>
