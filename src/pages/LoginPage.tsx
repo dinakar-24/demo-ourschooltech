@@ -4,13 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { School, Search, MapPin, ArrowRight, ArrowLeft } from 'lucide-react';
 import appLogo from '@/assets/logo.png';
 import { Input } from '@/components/ui/input';
-import { useAuth, useSchoolSearch, UserRole } from '@/contexts/AuthContext';
+import { useAuth, useSchoolSearch } from '@/contexts/AuthContext';
 import type { School as SchoolType } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
 import { LoginSplash } from '@/components/login/LoginSplash';
 import { LoginShapes } from '@/components/login/LoginShapes';
-import { LoginRoleSelector } from '@/components/login/LoginRoleSelector';
 import { LoginForm } from '@/components/login/LoginForm';
 
 type LoginStep = 'splash' | 'school' | 'login' | 'superadmin';
@@ -22,21 +20,12 @@ export default function LoginPage() {
   const [step, setStep] = useState<LoginStep>('splash');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (selectedRole && user.role !== selectedRole) {
-        setError(`Your account is registered as "${user.role.replace('_', ' ')}", not "${selectedRole.replace('_', ' ')}". Please select the correct role.`);
-        setLoading(false);
-        supabase.auth.signOut();
-        return;
-      }
-
-      const paths: Record<UserRole, string> = {
+      const paths: Record<string, string> = {
         super_admin: '/super-admin/dashboard',
         school_admin: '/admin/dashboard',
         teacher: '/teacher/dashboard',
@@ -45,7 +34,7 @@ export default function LoginPage() {
       };
       navigate(paths[user.role] || '/dashboard');
     }
-  }, [isAuthenticated, user, navigate, selectedRole]);
+  }, [isAuthenticated, user, navigate]);
 
   const { schools: searchResults, isLoading: searchLoading } = useSchoolSearch(searchQuery);
   const displaySchools = searchQuery.trim() ? searchResults : [];
@@ -57,14 +46,9 @@ export default function LoginPage() {
     setStep('login');
   };
 
-  const handleSelectRole = (role: UserRole) => {
-    setSelectedRole(role);
-    setError('');
-  };
-
   const handleLogin = async (email: string, password: string) => {
     if (!email.trim() || !password.trim()) { setError('Please enter email and password'); return; }
-    if (!selectedSchool || !selectedRole) { setError('Please select a school and role'); return; }
+    if (!selectedSchool) { setError('Please select a school first'); return; }
     setLoading(true);
     setError('');
     try { await login(email, password); }
@@ -106,7 +90,7 @@ export default function LoginPage() {
       <header className="relative z-10 flex items-center gap-3 px-5 pt-6 pb-2 safe-area-top">
         <motion.button
           onClick={() => {
-            if (step === 'login') { setStep('school'); setSelectedSchool(null); setSelectedRole(null); setError(''); }
+            if (step === 'login') { setStep('school'); setSelectedSchool(null); setError(''); }
             else { setStep('splash'); }
           }}
           className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
@@ -227,25 +211,16 @@ export default function LoginPage() {
 
                 {/* Glassmorphism login card */}
                 <motion.div
-                  className="bg-white/[0.08] backdrop-blur-xl rounded-3xl p-6 border border-white/15 shadow-2xl space-y-6"
+                  className="bg-white/[0.08] backdrop-blur-xl rounded-3xl p-6 border border-white/15 shadow-2xl space-y-4"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1, type: 'spring', damping: 22 }}
                 >
-                  <LoginRoleSelector selectedRole={selectedRole} onSelectRole={handleSelectRole} />
-
-                  <AnimatePresence>
-                    {selectedRole && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ type: 'spring', damping: 22 }}
-                      >
-                        <LoginForm onSubmit={handleLogin} loading={loading} error={error} resetKey={selectedRole} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div className="text-center">
+                    <h3 className="text-white font-semibold text-base">Sign in to your account</h3>
+                    <p className="text-white/40 text-xs mt-0.5">Your role will be detected automatically</p>
+                  </div>
+                  <LoginForm onSubmit={handleLogin} loading={loading} error={error} resetKey="single" />
                 </motion.div>
               </motion.div>
             )}
