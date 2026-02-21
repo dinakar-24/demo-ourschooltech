@@ -943,6 +943,7 @@ export type Database = {
           secondary_color: string | null
           splash_screen_image_url: string | null
           student_limit: number | null
+          subdomain: string
           subscription_status: string | null
           updated_at: string
         }
@@ -966,6 +967,7 @@ export type Database = {
           secondary_color?: string | null
           splash_screen_image_url?: string | null
           student_limit?: number | null
+          subdomain: string
           subscription_status?: string | null
           updated_at?: string
         }
@@ -989,6 +991,7 @@ export type Database = {
           secondary_color?: string | null
           splash_screen_image_url?: string | null
           student_limit?: number | null
+          subdomain?: string
           subscription_status?: string | null
           updated_at?: string
         }

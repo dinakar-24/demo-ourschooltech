@@ -9,6 +9,7 @@ interface School {
   id: string;
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string | null;
@@ -32,7 +33,7 @@ export const SchoolCard = memo(function SchoolCard({
   onDelete,
   onImpersonate,
 }: SchoolCardProps) {
-  const subdomainUrl = `https://${school.code}.${BASE_DOMAIN}`;
+  const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(subdomainUrl);

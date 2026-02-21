@@ -7,6 +7,7 @@ export interface School {
   id: string;
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string | null;
@@ -21,6 +22,7 @@ export interface School {
 export interface SchoolFormData {
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string;
@@ -52,7 +54,7 @@ export function useSchools(filters?: SchoolFilters) {
     queryFn: async (): Promise<PaginatedSchools> => {
       let query = supabase
         .from('schools')
-        .select('id, name, code, address, city, phone, email, logo, is_active, student_limit, subscription_status, primary_color, accent_color, created_at', { count: 'exact' })
+        .select('id, name, code, subdomain, address, city, phone, email, logo, is_active, student_limit, subscription_status, primary_color, accent_color, created_at', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (filters?.search) {
@@ -123,6 +125,7 @@ export function useCreateSchool() {
       const schoolData: Record<string, unknown> = {
         name: formData.name,
         code: formData.code,
+        subdomain: formData.subdomain,
         address: formData.address,
         city: formData.city,
         phone: formData.phone || null,
