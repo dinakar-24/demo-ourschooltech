@@ -1626,6 +1626,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_user_by_email: { Args: { _email: string }; Returns: Json }
       record_fee_payment: {
         Args: {
           _amount: number
