@@ -9,13 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Upload, X, Palette } from 'lucide-react';
+import { Upload, X, Palette, Globe } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { Separator } from '@/components/ui/separator';
 
 interface SchoolFormData {
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string;
@@ -29,6 +30,7 @@ interface School {
   id: string;
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string | null;
@@ -47,9 +49,21 @@ interface SchoolFormDialogProps {
   isSubmitting: boolean;
 }
 
+const BASE_DOMAIN = 'ourschooltech.com';
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 const initialFormData: SchoolFormData = {
   name: '',
   code: '',
+  subdomain: '',
   address: '',
   city: '',
   phone: '',
@@ -68,14 +82,15 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
 }: SchoolFormDialogProps) {
   const [formData, setFormData] = useState<SchoolFormData>(initialFormData);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [autoSubdomain, setAutoSubdomain] = useState(true);
 
-  // Reset form when dialog opens/closes or editing school changes
   useEffect(() => {
     if (open) {
       if (editingSchool) {
         setFormData({
           name: editingSchool.name,
           code: editingSchool.code,
+          subdomain: editingSchool.subdomain || '',
           address: editingSchool.address,
           city: editingSchool.city,
           phone: editingSchool.phone || '',
@@ -85,9 +100,11 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
           accent_color: editingSchool.accent_color || '#E69500',
         });
         setLogoPreview(editingSchool.logo || null);
+        setAutoSubdomain(false);
       } else {
         setFormData(initialFormData);
         setLogoPreview(null);
+        setAutoSubdomain(true);
       }
     }
   }, [open, editingSchool]);
@@ -95,7 +112,6 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
   const handleLogoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         alert('File size must be less than 2MB');
         return;
@@ -119,12 +135,24 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
   };
 
   const handleFieldChange = useCallback((field: keyof SchoolFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      // Auto-generate subdomain from name
+      if (field === 'name' && autoSubdomain) {
+        updated.subdomain = slugify(value);
+      }
+      return updated;
+    });
+  }, [autoSubdomain]);
+
+  const handleSubdomainChange = useCallback((value: string) => {
+    setAutoSubdomain(false);
+    setFormData(prev => ({ ...prev, subdomain: slugify(value) }));
   }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingSchool ? 'Edit School' : 'Add New School'}</DialogTitle>
           <DialogDescription>
@@ -143,6 +171,31 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
                 required
               />
             </div>
+
+            {/* Subdomain */}
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <Label htmlFor="subdomain">Subdomain *</Label>
+              </div>
+              <div className="flex items-center gap-0">
+                <Input
+                  id="subdomain"
+                  value={formData.subdomain}
+                  onChange={(e) => handleSubdomainChange(e.target.value)}
+                  placeholder="delhi-public-school"
+                  className="rounded-r-none border-r-0"
+                  required
+                />
+                <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-l-0 bg-muted text-xs text-muted-foreground whitespace-nowrap">
+                  .{BASE_DOMAIN}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                URL: <span className="font-mono">{formData.subdomain || '...'}.{BASE_DOMAIN}</span>
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="code">School Code *</Label>
@@ -239,7 +292,6 @@ export const SchoolFormDialog = memo(function SchoolFormDialog({
                   </div>
                 </div>
               </div>
-              {/* Mini preview */}
               <div className="flex gap-2 items-center">
                 <button type="button" className="px-3 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: formData.primary_color }}>Primary</button>
                 <button type="button" className="px-3 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: formData.accent_color }}>Accent</button>

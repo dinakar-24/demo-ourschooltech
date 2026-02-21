@@ -17,6 +17,7 @@ interface School {
   id: string;
   name: string;
   code: string;
+  subdomain: string;
   address: string;
   city: string;
   phone: string | null;
@@ -40,8 +41,8 @@ export const SchoolsTable = memo(function SchoolsTable({
   onDelete,
   onImpersonate,
 }: SchoolsTableProps) {
-  const handleCopyUrl = (code: string) => {
-    navigator.clipboard.writeText(`https://${code}.${BASE_DOMAIN}`);
+  const handleCopyUrl = (subdomain: string) => {
+    navigator.clipboard.writeText(`https://${subdomain}.${BASE_DOMAIN}`);
     toast.success('Subdomain URL copied!');
   };
 
@@ -58,7 +59,7 @@ export const SchoolsTable = memo(function SchoolsTable({
       </TableHeader>
       <TableBody>
         {schools.map((school) => {
-          const subdomainUrl = `https://${school.code}.${BASE_DOMAIN}`;
+          const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
           return (
             <TableRow key={school.id}>
               <TableCell>
@@ -94,8 +95,8 @@ export const SchoolsTable = memo(function SchoolsTable({
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono text-muted-foreground truncate max-w-[140px]">{school.code}.{BASE_DOMAIN}</span>
-                  <button onClick={() => handleCopyUrl(school.code)} className="text-muted-foreground hover:text-foreground shrink-0" title="Copy URL">
+                  <span className="text-xs font-mono text-muted-foreground truncate max-w-[140px]">{school.subdomain}.{BASE_DOMAIN}</span>
+                  <button onClick={() => handleCopyUrl(school.subdomain)} className="text-muted-foreground hover:text-foreground shrink-0" title="Copy URL">
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                   <a href={subdomainUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0" title="Open subdomain">
