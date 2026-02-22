@@ -15,6 +15,8 @@ export interface School {
   logo?: string;
   address: string;
   city: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface User {
@@ -94,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             logo: school.logo || undefined,
             address: school.address,
             city: school.city,
+            phone: school.phone || undefined,
+            email: school.email || undefined,
           }
         : null;
 

@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Download, Printer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -25,6 +24,28 @@ interface FeeReceiptProps {
   } | null;
 }
 
+function numberToWords(num: number): string {
+  if (num === 0) return 'Zero';
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const convert = (n: number): string => {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '');
+    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+    return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+  };
+
+  const wholePart = Math.floor(num);
+  const decimalPart = Math.round((num - wholePart) * 100);
+  let result = 'INR ' + convert(wholePart);
+  if (decimalPart > 0) result += ' and ' + convert(decimalPart) + ' Paise';
+  return result + ' Only';
+}
+
 export function FeeReceiptDialog({ open, onOpenChange, fee }: FeeReceiptProps) {
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -34,152 +55,110 @@ export function FeeReceiptDialog({ open, onOpenChange, fee }: FeeReceiptProps) {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow || !receiptRef.current) return;
-
     printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Receipt ${fee.receipt_number || ''}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1a1a1a; }
-          .receipt { max-width: 600px; margin: 0 auto; border: 2px solid #0f766e; padding: 30px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .school-name { font-size: 22px; font-weight: 700; color: #0f766e; }
-          .school-details { font-size: 11px; color: #666; margin-top: 4px; }
-          .receipt-title { font-size: 16px; font-weight: 600; text-align: center; margin: 16px 0; padding: 8px; background: #f0fdfa; border-radius: 6px; }
-          .receipt-no { font-size: 12px; color: #666; text-align: right; margin-bottom: 12px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-          .info-item label { font-size: 11px; color: #888; display: block; }
-          .info-item span { font-size: 13px; font-weight: 500; }
-          .divider { border-top: 1px dashed #ccc; margin: 16px 0; }
-          .amount-row { display: flex; justify-content: space-between; padding: 12px 0; font-size: 18px; font-weight: 700; color: #0f766e; }
-          .footer { text-align: center; font-size: 10px; color: #999; margin-top: 20px; }
-          .stamp { text-align: right; margin-top: 40px; font-size: 12px; }
-          @media print { body { padding: 0; } .receipt { border: none; } }
-        </style>
-      </head>
-      <body>
-        ${receiptRef.current.innerHTML}
-        <script>window.onload = () => { window.print(); window.close(); }<\/script>
-      </body>
-      </html>
+      <!DOCTYPE html><html><head>
+      <title>Receipt ${fee.receipt_number || ''}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; color: #1a1a1a; font-size: 13px; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+      ${receiptRef.current.innerHTML}
+      <script>window.onload = () => { window.print(); window.close(); }<\/script>
+      </body></html>
     `);
     printWindow.document.close();
   };
 
-  const handleDownloadPDF = () => {
-    // Use print-to-PDF approach (browser native)
-    handlePrint();
-  };
+  const amount = Number(fee.amount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Fee Receipt
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-1" />
-                Print
+                <Printer className="w-4 h-4 mr-1" /> Print
               </Button>
-              <Button size="sm" onClick={handleDownloadPDF}>
-                <Download className="w-4 h-4 mr-1" />
-                PDF
+              <Button size="sm" onClick={handlePrint}>
+                <Download className="w-4 h-4 mr-1" /> PDF
               </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Receipt Preview */}
         <div ref={receiptRef}>
-          <div className="receipt" style={{ border: '2px solid hsl(173, 82%, 26%)', padding: '24px', borderRadius: '8px' }}>
-            {/* School Header */}
+          <div style={{ maxWidth: '650px', margin: '0 auto', border: '2px solid #333', padding: '24px', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a' }}>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#666', fontStyle: 'italic', marginBottom: '8px' }}>
+              OFFICE COPY
+            </div>
+
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              {school?.logo && (
-                <img 
-                  src={school.logo} 
-                  alt={school.name} 
-                  style={{ height: '50px', margin: '0 auto 8px', display: 'block' }} 
-                />
+              {school?.logo && <img src={school.logo} alt={school.name} style={{ height: '60px', margin: '0 auto 6px', display: 'block' }} />}
+              <div style={{ fontSize: '22px', fontWeight: 700, color: '#0f766e', marginBottom: '2px' }}>{school?.name || 'School Name'}</div>
+              <div style={{ fontSize: '11px', color: '#555' }}>{[school?.address, school?.city].filter(Boolean).join(', ')}</div>
+              {(school?.phone || school?.email) && (
+                <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                  {school?.phone && <>Tel: {school.phone}</>}
+                  {school?.phone && school?.email && ', '}
+                  {school?.email && <>Email: {school.email}</>}
+                </div>
               )}
-              <div className="school-name" style={{ fontSize: '20px', fontWeight: 700, color: 'hsl(173, 82%, 26%)' }}>
-                {school?.name || 'School Name'}
-              </div>
-              <div className="school-details" style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                {school?.address && <span>{school.address}</span>}
-                {school?.city && <span> · {school.city}</span>}
-              </div>
             </div>
 
-            <Separator className="my-3" />
-
-            {/* Receipt Title */}
-            <div style={{ textAlign: 'center', padding: '8px', background: 'hsl(173, 40%, 94%)', borderRadius: '6px', fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>
-              FEE PAYMENT RECEIPT
+            <div style={{ fontSize: '15px', fontWeight: 700, textAlign: 'center', margin: '12px 0', padding: '6px', background: '#f0f0f0', border: '1px solid #ccc' }}>
+              FEE RECEIPT
             </div>
 
-            {/* Receipt Number & Date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '12px' }}>
               <span><strong>Receipt No:</strong> {fee.receipt_number || 'N/A'}</span>
-              <span><strong>Date:</strong> {fee.paid_date ? new Date(fee.paid_date).toLocaleDateString('en-IN') : 'N/A'}</span>
+              <span><strong>Receipt Date:</strong> {fee.paid_date ? new Date(fee.paid_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span>
             </div>
 
-            {/* Student Details */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888' }}>Student Name</div>
-                <div style={{ fontSize: '13px', fontWeight: 500 }}>{fee.student?.full_name || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888' }}>Admission No</div>
-                <div style={{ fontSize: '13px', fontWeight: 500 }}>{fee.student?.admission_number || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888' }}>Class & Section</div>
-                <div style={{ fontSize: '13px', fontWeight: 500 }}>{fee.student?.class_name}-{fee.student?.section}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888' }}>Payment Mode</div>
-                <div style={{ fontSize: '13px', fontWeight: 500, textTransform: 'capitalize' }}>{fee.payment_method || 'Cash'}</div>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', marginBottom: '14px', fontSize: '12px' }}>
+              <div><span style={{ color: '#666' }}>Student Name: </span><strong>{fee.student?.full_name || 'N/A'}</strong></div>
+              <div><span style={{ color: '#666' }}>Admission No: </span><strong>{fee.student?.admission_number || 'N/A'}</strong></div>
+              <div><span style={{ color: '#666' }}>Class: </span><strong>{fee.student?.class_name} {fee.student?.section}</strong></div>
             </div>
 
-            <Separator className="my-3" style={{ borderStyle: 'dashed' }} />
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '12px' }}>
+              <thead>
+                <tr>
+                  <th style={{ background: '#f5f5f5', border: '1px solid #ccc', padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>S.No</th>
+                  <th style={{ background: '#f5f5f5', border: '1px solid #ccc', padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>Particulars</th>
+                  <th style={{ background: '#f5f5f5', border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 600 }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px' }}>1</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px' }}>{fee.fee_type}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right' }}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} style={{ border: '1px solid #ccc', padding: '6px 8px', fontWeight: 700, background: '#fafafa' }}>Total</td>
+                  <td style={{ border: '1px solid #ccc', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#fafafa', color: '#0f766e' }}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              </tbody>
+            </table>
 
-            {/* Fee Breakdown */}
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
-                <span>{fee.fee_type}</span>
-                <span>₹{Number(fee.amount).toLocaleString()}</span>
-              </div>
+            <div style={{ fontSize: '12px', margin: '8px 0', padding: '6px 8px', background: '#f9f9f9', borderRadius: '4px' }}>
+              <strong>Amount In Words:</strong> {numberToWords(amount)}
             </div>
 
-            <Separator className="my-2" />
-
-            {/* Total */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: '18px', fontWeight: 700, color: 'hsl(173, 82%, 26%)' }}>
-              <span>Total Paid</span>
-              <span>₹{Number(fee.amount).toLocaleString()}</span>
+            <div style={{ fontSize: '12px', margin: '8px 0' }}>
+              <strong>Payment Mode:</strong> <span style={{ textTransform: 'capitalize' }}>{fee.payment_method || 'Cash'}</span>
+              {fee.transaction_id && <span style={{ marginLeft: '16px' }}><strong>Transaction No:</strong> {fee.transaction_id}</span>}
             </div>
 
-            {fee.transaction_id && (
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
-                Transaction ID: {fee.transaction_id}
-              </div>
-            )}
-
-            {/* Signature Area */}
-            <div style={{ textAlign: 'right', marginTop: '40px' }}>
-              <div style={{ borderTop: '1px solid #ccc', display: 'inline-block', paddingTop: '4px', minWidth: '150px', fontSize: '12px', color: '#666' }}>
-                Authorized Signature
-              </div>
+            <div style={{ fontSize: '10px', color: '#888', marginTop: '16px', lineHeight: 1.5, borderTop: '1px dashed #ccc', paddingTop: '12px' }}>
+              <strong>Note:</strong> Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred. Cheques subject to realization.
             </div>
 
-            {/* Footer */}
-            <div style={{ textAlign: 'center', fontSize: '10px', color: '#999', marginTop: '16px' }}>
-              This is a computer-generated receipt. · Thank you for your payment.
+            <div style={{ textAlign: 'center', fontSize: '10px', color: '#999', marginTop: '12px', fontStyle: 'italic' }}>
+              This is a system-generated Fee Receipt and does not require any stamp or signature.
             </div>
           </div>
         </div>
