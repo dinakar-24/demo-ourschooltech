@@ -347,8 +347,8 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
         <div className={`bg-white/[0.04] backdrop-blur-2xl p-4 flex items-center gap-3.5 ${hasBanner ? '-mt-8 relative z-10 mx-3 rounded-xl border border-white/[0.08] bg-[hsl(225,50%,12%)/0.9] mb-3' : ''}`}>
           {/* Logo */}
           {schoolInfo.school_logo ? (
-            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/[0.08] shrink-0 shadow-lg">
-              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-11 h-11 object-contain" />
+            <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center overflow-hidden border border-white/[0.1] shrink-0 shadow-lg p-1.5">
+              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-full h-full object-contain" />
             </div>
           ) : (
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shrink-0 shadow-lg">
