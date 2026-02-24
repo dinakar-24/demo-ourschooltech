@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
 import { LoginSplash } from '@/components/login/LoginSplash';
-import { LoginShapes } from '@/components/login/LoginShapes';
 import { Input } from '@/components/ui/input';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,10 +16,29 @@ interface SchoolInfo {
   school_name: string;
   school_logo: string | null;
   primary_color: string | null;
+  secondary_color: string | null;
+  background_color: string | null;
+  splash_screen_image_url: string | null;
   role: string;
   user_name: string;
   app_display_name: string | null;
 }
+
+const roleLabels: Record<string, string> = {
+  super_admin: 'Super Admin',
+  school_admin: 'School Administrator',
+  teacher: 'Teacher',
+  parent: 'Parent',
+  student: 'Student',
+};
+
+const roleIcons: Record<string, string> = {
+  super_admin: '🛡️',
+  school_admin: '🏫',
+  teacher: '👨‍🏫',
+  parent: '👨‍👩‍👧',
+  student: '🎓',
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -50,14 +68,6 @@ export default function LoginPage() {
   }, [isAuthenticated, user, navigate]);
 
   const handleSplashComplete = useCallback(() => setStep('email'), []);
-
-  const roleLabels: Record<string, string> = {
-    super_admin: 'Super Admin',
-    school_admin: 'School Administrator',
-    teacher: 'Teacher',
-    parent: 'Parent',
-    student: 'Student',
-  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +105,17 @@ export default function LoginPage() {
     }
   };
 
+  const handleBack = () => {
+    if (step === 'password') {
+      setStep('email');
+      setPassword('');
+      setError('');
+      setSchoolInfo(null);
+    } else {
+      setStep('splash');
+    }
+  };
+
   // Splash
   if (step === 'splash') {
     return <LoginSplash onComplete={handleSplashComplete} onSuperAdmin={() => setStep('superadmin')} />;
@@ -103,222 +124,333 @@ export default function LoginPage() {
   // Super admin
   if (step === 'superadmin') {
     return (
-      <div className="min-h-[100dvh] flex flex-col relative bg-gradient-to-br from-[hsl(230,60%,52%)] via-[hsl(220,65%,45%)] to-[hsl(200,70%,35%)]">
-        <LoginShapes />
+      <div className="min-h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(145deg, hsl(225, 50%, 18%) 0%, hsl(230, 55%, 12%) 50%, hsl(220, 60%, 8%) 100%)' }}>
+        <LoginBackground />
         <div className="flex-1 flex flex-col items-center justify-center px-5 py-8 relative z-10">
           <motion.div
-            className="w-full max-w-md bg-white/[0.08] backdrop-blur-xl rounded-3xl p-7 border border-white/15 shadow-2xl"
+            className="w-full max-w-sm"
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', damping: 22 }}
           >
-            <h2 className="text-xl font-display font-bold text-white mb-1">Super Admin</h2>
-            <p className="text-white/50 text-sm mb-6">System administrator access</p>
-            <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} />
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto mb-4 border border-white/10">
+                <Shield className="w-8 h-8 text-white/80" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">Super Admin</h2>
+              <p className="text-white/40 text-sm mt-1">System administrator access</p>
+            </div>
+            <div className="bg-white/[0.06] backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-2xl">
+              <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} />
+            </div>
           </motion.div>
         </div>
       </div>
     );
   }
 
-  const primaryColor = schoolInfo?.primary_color || 'hsl(230,60%,52%)';
-
   return (
-    <div className="min-h-[100dvh] flex flex-col relative bg-gradient-to-br from-[hsl(230,60%,52%)] via-[hsl(220,65%,45%)] to-[hsl(200,70%,35%)]">
-      <LoginShapes />
+    <div className="min-h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(145deg, hsl(225, 50%, 18%) 0%, hsl(230, 55%, 12%) 50%, hsl(220, 60%, 8%) 100%)' }}>
+      <LoginBackground />
 
       {/* Header */}
-      <header className="relative z-10 flex items-center gap-3 px-5 pt-6 pb-2 safe-area-top">
+      <header className="relative z-10 flex items-center gap-3 px-5 pt-5 pb-2 safe-area-top">
         <motion.button
-          onClick={() => {
-            if (step === 'password') {
-              setStep('email');
-              setPassword('');
-              setError('');
-              setSchoolInfo(null);
-            } else {
-              setStep('splash');
-            }
-          }}
-          className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20 transition-colors"
+          onClick={handleBack}
+          className="w-9 h-9 rounded-xl bg-white/[0.06] flex items-center justify-center text-white/50 hover:bg-white/[0.1] hover:text-white/80 transition-all border border-white/[0.06]"
           whileTap={{ scale: 0.9 }}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
         </motion.button>
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center overflow-hidden">
-            <img src={appLogo} alt="Our School Tech" className="w-7 h-7 object-contain" />
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg overflow-hidden">
+            <img src={appLogo} alt="Our School Tech" className="w-full h-full object-contain" />
           </div>
-          <span className="text-base font-display font-bold text-white">Our School Tech</span>
+          <span className="text-sm font-semibold text-white/70">Our School Tech</span>
         </div>
       </header>
 
       {/* Content */}
       <div className="flex-1 flex flex-col items-center px-5 py-4 relative z-10 overflow-auto">
-        <div className="w-full max-w-md flex-1 flex flex-col justify-center">
+        <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
           <AnimatePresence mode="wait">
-            {step === 'email' && (
-              <motion.div
-                key="email"
-                className="flex flex-col space-y-5"
-                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
-                transition={{ type: 'spring', damping: 22 }}
-              >
-                <div className="text-center pt-2">
-                  <h2 className="text-2xl font-display font-bold text-white">Welcome back</h2>
-                  <p className="text-white/50 text-sm mt-1">Enter your email to continue</p>
-                </div>
-                <motion.form
-                  onSubmit={handleEmailSubmit}
-                  className="bg-white/[0.08] backdrop-blur-xl rounded-3xl p-6 border border-white/15 shadow-2xl space-y-4"
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, type: 'spring', damping: 22 }}
-                >
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                        className="p-3 rounded-xl bg-destructive/20 border border-destructive/30 text-sm flex items-center gap-2 overflow-hidden"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center shrink-0 text-white text-xs font-bold">!</div>
-                        <span className="text-white/90">{error}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-                    <Input
-                      type="email" placeholder="Email address" value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-11 h-13 rounded-xl bg-white border-0 text-foreground placeholder:text-muted-foreground/50 shadow-sm focus-visible:ring-2 focus-visible:ring-white/30"
-                      autoFocus
-                    />
-                  </div>
-                  <motion.button
-                    type="submit" disabled={lookupLoading}
-                    className="w-full h-13 rounded-full bg-[hsl(230,40%,18%)] text-white font-bold text-base shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  >
-                    {lookupLoading ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" /> Finding your account...</>
-                    ) : (
-                      <>Continue <ArrowRight className="w-4 h-4" /></>
-                    )}
-                  </motion.button>
-                </motion.form>
-              </motion.div>
-            )}
-
+            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
             {step === 'password' && schoolInfo && (
-              <motion.div
+              <PasswordStep
                 key="password"
-                className="flex flex-col space-y-5"
-                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
-                transition={{ type: 'spring', damping: 22 }}
-              >
-                {/* School branding header */}
-                <motion.div
-                  className="flex flex-col items-center text-center pt-2"
-                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  {schoolInfo.school_logo ? (
-                    <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/25 mb-3 overflow-hidden">
-                      <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-16 h-16 object-contain" />
-                    </div>
-                  ) : (
-                    <div
-                      className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl border border-white/25 mb-3"
-                      style={{ backgroundColor: `${primaryColor}30` }}
-                    >
-                      <span className="text-3xl font-bold text-white">{schoolInfo.school_name?.charAt(0)}</span>
-                    </div>
-                  )}
-                  <h2 className="text-xl font-display font-bold text-white">
-                    {schoolInfo.app_display_name || schoolInfo.school_name}
-                  </h2>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white/80 border border-white/20">
-                      <Shield className="w-3 h-3 inline mr-1" />
-                      {roleLabels[schoolInfo.role] || schoolInfo.role}
-                    </span>
-                  </div>
-                  <p className="text-white/40 text-xs mt-2">Welcome, {schoolInfo.user_name}</p>
-                </motion.div>
-
-                {/* Password form */}
-                <motion.form
-                  onSubmit={handlePasswordSubmit}
-                  className="bg-white/[0.08] backdrop-blur-xl rounded-3xl p-6 border border-white/15 shadow-2xl space-y-4"
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, type: 'spring', damping: 22 }}
-                >
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                        className="p-3 rounded-xl bg-destructive/20 border border-destructive/30 text-sm flex items-center gap-2 overflow-hidden"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center shrink-0 text-white text-xs font-bold">!</div>
-                        <span className="text-white/90">{error}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Email display (read-only) */}
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white/10 border border-white/10">
-                    <Mail className="w-4 h-4 text-white/50" />
-                    <span className="text-sm text-white/70">{email}</span>
-                    <button type="button" onClick={() => { setStep('email'); setPassword(''); setError(''); setSchoolInfo(null); }}
-                      className="ml-auto text-xs text-white/40 hover:text-white/70 underline">
-                      Change
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-                    <Input
-                      type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-11 pr-11 h-13 rounded-xl bg-white border-0 text-foreground placeholder:text-muted-foreground/50 shadow-sm focus-visible:ring-2 focus-visible:ring-white/30"
-                      autoFocus
-                    />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-
-                  <motion.button
-                    type="submit" disabled={loading}
-                    className="w-full h-13 rounded-full bg-[hsl(230,40%,18%)] text-white font-bold text-base shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  >
-                    {loading ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" /> Signing in...</>
-                    ) : (
-                      <><Lock className="w-4 h-4" /> Login</>
-                    )}
-                  </motion.button>
-
-                  <div className="text-center pt-1">
-                    <button type="button" onClick={() => setShowForgotPassword(true)}
-                      className="text-white/40 hover:text-white/70 text-sm transition-colors">
-                      🔒 Forgot password?
-                    </button>
-                  </div>
-                </motion.form>
-              </motion.div>
+                email={email}
+                password={password}
+                setPassword={setPassword}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                error={error}
+                loading={loading}
+                schoolInfo={schoolInfo}
+                onSubmit={handlePasswordSubmit}
+                onChangeEmail={() => { setStep('email'); setPassword(''); setError(''); setSchoolInfo(null); }}
+                onForgotPassword={() => setShowForgotPassword(true)}
+              />
             )}
           </AnimatePresence>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 px-5 py-4 text-center safe-area-bottom">
-        <p className="text-xs text-white/25">
-          Need help? <a href="mailto:support@ourschooltech.in" className="hover:text-white/50 underline">support@ourschooltech.in</a>
+      <footer className="relative z-10 px-5 py-3 text-center safe-area-bottom">
+        <p className="text-[11px] text-white/20">
+          Need help? <a href="mailto:support@ourschooltech.in" className="hover:text-white/40 underline underline-offset-2">support@ourschooltech.in</a>
         </p>
       </footer>
 
       <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
     </div>
+  );
+}
+
+/* ── Background ── */
+function LoginBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Gradient orbs */}
+      <motion.div
+        className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full"
+        style={{ background: 'radial-gradient(circle, hsl(230 60% 40% / 0.3), transparent 70%)' }}
+        animate={{ scale: [1, 1.1, 1], x: [0, 15, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full"
+        style={{ background: 'radial-gradient(circle, hsl(200 50% 35% / 0.2), transparent 70%)' }}
+        animate={{ scale: [1, 1.08, 1], y: [0, -20, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+      />
+      <motion.div
+        className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full"
+        style={{ background: 'radial-gradient(circle, hsl(260 50% 40% / 0.15), transparent 70%)' }}
+        animate={{ scale: [1, 1.15, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+      />
+      {/* Grid pattern */}
+      <div className="absolute inset-0 opacity-[0.015]" style={{
+        backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+        backgroundSize: '32px 32px',
+      }} />
+      {/* Subtle noise texture overlay */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+      }} />
+    </div>
+  );
+}
+
+/* ── Email Step ── */
+function EmailStep({ email, setEmail, error, loading, onSubmit }: {
+  email: string;
+  setEmail: (v: string) => void;
+  error: string;
+  loading: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  return (
+    <motion.div
+      className="flex flex-col"
+      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      transition={{ type: 'spring', damping: 24, stiffness: 200 }}
+    >
+      {/* Illustration */}
+      <motion.div
+        className="flex justify-center mb-6"
+        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1, type: 'spring', damping: 20 }}
+      >
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-md flex items-center justify-center border border-white/[0.08] shadow-2xl">
+          <GraduationCap className="w-10 h-10 text-white/60" />
+        </div>
+      </motion.div>
+
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-white tracking-tight">Welcome back</h2>
+        <p className="text-white/35 text-sm mt-1.5">Enter your email to continue</p>
+      </div>
+
+      <motion.form
+        onSubmit={onSubmit}
+        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-4"
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.12, type: 'spring', damping: 22 }}
+      >
+        <ErrorMessage error={error} />
+        <div className="relative">
+          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+          <Input
+            type="email" placeholder="Email address" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="pl-10 h-12 rounded-xl bg-white/[0.06] border-white/[0.06] text-white placeholder:text-white/25 shadow-none focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15"
+            autoFocus
+          />
+        </div>
+        <motion.button
+          type="submit" disabled={loading}
+          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 transition-colors"
+          whileTap={{ scale: 0.98 }}
+        >
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Finding account...</>
+          ) : (
+            <>Continue <ArrowRight className="w-4 h-4" /></>
+          )}
+        </motion.button>
+      </motion.form>
+    </motion.div>
+  );
+}
+
+/* ── Password Step ── */
+function PasswordStep({ email, password, setPassword, showPassword, setShowPassword, error, loading, schoolInfo, onSubmit, onChangeEmail, onForgotPassword }: {
+  email: string;
+  password: string;
+  setPassword: (v: string) => void;
+  showPassword: boolean;
+  setShowPassword: (v: boolean) => void;
+  error: string;
+  loading: boolean;
+  schoolInfo: SchoolInfo;
+  onSubmit: (e: React.FormEvent) => void;
+  onChangeEmail: () => void;
+  onForgotPassword: () => void;
+}) {
+  const hasBanner = !!schoolInfo.splash_screen_image_url;
+
+  return (
+    <motion.div
+      className="flex flex-col"
+      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      transition={{ type: 'spring', damping: 24, stiffness: 200 }}
+    >
+      {/* School banner & branding */}
+      <motion.div
+        className="mb-5 rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl"
+        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.08, type: 'spring', damping: 22 }}
+      >
+        {/* Banner image */}
+        {hasBanner && (
+          <div className="relative h-32 overflow-hidden">
+            <img
+              src={schoolInfo.splash_screen_image_url!}
+              alt={schoolInfo.school_name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(225,50%,10%)] via-[hsl(225,50%,10%)/0.3] to-transparent" />
+          </div>
+        )}
+
+        {/* School info card */}
+        <div className={`bg-white/[0.04] backdrop-blur-2xl p-4 flex items-center gap-3.5 ${hasBanner ? '-mt-8 relative z-10 mx-3 rounded-xl border border-white/[0.08] bg-[hsl(225,50%,12%)/0.9] mb-3' : ''}`}>
+          {/* Logo */}
+          {schoolInfo.school_logo ? (
+            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden border border-white/[0.08] shrink-0 shadow-lg">
+              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-11 h-11 object-contain" />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shrink-0 shadow-lg">
+              <span className="text-2xl font-bold text-white/60">{schoolInfo.school_name?.charAt(0)}</span>
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-white font-semibold text-sm truncate leading-tight">
+              {schoolInfo.app_display_name || schoolInfo.school_name}
+            </h3>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/[0.08] text-white/60 border border-white/[0.06]">
+                {roleIcons[schoolInfo.role] || '👤'} {roleLabels[schoolInfo.role] || schoolInfo.role}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Welcome text if no banner */}
+        {!hasBanner && (
+          <div className="px-4 pb-3 pt-1">
+            <p className="text-white/30 text-xs">Welcome back, <span className="text-white/50">{schoolInfo.user_name}</span></p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Welcome text if banner exists */}
+      {hasBanner && (
+        <p className="text-white/30 text-xs text-center mb-3">Welcome back, <span className="text-white/50">{schoolInfo.user_name}</span></p>
+      )}
+
+      {/* Password form */}
+      <motion.form
+        onSubmit={onSubmit}
+        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-3.5"
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, type: 'spring', damping: 22 }}
+      >
+        <ErrorMessage error={error} />
+
+        {/* Email display */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.05]">
+          <Mail className="w-3.5 h-3.5 text-white/25 shrink-0" />
+          <span className="text-xs text-white/50 truncate flex-1">{email}</span>
+          <button type="button" onClick={onChangeEmail}
+            className="text-[10px] text-white/30 hover:text-white/60 transition-colors shrink-0">
+            Change
+          </button>
+        </div>
+
+        {/* Password input */}
+        <div className="relative">
+          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+          <Input
+            type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pl-10 pr-10 h-12 rounded-xl bg-white/[0.06] border-white/[0.06] text-white placeholder:text-white/25 shadow-none focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15"
+            autoFocus
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 z-10 text-white/25 hover:text-white/50 transition-colors"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <motion.button
+          type="submit" disabled={loading}
+          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 transition-colors"
+          whileTap={{ scale: 0.98 }}
+        >
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
+          ) : (
+            <><Lock className="w-3.5 h-3.5" /> Login</>
+          )}
+        </motion.button>
+
+        <div className="text-center pt-0.5">
+          <button type="button" onClick={onForgotPassword}
+            className="text-white/25 hover:text-white/50 text-xs transition-colors">
+            Forgot password?
+          </button>
+        </div>
+      </motion.form>
+    </motion.div>
+  );
+}
+
+/* ── Error Message ── */
+function ErrorMessage({ error }: { error: string }) {
+  return (
+    <AnimatePresence>
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+          className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-xs flex items-center gap-2 overflow-hidden"
+        >
+          <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-[10px] font-bold">!</div>
+          <span className="text-red-300/80">{error}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
