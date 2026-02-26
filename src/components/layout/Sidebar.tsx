@@ -25,6 +25,7 @@ import {
   ScrollText,
   Upload,
   Video,
+  Bus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,6 +70,7 @@ const menuConfig = {
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Exams', path: '/exams', icon: FileText },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
+    { label: 'Transport', path: '/transport', icon: Bus },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Settings', path: '/settings', icon: Settings },
@@ -91,6 +93,7 @@ const menuConfig = {
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Results', path: '/results', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
+    { label: 'Transport', path: '/transport', icon: Bus },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: Users },
   ],
@@ -101,6 +104,7 @@ const menuConfig = {
     { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Results', path: '/results', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
+    { label: 'Transport', path: '/transport', icon: Bus },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],

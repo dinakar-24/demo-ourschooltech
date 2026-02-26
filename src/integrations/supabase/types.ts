@@ -1256,6 +1256,64 @@ export type Database = {
           },
         ]
       }
+      student_transport: {
+        Row: {
+          boarding_type: string | null
+          created_at: string
+          drop_stop: string | null
+          id: string
+          pickup_stop: string | null
+          route_id: string
+          school_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          boarding_type?: string | null
+          created_at?: string
+          drop_stop?: string | null
+          id?: string
+          pickup_stop?: string | null
+          route_id: string
+          school_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          boarding_type?: string | null
+          created_at?: string
+          drop_stop?: string | null
+          id?: string
+          pickup_stop?: string | null
+          route_id?: string
+          school_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_transport_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transport_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transport_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           academic_year_id: string | null
@@ -1633,6 +1691,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "timetable_images_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_routes: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          driver_name: string | null
+          driver_phone: string | null
+          end_location: string | null
+          id: string
+          is_active: boolean | null
+          route_name: string
+          route_number: string | null
+          school_id: string
+          start_location: string | null
+          stops: Json | null
+          updated_at: string
+          vehicle_number: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          end_location?: string | null
+          id?: string
+          is_active?: boolean | null
+          route_name: string
+          route_number?: string | null
+          school_id: string
+          start_location?: string | null
+          stops?: Json | null
+          updated_at?: string
+          vehicle_number?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          end_location?: string | null
+          id?: string
+          is_active?: boolean | null
+          route_name?: string
+          route_number?: string | null
+          school_id?: string
+          start_location?: string | null
+          stops?: Json | null
+          updated_at?: string
+          vehicle_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_routes_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
