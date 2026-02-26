@@ -84,54 +84,57 @@ export default function EmployeeAttendancePage() {
 
   return (
     <AdminLayout title="Employee Attendance">
-      <div className="space-y-5 animate-fade-up">
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-10 w-[200px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {format(date, 'MMMM do, yyyy')}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search teacher..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 w-52 h-10 text-sm"
+      <div className="space-y-4 md:space-y-5 animate-fade-up">
+        {/* Controls - stacked on mobile */}
+        <div className="space-y-2.5 md:space-y-0 md:flex md:flex-row md:gap-3 md:justify-between md:items-center">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-10 w-full md:w-[200px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                {format(date, 'MMMM do, yyyy')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(d) => d && setDate(d)}
+                initialFocus
+                className="pointer-events-auto"
               />
-            </div>
+            </PopoverContent>
+          </Popover>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search teacher..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 w-full md:w-52 h-10 text-sm"
+            />
           </div>
-          <Button variant="outline" size="sm" onClick={markAllPresent} className="h-9">
+          <Button variant="outline" size="sm" onClick={markAllPresent} className="h-9 w-full md:w-auto">
             <Check className="w-4 h-4 mr-1.5" />
             Mark All Present
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {STAT_CARDS.map(s => (
-            <Card key={s.label} className={cn("border", s.bg)}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", s.bg)}>
-                  <s.icon className={cn("w-5 h-5", s.color)} />
+        {/* Stats - 2x2 grid on mobile with Unmarked spanning full width */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 md:gap-3">
+          {STAT_CARDS.map((s, i) => (
+            <Card key={s.label} className={cn(
+              "border",
+              s.bg,
+              // Last item (Unmarked) spans full width on mobile when odd count
+              i === STAT_CARDS.length - 1 && STAT_CARDS.length % 2 !== 0 && "col-span-2 md:col-span-1"
+            )}>
+              <CardContent className="p-3 md:p-4 flex items-center gap-2.5 md:gap-3">
+                <div className={cn("w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center shrink-0", s.bg)}>
+                  <s.icon className={cn("w-4 h-4 md:w-5 md:h-5", s.color)} />
                 </div>
                 <div>
-                  <p className={cn("text-xl font-bold leading-none", s.color)}>{s.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                  <p className={cn("text-lg md:text-xl font-bold leading-none", s.color)}>{s.value}</p>
+                  <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5">{s.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -159,40 +162,42 @@ export default function EmployeeAttendancePage() {
                     <div
                       key={teacher.id}
                       className={cn(
-                        "flex items-center justify-between px-4 py-3.5 transition-colors",
+                        "px-3 md:px-4 py-3 md:py-3.5 transition-colors",
                         idx % 2 === 0 ? "bg-background" : "bg-muted/20",
                         "hover:bg-muted/30"
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      {/* Mobile: stack name and buttons vertically */}
+                      <div className="flex items-center gap-2.5 md:gap-3">
                         {teacher.avatar_url ? (
-                          <img src={teacher.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                          <img src={teacher.avatar_url} alt="" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold">
+                          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs md:text-sm font-semibold shrink-0">
                             {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <div>
-                          <p className="font-medium text-sm text-foreground">{teacher.full_name}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground truncate">{teacher.full_name}</p>
                           <p className="text-xs text-muted-foreground">{teacher.employee_id}</p>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {STATUS_CONFIG.map(s => (
-                          <button
-                            key={s.key}
-                            onClick={() => updateStatus(teacher.id, s.key)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                              status === s.key
-                                ? s.activeColor
-                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            {isMobile ? s.shortLabel : s.label}
-                          </button>
-                        ))}
+                        {/* Status buttons */}
+                        <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
+                          {STATUS_CONFIG.map(s => (
+                            <button
+                              key={s.key}
+                              onClick={() => updateStatus(teacher.id, s.key)}
+                              className={cn(
+                                "rounded-lg text-xs font-medium transition-all",
+                                isMobile ? "w-8 h-8 flex items-center justify-center" : "px-3 py-1.5",
+                                status === s.key
+                                  ? s.activeColor
+                                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              {isMobile ? s.shortLabel : s.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   );
@@ -204,12 +209,12 @@ export default function EmployeeAttendancePage() {
 
         {/* Floating Save Button */}
         {hasChanges && (
-          <div className="sticky bottom-20 md:bottom-6 z-20 flex justify-center">
+          <div className="sticky bottom-20 md:bottom-6 z-20 flex justify-center px-4">
             <Button
               onClick={handleSave}
               disabled={saveAttendance.isPending}
               size="lg"
-              className="shadow-lg px-8"
+              className="shadow-lg w-full md:w-auto md:px-8"
             >
               {saveAttendance.isPending ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</>
