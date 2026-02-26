@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, ArrowRight, Loader2, Mail, KeyRound, ShieldCheck, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,13 @@ type OTPStep = 'email' | 'otp_password';
 interface SuperAdminOTPLoginProps {
   onBack: () => void;
   onSuccess: () => void;
+  initialEmail?: string;
 }
 
-export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProps) {
-  const [step, setStep] = useState<OTPStep>('email');
-  const [email, setEmail] = useState('');
+export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdminOTPLoginProps) {
+  const [step, setStep] = useState<OTPStep>(initialEmail ? 'otp_password' : 'email');
+  const [email, setEmail] = useState(initialEmail || '');
+  const autoSentRef = useRef(false);
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,6 +28,14 @@ export function SuperAdminOTPLogin({ onBack, onSuccess }: SuperAdminOTPLoginProp
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Auto-send OTP when initialEmail is provided
+  useEffect(() => {
+    if (initialEmail && !autoSentRef.current) {
+      autoSentRef.current = true;
+      handleSendOTP();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSendOTP = async () => {
     if (!email.trim()) {

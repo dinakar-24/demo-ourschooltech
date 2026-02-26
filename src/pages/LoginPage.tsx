@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
+import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
@@ -82,6 +83,10 @@ export default function LoginPage() {
         setError('No account found with this email address');
         return;
       }
+      if (result.role === 'super_admin') {
+        setStep('superadmin');
+        return;
+      }
       setSchoolInfo(result);
       setStep('password');
     } catch (err: any) {
@@ -139,7 +144,7 @@ export default function LoginPage() {
               <p className="text-white/40 text-sm mt-1">System administrator access</p>
             </div>
             <div className="bg-white/[0.06] backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-2xl">
-              <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} />
+              <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
             </div>
           </motion.div>
         </div>
@@ -172,7 +177,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center px-5 py-4 relative z-10 overflow-auto">
         <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
           <AnimatePresence mode="wait">
-            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} onSuperAdmin={() => setStep('superadmin')} />}
+            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
             {step === 'password' && schoolInfo && (
               <PasswordStep
                 key="password"
@@ -242,13 +247,12 @@ function LoginBackground() {
 }
 
 /* ── Email Step ── */
-function EmailStep({ email, setEmail, error, loading, onSubmit, onSuperAdmin }: {
+function EmailStep({ email, setEmail, error, loading, onSubmit }: {
   email: string;
   setEmail: (v: string) => void;
   error: string;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  onSuperAdmin: () => void;
 }) {
   return (
     <motion.div
@@ -300,16 +304,6 @@ function EmailStep({ email, setEmail, error, loading, onSubmit, onSuperAdmin }: 
           )}
         </motion.button>
 
-        <div className="pt-3 text-center">
-          <button
-            type="button"
-            onClick={onSuperAdmin}
-            className="inline-flex items-center gap-1.5 text-white/25 hover:text-white/50 text-[11px] transition-colors"
-          >
-            <Shield className="w-3 h-3" />
-            Super Admin Access
-          </button>
-        </div>
       </motion.form>
     </motion.div>
   );
