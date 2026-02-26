@@ -1,48 +1,38 @@
 
 
-## Performance Fix: Email Lookup at Scale (200K+ Users)
+## Plan: Auto-Detect Super Admin from Email Lookup
 
-### The Problem
-The `lookup_user_by_email` RPC searches the `profiles` table by email with no index. At 200K+ users, every login triggers a full table scan -- slow and resource-intensive.
+### What Changes
+Remove the visible "Super Admin Access" button from the email step. Instead, when a user enters their email and clicks Continue, the system will check the role returned by `lookup_user_by_email`. If the role is `super_admin`, it will automatically route to the Super Admin OTP flow (pre-filling the email so they don't have to type it again).
 
-### The Fix
+### Steps
 
-**1. Add a unique index on `profiles.email`**
+1. **Remove "Super Admin Access" button and `onSuperAdmin` prop from `EmailStep`** in `LoginPage.tsx`
+   - Delete the button and the `onSuperAdmin` prop from the component signature
 
-This single database change brings email lookup from O(n) full scan to O(1) index lookup, regardless of whether you have 1,000 or 2,000,000 users.
+2. **Update `handleEmailSubmit` logic** in `LoginPage.tsx`
+   - After the lookup RPC returns, check if `result.role === 'super_admin'`
+   - If yes: set the step to `'superadmin'` instead of `'password'`
+   - If no: proceed to password step as before
 
-**2. Verify existing indexes on join tables**
+3. **Update `SuperAdminOTPLogin` component** to accept a pre-filled email
+   - Add an `initialEmail` prop so the email from the login form carries over
+   - Initialize the internal `email` state with `initialEmail`
+   - If `initialEmail` is provided, auto-trigger OTP send on mount (skip the email entry step)
 
-The RPC also joins `schools` (by `id` -- already indexed as primary key) and `user_roles` (by `user_id` -- needs verification).
-
-### How It Scales
-
-| Users | Without Index | With Index |
-|-------|--------------|------------|
-| 1,000 | ~5ms | ~0.1ms |
-| 50,000 | ~50ms | ~0.1ms |
-| 200,000 | ~200ms | ~0.1ms |
-| 1,000,000 | ~1s+ | ~0.1ms |
-
-The RPC itself is well-designed -- it does a single query with JOINs, returning everything in one round-trip. The only missing piece is the index.
+4. **Update the super admin section in `LoginPage`** to pass the email:
+   - `<SuperAdminOTPLogin onBack={...} onSuccess={...} initialEmail={email} />`
 
 ### Technical Details
 
-**Migration SQL:**
-```text
--- Unique index on profiles.email for fast login lookup
-CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_email 
-ON public.profiles (email);
+**File: `src/pages/LoginPage.tsx`**
+- Remove `onSuperAdmin` prop from `EmailStep` component and its usage
+- Remove `Shield` icon import if no longer needed
+- In `handleEmailSubmit`: add `if (result.role === 'super_admin') { setStep('superadmin'); return; }` after the found check
+- Pass `initialEmail={email}` to `SuperAdminOTPLogin`
 
--- Index on user_roles.user_id for fast role lookup during login
-CREATE INDEX IF NOT EXISTS idx_user_roles_user_id 
-ON public.user_roles (user_id);
-```
-
-**No code changes needed.** The existing `lookup_user_by_email` RPC and `LoginPage.tsx` work perfectly at scale once the index is in place.
-
-### Summary
-- 1 database migration (2 indexes)
-- 0 code changes
-- Login performance stays under 1ms even at 2 million+ users
+**File: `src/components/auth/SuperAdminOTPLogin.tsx`**
+- Add `initialEmail?: string` to props interface
+- Initialize email state: `useState(initialEmail || '')`
+- Add `useEffect` to auto-send OTP when `initialEmail` is provided (skip email step, go straight to OTP)
 
