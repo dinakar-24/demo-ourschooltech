@@ -1953,6 +1953,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_conversation_participant: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       lookup_user_by_email: { Args: { _email: string }; Returns: Json }
       record_fee_payment: {
         Args: {
