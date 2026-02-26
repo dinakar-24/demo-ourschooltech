@@ -123,57 +123,31 @@ export default function FeesPage() {
     <AdminLayout title="Fees Management">
       <div className="space-y-6 animate-fade-up">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-success" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { icon: CheckCircle, value: fmt(stats?.collected || 0), label: 'Collected', color: 'text-success', bg: 'bg-success/10' },
+            { icon: AlertCircle, value: fmt(stats?.pending || 0), label: 'Pending', color: 'text-warning', bg: 'bg-warning/10' },
+            { icon: AlertCircle, value: fmt(stats?.overdue || 0), label: 'Overdue', color: 'text-destructive', bg: 'bg-destructive/10' },
+            { icon: TrendingUp, value: `${collectionRate}%`, label: 'Collection Rate', color: 'text-foreground', bg: 'bg-primary/10' },
+          ].map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-3 md:p-4">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg mb-1.5 md:mb-2 flex items-center justify-center" style={{}}>
+                  <div className={`w-full h-full rounded-lg ${s.bg} flex items-center justify-center`}>
+                    <s.icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${s.color}`} />
+                  </div>
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-success">{fmt(stats?.collected || 0)}</p>
-              <p className="text-sm text-muted-foreground">Collected</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <AlertCircle className="w-4 h-4 text-warning" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-warning">{fmt(stats?.pending || 0)}</p>
-              <p className="text-sm text-muted-foreground">Pending</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                  <AlertCircle className="w-4 h-4 text-destructive" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-destructive">{fmt(stats?.overdue || 0)}</p>
-              <p className="text-sm text-muted-foreground">Overdue</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{collectionRate}%</p>
-              <p className="text-sm text-muted-foreground">Collection Rate</p>
-            </CardContent>
-          </Card>
+                <p className={`text-xl md:text-2xl font-bold ${s.color}`}>{s.value}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex flex-col md:flex-row gap-4 justify-between">
-            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <TabsList>
                 <TabsTrigger value="invoices" className="gap-1.5">
                   <FileText className="w-4 h-4" /> Invoices
@@ -185,46 +159,50 @@ export default function FeesPage() {
                   )}
                 </TabsTrigger>
               </TabsList>
-              <div className="relative flex-1 max-w-md">
+              {activeTab === 'invoices' && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
+                    <CalendarDays className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Add</span> Term
+                  </Button>
+                  <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Create</span> Invoice
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input placeholder="Search student..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
               </div>
-              {activeTab === 'invoices' && (
-                <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Term" />
+              <div className="flex gap-2">
+                {activeTab === 'invoices' && (
+                  <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                    <SelectTrigger className="w-full sm:w-[160px]">
+                      <SelectValue placeholder="Term" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Terms</SelectItem>
+                      {(terms || []).map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Terms</SelectItem>
-                    {(terms || []).map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    {activeTab === 'invoices' && <SelectItem value="partial">Partial</SelectItem>}
+                    <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  {activeTab === 'invoices' && <SelectItem value="partial">Partial</SelectItem>}
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {activeTab === 'invoices' && (
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
-                  <CalendarDays className="w-4 h-4 mr-2" /> Add Term
-                </Button>
-                <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" /> Create Invoice
-                </Button>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Invoice Tab */}
