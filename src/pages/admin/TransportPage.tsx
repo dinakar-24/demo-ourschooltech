@@ -146,7 +146,7 @@ export default function TransportPage() {
       </div>
       <div className="grid gap-2">
         <Label>Capacity</Label>
-        <Input type="number" value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: parseInt(e.target.value) || 40 }))} />
+        <Input type="text" inputMode="numeric" pattern="[0-9]*" value={form.capacity} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setForm(f => ({ ...f, capacity: v ? parseInt(v) : 0 })); }} placeholder="e.g. 40" />
       </div>
     </div>
   );
