@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Plus, Users, Megaphone, MessageCircle } from 'lucide-react';
@@ -18,16 +18,37 @@ interface ConversationListProps {
   isLoading?: boolean;
 }
 
+type TabType = 'all' | 'group' | 'broadcast' | 'direct';
+
+const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
+  { key: 'all', label: 'All', icon: MessageCircle },
+  { key: 'group', label: 'Groups', icon: Users },
+  { key: 'broadcast', label: 'Broadcast', icon: Megaphone },
+  { key: 'direct', label: 'Direct', icon: MessageCircle },
+];
+
 export function ConversationList({ conversations, selectedId, onSelect, onNewChat, isLoading }: ConversationListProps) {
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const { user } = useAuth();
 
   const filtered = conversations.filter(c => {
+    // Filter by tab
+    if (activeTab !== 'all' && c.type !== activeTab) return false;
+    // Filter by search
     if (!search) return true;
     const q = search.toLowerCase();
     const name = getConversationName(c, user?.id);
     return name.toLowerCase().includes(q) || c.last_message_preview?.toLowerCase().includes(q);
   });
+
+  // Count by type
+  const counts = {
+    all: conversations.length,
+    group: conversations.filter(c => c.type === 'group').length,
+    broadcast: conversations.filter(c => c.type === 'broadcast').length,
+    direct: conversations.filter(c => c.type === 'direct').length,
+  };
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
@@ -47,6 +68,33 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-border px-1 pt-1 gap-0.5 overflow-x-auto">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-t-md transition-colors whitespace-nowrap",
+              activeTab === tab.key
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+          >
+            <tab.icon className="w-3 h-3" />
+            {tab.label}
+            {counts[tab.key] > 0 && (
+              <span className={cn(
+                "text-[10px] min-w-[16px] h-4 flex items-center justify-center rounded-full px-1",
+                activeTab === tab.key ? "bg-primary-foreground/20" : "bg-muted"
+              )}>
+                {counts[tab.key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* List */}
       <ScrollArea className="flex-1">
         {isLoading ? (
@@ -55,7 +103,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            {search ? 'No conversations found' : 'No messages yet'}
+            {search ? 'No conversations found' : activeTab === 'all' ? 'No messages yet' : `No ${activeTab} conversations`}
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -63,6 +111,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
               const name = getConversationName(conv, user?.id);
               const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
               const TypeIcon = conv.type === 'group' ? Users : conv.type === 'broadcast' ? Megaphone : MessageCircle;
+              const typeLabel = conv.type === 'group' ? 'Group' : conv.type === 'broadcast' ? 'Broadcast' : '';
               
               return (
                 <button
@@ -85,7 +134,14 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className={cn("text-sm truncate", conv.unread_count ? "font-semibold text-foreground" : "font-medium text-foreground")}>{name}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className={cn("text-sm truncate", conv.unread_count ? "font-semibold text-foreground" : "font-medium text-foreground")}>{name}</p>
+                        {typeLabel && activeTab === 'all' && (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                            {typeLabel}
+                          </Badge>
+                        )}
+                      </div>
                       {conv.last_message_at && (
                         <span className="text-xs text-muted-foreground ml-2 shrink-0">
                           {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: false })}
