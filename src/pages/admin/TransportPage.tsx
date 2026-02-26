@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,7 +46,12 @@ export default function TransportPage() {
 
   const { data: routes = [], isLoading } = useTransportRoutes();
   const { data: studentTransport = [] } = useStudentTransport(selectedRouteId);
-  const { data: studentData } = useStudents();
+  const { data: studentData } = useStudents({ 
+    className: assignClass || undefined, 
+    section: assignSection || undefined,
+    search: studentSearch || undefined,
+    pageSize: 50,
+  });
   const { data: classesData = [] } = useClasses();
   const createRoute = useCreateRoute();
   const updateRoute = useUpdateRoute();
@@ -54,26 +59,11 @@ export default function TransportPage() {
   const assignStudent = useAssignStudent();
   const removeStudent = useRemoveStudentTransport();
 
-  const students = Array.isArray(studentData) ? studentData : (studentData as any)?.students || [];
+  const students = studentData?.data || [];
 
   // Get sections for selected class
   const selectedClassData = classesData.find(c => c.name === assignClass);
   const availableSections = selectedClassData?.sections?.map(s => s.name) || [];
-
-  // Filter students by selected class & section
-  const filteredStudentsForAssign = useMemo(() => {
-    if (!assignClass) return [];
-    let list = students.filter((s: any) => {
-      if (s.class_name !== assignClass) return false;
-      if (assignSection && s.section !== assignSection) return false;
-      return true;
-    });
-    if (studentSearch.trim()) {
-      const q = studentSearch.toLowerCase();
-      list = list.filter((s: any) => s.full_name?.toLowerCase().includes(q) || s.admission_number?.toLowerCase().includes(q));
-    }
-    return list;
-  }, [students, assignClass, assignSection, studentSearch]);
 
   const filteredRoutes = routes.filter(r =>
     r.route_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -215,10 +205,10 @@ export default function TransportPage() {
               <Input placeholder="Search by name or admission no..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="pl-9" />
             </div>
             <div className="max-h-36 overflow-y-auto rounded-md border border-border">
-              {filteredStudentsForAssign.length === 0 ? (
+              {students.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-3">No students found</p>
               ) : (
-                filteredStudentsForAssign.map((s: any) => (
+                students.map((s: any) => (
                   <button
                     key={s.id}
                     type="button"
