@@ -13,11 +13,13 @@ export function useAutoCreateGroups() {
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
   const queryClient = useQueryClient();
-  const hasRun = useRef(false);
+  const hasRun = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user?.id || !schoolId || hasRun.current) return;
-    hasRun.current = true;
+    // Run once per school per session
+    const key = `${user?.id}-${schoolId}`;
+    if (!user?.id || !schoolId || hasRun.current === key) return;
+    hasRun.current = key;
 
     (async () => {
       try {
