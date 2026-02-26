@@ -26,6 +26,7 @@ import {
   Search,
   Moon,
   Sun,
+  Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,7 @@ const menuItems = [
   { label: 'Attendance', href: '/admin/attendance', icon: ClipboardList },
   { label: 'Fees', href: '/admin/fees', icon: CreditCard },
   { label: 'Exams', href: '/admin/exams', icon: FileText },
+  { label: 'Online Classes', href: '/admin/online-classes', icon: Video },
   { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
   { label: 'Timetable', href: '/admin/timetable', icon: Clock },
   { label: 'Announcements', href: '/admin/announcements', icon: Bell },
