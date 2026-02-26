@@ -26,6 +26,7 @@ import {
   Upload,
   Video,
   Bus,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,6 +72,7 @@ const menuConfig = {
     { label: 'Exams', path: '/exams', icon: FileText },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Transport', path: '/transport', icon: Bus },
+    { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Settings', path: '/settings', icon: Settings },
@@ -83,6 +85,7 @@ const menuConfig = {
     { label: 'Marks', path: '/marks', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Timetable', path: '/timetable', icon: Clock },
+    { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
@@ -94,6 +97,7 @@ const menuConfig = {
     { label: 'Results', path: '/results', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Transport', path: '/transport', icon: Bus },
+    { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: Users },
   ],

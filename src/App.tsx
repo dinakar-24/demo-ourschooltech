@@ -45,6 +45,7 @@ import TimetablePage from "./pages/admin/TimetablePage";
 import BulkUploadPage from "./pages/admin/BulkUploadPage";
 import OnlineClassesPage from "./pages/admin/OnlineClassesPage";
 import TransportPage from "./pages/admin/TransportPage";
+import MessagesPage from "./pages/admin/MessagesPage";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -56,6 +57,7 @@ import TeacherTimetable from "./pages/teacher/TeacherTimetable";
 import TeacherAnnouncements from "./pages/teacher/TeacherAnnouncements";
 import TeacherStudents from "./pages/teacher/TeacherStudents";
 import TeacherOnlineClasses from "./pages/teacher/TeacherOnlineClasses";
+import TeacherMessages from "./pages/teacher/TeacherMessages";
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -67,6 +69,7 @@ import ParentAnnouncements from "./pages/parent/ParentAnnouncements";
 import ParentHomework from "./pages/parent/ParentHomework";
 import ParentOnlineClasses from "./pages/parent/ParentOnlineClasses";
 import ParentTransport from "./pages/parent/ParentTransport";
+import ParentMessages from "./pages/parent/ParentMessages";
 
 // Student Pages
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -193,6 +196,7 @@ function AppRoutes() {
         <Route path="/admin/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BulkUploadPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/online-classes" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><OnlineClassesPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><TransportPage /></SubscriptionGuard></ProtectedRoute>} />
+        <Route path="/admin/messages" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><MessagesPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/students/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BulkUploadPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
         
@@ -207,6 +211,7 @@ function AppRoutes() {
         <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
         <Route path="/teacher/online-classes" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherOnlineClasses /></ProtectedRoute>} />
         <Route path="/teacher/notifications" element={<ProtectedRoute allowedRoles={['teacher']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/teacher/messages" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMessages /></ProtectedRoute>} />
         <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
         
         {/* Parent Routes */}
@@ -220,6 +225,7 @@ function AppRoutes() {
         <Route path="/parent/online-classes" element={<ProtectedRoute allowedRoles={['parent']}><ParentOnlineClasses /></ProtectedRoute>} />
         <Route path="/parent/transport" element={<ProtectedRoute allowedRoles={['parent']}><ParentTransport /></ProtectedRoute>} />
         <Route path="/parent/notifications" element={<ProtectedRoute allowedRoles={['parent']}><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/parent/messages" element={<ProtectedRoute allowedRoles={['parent']}><ParentMessages /></ProtectedRoute>} />
         <Route path="/parent/*" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
         
         {/* Student Routes */}
