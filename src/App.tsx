@@ -86,7 +86,16 @@ import StudentTransport from "./pages/student/StudentTransport";
 
 // Shared Pages
 import NotificationsPage from "./pages/NotificationsPage";
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
+});
 
 // Smart redirect based on auth state
 function AuthRedirect() {
