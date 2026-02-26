@@ -10,14 +10,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Video, Edit2, Trash2, ExternalLink, Search, Loader2, Clock, Users as UsersIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Video, Edit2, Trash2, ExternalLink, Search, Loader2, Clock, Users as UsersIcon, CalendarIcon } from 'lucide-react';
 import { useOnlineClasses, useCreateOnlineClass, useUpdateOnlineClass, useDeleteOnlineClass, OnlineClass } from '@/hooks/useOnlineClasses';
-import { useTeachers } from '@/hooks/useTeachers';
 import { useClasses } from '@/hooks/useClasses';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 import { EmptyState } from '@/components/ui/data-states';
+import { cn } from '@/lib/utils';
 
 const platforms = [
   { value: 'zoom', label: 'Zoom' },
@@ -43,8 +45,10 @@ const defaultForm = {
   class_name: '',
   section: '',
   subject: '',
+  teacher_name: '',
   teacher_id: '',
-  scheduled_at: '',
+  scheduled_date: undefined as Date | undefined,
+  scheduled_time: '09:00',
   duration_minutes: 60,
   status: 'scheduled',
 };
@@ -59,13 +63,11 @@ export default function OnlineClassesPage() {
   const [form, setForm] = useState(defaultForm);
 
   const { data: classes = [], isLoading } = useOnlineClasses({ status: statusFilter });
-  const { data: teacherData } = useTeachers();
   const { data: classData } = useClasses();
   const createMutation = useCreateOnlineClass();
   const updateMutation = useUpdateOnlineClass();
   const deleteMutation = useDeleteOnlineClass();
 
-  const teachers = Array.isArray(teacherData) ? teacherData : (teacherData as any)?.teachers || [];
   const schoolClasses = classData || [];
 
   const filtered = classes.filter(c =>
@@ -82,6 +84,7 @@ export default function OnlineClassesPage() {
 
   const openEdit = (cls: OnlineClass) => {
     setEditingClass(cls);
+    const scheduledDate = cls.scheduled_at ? new Date(cls.scheduled_at) : undefined;
     setForm({
       title: cls.title,
       description: cls.description || '',
@@ -92,8 +95,10 @@ export default function OnlineClassesPage() {
       class_name: cls.class_name || '',
       section: cls.section || '',
       subject: cls.subject || '',
+      teacher_name: cls.teacher?.full_name || '',
       teacher_id: cls.teacher_id || '',
-      scheduled_at: cls.scheduled_at ? format(new Date(cls.scheduled_at), "yyyy-MM-dd'T'HH:mm") : '',
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledDate ? format(scheduledDate, 'HH:mm') : '09:00',
       duration_minutes: cls.duration_minutes,
       status: cls.status,
     });
@@ -101,11 +106,18 @@ export default function OnlineClassesPage() {
   };
 
   const handleSubmit = () => {
-    if (!form.title || !form.scheduled_at) return;
+    if (!form.title || !form.scheduled_date) return;
+    const [hours, minutes] = form.scheduled_time.split(':').map(Number);
+    const scheduledAt = new Date(form.scheduled_date);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
     const payload = {
-      ...form,
+      title: form.title,
+      platform: form.platform,
+      duration_minutes: form.duration_minutes,
+      status: form.status,
       school_id: schoolId,
-      scheduled_at: new Date(form.scheduled_at).toISOString(),
+      scheduled_at: scheduledAt.toISOString(),
       teacher_id: form.teacher_id || null,
       description: form.description || null,
       meeting_url: form.meeting_url || null,
@@ -160,8 +172,38 @@ export default function OnlineClassesPage() {
         </div>
       </div>
       <div className="grid gap-2">
-        <Label>Scheduled At *</Label>
-        <Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+        <Label>Scheduled Date *</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !form.scheduled_date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {form.scheduled_date ? format(form.scheduled_date, 'dd MMM yyyy') : <span>Pick a date</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={form.scheduled_date}
+              onSelect={(date) => setForm(f => ({ ...f, scheduled_date: date }))}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="grid gap-2">
+        <Label>Time *</Label>
+        <Input
+          type="time"
+          value={form.scheduled_time}
+          onChange={e => setForm(f => ({ ...f, scheduled_time: e.target.value }))}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
@@ -185,12 +227,7 @@ export default function OnlineClassesPage() {
         </div>
         <div className="grid gap-2">
           <Label>Teacher</Label>
-          <Select value={form.teacher_id} onValueChange={v => setForm(f => ({ ...f, teacher_id: v }))}>
-            <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
-            <SelectContent>
-              {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Input value={form.teacher_name} onChange={e => setForm(f => ({ ...f, teacher_name: e.target.value }))} placeholder="e.g. Mr. Sharma" />
         </div>
       </div>
       {editingClass && (
