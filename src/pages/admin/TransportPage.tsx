@@ -42,6 +42,7 @@ export default function TransportPage() {
   const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
   const [assignClass, setAssignClass] = useState('');
   const [assignSection, setAssignSection] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
 
   const { data: routes = [], isLoading } = useTransportRoutes();
   const { data: studentTransport = [] } = useStudentTransport(selectedRouteId);
@@ -62,12 +63,17 @@ export default function TransportPage() {
   // Filter students by selected class & section
   const filteredStudentsForAssign = useMemo(() => {
     if (!assignClass) return [];
-    return students.filter((s: any) => {
+    let list = students.filter((s: any) => {
       if (s.class_name !== assignClass) return false;
       if (assignSection && s.section !== assignSection) return false;
       return true;
     });
-  }, [students, assignClass, assignSection]);
+    if (studentSearch.trim()) {
+      const q = studentSearch.toLowerCase();
+      list = list.filter((s: any) => s.full_name?.toLowerCase().includes(q) || s.admission_number?.toLowerCase().includes(q));
+    }
+    return list;
+  }, [students, assignClass, assignSection, studentSearch]);
 
   const filteredRoutes = routes.filter(r =>
     r.route_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -130,6 +136,7 @@ export default function TransportPage() {
     setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
     setAssignClass('');
     setAssignSection('');
+    setStudentSearch('');
   };
 
   const routeFormJsx = (
@@ -199,14 +206,33 @@ export default function TransportPage() {
       </div>
       <div className="grid gap-2">
         <Label>Student *</Label>
-        <Select value={assignForm.student_id} onValueChange={v => setAssignForm(f => ({ ...f, student_id: v }))} disabled={!assignClass}>
-          <SelectTrigger><SelectValue placeholder={assignClass ? "Select student" : "Select class first"} /></SelectTrigger>
-          <SelectContent>
-            {filteredStudentsForAssign.map((s: any) => (
-              <SelectItem key={s.id} value={s.id}>{s.full_name} ({s.section})</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!assignClass ? (
+          <p className="text-sm text-muted-foreground py-2">Select a class first</p>
+        ) : (
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search by name or admission no..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="pl-9" />
+            </div>
+            <div className="max-h-36 overflow-y-auto rounded-md border border-border">
+              {filteredStudentsForAssign.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No students found</p>
+              ) : (
+                filteredStudentsForAssign.map((s: any) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setAssignForm(f => ({ ...f, student_id: s.id }))}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between ${assignForm.student_id === s.id ? 'bg-accent font-medium' : ''}`}
+                  >
+                    <span>{s.full_name}</span>
+                    <span className="text-xs text-muted-foreground">{s.class_name}-{s.section}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2"><Label>Pickup Stop</Label><Input value={assignForm.pickup_stop} onChange={e => setAssignForm(f => ({ ...f, pickup_stop: e.target.value }))} /></div>
