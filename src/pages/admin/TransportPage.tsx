@@ -89,15 +89,17 @@ export default function TransportPage() {
       start_location: form.start_location || null,
       end_location: form.end_location || null,
     };
+    setRouteDialogOpen(false);
     if (editingRoute) {
-      updateRoute.mutate({ id: editingRoute.id, ...payload }, { onSuccess: () => setRouteDialogOpen(false) });
+      updateRoute.mutate({ id: editingRoute.id, ...payload });
     } else {
-      createRoute.mutate(payload, { onSuccess: () => setRouteDialogOpen(false) });
+      createRoute.mutate(payload);
     }
   };
 
   const handleAssignSubmit = () => {
     if (!assignForm.student_id || !selectedRouteId) return;
+    setAssignDialogOpen(false);
     assignStudent.mutate({
       student_id: assignForm.student_id,
       route_id: selectedRouteId,
@@ -105,7 +107,8 @@ export default function TransportPage() {
       pickup_stop: assignForm.pickup_stop || undefined,
       drop_stop: assignForm.drop_stop || undefined,
       boarding_type: assignForm.boarding_type,
-    }, { onSuccess: () => { setAssignDialogOpen(false); setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' }); } });
+    });
+    setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
   };
 
   const RouteFormContent = () => (
@@ -146,7 +149,7 @@ export default function TransportPage() {
       </div>
       <div className="grid gap-2">
         <Label>Capacity</Label>
-        <Input type="text" inputMode="numeric" pattern="[0-9]*" value={form.capacity} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setForm(f => ({ ...f, capacity: v ? parseInt(v) : 0 })); }} placeholder="e.g. 40" />
+        <Input type="text" inputMode="numeric" pattern="[0-9]*" value={form.capacity || ''} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setForm(f => ({ ...f, capacity: v ? parseInt(v) : 0 })); }} placeholder="e.g. 40" />
       </div>
     </div>
   );
