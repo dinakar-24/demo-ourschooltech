@@ -18,10 +18,9 @@ interface ConversationListProps {
   isLoading?: boolean;
 }
 
-type TabType = 'all' | 'group' | 'broadcast' | 'direct';
+type TabType = 'group' | 'broadcast' | 'direct';
 
 const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
-  { key: 'all', label: 'All', icon: MessageCircle },
   { key: 'group', label: 'Groups', icon: Users },
   { key: 'broadcast', label: 'Broadcast', icon: Megaphone },
   { key: 'direct', label: 'Direct', icon: MessageCircle },
@@ -29,12 +28,12 @@ const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
 
 export function ConversationList({ conversations, selectedId, onSelect, onNewChat, isLoading }: ConversationListProps) {
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [activeTab, setActiveTab] = useState<TabType>('group');
   const { user } = useAuth();
 
   const filtered = conversations.filter(c => {
     // Filter by tab
-    if (activeTab !== 'all' && c.type !== activeTab) return false;
+    if (c.type !== activeTab) return false;
     // Filter by search
     if (!search) return true;
     const q = search.toLowerCase();
@@ -44,7 +43,6 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
 
   // Count by type
   const counts = {
-    all: conversations.length,
     group: conversations.filter(c => c.type === 'group').length,
     broadcast: conversations.filter(c => c.type === 'broadcast').length,
     direct: conversations.filter(c => c.type === 'direct').length,
@@ -103,7 +101,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            {search ? 'No conversations found' : activeTab === 'all' ? 'No messages yet' : `No ${activeTab} conversations`}
+           {search ? 'No conversations found' : `No ${activeTab} conversations`}
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -136,11 +134,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <p className={cn("text-sm truncate", conv.unread_count ? "font-semibold text-foreground" : "font-medium text-foreground")}>{name}</p>
-                        {typeLabel && activeTab === 'all' && (
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
-                            {typeLabel}
-                          </Badge>
-                        )}
+                        
                       </div>
                       {conv.last_message_at && (
                         <span className="text-xs text-muted-foreground ml-2 shrink-0">
