@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,15 +14,12 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
-  ChevronDown, ChevronRight, Receipt, CalendarDays, FileText,
+  ChevronDown, ChevronRight, Receipt, CalendarDays, FileText, User,
 } from 'lucide-react';
 import { useFeeInvoices, useInvoiceStats, useFeeTerms, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
-import { useFees, useFeeStats, FeeRecord } from '@/hooks/useFees';
-import { usePagination } from '@/hooks/usePagination';
-import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useFees, FeeRecord } from '@/hooks/useFees';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
@@ -31,9 +28,76 @@ import { CreateTermDialog } from '@/components/fees/CreateTermDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 
+interface StudentGroup {
+  studentId: string;
+  name: string;
+  admissionNumber: string;
+  className: string;
+  section: string;
+  invoices: FeeInvoice[];
+  legacyFees: FeeRecord[];
+  totalAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+}
+
+function groupByStudent(invoices: FeeInvoice[], legacyFees: FeeRecord[]): StudentGroup[] {
+  const map = new Map<string, StudentGroup>();
+
+  for (const inv of invoices) {
+    const sid = inv.student_id;
+    if (!map.has(sid)) {
+      map.set(sid, {
+        studentId: sid,
+        name: inv.student?.full_name || 'Unknown',
+        admissionNumber: inv.student?.admission_number || '',
+        className: inv.student?.class_name || '',
+        section: inv.student?.section || '',
+        invoices: [],
+        legacyFees: [],
+        totalAmount: 0,
+        totalPaid: 0,
+        totalBalance: 0,
+      });
+    }
+    const g = map.get(sid)!;
+    g.invoices.push(inv);
+    g.totalAmount += Number(inv.total_amount);
+    g.totalPaid += Number(inv.paid_amount);
+    g.totalBalance += Number(inv.balance);
+  }
+
+  for (const fee of legacyFees) {
+    const sid = fee.student_id;
+    if (!map.has(sid)) {
+      map.set(sid, {
+        studentId: sid,
+        name: fee.student?.full_name || 'Unknown',
+        admissionNumber: fee.student?.admission_number || '',
+        className: fee.student?.class_name || '',
+        section: fee.student?.section || '',
+        invoices: [],
+        legacyFees: [],
+        totalAmount: 0,
+        totalPaid: 0,
+        totalBalance: 0,
+      });
+    }
+    const g = map.get(sid)!;
+    g.legacyFees.push(fee);
+    g.totalAmount += Number(fee.amount);
+    if (fee.status === 'paid') {
+      g.totalPaid += Number(fee.amount);
+    } else {
+      g.totalBalance += Number(fee.amount);
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default function FeesPage() {
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState('invoices');
   const [searchInput, setSearchInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedTerm, setSelectedTerm] = useState('all');
@@ -50,38 +114,50 @@ export default function FeesPage() {
   const [legacyReceiptOpen, setLegacyReceiptOpen] = useState(false);
   const [legacyReceiptFee, setLegacyReceiptFee] = useState<any>(null);
 
-  const pagination = usePagination(25);
-  const legacyPagination = usePagination(25);
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  useEffect(() => { pagination.resetPage(); legacyPagination.resetPage(); }, [debouncedSearch, selectedStatus, selectedTerm]);
-
-  // Invoice-based fees
+  // Fetch all data (no pagination — grouped client-side)
   const { data: invoicesResult, isLoading } = useFeeInvoices({
     status: selectedStatus,
     search: debouncedSearch,
     termId: selectedTerm,
-    page: pagination.page,
-    pageSize: pagination.pageSize,
+    page: 1,
+    pageSize: 500,
   });
   const invoices = invoicesResult?.data || [];
-  const totalCount = invoicesResult?.totalCount || 0;
   const { data: invoiceStats } = useInvoiceStats();
   const { data: terms } = useFeeTerms();
 
-  // Legacy fees
   const { data: legacyResult, isLoading: legacyLoading } = useFees({
     status: selectedStatus,
     search: debouncedSearch,
-    page: legacyPagination.page,
-    pageSize: legacyPagination.pageSize,
+    page: 1,
+    pageSize: 500,
   });
   const legacyFees = legacyResult?.data || [];
-  const legacyTotal = legacyResult?.totalCount || 0;
-  const { data: legacyStats } = useFeeStats();
 
-  // Combined stats
-  const stats = activeTab === 'invoices' ? invoiceStats : legacyStats;
+  const stats = invoiceStats;
+  const loading = isLoading || legacyLoading;
+
+  const studentGroups = useMemo(
+    () => groupByStudent(invoices, legacyFees),
+    [invoices, legacyFees]
+  );
+
+  // Filter by status at group level
+  const filteredGroups = useMemo(() => {
+    if (selectedStatus === 'all') return studentGroups;
+    return studentGroups.filter(g => {
+      if (selectedStatus === 'paid') return g.totalBalance === 0 && g.totalAmount > 0;
+      if (selectedStatus === 'pending') return g.totalBalance > 0;
+      if (selectedStatus === 'overdue') {
+        const today = new Date().toISOString().split('T')[0];
+        return g.invoices.some(i => i.status === 'pending' && i.due_date < today) ||
+          g.legacyFees.some(f => f.status === 'pending' && f.due_date < today);
+      }
+      return true;
+    });
+  }, [studentGroups, selectedStatus]);
 
   const openPayment = (inv: FeeInvoice) => {
     setPaymentInvoice(inv);
@@ -95,10 +171,7 @@ export default function FeesPage() {
   };
 
   const openLegacyReceipt = (fee: FeeRecord) => {
-    setLegacyReceiptFee({
-      ...fee,
-      student: fee.student,
-    });
+    setLegacyReceiptFee({ ...fee, student: fee.student });
     setLegacyReceiptOpen(true);
   };
 
@@ -111,6 +184,16 @@ export default function FeesPage() {
     return <Badge variant="secondary">Pending</Badge>;
   };
 
+  const getGroupBadge = (g: StudentGroup) => {
+    if (g.totalAmount === 0) return <Badge variant="secondary">No Fees</Badge>;
+    if (g.totalBalance === 0) return <Badge className="bg-success text-success-foreground">Paid</Badge>;
+    const today = new Date().toISOString().split('T')[0];
+    const hasOverdue = g.invoices.some(i => i.status === 'pending' && i.due_date < today) ||
+      g.legacyFees.some(f => f.status === 'pending' && f.due_date < today);
+    if (hasOverdue) return <Badge variant="destructive">Overdue</Badge>;
+    return <Badge variant="secondary">Pending</Badge>;
+  };
+
   const fmt = (n: number) => {
     if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
     if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
@@ -118,6 +201,98 @@ export default function FeesPage() {
   };
 
   const collectionRate = stats && stats.totalDue > 0 ? ((stats.collected / stats.totalDue) * 100).toFixed(0) : '0';
+
+  const renderExpandedContent = (g: StudentGroup) => (
+    <div className="space-y-4">
+      {/* Invoices */}
+      {g.invoices.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Invoices ({g.invoices.length})
+          </h4>
+          <div className="space-y-3">
+            {g.invoices.map(inv => (
+              <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{inv.term?.name || 'N/A'}</span>
+                    <span className="text-xs text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(inv.status, inv.due_date)}
+                    {inv.status !== 'paid' && (
+                      <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openPayment(inv)}>
+                        <CreditCard className="w-3 h-3 mr-1" /> Pay
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {/* Components */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-sm">
+                  {(inv.components || []).map(c => (
+                    <div key={c.id} className="flex justify-between text-xs py-0.5 px-2 bg-muted/40 rounded">
+                      <span>{c.fee_type}</span>
+                      <span className="font-medium">₹{Number(c.amount).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-sm border-t pt-1">
+                  <span>Total: <span className="font-semibold">₹{Number(inv.total_amount).toLocaleString()}</span></span>
+                  <span>Paid: <span className="text-success font-medium">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
+                  <span>Balance: <span className="text-destructive font-medium">₹{Number(inv.balance).toLocaleString()}</span></span>
+                </div>
+                {/* Payments */}
+                {(inv.payments || []).length > 0 && (
+                  <div className="border-t pt-2 space-y-1">
+                    {(inv.payments || []).map(p => (
+                      <div key={p.id} className="flex justify-between items-center text-xs">
+                        <span>
+                          <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                          <span className="text-muted-foreground ml-1.5 capitalize">{p.payment_method}</span>
+                          <span className="text-muted-foreground ml-1.5">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+                        </span>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openReceipt(p, inv)}>
+                          <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legacy Fees */}
+      {g.legacyFees.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" /> Fee Records ({g.legacyFees.length})
+          </h4>
+          <div className="space-y-1">
+            {g.legacyFees.map(fee => (
+              <div key={fee.id} className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="font-medium">{fee.fee_type}</span>
+                  <span className="text-muted-foreground text-xs">Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">₹{Number(fee.amount).toLocaleString()}</span>
+                  {getStatusBadge(fee.status, fee.due_date)}
+                  {fee.status === 'paid' && fee.receipt_number && (
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openLegacyReceipt(fee)}>
+                      <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <AdminLayout title="Fees Management">
@@ -132,10 +307,8 @@ export default function FeesPage() {
           ].map((s) => (
             <Card key={s.label}>
               <CardContent className="p-3 md:p-4">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg mb-1.5 md:mb-2 flex items-center justify-center" style={{}}>
-                  <div className={`w-full h-full rounded-lg ${s.bg} flex items-center justify-center`}>
-                    <s.icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${s.color}`} />
-                  </div>
+                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg mb-1.5 md:mb-2 ${s.bg} flex items-center justify-center`}>
+                  <s.icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${s.color}`} />
                 </div>
                 <p className={`text-xl md:text-2xl font-bold ${s.color}`}>{s.value}</p>
                 <p className="text-xs md:text-sm text-muted-foreground">{s.label}</p>
@@ -144,362 +317,147 @@ export default function FeesPage() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <TabsList>
-                <TabsTrigger value="invoices" className="gap-1.5">
-                  <FileText className="w-4 h-4" /> Invoices
-                </TabsTrigger>
-                <TabsTrigger value="legacy" className="gap-1.5">
-                  <CreditCard className="w-4 h-4" /> Fees
-                  {legacyTotal > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 text-xs">{legacyTotal}</Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-              {activeTab === 'invoices' && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
-                    <CalendarDays className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Add</span> Term
-                  </Button>
-                  <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Create</span> Invoice
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search student..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
-              </div>
-              <div className="flex gap-2">
-                {activeTab === 'invoices' && (
-                  <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
-                      <SelectValue placeholder="Term" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Terms</SelectItem>
-                      {(terms || []).map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    {activeTab === 'invoices' && <SelectItem value="partial">Partial</SelectItem>}
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* Actions + Filters */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-lg font-semibold">Student Fees</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
+                <CalendarDays className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Add</span> Term
+              </Button>
+              <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Create</span> Invoice
+              </Button>
             </div>
           </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search student..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
+            </div>
+            <div className="flex gap-2">
+              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Terms</SelectItem>
+                  {(terms || []).map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
 
-          {/* Invoice Tab */}
-          <TabsContent value="invoices" className="mt-4">
-            <Card>
-              <CardContent className="p-0">
-                {isLoading ? (
-                  <div className="p-4 space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <Skeleton className="w-10 h-10 rounded-full" />
-                        <div className="space-y-1.5 flex-1">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-48" />
-                        </div>
-                      </div>
-                    ))}
+        {/* Student-Grouped List */}
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
                   </div>
-                ) : invoices.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">No fee invoices found</p>
-                    <p className="text-sm mt-1">Create terms first, then create invoices for students</p>
-                  </div>
-                ) : isMobile ? (
-                  <div className="divide-y">
-                    {invoices.map((inv) => (
-                      <Collapsible key={inv.id} open={expandedId === inv.id} onOpenChange={(open) => setExpandedId(open ? inv.id : null)}>
-                        <div className="p-4 space-y-2">
-                          <CollapsibleTrigger className="w-full text-left">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex items-start gap-2">
-                                {expandedId === inv.id ? <ChevronDown className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />}
-                                <div>
-                                  <p className="font-medium text-sm truncate">{inv.student?.full_name || 'Unknown'}</p>
-                                  <p className="text-xs text-muted-foreground">{inv.student?.admission_number} · {inv.student?.class_name}-{inv.student?.section}</p>
-                                </div>
-                              </div>
-                              {getStatusBadge(inv.status, inv.due_date)}
-                            </div>
-                          </CollapsibleTrigger>
-                          <div className="flex items-center justify-between text-sm pl-6">
-                            <div>
-                              <span className="text-muted-foreground">{inv.term?.name || 'N/A'}</span>
-                              <span className="mx-2">·</span>
-                              <span className="text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
-                            </div>
-                            <span className="font-medium">₹{Number(inv.total_amount).toLocaleString()}</span>
+                ))}
+              </div>
+            ) : filteredGroups.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">No student fee records found</p>
+                <p className="text-sm mt-1">Create terms and invoices to get started</p>
+              </div>
+            ) : isMobile ? (
+              /* ── Mobile: Cards ── */
+              <div className="divide-y">
+                {filteredGroups.map(g => (
+                  <Collapsible key={g.studentId} open={expandedId === g.studentId} onOpenChange={(open) => setExpandedId(open ? g.studentId : null)}>
+                    <CollapsibleTrigger className="w-full text-left p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          {expandedId === g.studentId ? <ChevronDown className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />}
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{g.name}</p>
+                            <p className="text-xs text-muted-foreground">{g.admissionNumber} · {g.className}-{g.section}</p>
                           </div>
-                          <div className="flex justify-between items-center text-xs text-muted-foreground pl-6">
-                            <span>Paid: ₹{Number(inv.paid_amount).toLocaleString()} | Balance: ₹{Number(inv.balance).toLocaleString()}</span>
-                            {inv.status !== 'paid' && (
-                              <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); openPayment(inv); }}>
-                                <CreditCard className="w-3 h-3 mr-1" /> Pay
-                              </Button>
-                            )}
-                          </div>
-                          <CollapsibleContent>
-                            <div className="mt-3 pl-6 space-y-3">
-                              <div className="rounded-lg border bg-muted/30 p-3">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Fee Components</p>
-                                {(inv.components || []).map(c => (
-                                  <div key={c.id} className="flex justify-between text-sm py-0.5">
-                                    <span>{c.fee_type}</span>
-                                    <span>₹{Number(c.amount).toLocaleString()}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              {(inv.payments || []).length > 0 && (
-                                <div className="rounded-lg border bg-success/5 p-3">
-                                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Payment History</p>
-                                  {(inv.payments || []).map(p => (
-                                    <div key={p.id} className="flex justify-between items-center text-sm py-1">
-                                      <div>
-                                        <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
-                                        <span className="text-muted-foreground ml-2 capitalize text-xs">{p.payment_method}</span>
-                                        <span className="text-muted-foreground ml-2 text-xs">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
-                                      </div>
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
-                                        <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </CollapsibleContent>
                         </div>
-                      </Collapsible>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-8"></TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Term</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Paid</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[120px]">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map((inv) => (
-                        <Fragment key={inv.id}>
-                          <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === inv.id ? null : inv.id)}>
-                            <TableCell>
-                              {expandedId === inv.id ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{inv.student?.full_name || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground">{inv.student?.admission_number}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{inv.student?.class_name}-{inv.student?.section}</TableCell>
-                            <TableCell>{inv.term?.name || 'N/A'}</TableCell>
-                            <TableCell className="font-medium">₹{Number(inv.total_amount).toLocaleString()}</TableCell>
-                            <TableCell className="text-success">₹{Number(inv.paid_amount).toLocaleString()}</TableCell>
-                            <TableCell className="text-destructive font-medium">₹{Number(inv.balance).toLocaleString()}</TableCell>
-                            <TableCell>{new Date(inv.due_date).toLocaleDateString('en-IN')}</TableCell>
-                            <TableCell>{getStatusBadge(inv.status, inv.due_date)}</TableCell>
-                            <TableCell>
-                              {inv.status !== 'paid' && (
-                                <Button size="sm" onClick={(e) => { e.stopPropagation(); openPayment(inv); }}>
-                                  <CreditCard className="w-3 h-3 mr-1" /> Pay
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          {expandedId === inv.id && (
-                            <TableRow className="bg-muted/20 hover:bg-muted/20">
-                              <TableCell colSpan={10} className="p-0">
-                                <div className="p-4 grid md:grid-cols-2 gap-4">
-                                  <div className="rounded-lg border bg-card p-4">
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Fee Components</h4>
-                                    <div className="space-y-1">
-                                      {(inv.components || []).map(c => (
-                                        <div key={c.id} className="flex justify-between text-sm py-1 border-b last:border-0">
-                                          <span>{c.fee_type}</span>
-                                          <span className="font-medium">₹{Number(c.amount).toLocaleString()}</span>
-                                        </div>
-                                      ))}
-                                      <div className="flex justify-between text-sm pt-2 font-semibold">
-                                        <span>Total</span>
-                                        <span>₹{Number(inv.total_amount).toLocaleString()}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="rounded-lg border bg-card p-4">
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Payments ({(inv.payments || []).length})</h4>
-                                    {(inv.payments || []).length === 0 ? (
-                                      <p className="text-sm text-muted-foreground">No payments recorded yet</p>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {(inv.payments || []).map(p => (
-                                          <div key={p.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0">
-                                            <div>
-                                              <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
-                                              <span className="text-muted-foreground ml-2 capitalize text-xs">{p.payment_method}</span>
-                                              <div className="text-xs text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</div>
-                                            </div>
-                                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
-                                              <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
-                                            </Button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-                <PaginationControls
-                  page={pagination.page}
-                  pageSize={pagination.pageSize}
-                  totalCount={totalCount}
-                  onPageChange={pagination.setPage}
-                  onPageSizeChange={pagination.setPageSize}
-                  isLoading={isLoading}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Legacy Fees Tab */}
-          <TabsContent value="legacy" className="mt-4">
-            <Card>
-              <CardContent className="p-0">
-                {legacyLoading ? (
-                  <div className="p-4 space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <Skeleton className="w-10 h-10 rounded-full" />
-                        <div className="space-y-1.5 flex-1">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-48" />
-                        </div>
+                        {getGroupBadge(g)}
                       </div>
-                    ))}
-                  </div>
-                ) : legacyFees.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">No fee records found</p>
-                    <p className="text-sm mt-1">Fee records will appear here</p>
-                  </div>
-                ) : isMobile ? (
-                  <div className="divide-y">
-                    {legacyFees.map((fee) => (
-                      <div key={fee.id} className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1.5 pl-6">
+                        <span>Total: ₹{g.totalAmount.toLocaleString()}</span>
+                        <span>Paid: ₹{g.totalPaid.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">Balance: ₹{g.totalBalance.toLocaleString()}</span>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="px-4 pb-4">
+                      {renderExpandedContent(g)}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </div>
+            ) : (
+              /* ── Desktop: Table ── */
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Total Due</TableHead>
+                    <TableHead>Paid</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredGroups.map(g => (
+                    <Fragment key={g.studentId}>
+                      <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === g.studentId ? null : g.studentId)}>
+                        <TableCell>
+                          {expandedId === g.studentId ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell>
                           <div>
-                            <p className="font-medium text-sm">{fee.student?.full_name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground">{fee.student?.admission_number} · {fee.student?.class_name}-{fee.student?.section}</p>
+                            <p className="font-medium">{g.name}</p>
+                            <p className="text-xs text-muted-foreground">{g.admissionNumber}</p>
                           </div>
-                          {getStatusBadge(fee.status, fee.due_date)}
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">{fee.fee_type}</span>
-                          <span className="font-medium">₹{Number(fee.amount).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs text-muted-foreground">
-                          <span>Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
-                          {fee.status === 'paid' && fee.receipt_number && (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openLegacyReceipt(fee)}>
-                              <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Fee Type</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Receipt</TableHead>
+                        </TableCell>
+                        <TableCell>{g.className}-{g.section}</TableCell>
+                        <TableCell className="font-medium">₹{g.totalAmount.toLocaleString()}</TableCell>
+                        <TableCell className="text-success">₹{g.totalPaid.toLocaleString()}</TableCell>
+                        <TableCell className="text-destructive font-medium">₹{g.totalBalance.toLocaleString()}</TableCell>
+                        <TableCell>{getGroupBadge(g)}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {legacyFees.map((fee) => (
-                        <TableRow key={fee.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{fee.student?.full_name || 'Unknown'}</p>
-                              <p className="text-xs text-muted-foreground">{fee.student?.admission_number}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{fee.student?.class_name}-{fee.student?.section}</TableCell>
-                          <TableCell>{fee.fee_type}</TableCell>
-                          <TableCell className="font-medium">₹{Number(fee.amount).toLocaleString()}</TableCell>
-                          <TableCell>{new Date(fee.due_date).toLocaleDateString('en-IN')}</TableCell>
-                          <TableCell>{getStatusBadge(fee.status, fee.due_date)}</TableCell>
-                          <TableCell>
-                            {fee.status === 'paid' && fee.receipt_number ? (
-                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openLegacyReceipt(fee)}>
-                                <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
-                              </Button>
-                            ) : fee.status === 'paid' ? (
-                              <span className="text-xs text-muted-foreground">Paid</span>
-                            ) : null}
+                      {expandedId === g.studentId && (
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
+                          <TableCell colSpan={7} className="p-4">
+                            {renderExpandedContent(g)}
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-                <PaginationControls
-                  page={legacyPagination.page}
-                  pageSize={legacyPagination.pageSize}
-                  totalCount={legacyTotal}
-                  onPageChange={legacyPagination.setPage}
-                  onPageSizeChange={legacyPagination.setPageSize}
-                  isLoading={legacyLoading}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                      )}
+                    </Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Dialogs */}
         <CreateTermDialog open={termDialogOpen} onOpenChange={setTermDialogOpen} />
