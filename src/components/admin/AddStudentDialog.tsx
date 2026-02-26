@@ -346,59 +346,6 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
         </div>
       </div>
 
-      {/* Fee Assignment */}
-      <div className="space-y-3 pt-3 border-t">
-        <div className="flex items-center gap-2">
-          <IndianRupee className="w-4 h-4 text-primary" />
-          <Label className="text-sm font-semibold text-primary">Fee Assignment <span className="text-destructive">*</span></Label>
-        </div>
-        <MultiChipSelector
-          label="Fee Type"
-          required
-          options={FEE_TYPES}
-          values={selectedFeeTypes}
-          onChange={handleFeeTypesChange}
-          placeholder="Or type custom fee type"
-        />
-        {/* Per-fee-type amount & due date */}
-        {safeFeeEntries.length > 0 && (
-          <div className="space-y-3">
-            {safeFeeEntries.map((entry, idx) => (
-              <div key={entry.fee_type} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <p className="text-sm font-medium text-foreground">{entry.fee_type}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Amount (₹) *</Label>
-                    <div className="relative">
-                      <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                      <Input type="number" min="0" value={entry.amount} onChange={(e) => updateFeeEntry(idx, 'amount', e.target.value)} placeholder="Amount" className="pl-8 h-9 text-sm" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Due Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn('w-full h-9 text-sm justify-start font-normal', !entry.due_date && 'text-muted-foreground')}>
-                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                          {entry.due_date ? format(parse(entry.due_date, 'yyyy-MM-dd', new Date()), 'dd MMM yyyy') : 'Pick date'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={entry.due_date ? parse(entry.due_date, 'yyyy-MM-dd', new Date()) : undefined}
-                          onSelect={(date) => updateFeeEntry(idx, 'due_date', date ? format(date, 'yyyy-MM-dd') : '')}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Actions */}
       <div className="flex gap-3 pt-2 border-t">
