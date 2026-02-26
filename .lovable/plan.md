@@ -1,108 +1,120 @@
 
 
-## Phase 1: Build All 5 New Modules
+# Timetable Redesign: Data-Driven Grid + Image Upload
 
-Since these are large features, we'll implement them one at a time in priority order. Here's the full plan:
+## Overview
+Transform the admin timetable page from image-only to a full data-driven timetable grid (like the reference screenshots), where admins can view and edit periods with subject, teacher, and time slots for each day. The existing image upload feature will be preserved as a secondary tab.
 
----
+## Database Changes
 
-### 1. Online Classes
+### New Table: `timetable_entries`
+Stores individual period slots in the timetable grid.
 
-**Database**: `online_classes` table with columns: `school_id`, `title`, `description`, `platform` (Zoom/Google Meet/MS Teams/Custom), `meeting_url`, `meeting_id`, `password`, `class_name`, `section`, `subject`, `teacher_id`, `scheduled_at`, `duration_minutes`, `status` (scheduled/live/completed/cancelled). RLS scoped to school_id.
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| school_id | uuid | Multi-tenant isolation |
+| class_name | text | e.g. "Class 10" |
+| section | text | e.g. "A" |
+| period_number | integer | 1, 2, 3... |
+| day_of_week | text | Monday-Saturday |
+| subject | text | e.g. "Mathematics" |
+| teacher_id | uuid | FK to teachers table (nullable) |
+| start_time | text | e.g. "08:00" |
+| end_time | text | e.g. "08:30" |
+| is_lunch | boolean | default false |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
 
-**Pages**:
-- `src/pages/admin/OnlineClassesPage.tsx` -- Admin CRUD with table, create/edit dialog (title, platform picker, meeting URL, date-time, duration, class/section/teacher selectors)
-- `src/pages/teacher/TeacherOnlineClasses.tsx` -- Teacher's classes with "Start Class" button
-- `src/pages/student/StudentOnlineClasses.tsx` -- Student view with "Join" button
-- `src/pages/parent/ParentOnlineClasses.tsx` -- Parent view with "Join" button
+- Unique constraint on (school_id, class_name, section, period_number, day_of_week)
+- RLS: Admins can manage, school users can view
 
-**Hook**: `src/hooks/useOnlineClasses.ts`
+### New Table: `timetable_periods`
+Defines the period structure (number of periods, their default times) per school.
 
----
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| school_id | uuid | |
+| period_number | integer | |
+| start_time | text | |
+| end_time | text | |
+| is_lunch | boolean | default false |
+| label | text | e.g. "Period 1", "LUNCH" |
+| created_at | timestamptz | |
 
-### 2. Transport Management
+- Unique constraint on (school_id, period_number)
+- RLS: Admins can manage, school users can view
 
-**Database**: Two tables:
-- `transport_routes` -- `school_id`, `route_name`, `route_number`, `driver_name`, `driver_phone`, `vehicle_number`, `capacity`, `start_location`, `end_location`, `stops` (jsonb array), `is_active`
-- `student_transport` -- `student_id`, `route_id`, `school_id`, `pickup_stop`, `drop_stop`, `boarding_type` (pickup/drop/both)
+## Admin Timetable Page Redesign
 
-RLS scoped to school_id.
+### Two-Tab Layout
+1. **Timetable Grid** (default) - Data-driven view/edit
+2. **Upload Image** - Existing image upload feature (preserved as-is)
 
-**Pages**:
-- `src/pages/admin/TransportPage.tsx` -- Admin manages routes, assigns students to routes
-- Student/Parent views showing their assigned route and bus details
+### Tab 1: Timetable Grid
 
-**Hook**: `src/hooks/useTransport.ts`
+**Top Bar:**
+- Class dropdown + Section dropdown (existing)
+- "View" / "Edit" mode toggle button
 
----
+**View Mode:**
+- Table grid: rows = periods (Period 1, Period 2..., LUNCH, Period 7...), columns = Monday through Saturday
+- Each cell shows: Subject name (bold), Teacher name (small), Time range (small/muted)
+- LUNCH rows displayed as colored badges spanning columns
+- Matches the reference screenshot style
 
-### 3. Messages
+**Edit Mode:**
+- Clicking any cell opens a "Choose Details" dialog (like reference image-166/167):
+  - Start Time / End Time inputs
+  - Teacher dropdown (from school's teachers)
+  - Subject dropdown (from teacher's subjects or free text)
+  - "Is Lunch" checkbox
+  - "Change for complete week" checkbox (applies same entry to all days for that period)
+  - Cancel / Save buttons
+- Empty cells show a "+" button to add
+- Filled cells show an "x" delete icon on hover
+- Period rows can be added/removed via "Add Period" button
 
-**Database**: Two tables:
-- `conversations` -- `school_id`, `participant_ids` (uuid array), `last_message_at`, `created_by`
-- `messages` -- `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`
+### Tab 2: Upload Image
+- Existing image upload/view/delete functionality moved here unchanged
 
-Enable Supabase Realtime on `messages` for live chat.
+## Student & Teacher Timetable Pages
 
-**Pages**:
-- `src/pages/admin/MessagesPage.tsx` -- Admin inbox
-- `src/pages/teacher/TeacherMessages.tsx` -- Teacher can message parents
-- `src/pages/parent/ParentMessages.tsx` -- Parent can message teachers/admin
+### Student Timetable (`StudentTimetable.tsx`)
+- Add a tab system: "Schedule" (grid view from `timetable_entries`) and "Image" (existing image view)
+- Grid is read-only, auto-filtered to student's class/section
+- Falls back gracefully if no data entries exist
 
-**Hook**: `src/hooks/useMessages.ts`
+### Teacher Timetable (`TeacherTimetable.tsx`)
+- Same two-tab approach
+- Grid view with class/section selector (existing dropdowns)
+- Read-only grid view
 
----
+## New Files
 
-### 4. Gallery Management
+| File | Purpose |
+|------|---------|
+| `src/hooks/useTimetableEntries.ts` | Hook to fetch/mutate timetable_entries and timetable_periods |
+| `src/components/timetable/TimetableGrid.tsx` | Reusable grid component (view mode) |
+| `src/components/timetable/TimetableEditor.tsx` | Admin edit mode wrapper |
+| `src/components/timetable/PeriodEditDialog.tsx` | Dialog for editing a single cell |
 
-**Database**: Two tables:
-- `gallery_albums` -- `school_id`, `title`, `description`, `cover_image_url`, `event_date`, `created_by`
-- `gallery_photos` -- `album_id`, `school_id`, `image_url`, `caption`, `uploaded_by`
+## Modified Files
 
-**Storage**: New `gallery` bucket (public).
+| File | Change |
+|------|--------|
+| `src/pages/admin/TimetablePage.tsx` | Add tabs, integrate grid + editor, keep image upload in tab 2 |
+| `src/pages/student/StudentTimetable.tsx` | Add tab for grid view alongside image |
+| `src/pages/teacher/TeacherTimetable.tsx` | Add tab for grid view alongside image |
 
-**Pages**:
-- `src/pages/admin/GalleryPage.tsx` -- Admin creates albums, uploads photos
-- Student/Parent/Teacher views to browse albums
+## Implementation Order
 
-**Hook**: `src/hooks/useGallery.ts`
-
----
-
-### 5. Feedback / Query
-
-**Database**: `feedback` table -- `school_id`, `user_id`, `subject`, `message`, `status` (open/in-progress/resolved), `response`, `responded_by`, `responded_at`, `category` (general/complaint/suggestion/query)
-
-**Pages**:
-- `src/pages/admin/FeedbackPage.tsx` -- Admin views and responds to feedback
-- Student/Parent/Teacher submit feedback from their portals
-
-**Hook**: `src/hooks/useFeedback.ts`
-
----
-
-### Navigation Updates (All Features)
-
-**Sidebar** (`src/components/layout/Sidebar.tsx`): Add menu items for all roles:
-- School Admin: Online Classes, Transport, Messages, Gallery, Feedback
-- Teacher: Online Classes, Messages
-- Student: Online Classes, Messages, Gallery, Feedback
-- Parent: Online Classes, Messages, Gallery, Feedback
-
-**Mobile Nav** (`src/components/layout/MobileNav.tsx` and `MobileLayout.tsx`): Update bottom nav for new items.
-
-**Routes** (`src/App.tsx`): Add routes for all new pages.
-
----
-
-### Implementation Order
-
-Since building all 5 at once would be too large, we'll implement them sequentially:
-1. Online Classes (most requested)
-2. Transport Management
-3. Messages (requires Realtime setup)
-4. Gallery Management
-5. Feedback
-
-Each module includes: database migration, RLS policies, CRUD hook, admin page, role-specific pages, and navigation integration.
+1. Create database migration (2 new tables with RLS)
+2. Build `useTimetableEntries` hook
+3. Build `TimetableGrid` component (view mode)
+4. Build `PeriodEditDialog` component
+5. Build `TimetableEditor` component (edit mode with dialog)
+6. Redesign `TimetablePage.tsx` with tabs
+7. Update `StudentTimetable.tsx` and `TeacherTimetable.tsx` with grid tab
 
