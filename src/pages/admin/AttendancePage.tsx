@@ -51,10 +51,10 @@ export default function AttendancePage() {
     <AdminLayout title="Attendance">
       <div className="space-y-6 animate-fade-up">
         {/* Date Picker & Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+              <Button variant="outline" className="w-full sm:w-[240px] justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {format(date, 'PPP')}
               </Button>
@@ -68,70 +68,102 @@ export default function AttendancePage() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" />
             Export Report
           </Button>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+        {isMobile ? (
+          <div className="grid grid-cols-4 gap-2">
+            <Card className="col-span-4">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <CheckCircle className="w-4 h-4 text-primary" />
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{overallPercentage}%</p>
-              <p className="text-sm text-muted-foreground">Overall Attendance</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-success" />
+                <div>
+                  <p className="text-xl font-bold text-foreground">{overallPercentage}%</p>
+                  <p className="text-xs text-muted-foreground">Overall Attendance</p>
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-success">{totals.present}</p>
-              <p className="text-sm text-muted-foreground">Present</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                  <XCircle className="w-4 h-4 text-destructive" />
+              </CardContent>
+            </Card>
+            {[
+              { icon: CheckCircle, value: totals.present, label: 'Present', color: 'text-success', bg: 'bg-success/10' },
+              { icon: XCircle, value: totals.absent, label: 'Absent', color: 'text-destructive', bg: 'bg-destructive/10' },
+              { icon: Clock, value: totals.late, label: 'Late', color: 'text-warning', bg: 'bg-warning/10' },
+              { icon: AlertCircle, value: totals.total, label: 'Total', color: 'text-foreground', bg: 'bg-info/10' },
+            ].map((s) => (
+              <Card key={s.label}>
+                <CardContent className="p-2.5 text-center">
+                  <div className={`w-6 h-6 rounded-md ${s.bg} flex items-center justify-center mx-auto mb-1`}>
+                    <s.icon className={`w-3 h-3 ${s.color}`} />
+                  </div>
+                  <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-primary" />
+                  </div>
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-destructive">{totals.absent}</p>
-              <p className="text-sm text-muted-foreground">Absent</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-warning" />
+                <p className="text-2xl font-bold text-foreground">{overallPercentage}%</p>
+                <p className="text-sm text-muted-foreground">Overall Attendance</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-success" />
+                  </div>
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-warning">{totals.late}</p>
-              <p className="text-sm text-muted-foreground">Late</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center">
-                  <AlertCircle className="w-4 h-4 text-info" />
+                <p className="text-2xl font-bold text-success">{totals.present}</p>
+                <p className="text-sm text-muted-foreground">Present</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  </div>
                 </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{totals.total}</p>
-              <p className="text-sm text-muted-foreground">Total Students</p>
-            </CardContent>
-          </Card>
-        </div>
+                <p className="text-2xl font-bold text-destructive">{totals.absent}</p>
+                <p className="text-sm text-muted-foreground">Absent</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-warning" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-warning">{totals.late}</p>
+                <p className="text-sm text-muted-foreground">Late</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 text-info" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{totals.total}</p>
+                <p className="text-sm text-muted-foreground">Total Students</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Class-wise Attendance Table */}
         <Card>
@@ -162,41 +194,29 @@ export default function AttendancePage() {
               /* Mobile Card Layout */
               <div className="divide-y">
                 {classWise.map((row) => (
-                  <div key={row.class} className="p-4 space-y-2">
+                  <div key={row.class} className="p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{row.class}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm">Class {row.class}</p>
+                        <span className={`text-xs font-medium ${
+                          row.percentage >= 95 ? 'text-success' :
+                          row.percentage >= 90 ? 'text-warning' : 'text-destructive'
+                        }`}>
+                          {row.percentage}%
+                        </span>
+                      </div>
                       <Badge variant={
                         row.percentage >= 95 ? 'default' :
                         row.percentage >= 90 ? 'secondary' : 'destructive'
-                      }>
-                        {row.percentage >= 95 ? 'Excellent' : row.percentage >= 90 ? 'Good' : 'Needs Attention'}
+                      } className="text-[10px] px-1.5 py-0.5">
+                        {row.percentage >= 95 ? 'Excellent' : row.percentage >= 90 ? 'Good' : 'Low'}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Present</p>
-                        <p className="text-sm font-medium text-success">{row.present}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Absent</p>
-                        <p className="text-sm font-medium text-destructive">{row.absent}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Late</p>
-                        <p className="text-sm font-medium text-warning">{row.late}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Total</p>
-                        <p className="text-sm font-medium">{row.total}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-sm font-medium ${
-                        row.percentage >= 95 ? 'text-success' :
-                        row.percentage >= 90 ? 'text-warning' : 'text-destructive'
-                      }`}>
-                        {row.percentage}%
-                      </span>
+                    <div className="flex items-center gap-4 text-xs">
+                      <span><span className="text-muted-foreground">P:</span> <span className="font-medium text-success">{row.present}</span></span>
+                      <span><span className="text-muted-foreground">A:</span> <span className="font-medium text-destructive">{row.absent}</span></span>
+                      <span><span className="text-muted-foreground">L:</span> <span className="font-medium text-warning">{row.late}</span></span>
+                      <span><span className="text-muted-foreground">T:</span> <span className="font-medium">{row.total}</span></span>
                     </div>
                   </div>
                 ))}
