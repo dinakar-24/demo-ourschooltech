@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Bus, Edit2, Trash2, Search, Loader2, MapPin, Phone, Users, UserPlus } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Plus, Bus, Edit2, Trash2, Search, Loader2, MapPin, Phone, Users, UserPlus, ChevronsUpDown, Check } from 'lucide-react';
 import { useTransportRoutes, useCreateRoute, useUpdateRoute, useDeleteRoute, useStudentTransport, useAssignStudent, useRemoveStudentTransport, TransportRoute } from '@/hooks/useTransport';
 import { useStudents } from '@/hooks/useStudents';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmptyState } from '@/components/ui/data-states';
+import { cn } from '@/lib/utils';
 
 const defaultRouteForm = {
   route_name: '',
@@ -38,6 +41,7 @@ export default function TransportPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>();
   const [form, setForm] = useState(defaultRouteForm);
   const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
+  const [studentComboOpen, setStudentComboOpen] = useState(false);
 
   const { data: routes = [], isLoading } = useTransportRoutes();
   const { data: studentTransport = [] } = useStudentTransport(selectedRouteId);
@@ -49,6 +53,35 @@ export default function TransportPage() {
   const removeStudent = useRemoveStudentTransport();
 
   const students = Array.isArray(studentData) ? studentData : (studentData as any)?.students || [];
+  const selectedStudent = useMemo(() => students.find((s: any) => s.id === assignForm.student_id), [students, assignForm.student_id]);
+
+  const studentCombobox = (
+    <Popover open={studentComboOpen} onOpenChange={setStudentComboOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={studentComboOpen} className="w-full justify-between font-normal">
+          {selectedStudent ? `${selectedStudent.full_name} (${selectedStudent.class_name}-${selectedStudent.section})` : 'Search student...'}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search by name, class..." />
+          <CommandList>
+            <CommandEmpty>No student found.</CommandEmpty>
+            <CommandGroup>
+              {students.map((s: any) => (
+                <CommandItem key={s.id} value={`${s.full_name} ${s.class_name} ${s.section}`} onSelect={() => { setAssignForm(f => ({ ...f, student_id: s.id })); setStudentComboOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", assignForm.student_id === s.id ? "opacity-100" : "opacity-0")} />
+                  <span>{s.full_name}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{s.class_name}-{s.section}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 
   const filteredRoutes = routes.filter(r =>
     r.route_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -347,12 +380,7 @@ export default function TransportPage() {
               <div className="grid gap-4 py-2">
                 <div className="grid gap-2">
                   <Label>Student *</Label>
-                  <Select value={assignForm.student_id} onValueChange={v => setAssignForm(f => ({ ...f, student_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                    <SelectContent>
-                      {students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.full_name} ({s.class_name}-{s.section})</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {studentCombobox}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2"><Label>Pickup Stop</Label><Input value={assignForm.pickup_stop} onChange={e => setAssignForm(f => ({ ...f, pickup_stop: e.target.value }))} /></div>
@@ -384,12 +412,7 @@ export default function TransportPage() {
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
                 <Label>Student *</Label>
-                <Select value={assignForm.student_id} onValueChange={v => setAssignForm(f => ({ ...f, student_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                  <SelectContent>
-                    {students.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.full_name} ({s.class_name}-{s.section})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {studentCombobox}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2"><Label>Pickup Stop</Label><Input value={assignForm.pickup_stop} onChange={e => setAssignForm(f => ({ ...f, pickup_stop: e.target.value }))} /></div>
