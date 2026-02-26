@@ -714,6 +714,84 @@ export type Database = {
           },
         ]
       }
+      online_classes: {
+        Row: {
+          class_name: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          meeting_id: string | null
+          meeting_url: string | null
+          password: string | null
+          platform: string
+          scheduled_at: string
+          school_id: string
+          section: string | null
+          status: string
+          subject: string | null
+          teacher_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          class_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          meeting_id?: string | null
+          meeting_url?: string | null
+          password?: string | null
+          platform?: string
+          scheduled_at: string
+          school_id: string
+          section?: string | null
+          status?: string
+          subject?: string | null
+          teacher_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          meeting_id?: string | null
+          meeting_url?: string | null
+          password?: string | null
+          platform?: string
+          scheduled_at?: string
+          school_id?: string
+          section?: string | null
+          status?: string
+          subject?: string | null
+          teacher_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_classes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_otp: {
         Row: {
           created_at: string

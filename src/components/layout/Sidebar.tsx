@@ -24,6 +24,7 @@ import {
   UserCheck,
   ScrollText,
   Upload,
+  Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +68,7 @@ const menuConfig = {
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Exams', path: '/exams', icon: FileText },
+    { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Settings', path: '/settings', icon: Settings },
@@ -77,6 +79,7 @@ const menuConfig = {
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Homework', path: '/homework', icon: FileText },
     { label: 'Marks', path: '/marks', icon: BarChart3 },
+    { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
@@ -87,6 +90,7 @@ const menuConfig = {
     { label: 'Homework', path: '/homework', icon: BookOpen },
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: Users },
   ],
@@ -96,6 +100,7 @@ const menuConfig = {
     { label: 'Homework', path: '/homework', icon: FileText },
     { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Results', path: '/results', icon: BarChart3 },
+    { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
