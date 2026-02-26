@@ -33,6 +33,7 @@ export default function TransportPage() {
   const schoolId = useEffectiveSchoolId();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
+  const [assignSearch, setAssignSearch] = useState('');
   const [routeDialogOpen, setRouteDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<TransportRoute | null>(null);
@@ -323,13 +324,31 @@ export default function TransportPage() {
               )}
             </div>
 
+            {selectedRouteId && studentTransport.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search assigned students..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)} className="pl-9" />
+              </div>
+            )}
+
             {!selectedRouteId ? (
               <EmptyState icon={Bus} title="Select a route" description="Choose a route above to view or assign students." />
             ) : studentTransport.length === 0 ? (
               <EmptyState icon={Users} title="No students assigned" description="Assign students to this route." />
-            ) : isMobile ? (
+            ) : (() => {
+              const filtered = studentTransport.filter(st => {
+                if (!assignSearch) return true;
+                const q = assignSearch.toLowerCase();
+                return st.student?.full_name?.toLowerCase().includes(q) ||
+                  st.student?.class_name?.toLowerCase().includes(q) ||
+                  st.student?.section?.toLowerCase().includes(q) ||
+                  st.pickup_stop?.toLowerCase().includes(q) ||
+                  st.drop_stop?.toLowerCase().includes(q);
+              });
+              if (filtered.length === 0) return <EmptyState icon={Search} title="No results" description="No students match your search." />;
+              return isMobile ? (
               <div className="space-y-3">
-                {studentTransport.map(st => (
+                {filtered.map(st => (
                   <Card key={st.id}>
                     <CardContent className="p-4 flex items-center justify-between">
                       <div>
@@ -362,7 +381,7 @@ export default function TransportPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {studentTransport.map(st => (
+                    {filtered.map(st => (
                       <TableRow key={st.id}>
                         <TableCell className="font-medium">{st.student?.full_name}</TableCell>
                         <TableCell>{st.student?.class_name} - {st.student?.section}</TableCell>
@@ -379,7 +398,8 @@ export default function TransportPage() {
                   </TableBody>
                 </Table>
               </div>
-            )}
+            );
+            })()}
           </TabsContent>
         </Tabs>
       </div>
