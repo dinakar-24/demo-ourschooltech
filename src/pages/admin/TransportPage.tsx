@@ -221,7 +221,7 @@ const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', 
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setAssignForm(f => ({ ...f, student_id: s.id }))}
+                    onClick={() => setAssignForm(f => ({ ...f, student_id: f.student_id === s.id ? '' : s.id }))}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between ${assignForm.student_id === s.id ? 'bg-accent font-medium' : ''}`}
                   >
                     <span>{s.full_name}</span>
@@ -461,7 +461,7 @@ const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', 
             <DrawerHeader className="text-left"><DrawerTitle>Assign Student</DrawerTitle></DrawerHeader>
             <div className="flex-1 min-h-0 overflow-y-auto px-4">{assignFormJsx}</div>
             <DrawerFooter className="flex-row gap-2">
-              <Button variant="outline" onClick={() => setAssignDialogOpen(false)} className="flex-1">Cancel</Button>
+              <Button variant="outline" onClick={() => handleAssignDialogChange(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleAssignSubmit} disabled={assignStudent.isPending} className="flex-1">Assign</Button>
             </DrawerFooter>
           </DrawerContent>
@@ -472,7 +472,7 @@ const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', 
             <DialogHeader><DialogTitle>Assign Student to Route</DialogTitle></DialogHeader>
             {assignFormJsx}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => handleAssignDialogChange(false)}>Cancel</Button>
               <Button onClick={handleAssignSubmit} disabled={assignStudent.isPending}>Assign</Button>
             </DialogFooter>
           </DialogContent>
