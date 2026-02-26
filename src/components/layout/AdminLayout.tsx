@@ -83,7 +83,21 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Students']);
+  // Auto-expand menu items based on current route
+  const getInitialExpanded = () => {
+    const expanded: string[] = [];
+    menuItems.forEach(item => {
+      if ('children' in item && item.children) {
+        const isChildActive = item.children.some(child => 
+          location.pathname === child.href || location.pathname.startsWith(child.href + '/')
+        );
+        if (isChildActive) expanded.push(item.label);
+      }
+    });
+    if (expanded.length === 0) expanded.push('Students');
+    return expanded;
+  };
+  const [expandedItems, setExpandedItems] = useState<string[]>(getInitialExpanded);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleExpanded = (label: string) => {

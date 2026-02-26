@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,6 +15,13 @@ import { useTeacherAttendance } from '@/hooks/useTeacherAttendance';
 
 type Status = 'present' | 'absent' | 'late' | 'half_day';
 
+const STATUS_CONFIG: { key: Status; label: string; shortLabel: string; color: string; activeColor: string; icon: typeof Check }[] = [
+  { key: 'present', label: 'Present', shortLabel: 'P', color: 'text-success', activeColor: 'bg-success text-success-foreground shadow-sm', icon: Check },
+  { key: 'absent', label: 'Absent', shortLabel: 'A', color: 'text-destructive', activeColor: 'bg-destructive text-destructive-foreground shadow-sm', icon: X },
+  { key: 'late', label: 'Late', shortLabel: 'L', color: 'text-warning', activeColor: 'bg-warning text-warning-foreground shadow-sm', icon: Clock },
+  { key: 'half_day', label: 'Half Day', shortLabel: 'HD', color: 'text-info', activeColor: 'bg-info text-info-foreground shadow-sm', icon: Clock },
+];
+
 export default function EmployeeAttendancePage() {
   const isMobile = useIsMobile();
   const [date, setDate] = useState<Date>(new Date());
@@ -27,7 +33,6 @@ export default function EmployeeAttendancePage() {
   const teachers = data?.teachers || [];
   const records = data?.records || [];
 
-  // Merge server records with local changes
   const statusMap = useMemo(() => {
     const map: Record<string, Status> = {};
     records.forEach(r => { map[r.teacher_id] = r.status as Status; });
@@ -57,10 +62,7 @@ export default function EmployeeAttendancePage() {
       .filter(t => statusMap[t.id])
       .map(t => ({ teacher_id: t.id, status: statusMap[t.id] }));
     saveAttendance.mutate(entries, {
-      onSuccess: () => {
-        setLocalStatuses({});
-        setHasChanges(false);
-      },
+      onSuccess: () => { setLocalStatuses({}); setHasChanges(false); },
     });
   };
 
@@ -72,76 +74,68 @@ export default function EmployeeAttendancePage() {
     return { present, absent, late, unmarked, total: teachers.length };
   }, [teachers, statusMap]);
 
-  const getStatusColor = (status: Status) => {
-    switch (status) {
-      case 'present': return 'bg-success text-success-foreground';
-      case 'absent': return 'bg-destructive text-destructive-foreground';
-      case 'late': return 'bg-warning text-warning-foreground';
-      case 'half_day': return 'bg-info text-info-foreground';
-    }
-  };
+  const STAT_CARDS = [
+    { icon: Users, label: 'Total', value: stats.total, color: 'text-foreground', bg: 'bg-muted/30' },
+    { icon: CheckCircle, label: 'Present', value: stats.present, color: 'text-success', bg: 'bg-success/5' },
+    { icon: XCircle, label: 'Absent', value: stats.absent, color: 'text-destructive', bg: 'bg-destructive/5' },
+    { icon: Clock, label: 'Late', value: stats.late, color: 'text-warning', bg: 'bg-warning/5' },
+    { icon: AlertCircle, label: 'Unmarked', value: stats.unmarked, color: 'text-muted-foreground', bg: 'bg-muted/20' },
+  ];
 
   return (
     <AdminLayout title="Employee Attendance">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-5 animate-fade-up">
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+          <div className="flex items-center gap-3 flex-wrap">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[220px] justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(date, 'PPP')}
+                <Button variant="outline" className="h-10 w-[200px] justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {format(date, 'MMMM do, yyyy')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
               </PopoverContent>
             </Popover>
-            <div className="relative hidden sm:block">
+            <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search teacher..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 w-56 text-sm"
+                className="pl-9 w-52 h-10 text-sm"
               />
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={markAllPresent}>
-            <Check className="w-4 h-4 mr-1" />
+          <Button variant="outline" size="sm" onClick={markAllPresent} className="h-9">
+            <Check className="w-4 h-4 mr-1.5" />
             Mark All Present
           </Button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[
-            { icon: Users, label: 'Total', value: stats.total, color: 'text-foreground' },
-            { icon: CheckCircle, label: 'Present', value: stats.present, color: 'text-success' },
-            { icon: XCircle, label: 'Absent', value: stats.absent, color: 'text-destructive' },
-            { icon: Clock, label: 'Late', value: stats.late, color: 'text-warning' },
-            { icon: AlertCircle, label: 'Unmarked', value: stats.unmarked, color: 'text-muted-foreground' },
-          ].map(s => (
-            <Card key={s.label}>
-              <CardContent className="p-4 text-center">
-                <s.icon className={cn("w-5 h-5 mx-auto mb-1", s.color)} />
-                <p className={cn("text-2xl font-bold", s.color)}>{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+          {STAT_CARDS.map(s => (
+            <Card key={s.label} className={cn("border", s.bg)}>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", s.bg)}>
+                  <s.icon className={cn("w-5 h-5", s.color)} />
+                </div>
+                <div>
+                  <p className={cn("text-xl font-bold leading-none", s.color)}>{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                </div>
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* Mobile search */}
-        <div className="sm:hidden relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search teacher..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9 text-sm"
-          />
         </div>
 
         {/* Teacher List */}
@@ -153,24 +147,29 @@ export default function EmployeeAttendancePage() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No teachers found</p>
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">No teachers found</p>
+                <p className="text-sm mt-1">Add teachers to start tracking attendance</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filtered.map(teacher => {
+                {filtered.map((teacher, idx) => {
                   const status = statusMap[teacher.id];
                   return (
                     <div
                       key={teacher.id}
-                      className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                      className={cn(
+                        "flex items-center justify-between px-4 py-3.5 transition-colors",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                        "hover:bg-muted/30"
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         {teacher.avatar_url ? (
-                          <img src={teacher.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                          <img src={teacher.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
-                            {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold">
+                            {teacher.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                         )}
                         <div>
@@ -180,23 +179,18 @@ export default function EmployeeAttendancePage() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        {(['present', 'absent', 'late', 'half_day'] as Status[]).map(s => (
+                        {STATUS_CONFIG.map(s => (
                           <button
-                            key={s}
-                            onClick={() => updateStatus(teacher.id, s)}
+                            key={s.key}
+                            onClick={() => updateStatus(teacher.id, s.key)}
                             className={cn(
-                              "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all",
-                              status === s ? getStatusColor(s) : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                              status === s.key
+                                ? s.activeColor
+                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                           >
-                            {isMobile ? (
-                              s === 'present' ? <Check className="w-3.5 h-3.5" /> :
-                              s === 'absent' ? <X className="w-3.5 h-3.5" /> :
-                              s === 'late' ? <Clock className="w-3.5 h-3.5" /> :
-                              'HD'
-                            ) : (
-                              s === 'half_day' ? 'Half Day' : s.charAt(0).toUpperCase() + s.slice(1)
-                            )}
+                            {isMobile ? s.shortLabel : s.label}
                           </button>
                         ))}
                       </div>
@@ -208,25 +202,19 @@ export default function EmployeeAttendancePage() {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
+        {/* Floating Save Button */}
         {hasChanges && (
-          <div className="sticky bottom-20 md:bottom-6 z-20">
+          <div className="sticky bottom-20 md:bottom-6 z-20 flex justify-center">
             <Button
               onClick={handleSave}
               disabled={saveAttendance.isPending}
-              className="w-full md:w-auto"
               size="lg"
+              className="shadow-lg px-8"
             >
               {saveAttendance.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</>
               ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Attendance ({stats.total - stats.unmarked}/{stats.total})
-                </>
+                <><Save className="w-4 h-4 mr-2" />Save Attendance ({stats.total - stats.unmarked}/{stats.total})</>
               )}
             </Button>
           </div>
