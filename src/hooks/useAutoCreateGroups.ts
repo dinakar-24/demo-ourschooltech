@@ -63,8 +63,8 @@ export function useAutoCreateGroups() {
           className?: string,
           section?: string
         ) => {
-          const uniqueIds = [...new Set(participantIds.filter(id => id !== user!.id))];
-          if (uniqueIds.length === 0) return;
+          // Always include admin; other members are optional
+          const uniqueIds = [...new Set(participantIds.filter(Boolean).filter(id => id !== user!.id))];
 
           const { data: conv, error: convErr } = await supabase
             .from('conversations')
@@ -102,26 +102,34 @@ export function useAutoCreateGroups() {
             parentIds = (profiles || []).map(p => p.id);
           }
 
-          // Teachers assigned to this class
+          // Teachers assigned to this class — match "className" or "className-section" format
           const classTeacherIds = (teachers || [])
-            .filter(t => t.classes && t.classes.includes(cs.className) && t.user_id)
+            .filter(t => {
+              if (!t.classes || !t.user_id) return false;
+              return t.classes.some((c: string) => {
+                const lower = c.toLowerCase();
+                const target = cs.className.toLowerCase();
+                const targetFull = `${cs.className}-${cs.section}`.toLowerCase();
+                return lower === target || lower === targetFull;
+              });
+            })
             .map(t => t.user_id) as string[];
 
           const memberIds = [...new Set([...parentIds, ...classTeacherIds])];
 
-          if (!existingKeys.has(`group::${name}`) && memberIds.length > 0) {
+          if (!existingKeys.has(`group::${name}`)) {
             await createConv('group', name, memberIds, cs.className, cs.section);
           }
-          if (!existingKeys.has(`broadcast::${name}`) && memberIds.length > 0) {
+          if (!existingKeys.has(`broadcast::${name}`)) {
             await createConv('broadcast', name, memberIds, cs.className, cs.section);
           }
         }
 
         // 5. Create "All Teachers" group & broadcast
-        if (!existingKeys.has('group::All Teachers') && allTeacherIds.length > 0) {
+        if (!existingKeys.has('group::All Teachers')) {
           await createConv('group', 'All Teachers', allTeacherIds);
         }
-        if (!existingKeys.has('broadcast::All Teachers') && allTeacherIds.length > 0) {
+        if (!existingKeys.has('broadcast::All Teachers')) {
           await createConv('broadcast', 'All Teachers', allTeacherIds);
         }
 
