@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, Video, Edit2, Trash2, ExternalLink, Search, Loader2, Clock, Users as UsersIcon, CalendarIcon } from 'lucide-react';
+import { TimePicker } from '@/components/ui/time-picker';
 import { useOnlineClasses, useCreateOnlineClass, useUpdateOnlineClass, useDeleteOnlineClass, OnlineClass } from '@/hooks/useOnlineClasses';
 import { useClasses } from '@/hooks/useClasses';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
@@ -199,15 +200,10 @@ export default function OnlineClassesPage() {
       </div>
       <div className="grid gap-2">
         <Label>Time *</Label>
-        <div className="relative">
-          <Input
-            type="time"
-            value={form.scheduled_time}
-            onChange={e => setForm(f => ({ ...f, scheduled_time: e.target.value }))}
-            className="pr-10"
-          />
-          <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+        <TimePicker
+          value={form.scheduled_time}
+          onChange={(val) => setForm(f => ({ ...f, scheduled_time: val }))}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
