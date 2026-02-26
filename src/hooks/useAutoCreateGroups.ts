@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
@@ -7,15 +7,17 @@ import { useQueryClient } from '@tanstack/react-query';
 /**
  * Auto-creates group & broadcast conversations for each class/section
  * and an "All Teachers" group when the admin opens messages.
+ * Runs fresh on every mount (page visit).
  */
 export function useAutoCreateGroups() {
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
   const queryClient = useQueryClient();
-  const hasRun = useRef(false);
+  const runningRef = useRef(false); // prevent concurrent runs, NOT "already ran"
 
   useEffect(() => {
-    if (!user?.id || !schoolId || hasRun.current) return;
+    if (!user?.id || !schoolId || runningRef.current) return;
+    runningRef.current = true;
 
     const run = async () => {
       try {
@@ -27,10 +29,8 @@ export function useAutoCreateGroups() {
 
         if (existErr) {
           console.error('Failed to fetch existing conversations:', existErr);
-          return; // Will retry on next mount
+          return;
         }
-
-        hasRun.current = true; // Mark as run only after successful fetch
 
         const existingKeys = new Set(
           (existing || []).map(c => `${c.type}::${c.name}`)
@@ -150,6 +150,8 @@ export function useAutoCreateGroups() {
         }
       } catch (err) {
         console.error('Auto-create groups error:', err);
+      } finally {
+        runningRef.current = false;
       }
     };
 

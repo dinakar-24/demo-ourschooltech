@@ -91,6 +91,9 @@ export function useConversations() {
       });
     },
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 
