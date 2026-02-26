@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, ArrowLeft, Trash2, Users, Megaphone } from 'lucide-react';
 import { Message, Conversation, useSendMessage, useDeleteMessage, useMarkAsRead, useRealtimeMessages } from '@/hooks/useMessages';
 import { useAuth } from '@/contexts/AuthContext';
+import type { UserRole } from '@/contexts/AuthContext';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -14,9 +15,10 @@ interface ChatViewProps {
   messages: Message[];
   isLoading?: boolean;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
-export function ChatView({ conversation, messages, isLoading, onBack }: ChatViewProps) {
+export function ChatView({ conversation, messages, isLoading, onBack, readOnly = false }: ChatViewProps) {
   const [newMessage, setNewMessage] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -145,7 +147,11 @@ export function ChatView({ conversation, messages, isLoading, onBack }: ChatView
       </div>
 
       {/* Input */}
-      {conversation.type !== 'broadcast' || conversation.created_by === user?.id ? (
+      {readOnly ? (
+        <div className="px-4 py-3 border-t border-border bg-muted text-center">
+          <p className="text-sm text-muted-foreground">You can only view messages</p>
+        </div>
+      ) : conversation.type !== 'broadcast' || conversation.created_by === user?.id ? (
         <div className="px-4 py-3 border-t border-border bg-card">
           <div className="flex items-center gap-2">
             <Input
