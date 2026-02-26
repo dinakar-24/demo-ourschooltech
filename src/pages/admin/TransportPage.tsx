@@ -39,10 +39,22 @@ export default function TransportPage() {
   const [editingRoute, setEditingRoute] = useState<TransportRoute | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>();
   const [form, setForm] = useState(defaultRouteForm);
-  const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
+const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
   const [assignClass, setAssignClass] = useState('');
   const [assignSection, setAssignSection] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
+
+  const resetAssignForm = () => {
+    setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
+    setAssignClass('');
+    setAssignSection('');
+    setStudentSearch('');
+  };
+
+  const handleAssignDialogChange = (open: boolean) => {
+    setAssignDialogOpen(open);
+    if (!open) resetAssignForm();
+  };
 
   const { data: routes = [], isLoading } = useTransportRoutes();
   const { data: studentTransport = [] } = useStudentTransport(selectedRouteId);
@@ -123,10 +135,7 @@ export default function TransportPage() {
       drop_stop: assignForm.drop_stop || undefined,
       boarding_type: assignForm.boarding_type,
     });
-    setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
-    setAssignClass('');
-    setAssignSection('');
-    setStudentSearch('');
+    resetAssignForm();
   };
 
   const routeFormJsx = (
@@ -447,7 +456,7 @@ export default function TransportPage() {
 
       {/* Assign Student Dialog/Drawer */}
       {isMobile ? (
-        <Drawer open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <Drawer open={assignDialogOpen} onOpenChange={handleAssignDialogChange}>
           <DrawerContent className="max-h-[90dvh] flex flex-col bg-background">
             <DrawerHeader className="text-left"><DrawerTitle>Assign Student</DrawerTitle></DrawerHeader>
             <div className="flex-1 min-h-0 overflow-y-auto px-4">{assignFormJsx}</div>
@@ -458,7 +467,7 @@ export default function TransportPage() {
           </DrawerContent>
         </Drawer>
       ) : (
-        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <Dialog open={assignDialogOpen} onOpenChange={handleAssignDialogChange}>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Assign Student to Route</DialogTitle></DialogHeader>
             {assignFormJsx}
