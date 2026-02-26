@@ -14,7 +14,7 @@ interface ConversationListProps {
   conversations: Conversation[];
   selectedId?: string;
   onSelect: (conv: Conversation) => void;
-  onNewChat: () => void;
+  onNewChat?: () => void;
   isLoading?: boolean;
 }
 
@@ -35,9 +35,11 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
       <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground text-lg">Messages</h2>
-          <Button size="icon-sm" variant="outline" onClick={onNewChat}>
-            <Plus className="w-4 h-4" />
-          </Button>
+          {onNewChat && (
+            <Button size="icon-sm" variant="outline" onClick={onNewChat}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
