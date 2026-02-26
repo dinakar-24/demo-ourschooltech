@@ -16,8 +16,12 @@ export function useAutoCreateGroups() {
   const runningRef = useRef(false); // prevent concurrent runs, NOT "already ran"
 
   useEffect(() => {
-    if (!user?.id || !schoolId || runningRef.current) return;
+    if (!user?.id || !schoolId || runningRef.current) {
+      console.log('[AutoGroups] Skipped:', { userId: user?.id, schoolId, running: runningRef.current });
+      return;
+    }
     runningRef.current = true;
+    console.log('[AutoGroups] Running for school:', schoolId);
 
     const run = async () => {
       try {
@@ -28,9 +32,10 @@ export function useAutoCreateGroups() {
           .eq('school_id', schoolId);
 
         if (existErr) {
-          console.error('Failed to fetch existing conversations:', existErr);
+          console.error('[AutoGroups] Failed to fetch existing conversations:', existErr);
           return;
         }
+        console.log('[AutoGroups] Existing conversations:', existing?.length || 0);
 
         const existingKeys = new Set(
           (existing || []).map(c => `${c.type}::${c.name}`)
@@ -43,6 +48,7 @@ export function useAutoCreateGroups() {
           .eq('school_id', schoolId)
           .eq('status', 'active');
 
+        console.log('[AutoGroups] Students found:', students?.length || 0);
         const classMap = new Map<string, { className: string; section: string; parentEmails: Set<string> }>();
         (students || []).forEach(s => {
           const key = `${s.class_name}-${s.section}`;
@@ -51,6 +57,7 @@ export function useAutoCreateGroups() {
           }
           if (s.parent_email) classMap.get(key)!.parentEmails.add(s.parent_email);
         });
+        console.log('[AutoGroups] Class/section combos:', [...classMap.keys()]);
 
         // 3. Get all teachers
         const { data: teachers } = await supabase
@@ -59,6 +66,7 @@ export function useAutoCreateGroups() {
           .eq('school_id', schoolId);
 
         const allTeacherIds = (teachers || []).map(t => t.user_id).filter(Boolean) as string[];
+        console.log('[AutoGroups] Teachers found:', teachers?.length || 0, 'with user_ids:', allTeacherIds);
 
         const createConv = async (
           type: 'group' | 'broadcast',
@@ -145,11 +153,12 @@ export function useAutoCreateGroups() {
           created++;
         }
 
+        console.log('[AutoGroups] Total created:', created);
         if (created > 0) {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         }
       } catch (err) {
-        console.error('Auto-create groups error:', err);
+        console.error('[AutoGroups] Error:', err);
       } finally {
         runningRef.current = false;
       }
