@@ -199,11 +199,15 @@ export default function OnlineClassesPage() {
       </div>
       <div className="grid gap-2">
         <Label>Time *</Label>
-        <Input
-          type="time"
-          value={form.scheduled_time}
-          onChange={e => setForm(f => ({ ...f, scheduled_time: e.target.value }))}
-        />
+        <div className="relative">
+          <Input
+            type="time"
+            value={form.scheduled_time}
+            onChange={e => setForm(f => ({ ...f, scheduled_time: e.target.value }))}
+            className="pr-10"
+          />
+          <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
