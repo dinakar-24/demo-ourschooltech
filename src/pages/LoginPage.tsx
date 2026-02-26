@@ -118,7 +118,7 @@ export default function LoginPage() {
 
   // Splash
   if (step === 'splash') {
-    return <LoginSplash onComplete={handleSplashComplete} onSuperAdmin={() => setStep('superadmin')} />;
+    return <LoginSplash onComplete={handleSplashComplete} />;
   }
 
   // Super admin
@@ -172,7 +172,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center px-5 py-4 relative z-10 overflow-auto">
         <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
           <AnimatePresence mode="wait">
-            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
+            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} onSuperAdmin={() => setStep('superadmin')} />}
             {step === 'password' && schoolInfo && (
               <PasswordStep
                 key="password"
@@ -242,12 +242,13 @@ function LoginBackground() {
 }
 
 /* ── Email Step ── */
-function EmailStep({ email, setEmail, error, loading, onSubmit }: {
+function EmailStep({ email, setEmail, error, loading, onSubmit, onSuperAdmin }: {
   email: string;
   setEmail: (v: string) => void;
   error: string;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
+  onSuperAdmin: () => void;
 }) {
   return (
     <motion.div
@@ -298,6 +299,17 @@ function EmailStep({ email, setEmail, error, loading, onSubmit }: {
             <>Continue <ArrowRight className="w-4 h-4" /></>
           )}
         </motion.button>
+
+        <div className="pt-3 text-center">
+          <button
+            type="button"
+            onClick={onSuperAdmin}
+            className="inline-flex items-center gap-1.5 text-white/25 hover:text-white/50 text-[11px] transition-colors"
+          >
+            <Shield className="w-3 h-3" />
+            Super Admin Access
+          </button>
+        </div>
       </motion.form>
     </motion.div>
   );

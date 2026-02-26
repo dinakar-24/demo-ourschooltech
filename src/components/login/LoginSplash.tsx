@@ -5,7 +5,6 @@ import appLogo from '@/assets/logo.png';
 
 interface LoginSplashProps {
   onComplete: () => void;
-  onSuperAdmin: () => void;
 }
 
 const container = {
@@ -17,7 +16,7 @@ const item = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', damping: 18, stiffness: 180 } },
 };
 
-export function LoginSplash({ onComplete, onSuperAdmin }: LoginSplashProps) {
+export function LoginSplash({ onComplete }: LoginSplashProps) {
   // Auto-advance after 4 seconds
   useEffect(() => {
     const timer = setTimeout(onComplete, 4000);
@@ -172,34 +171,12 @@ export function LoginSplash({ onComplete, onSuperAdmin }: LoginSplashProps) {
         </motion.div>
       </motion.div>
 
-      {/* Bottom — loading indicator + super admin */}
+      {/* Bottom wave */}
       <div className="relative z-10">
         <svg viewBox="0 0 400 50" className="w-full -mb-1 text-white" preserveAspectRatio="none">
           <path d="M0 50 L0 30 Q60 0, 140 18 Q220 36, 300 14 Q360 0, 400 16 L400 50 Z" fill="currentColor" />
         </svg>
-        <motion.div
-          className="bg-white px-6 pb-8 pt-5 safe-area-bottom flex flex-col items-center"
-          initial={{ y: 70, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, type: 'spring', damping: 20, stiffness: 150 }}
-        >
-          {/* Progress bar */}
-          <div className="w-full max-w-xs h-1.5 rounded-full bg-muted overflow-hidden mb-4">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-[hsl(230,60%,52%)] to-[hsl(200,70%,42%)]"
-              initial={{ width: '0%' }}
-              animate={{ width: '100%' }}
-              transition={{ duration: 4, ease: 'linear' }}
-            />
-          </div>
-          <p className="text-muted-foreground/40 text-xs">Loading...</p>
-          <button
-            onClick={onSuperAdmin}
-            className="w-full text-center mt-3 text-muted-foreground/50 hover:text-muted-foreground text-xs transition-colors"
-          >
-            🔐 Super Admin Access
-          </button>
-        </motion.div>
+        <div className="bg-white px-6 pb-6 pt-4 safe-area-bottom" />
       </div>
     </div>
   );
