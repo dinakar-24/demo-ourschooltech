@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Bus, Edit2, Trash2, Search, Loader2, MapPin, Phone, Users, UserPlus } from 'lucide-react';
 import { useTransportRoutes, useCreateRoute, useUpdateRoute, useDeleteRoute, useStudentTransport, useAssignStudent, useRemoveStudentTransport, TransportRoute } from '@/hooks/useTransport';
 import { useStudents } from '@/hooks/useStudents';
+import { useClasses } from '@/hooks/useClasses';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EmptyState } from '@/components/ui/data-states';
@@ -38,10 +39,13 @@ export default function TransportPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | undefined>();
   const [form, setForm] = useState(defaultRouteForm);
   const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
+  const [assignClass, setAssignClass] = useState('');
+  const [assignSection, setAssignSection] = useState('');
 
   const { data: routes = [], isLoading } = useTransportRoutes();
   const { data: studentTransport = [] } = useStudentTransport(selectedRouteId);
   const { data: studentData } = useStudents();
+  const { data: classesData = [] } = useClasses();
   const createRoute = useCreateRoute();
   const updateRoute = useUpdateRoute();
   const deleteRoute = useDeleteRoute();
@@ -49,6 +53,20 @@ export default function TransportPage() {
   const removeStudent = useRemoveStudentTransport();
 
   const students = Array.isArray(studentData) ? studentData : (studentData as any)?.students || [];
+
+  // Get sections for selected class
+  const selectedClassData = classesData.find(c => c.name === assignClass);
+  const availableSections = selectedClassData?.sections?.map(s => s.name) || [];
+
+  // Filter students by selected class & section
+  const filteredStudentsForAssign = useMemo(() => {
+    if (!assignClass) return [];
+    return students.filter((s: any) => {
+      if (s.class_name !== assignClass) return false;
+      if (assignSection && s.section !== assignSection) return false;
+      return true;
+    });
+  }, [students, assignClass, assignSection]);
 
   const filteredRoutes = routes.filter(r =>
     r.route_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -109,6 +127,8 @@ export default function TransportPage() {
       boarding_type: assignForm.boarding_type,
     });
     setAssignForm({ student_id: '', pickup_stop: '', drop_stop: '', boarding_type: 'both' });
+    setAssignClass('');
+    setAssignSection('');
   };
 
   const routeFormJsx = (
@@ -156,13 +176,33 @@ export default function TransportPage() {
 
   const assignFormJsx = (
     <div className="grid gap-4 py-2">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-2">
+          <Label>Class *</Label>
+          <Select value={assignClass} onValueChange={v => { setAssignClass(v); setAssignSection(''); setAssignForm(f => ({ ...f, student_id: '' })); }}>
+            <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+            <SelectContent>
+              {classesData.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>Section</Label>
+          <Select value={assignSection} onValueChange={v => { setAssignSection(v); setAssignForm(f => ({ ...f, student_id: '' })); }} disabled={!assignClass}>
+            <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectContent>
+              {availableSections.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="grid gap-2">
         <Label>Student *</Label>
-        <Select value={assignForm.student_id} onValueChange={v => setAssignForm(f => ({ ...f, student_id: v }))}>
-          <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
+        <Select value={assignForm.student_id} onValueChange={v => setAssignForm(f => ({ ...f, student_id: v }))} disabled={!assignClass}>
+          <SelectTrigger><SelectValue placeholder={assignClass ? "Select student" : "Select class first"} /></SelectTrigger>
           <SelectContent>
-            {students.map((s: any) => (
-              <SelectItem key={s.id} value={s.id}>{s.full_name} ({s.class_name}-{s.section})</SelectItem>
+            {filteredStudentsForAssign.map((s: any) => (
+              <SelectItem key={s.id} value={s.id}>{s.full_name} ({s.section})</SelectItem>
             ))}
           </SelectContent>
         </Select>
