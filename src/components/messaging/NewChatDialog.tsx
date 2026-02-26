@@ -4,16 +4,15 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Loader2, Users, Megaphone, GraduationCap } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 interface NewChatDialogProps {
   open: boolean;
@@ -23,45 +22,18 @@ interface NewChatDialogProps {
   onCreateBroadcast: (name: string, participantIds: string[]) => void;
 }
 
-interface ClassSection {
-  className: string;
-  section: string;
-  studentCount: number;
-}
-
-export function NewChatDialog({ open, onOpenChange, onCreateDirect, onCreateGroup, onCreateBroadcast }: NewChatDialogProps) {
+export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDialogProps) {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
-  const [tab, setTab] = useState('direct');
   const [search, setSearch] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [sectionFilter, setSectionFilter] = useState<string>('all');
 
-  // Fetch school users for direct chat
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['school-users-for-chat', schoolId, search],
-    queryFn: async () => {
-      let query = supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, email')
-        .eq('school_id', schoolId!)
-        .neq('id', user!.id)
-        .order('full_name')
-        .limit(50);
-      if (search) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: open && !!schoolId && tab === 'direct',
-  });
-
-  // Fetch class/section combos with parent user IDs
-  const { data: classSections = [], isLoading: classLoading } = useQuery({
-    queryKey: ['class-sections-for-groups', schoolId],
+  // Fetch distinct classes/sections from profiles
+  const { data: classOptions = [] } = useQuery({
+    queryKey: ['chat-class-options', schoolId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('students')
@@ -70,46 +42,95 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect, onCreateGrou
         .eq('status', 'active');
       if (error) throw error;
 
-      // Group by class_name + section
-      const map = new Map<string, { className: string; section: string; count: number }>();
+      const classSet = new Set<string>();
+      const sectionMap = new Map<string, Set<string>>();
       (data || []).forEach(s => {
-        const key = `${s.class_name}-${s.section}`;
-        if (!map.has(key)) {
-          map.set(key, { className: s.class_name, section: s.section, count: 0 });
-        }
-        map.get(key)!.count++;
+        classSet.add(s.class_name);
+        if (!sectionMap.has(s.class_name)) sectionMap.set(s.class_name, new Set());
+        sectionMap.get(s.class_name)!.add(s.section);
       });
 
-      return Array.from(map.values())
+      return Array.from(classSet)
         .sort((a, b) => {
-          const aNum = parseInt(a.className);
-          const bNum = parseInt(b.className);
-          if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum || a.section.localeCompare(b.section);
-          return a.className.localeCompare(b.className) || a.section.localeCompare(b.section);
+          const an = parseInt(a), bn = parseInt(b);
+          if (!isNaN(an) && !isNaN(bn)) return an - bn;
+          return a.localeCompare(b);
         })
-        .map(v => ({ className: v.className, section: v.section, studentCount: v.count } as ClassSection));
+        .map(c => ({
+          className: c,
+          sections: Array.from(sectionMap.get(c) || []).sort(),
+        }));
     },
-    enabled: open && !!schoolId && (tab === 'group' || tab === 'broadcast'),
+    enabled: open && !!schoolId,
   });
 
-  // Fetch teacher count
-  const { data: teacherCount = 0 } = useQuery({
-    queryKey: ['teacher-count-for-groups', schoolId],
+  const sections = classFilter !== 'all'
+    ? classOptions.find(c => c.className === classFilter)?.sections || []
+    : [];
+
+  // Fetch users filtered by class/section
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['school-users-for-chat', schoolId, search, classFilter, sectionFilter],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('teachers')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId!);
+      // If filtering by class/section, get parent emails from students table
+      if (classFilter !== 'all') {
+        let studentsQuery = supabase
+          .from('students')
+          .select('parent_email, parent_name')
+          .eq('school_id', schoolId!)
+          .eq('status', 'active')
+          .eq('class_name', classFilter);
+        
+        if (sectionFilter !== 'all') {
+          studentsQuery = studentsQuery.eq('section', sectionFilter);
+        }
+
+        const { data: studentData } = await studentsQuery;
+        const parentEmails = [...new Set((studentData || []).map(s => s.parent_email).filter(Boolean))] as string[];
+        
+        if (parentEmails.length === 0) return [];
+
+        let query = supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, email')
+          .in('email', parentEmails)
+          .neq('id', user!.id)
+          .order('full_name');
+
+        if (search) {
+          query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      }
+
+      // Default: all school users
+      let query = supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, email')
+        .eq('school_id', schoolId!)
+        .neq('id', user!.id)
+        .order('full_name')
+        .limit(50);
+      
+      if (search) {
+        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
-      return count || 0;
+      return data || [];
     },
-    enabled: open && !!schoolId && (tab === 'group' || tab === 'broadcast'),
+    enabled: open && !!schoolId,
   });
 
   const reset = () => {
     setSearch('');
-    setSelectedUsers([]);
-    setTab('direct');
+    setSelectedUser(null);
+    setClassFilter('all');
+    setSectionFilter('all');
   };
 
   const handleClose = (v: boolean) => {
@@ -117,153 +138,81 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect, onCreateGrou
     onOpenChange(v);
   };
 
-  const handleDirectSubmit = () => {
-    if (selectedUsers.length === 1) {
-      onCreateDirect(selectedUsers[0]);
+  const handleSubmit = () => {
+    if (selectedUser) {
+      onCreateDirect(selectedUser);
       handleClose(false);
     }
   };
 
-  const toggleUser = (id: string) => {
-    setSelectedUsers(prev => prev[0] === id ? [] : [id]);
-  };
-
-  // Create group/broadcast for a class-section
-  const handleCreateClassGroup = async (cs: ClassSection, type: 'group' | 'broadcast') => {
-    setCreating(true);
-    try {
-      // Get all parent user IDs for students in this class+section
-      const { data: students } = await supabase
-        .from('students')
-        .select('parent_email')
-        .eq('school_id', schoolId!)
-        .eq('class_name', cs.className)
-        .eq('section', cs.section)
-        .eq('status', 'active');
-
-      const parentEmails = [...new Set((students || []).map(s => s.parent_email).filter(Boolean))] as string[];
-
-      let parentIds: string[] = [];
-      if (parentEmails.length > 0) {
-        const { data: parentProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('email', parentEmails);
-        parentIds = (parentProfiles || []).map(p => p.id);
-      }
-
-      // Also get teacher user IDs assigned to this class
-      const { data: teachers } = await supabase
-        .from('teachers')
-        .select('user_id')
-        .eq('school_id', schoolId!)
-        .contains('classes', [cs.className]);
-      const teacherIds = (teachers || []).map(t => t.user_id).filter(Boolean) as string[];
-
-      const allIds = [...new Set([...parentIds, ...teacherIds])];
-      if (allIds.length === 0) {
-        toast.error('No members found for this class/section');
-        return;
-      }
-
-      const name = `Class ${cs.className} - ${cs.section}`;
-      if (type === 'group') {
-        onCreateGroup(name, allIds);
-      } else {
-        onCreateBroadcast(name, allIds);
-      }
-      toast.success(`${type === 'group' ? 'Group' : 'Broadcast'} "${name}" created`);
-      handleClose(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to create group');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Create "All Teachers" group
-  const handleCreateTeachersGroup = async (type: 'group' | 'broadcast') => {
-    setCreating(true);
-    try {
-      const { data: teachers } = await supabase
-        .from('teachers')
-        .select('user_id')
-        .eq('school_id', schoolId!);
-
-      const teacherIds = (teachers || []).map(t => t.user_id).filter(Boolean) as string[];
-      if (teacherIds.length === 0) {
-        toast.error('No teachers found');
-        return;
-      }
-
-      const name = 'All Teachers';
-      if (type === 'group') {
-        onCreateGroup(name, teacherIds);
-      } else {
-        onCreateBroadcast(name, teacherIds);
-      }
-      toast.success(`${type === 'group' ? 'Group' : 'Broadcast'} "${name}" created`);
-      handleClose(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to create group');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const groupBroadcastContent = (type: 'group' | 'broadcast') => (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        {type === 'group' ? 'Create a group chat' : 'Create a broadcast channel'} — select a class/section or All Teachers below.
-      </p>
-
-      {/* All Teachers option */}
-      <button
-        type="button"
-        disabled={creating}
-        onClick={() => handleCreateTeachersGroup(type)}
-        className="w-full text-left px-4 py-3 rounded-lg border border-border hover:bg-accent/50 transition-colors flex items-center gap-3"
-      >
-        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-          <GraduationCap className="w-5 h-5 text-primary" />
+  const formContent = (
+    <div className="space-y-4">
+      {/* Class / Section Filters */}
+      <div className="flex gap-2">
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs">Class</Label>
+          <Select value={classFilter} onValueChange={v => { setClassFilter(v); setSectionFilter('all'); setSelectedUser(null); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {classOptions.map(c => (
+                <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium">All Teachers</p>
-          <p className="text-xs text-muted-foreground">{teacherCount} teacher(s)</p>
-        </div>
-        {creating && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-      </button>
-
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <div className="flex-1 border-t border-border" />
-        <span>Class / Section Groups</span>
-        <div className="flex-1 border-t border-border" />
+        {classFilter !== 'all' && sections.length > 0 && (
+          <div className="flex-1 space-y-1">
+            <Label className="text-xs">Section</Label>
+            <Select value={sectionFilter} onValueChange={v => { setSectionFilter(v); setSelectedUser(null); }}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sections</SelectItem>
+                {sections.map(s => (
+                  <SelectItem key={s} value={s}>Section {s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
+      {/* User List */}
       <ScrollArea className="h-56 rounded-md border border-border">
-        {classLoading ? (
+        {isLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-        ) : classSections.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No classes found</p>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">No users found</p>
         ) : (
-          classSections.map(cs => (
+          users.map(u => (
             <button
-              key={`${cs.className}-${cs.section}`}
+              key={u.id}
               type="button"
-              disabled={creating}
-              onClick={() => handleCreateClassGroup(cs, type)}
-              className="w-full text-left px-4 py-3 text-sm hover:bg-accent/50 transition-colors flex items-center gap-3 border-b border-border last:border-0"
+              onClick={() => setSelectedUser(prev => prev === u.id ? null : u.id)}
+              className={cn(
+                "w-full text-left px-3 py-2.5 text-sm hover:bg-accent/50 transition-colors flex items-center justify-between border-b border-border last:border-0",
+                selectedUser === u.id && "bg-accent font-medium"
+              )}
             >
-              <div className="w-9 h-9 rounded-full bg-secondary/50 flex items-center justify-center">
-                <Users className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm">{u.full_name}</p>
+                <p className="text-xs text-muted-foreground">{u.email}</p>
               </div>
-              <div className="flex-1">
-                <p className="font-medium">Class {cs.className} - {cs.section}</p>
-                <p className="text-xs text-muted-foreground">{cs.studentCount} student(s)</p>
-              </div>
-              {creating && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              {selectedUser === u.id && (
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground text-xs">✓</span>
+                </div>
+              )}
             </button>
           ))
         )}
@@ -271,75 +220,16 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect, onCreateGrou
     </div>
   );
 
-  const formContent = (
-    <div className="space-y-4">
-      <Tabs value={tab} onValueChange={v => { setTab(v); setSelectedUsers([]); setSearch(''); }}>
-        <TabsList className="w-full">
-          <TabsTrigger value="direct" className="flex-1">Direct</TabsTrigger>
-          <TabsTrigger value="group" className="flex-1">Group</TabsTrigger>
-          <TabsTrigger value="broadcast" className="flex-1">Broadcast</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {tab === 'direct' && (
-        <>
-          <div className="space-y-1">
-            <Label>Select User *</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-            </div>
-          </div>
-
-          <ScrollArea className="h-48 rounded-md border border-border">
-            {isLoading ? (
-              <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
-            ) : users.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No users found</p>
-            ) : (
-              users.map(u => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => toggleUser(u.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2.5 text-sm hover:bg-accent/50 transition-colors flex items-center justify-between border-b border-border last:border-0",
-                    selectedUsers.includes(u.id) && "bg-accent font-medium"
-                  )}
-                >
-                  <div>
-                    <p className="text-sm">{u.full_name}</p>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
-                  </div>
-                  {selectedUsers.includes(u.id) && (
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-primary-foreground text-xs">✓</span>
-                    </div>
-                  )}
-                </button>
-              ))
-            )}
-          </ScrollArea>
-        </>
-      )}
-
-      {tab === 'group' && groupBroadcastContent('group')}
-      {tab === 'broadcast' && groupBroadcastContent('broadcast')}
-    </div>
-  );
-
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={handleClose}>
         <DrawerContent className="max-h-[90dvh] flex flex-col bg-background">
-          <DrawerHeader className="text-left"><DrawerTitle>New Conversation</DrawerTitle></DrawerHeader>
+          <DrawerHeader className="text-left"><DrawerTitle>New Direct Message</DrawerTitle></DrawerHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-4">{formContent}</div>
-          {tab === 'direct' && (
-            <DrawerFooter className="flex-row gap-2">
-              <Button variant="outline" onClick={() => handleClose(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleDirectSubmit} disabled={selectedUsers.length !== 1} className="flex-1">Create</Button>
-            </DrawerFooter>
-          )}
+          <DrawerFooter className="flex-row gap-2">
+            <Button variant="outline" onClick={() => handleClose(false)} className="flex-1">Cancel</Button>
+            <Button onClick={handleSubmit} disabled={!selectedUser} className="flex-1">Start Chat</Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     );
@@ -348,14 +238,12 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect, onCreateGrou
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>New Conversation</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New Direct Message</DialogTitle></DialogHeader>
         {formContent}
-        {tab === 'direct' && (
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
-            <Button onClick={handleDirectSubmit} disabled={selectedUsers.length !== 1}>Create</Button>
-          </DialogFooter>
-        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!selectedUser}>Start Chat</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

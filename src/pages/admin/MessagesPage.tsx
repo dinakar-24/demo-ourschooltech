@@ -4,6 +4,7 @@ import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatView } from '@/components/messaging/ChatView';
 import { NewChatDialog } from '@/components/messaging/NewChatDialog';
 import { useConversations, useMessages, useCreateConversation, useRealtimeConversations, Conversation } from '@/hooks/useMessages';
+import { useAutoCreateGroups } from '@/hooks/useAutoCreateGroups';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,8 @@ export default function MessagesPage() {
   const { data: messages = [], isLoading: msgsLoading } = useMessages(selectedConv?.id);
   const createConversation = useCreateConversation();
 
+  // Auto-create class/section groups & broadcasts
+  useAutoCreateGroups();
   // Realtime for conversation list
   useRealtimeConversations();
 
