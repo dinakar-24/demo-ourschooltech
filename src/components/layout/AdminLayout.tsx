@@ -28,6 +28,7 @@ import {
   Sun,
   Video,
   Bus,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ const menuItems = [
   { label: 'Exams', href: '/admin/exams', icon: FileText },
   { label: 'Online Classes', href: '/admin/online-classes', icon: Video },
   { label: 'Transport', href: '/admin/transport', icon: Bus },
+  { label: 'Messages', href: '/admin/messages', icon: MessageCircle },
   { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
   { label: 'Timetable', href: '/admin/timetable', icon: Clock },
   { label: 'Announcements', href: '/admin/announcements', icon: Bell },
