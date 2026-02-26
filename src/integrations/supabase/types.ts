@@ -1789,6 +1789,69 @@ export type Database = {
           },
         ]
       }
+      timetable_entries: {
+        Row: {
+          class_name: string
+          created_at: string
+          day_of_week: string
+          end_time: string
+          id: string
+          is_lunch: boolean
+          period_number: number
+          school_id: string
+          section: string
+          start_time: string
+          subject: string
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_name: string
+          created_at?: string
+          day_of_week: string
+          end_time?: string
+          id?: string
+          is_lunch?: boolean
+          period_number: number
+          school_id: string
+          section?: string
+          start_time?: string
+          subject?: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          day_of_week?: string
+          end_time?: string
+          id?: string
+          is_lunch?: boolean
+          period_number?: number
+          school_id?: string
+          section?: string
+          start_time?: string
+          subject?: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_entries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timetable_images: {
         Row: {
           class_name: string
@@ -1823,6 +1886,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "timetable_images_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_periods: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_lunch: boolean
+          label: string
+          period_number: number
+          school_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_lunch?: boolean
+          label?: string
+          period_number: number
+          school_id: string
+          start_time?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_lunch?: boolean
+          label?: string
+          period_number?: number
+          school_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_periods_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
