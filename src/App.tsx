@@ -34,6 +34,8 @@ import StudentsPage from "./pages/admin/StudentsPage";
 import TeachersPage from "./pages/admin/TeachersPage";
 import ClassesPage from "./pages/admin/ClassesPage";
 import AttendancePage from "./pages/admin/AttendancePage";
+import HolidayCalendarPage from "./pages/admin/HolidayCalendarPage";
+import EmployeeAttendancePage from "./pages/admin/EmployeeAttendancePage";
 import FeesPage from "./pages/admin/FeesPage";
 import ExamsPage from "./pages/admin/ExamsPage";
 import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
@@ -194,6 +196,8 @@ function AppRoutes() {
         <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><TeachersPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/classes" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><ClassesPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/attendance" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AttendancePage /></SubscriptionGuard></ProtectedRoute>} />
+        <Route path="/admin/holiday-calendar" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><HolidayCalendarPage /></SubscriptionGuard></ProtectedRoute>} />
+        <Route path="/admin/employee-attendance" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><EmployeeAttendancePage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><FeesPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><ExamsPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/academic-years" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AcademicYearsPage /></SubscriptionGuard></ProtectedRoute>} />

@@ -52,7 +52,16 @@ const menuItems = [
   },
   { label: 'Teachers', href: '/admin/teachers', icon: GraduationCap },
   { label: 'Classes', href: '/admin/classes', icon: BookOpen },
-  { label: 'Attendance', href: '/admin/attendance', icon: ClipboardList },
+  { 
+    label: 'Calendar & Attendance', 
+    href: '/admin/attendance', 
+    icon: ClipboardList,
+    children: [
+      { label: 'Student Attendance', href: '/admin/attendance' },
+      { label: 'Holiday Calendar', href: '/admin/holiday-calendar' },
+      { label: 'Employee Attendance', href: '/admin/employee-attendance' },
+    ]
+  },
   { label: 'Fees', href: '/admin/fees', icon: CreditCard },
   { label: 'Exams', href: '/admin/exams', icon: FileText },
   { label: 'Online Classes', href: '/admin/online-classes', icon: Video },

@@ -1100,6 +1100,44 @@ export type Database = {
           },
         ]
       }
+      school_holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          event_type: string
+          id: string
+          school_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          event_type?: string
+          id?: string
+          school_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          event_type?: string
+          id?: string
+          school_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_holidays_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_receipt_counters: {
         Row: {
           id: string
@@ -1729,6 +1767,54 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      teacher_attendance: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          marked_by: string | null
+          notes: string | null
+          school_id: string
+          status: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          school_id: string
+          status?: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          school_id?: string
+          status?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_attendance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_attendance_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teachers: {
         Row: {
