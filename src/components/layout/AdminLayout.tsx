@@ -53,13 +53,13 @@ const menuItems = [
   { label: 'Teachers', href: '/admin/teachers', icon: GraduationCap },
   { label: 'Classes', href: '/admin/classes', icon: BookOpen },
   { 
-    label: 'Calendar & Attendance', 
+    label: 'Attendance', 
     href: '/admin/attendance', 
     icon: ClipboardList,
     children: [
-      { label: 'Student Attendance', href: '/admin/attendance' },
+      { label: 'Students', href: '/admin/attendance' },
       { label: 'Holiday Calendar', href: '/admin/holiday-calendar' },
-      { label: 'Employee Attendance', href: '/admin/employee-attendance' },
+      { label: 'Employees', href: '/admin/employee-attendance' },
     ]
   },
   { label: 'Fees', href: '/admin/fees', icon: CreditCard },
