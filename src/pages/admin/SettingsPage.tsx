@@ -22,16 +22,36 @@ import {
   CreditCard,
   Shield,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
+const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'हिन्दी (Hindi)' },
+  { code: 'te', label: 'తెలుగు (Telugu)' },
+  { code: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
+  { code: 'ta', label: 'தமிழ் (Tamil)' },
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'ml', label: 'മലയാളം (Malayalam)' },
+];
 export default function SettingsPage() {
   const { school } = useAuth();
+  const { t, i18n } = useTranslation();
   const schoolId = useEffectiveSchoolId();
   const [saving, setSaving] = useState(false);
+
+  const handleLanguageChange = (val: string) => {
+    i18n.changeLanguage(val);
+    localStorage.setItem('app-language', val);
+    const langLabel = LANGUAGES.find(l => l.code === val)?.label || val;
+    toast.success(t('settingsPage.languageSet', { language: langLabel }));
+  };
 
   // School info form state
   const [schoolName, setSchoolName] = useState(school?.name || '');
@@ -68,11 +88,12 @@ export default function SettingsPage() {
     <AdminLayout title="Settings">
       <div className="space-y-6 animate-fade-up">
         <Tabs defaultValue="school" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[500px]">
             <TabsTrigger value="school">School</TabsTrigger>
             <TabsTrigger value="academic">Academic</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="language">Language</TabsTrigger>
           </TabsList>
 
           {/* School Settings */}
@@ -270,6 +291,39 @@ export default function SettingsPage() {
                       <SelectItem value="15">15 minutes</SelectItem>
                       <SelectItem value="30">30 minutes</SelectItem>
                       <SelectItem value="60">1 hour</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Language Settings */}
+          <TabsContent value="language" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  Language Preference
+                </CardTitle>
+                <CardDescription>
+                  Choose your preferred language for the admin interface.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between max-w-md">
+                  <div>
+                    <p className="font-medium">Interface Language</p>
+                    <p className="text-sm text-muted-foreground">Select the language for all menus and labels</p>
+                  </div>
+                  <Select value={i18n.language} onValueChange={handleLanguageChange}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code}>{lang.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
