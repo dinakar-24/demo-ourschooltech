@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Users,
@@ -81,9 +82,23 @@ const menuItems = [
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
+// Translation key mapping
+const labelToKey: Record<string, string> = {
+  'Dashboard': 'sidebar.dashboard', 'Students': 'sidebar.students', 'Teachers': 'sidebar.teachers',
+  'Classes': 'sidebar.classes', 'Attendance': 'sidebar.attendance', 'Fees': 'sidebar.fees',
+  'Exams': 'sidebar.exams', 'Online Classes': 'sidebar.onlineClasses', 'Transport': 'sidebar.transport',
+  'Messages': 'sidebar.messages', 'Academic Years': 'sidebar.academicYears', 'Timetable': 'sidebar.timetable',
+  'Announcements': 'sidebar.announcements', 'Bulk Upload': 'sidebar.bulkUpload', 'Gallery': 'sidebar.gallery',
+  'Feedback': 'sidebar.feedback', 'Queries': 'sidebar.queries', 'Reports': 'sidebar.reports',
+  'Subscription': 'sidebar.subscription', 'Settings': 'sidebar.settings',
+  'All Students': 'sidebar.students', 'Add Student': 'sidebar.students',
+  'Holiday Calendar': 'sidebar.holidayCalendar', 'Employees': 'sidebar.attendance',
+};
+
 export function AdminLayout({ children, title }: AdminLayoutProps) {
   const { user, school, logout } = useAuth();
   const { impersonatedSchool, isImpersonating } = useImpersonation();
+  const { t } = useTranslation();
   const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
   const displaySchoolLogo = isImpersonating ? impersonatedSchool?.logo : school?.logo;
   const navigate = useNavigate();
@@ -167,7 +182,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-5 h-5 shrink-0" />
-                      {!isCollapsed && <span>{item.label}</span>}
+                      {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
                     </div>
                     {!isCollapsed && (
                       expandedItems.includes(item.label) 
@@ -189,7 +204,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                                 : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
                             )}
                           >
-                            {child.label}
+                            {t(labelToKey[child.label] || child.label)}
                           </Link>
                         </li>
                       ))}
@@ -204,10 +219,10 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                     "nav-item",
                     isActive(item.href) && "nav-item-active"
                   )}
-                  title={isCollapsed ? item.label : undefined}
+                  title={isCollapsed ? t(labelToKey[item.label] || item.label) : undefined}
                 >
                   <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
+                  {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
                 </Link>
               )}
             </li>
@@ -236,7 +251,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
                 className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors"
               >
                 <LogOut className="w-3 h-3" />
-                Sign out
+                {t('sidebar.signOut')}
               </button>
             </div>
           )}
