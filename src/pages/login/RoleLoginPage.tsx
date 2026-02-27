@@ -86,7 +86,7 @@ export default function RoleLoginPage({ role }: RoleLoginPageProps) {
               <img
                 src={tenant.logo}
                 alt={tenant.name}
-                className="w-16 h-16 mx-auto rounded-xl object-contain mb-3"
+                className="w-16 h-16 mx-auto rounded-xl object-contain mb-3" loading="eager" fetchPriority="high" decoding="sync"
               />
             ) : (
               <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3">

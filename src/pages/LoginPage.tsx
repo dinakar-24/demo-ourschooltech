@@ -376,7 +376,7 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
           {/* Logo */}
           {schoolInfo.school_logo ? (
             <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
-              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-full h-full object-cover" />
+              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-full h-full object-cover" loading="eager" fetchPriority="high" decoding="sync" />
             </div>
           ) : (
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shrink-0 shadow-lg">
