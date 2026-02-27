@@ -23,9 +23,11 @@ import {
 import {
   Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
   ChevronDown, ChevronRight, Receipt, CalendarDays, FileText, User,
-  Users, Download, Bell, Percent,
+  Users, Download, Bell, Percent, ShieldCheck,
 } from 'lucide-react';
 import { useFeeInvoices, useInvoiceStats, useFeeTerms, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
+import { usePaymentSubmissions } from '@/hooks/usePaymentSubmissions';
+import { PaymentVerificationPanel } from '@/components/fees/PaymentVerificationPanel';
 import { useFees, FeeRecord } from '@/hooks/useFees';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useFeeReports } from '@/hooks/useFeeReports';
@@ -115,6 +117,7 @@ export default function FeesPage() {
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSection, setSelectedSection] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showVerifications, setShowVerifications] = useState(false);
 
   const { data: classes } = useClasses();
   const { data: sections } = useSections(selectedClass !== 'all' ? selectedClass : undefined);
@@ -162,6 +165,9 @@ export default function FeesPage() {
 
   const stats = invoiceStats;
   const loading = isLoading || legacyLoading;
+
+  const { data: pendingSubmissions = [] } = usePaymentSubmissions('pending');
+  const pendingCount = pendingSubmissions.length;
 
   const studentGroups = useMemo(
     () => groupByStudent(invoices, legacyFees),
@@ -358,6 +364,18 @@ export default function FeesPage() {
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <h2 className="text-lg font-semibold">Student Fees</h2>
             <div className="flex gap-2 flex-wrap">
+              {pendingCount > 0 && (
+                <Button
+                  variant={showVerifications ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowVerifications(!showVerifications)}
+                  className="relative"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Verify</span>
+                  <Badge className="ml-1 bg-warning text-warning-foreground text-xs px-1.5 py-0">{pendingCount}</Badge>
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setReminderDialogOpen(true)}>
                 <Bell className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Send</span> Reminders
               </Button>
@@ -439,6 +457,20 @@ export default function FeesPage() {
             </div>
           </div>
         </div>
+
+        {/* Payment Verification Panel */}
+        {showVerifications && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-warning" />
+                Pending Payment Verifications
+                <Badge className="bg-warning text-warning-foreground">{pendingCount}</Badge>
+              </h3>
+              <PaymentVerificationPanel />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Student-Grouped List */}
         <Card>
