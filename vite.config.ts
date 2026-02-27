@@ -19,8 +19,6 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "favicon.ico"],
-      // Dynamic manifest is injected at runtime for subdomain tenants
-      // Static manifest serves as fallback for main domain
       injectManifest: undefined,
       manifest: {
         name: "Our School Tech",
@@ -47,8 +45,18 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 3145728,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        // Never cache HTML - always fetch fresh from network
+        navigateFallback: null,
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
+          {
+            // HTML pages - always network, never cache
+            urlPattern: /\/[^.]*$/,
+            handler: "NetworkOnly",
+          },
           {
             urlPattern: /^https:\/\/.*supabase.*$/i,
             handler: "NetworkFirst",
