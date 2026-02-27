@@ -1,94 +1,62 @@
 
-# Fees Management - New Features Plan
+# Fees Management -- Missing Features and Enhancements
 
-## Overview
-Adding 4 major features to the Fees Management system: Bulk Invoice Creation, Export Reports, Send Fee Reminders, and Fee Discounts/Concessions.
+## Summary of Gaps Found
 
----
+After thorough analysis, here are the missing features and improvements needed:
 
-## Feature 1: Bulk Invoice Creation
+### 1. Class and Section Filter on Admin Fees Page
+**Current state:** Admin can filter by Term and Status but NOT by Class or Section.
+**Fix:** Add Class and Section dropdown filters to the toolbar, passing `className` to the query hook (which already supports it but isn't wired up).
 
-Create invoices for an entire class/section at once instead of one student at a time.
+### 2. Parent Fees Page -- Show Invoice-Based Fees (Not Just Legacy)
+**Current state:** `ParentFees` only queries the legacy `fees` table. It does NOT show the new invoice-based fees (`fee_invoices`) at all. Parents cannot see invoices, payment history with receipts, or partial payment status.
+**Fix:** Rewrite `ParentFees` to also fetch `fee_invoices` with components and payments for the parent's child. Show both invoice-based and legacy fees, display receipt numbers, payment method, partial payment progress, and a "Download Receipt" button for each payment.
 
-**What you'll see:**
-- A new "Bulk Create" button next to the existing "Create Invoice" button
-- A dialog where you select a Class, Section, Term, Due Date, and Fee Components
-- The system will automatically create invoices for ALL active students in that class/section
-- A progress indicator showing how many invoices are being created
+### 3. Parent Receipt Viewing
+**Current state:** Parents have no way to view or download payment receipts.
+**Fix:** Add the `PaymentReceiptDialog` to the parent fees page so they can tap on a payment to view/print the receipt.
 
-**Technical details:**
-- New `BulkCreateInvoiceDialog` component with class/section selector
-- New `useCreateBulkInvoices` mutation hook that creates invoices in batch
-- Fetches active students for the selected class/section, then creates one invoice per student with identical fee components
+### 4. Discount Visibility on Parent/Student Side
+**Current state:** Discounts applied by admin are not visible to parents or students.
+**Fix:** Fetch `fee_discounts` for each invoice and show discount details (amount, reason) in the parent view.
 
----
+### 5. Section Filter for Bulk Invoice Creation
+**Current state:** The BulkCreateInvoiceDialog already supports section filtering -- this is working.
 
-## Feature 2: Export Reports (Excel/PDF)
-
-Download fee collection data as Excel spreadsheets.
-
-**What you'll see:**
-- A "Download Report" button with a dropdown menu offering:
-  - **Fee Summary Report** - Overview by class with totals (collected, pending, overdue)
-  - **Pending Fees List** - All students with outstanding balances
-  - **Payment History** - All recorded payments with receipt numbers
-- Downloads as `.xlsx` Excel file (using the already-installed `exceljs` library)
-
-**Technical details:**
-- New `useFeeReports` hook with functions to generate each report type
-- Uses ExcelJS (already in dependencies) to create professionally formatted spreadsheets with:
-  - School header, date range, formatted currency columns
-  - Auto-width columns and frozen header rows
+### 6. Partial Payment Progress Bar on Admin Page
+**Current state:** The admin page shows paid/balance numbers but no visual progress indicator at the student group level.
+**Fix:** Add a small progress bar in each student row showing payment completion percentage.
 
 ---
 
-## Feature 3: Send Fee Reminders
+## Technical Plan
 
-Send push notification reminders to parents of students with pending/overdue fees.
+### File: `src/pages/admin/FeesPage.tsx`
+- Add `selectedClass` and `selectedSection` state variables
+- Add Class dropdown (using `useClasses` hook) and Section dropdown to the filter bar
+- Pass `className` filter to `useFeeInvoices` and `useFees` hooks
+- Filter `studentGroups` by section client-side
+- Add a progress bar (div with percentage width) in each student row/card
 
-**What you'll see:**
-- A "Send Reminders" button in the toolbar area
-- Option to send to: All pending students, Only overdue students, or a specific student
-- Confirmation dialog showing how many parents will be notified
-- Uses the existing push notification system (no SMS/email cost)
+### File: `src/pages/parent/ParentFees.tsx` (major rewrite)
+- Import and use `useFeeInvoices` (with student_id filter via the existing RLS) to fetch invoice-based fees
+- Import `PaymentReceiptDialog` for receipt viewing
+- Show invoices grouped by term with:
+  - Fee components breakdown
+  - Payment progress bar (paid vs total)
+  - Each payment entry with receipt number (tappable to view receipt)
+  - Discount entries if any
+- Keep legacy fees section as fallback
+- Add "Download Receipt" functionality using existing `PaymentReceiptDialog`
 
-**Technical details:**
-- New `SendReminderDialog` component
-- Uses existing `sendNotification` utility to push notifications to parent and student user IDs
-- Queries `fee_invoices` for pending/overdue balances, then resolves parent user IDs via `students.parent_email` joined to `profiles`
+### File: `src/hooks/useParentData.ts`
+- Add a new `useParentInvoices` hook that fetches `fee_invoices` with components, payments, and discounts for the parent's child
+- This uses existing RLS policies (parents can view child invoices/payments/discounts)
 
----
+### File: `src/hooks/useFeeInvoices.ts`
+- No changes needed -- already supports className filter and the RLS allows parent access
 
-## Feature 4: Fee Discounts/Concessions
-
-Apply discounts or scholarships to specific student invoices.
-
-**What you'll see:**
-- An "Apply Discount" button visible when expanding a student's invoice details
-- Dialog to enter: Discount amount, Reason (e.g., Scholarship, Sibling Discount, Staff Ward), and optional notes
-- The discount reduces the invoice balance immediately
-- Discounts are tracked and visible in the expanded invoice view with the reason displayed
-
-**Technical details:**
-- The `student_fee_overrides` table already exists in the database with columns: `student_id`, `fee_structure_id`, `override_amount`, `reason`, `notes`, `approved_by`
-- New `fee_discounts` table will be created (linked to invoices) since the existing overrides table is linked to fee_structures, not invoices
-- Migration: Create `fee_discounts` table with columns: `id`, `school_id`, `invoice_id`, `student_id`, `discount_amount`, `reason`, `notes`, `applied_by`, `created_at`
-- RLS policies: Admin full access, parent/student read-only for their own records
-- New `ApplyDiscountDialog` component
-- When a discount is applied, the invoice's `total_amount` and `balance` are reduced accordingly via an RPC function to maintain atomicity
-
----
-
-## Files to Create
-1. `src/components/fees/BulkCreateInvoiceDialog.tsx` - Bulk invoice creation dialog
-2. `src/components/fees/SendReminderDialog.tsx` - Fee reminder sending dialog
-3. `src/components/fees/ApplyDiscountDialog.tsx` - Discount/concession dialog
-4. `src/hooks/useFeeReports.ts` - Excel report generation hooks
-
-## Files to Modify
-1. `src/pages/admin/FeesPage.tsx` - Add new action buttons and integrate all dialogs
-2. `src/hooks/useFeeInvoices.ts` - Add bulk creation mutation and discount-related hooks
-
-## Database Changes
-1. New `fee_discounts` table with RLS policies
-2. New `apply_fee_discount` RPC function for atomic discount application
+### Files unchanged
+- Database: No schema changes needed -- all tables and RLS policies are already in place
+- `PaymentReceiptDialog`: Already works for both admin and parent contexts
