@@ -1,6 +1,5 @@
-import { useRef } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -16,10 +15,9 @@ import {
   XCircle,
   Loader2,
   Download,
-  Receipt,
-  Shield,
-  Sparkles,
   FileText,
+  ArrowUpRight,
+  TrendingUp,
 } from 'lucide-react';
 import { useSubscription, useSubscriptionPayments, SubscriptionPayment } from '@/hooks/useSubscription';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,46 +69,142 @@ function downloadSubscriptionReceipt(
   studentCount: number,
   pricePerStudent: number
 ) {
+  const paymentDate = payment.paid_at
+    ? format(new Date(payment.paid_at), 'dd-MMMM-yy')
+    : format(new Date(payment.created_at), 'dd-MMMM-yy');
+  const receiptId = payment.razorpay_payment_id || payment.id.slice(0, 12).toUpperCase();
+  const amountWords = numberToIndianWords(payment.amount);
+
   const receiptHtml = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>Subscription Receipt</title>
+<title>Subscription Invoice - ${schoolName}</title>
 <style>
-  body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 40px; color: #1a1a1a; }
-  .receipt { max-width: 600px; margin: 0 auto; border: 2px solid #0f766e; border-radius: 12px; overflow: hidden; }
-  .header { background: linear-gradient(135deg, #0f766e, #14b8a6); color: white; padding: 24px 32px; }
-  .header h1 { margin: 0; font-size: 22px; }
-  .header p { margin: 4px 0 0; opacity: 0.85; font-size: 13px; }
-  .body { padding: 28px 32px; }
-  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-  .row:last-child { border-bottom: none; }
-  .row .label { color: #6b7280; font-size: 13px; }
-  .row .value { font-weight: 600; font-size: 14px; }
-  .total-row { background: #f0fdfa; padding: 14px 16px; border-radius: 8px; margin: 16px 0; display: flex; justify-content: space-between; align-items: center; }
-  .total-row .amount { font-size: 22px; font-weight: 700; color: #0f766e; }
-  .words { font-size: 12px; color: #6b7280; font-style: italic; margin-bottom: 16px; }
-  .footer { text-align: center; padding: 16px 32px; background: #f9fafb; font-size: 11px; color: #9ca3af; }
-  .badge { display: inline-block; background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-  @media print { body { padding: 0; } .receipt { border: 1px solid #ccc; } }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; padding: 32px; background: #fff; }
+  .invoice { max-width: 720px; margin: 0 auto; }
+  
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #0F766E; }
+  .company-name { font-size: 22px; font-weight: 700; color: #0F766E; }
+  .company-details { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+  .invoice-title { font-size: 24px; font-weight: 700; color: #0F766E; text-align: right; }
+  
+  .meta-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .meta-block { }
+  .meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 600; }
+  .meta-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+  
+  .to-block { background: #f9fafb; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; }
+  .to-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 600; }
+  .to-name { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  thead th { background: #0F766E; color: #fff; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; text-align: left; }
+  thead th:last-child { text-align: right; }
+  tbody td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid #e5e7eb; }
+  tbody td:last-child { text-align: right; font-weight: 600; }
+  
+  .total-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .total-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6px; padding: 12px 20px; display: flex; gap: 24px; align-items: center; }
+  .total-label { font-size: 13px; font-weight: 600; color: #374151; }
+  .total-amount { font-size: 22px; font-weight: 800; color: #0F766E; }
+  
+  .words { font-size: 11px; color: #6b7280; font-style: italic; margin-bottom: 24px; }
+  .words strong { font-style: normal; color: #374151; }
+  
+  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .detail-box { background: #f9fafb; border-radius: 6px; padding: 12px 16px; }
+  .detail-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; font-weight: 600; }
+  .detail-box .value { font-size: 12px; font-weight: 600; margin-top: 2px; color: #374151; }
+  
+  .footer { border-top: 1px solid #e5e7eb; padding-top: 16px; text-align: center; }
+  .footer p { font-size: 10px; color: #9ca3af; line-height: 1.6; }
+  
+  .paid-stamp { display: inline-block; border: 3px solid #16a34a; color: #16a34a; padding: 4px 16px; border-radius: 4px; font-size: 14px; font-weight: 800; text-transform: uppercase; transform: rotate(-5deg); opacity: 0.7; }
+  
+  @media print { body { padding: 16px; } }
 </style></head><body>
-<div class="receipt">
+<div class="invoice">
   <div class="header">
-    <h1>Subscription Receipt</h1>
-    <p>${schoolName}</p>
+    <div>
+      <div class="company-name">Nimblix Technologies OPC Pvt Ltd</div>
+      <div class="company-details">
+        MSME Reg. No.: U62099KA2025OPC203124<br/>
+        Phone: 81234-02974 | Email: info@nimblix.in
+      </div>
+    </div>
+    <div class="invoice-title">INVOICE</div>
   </div>
-  <div class="body">
-    <div class="row"><span class="label">Receipt ID</span><span class="value">${payment.razorpay_payment_id || payment.id.slice(0, 12).toUpperCase()}</span></div>
-    <div class="row"><span class="label">Date</span><span class="value">${payment.paid_at ? format(new Date(payment.paid_at), 'dd MMM yyyy, hh:mm a') : format(new Date(payment.created_at), 'dd MMM yyyy')}</span></div>
-    <div class="row"><span class="label">Status</span><span class="badge">${payment.status === 'success' ? '✓ Paid' : payment.status}</span></div>
-    <div class="row"><span class="label">Plan</span><span class="value">Annual Subscription</span></div>
-    <div class="row"><span class="label">Students</span><span class="value">${studentCount}</span></div>
-    <div class="row"><span class="label">Rate</span><span class="value">₹${pricePerStudent}/student/year</span></div>
-    <div class="total-row"><span class="label" style="font-weight:600;color:#1a1a1a;">Total Amount</span><span class="amount">₹${payment.amount.toLocaleString('en-IN')}</span></div>
-    <p class="words">${numberToIndianWords(payment.amount)}</p>
-    ${payment.razorpay_order_id ? `<div class="row"><span class="label">Order ID</span><span class="value" style="font-size:12px;">${payment.razorpay_order_id}</span></div>` : ''}
+  
+  <div class="meta-row">
+    <div class="meta-block">
+      <div class="meta-label">Invoice No.</div>
+      <div class="meta-value">${receiptId}</div>
+    </div>
+    <div class="meta-block">
+      <div class="meta-label">Date</div>
+      <div class="meta-value">${paymentDate}</div>
+    </div>
+    <div class="meta-block">
+      <div class="meta-label">Status</div>
+      <div class="paid-stamp">PAID</div>
+    </div>
   </div>
-  <div class="footer">This is a computer-generated receipt and does not require a signature.<br/>For any queries, contact your school administrator.</div>
-</div></body></html>`;
+  
+  <div class="to-block">
+    <div class="to-label">Bill To</div>
+    <div class="to-name">${schoolName}</div>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Sl No</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Annual Subscription - School ERP Platform<br/><span style="font-size:11px;color:#6b7280;">${studentCount} student${studentCount !== 1 ? 's' : ''} × ₹${pricePerStudent}/student/year</span></td>
+        <td>${studentCount}</td>
+        <td>₹${pricePerStudent.toLocaleString('en-IN')}</td>
+        <td>₹${payment.amount.toLocaleString('en-IN')}.00</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="total-row">
+    <div class="total-box">
+      <span class="total-label">Total</span>
+      <span class="total-amount">₹${payment.amount.toLocaleString('en-IN')}.00</span>
+    </div>
+  </div>
+  
+  <div class="words">
+    <strong>Amount in words:</strong> INR ${amountWords}
+  </div>
+  
+  <div class="details-grid">
+    <div class="detail-box">
+      <div class="label">Payment ID</div>
+      <div class="value">${payment.razorpay_payment_id || 'N/A'}</div>
+    </div>
+    <div class="detail-box">
+      <div class="label">Order ID</div>
+      <div class="value">${payment.razorpay_order_id || 'N/A'}</div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>This is a computer-generated invoice and does not require a signature.</p>
+    <p>Nimblix Technologies OPC Pvt Ltd | info@nimblix.in | 81234-02974</p>
+  </div>
+</div>
+</body></html>`;
 
   const blob = new Blob([receiptHtml], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
@@ -138,7 +232,6 @@ export default function SubscriptionPage() {
   const isTrial = subscription?.status === 'trial';
   const isExpired = subscription?.status === 'expired';
 
-  // Calculate new (unpaid) students
   const newStudents = isActive ? Math.max(0, dbStudentCount - paidStudentCount) : 0;
   const topUpAmount = newStudents * pricePerStudent;
 
@@ -187,209 +280,190 @@ export default function SubscriptionPage() {
   if (subLoading || studentsLoading) {
     return (
       <AdminLayout title="Subscription">
-        <div className="max-w-2xl mx-auto space-y-5">
-          <Skeleton className="h-56 w-full rounded-xl" />
+        <div className="max-w-3xl mx-auto space-y-5">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+          </div>
           <Skeleton className="h-40 w-full rounded-xl" />
         </div>
       </AdminLayout>
     );
   }
 
+  const statusConfig = isActive
+    ? { label: 'Active', icon: CheckCircle, className: 'bg-emerald-500/10 text-emerald-700 border-emerald-200 dark:text-emerald-400 dark:border-emerald-800' }
+    : isTrial
+    ? { label: 'Trial', icon: Clock, className: 'bg-amber-500/10 text-amber-700 border-amber-200 dark:text-amber-400 dark:border-amber-800' }
+    : isExpired
+    ? { label: 'Expired', icon: XCircle, className: 'bg-destructive/10 text-destructive border-destructive/20' }
+    : { label: 'Pending', icon: Clock, className: 'bg-muted text-muted-foreground border-border' };
+
+  const StatusIcon = statusConfig.icon;
+
   return (
     <AdminLayout title="Subscription">
-      <div className="max-w-2xl mx-auto space-y-5 pb-8">
+      <div className="max-w-3xl mx-auto space-y-5 pb-8">
 
-        {/* Alerts */}
+        {/* Expiry Warning */}
         {isExpired && (
-          <Card className="border-destructive/40 bg-destructive/5">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-destructive/10">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-              </div>
-              <div>
-                <p className="font-semibold text-destructive text-sm">Subscription Expired</p>
-                <p className="text-xs text-muted-foreground">Renew now to continue using all features.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+            <div>
+              <p className="font-semibold text-destructive text-sm">Subscription Expired</p>
+              <p className="text-xs text-muted-foreground">Renew now to continue using all features.</p>
+            </div>
+          </div>
         )}
 
         {daysRemaining > 0 && daysRemaining <= 30 && !isExpired && (
-          <Card className="border-amber-400/40 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-400/10">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Expiring in {daysRemaining} days</p>
-                <p className="text-xs text-muted-foreground">Renew to avoid service interruption.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Expiring in {daysRemaining} days</p>
+              <p className="text-xs text-muted-foreground">Renew to avoid service interruption.</p>
+            </div>
+          </div>
         )}
 
-        {/* Plan Card - Hero */}
-        <Card className="overflow-hidden">
-          <div className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-6 text-primary-foreground">
-            <div className="absolute top-3 right-3">
-              {isActive ? (
-                <Badge className="bg-emerald-500/20 text-emerald-100 border-emerald-400/30 backdrop-blur-sm">
-                  <CheckCircle className="w-3.5 h-3.5 mr-1" /> Active
-                </Badge>
-              ) : isTrial ? (
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Trial
-                </Badge>
-              ) : isExpired ? (
-                <Badge className="bg-red-500/20 text-red-100 border-red-400/30 backdrop-blur-sm">
-                  <XCircle className="w-3.5 h-3.5 mr-1" /> Expired
-                </Badge>
-              ) : (
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <Clock className="w-3.5 h-3.5 mr-1" /> Pending
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-5 h-5 opacity-80" />
-              <span className="text-xs font-medium uppercase tracking-wider opacity-80">Annual Plan</span>
-            </div>
-            <h2 className="text-3xl font-bold">
-              ₹{totalAmount.toLocaleString('en-IN')}
-              <span className="text-base font-normal opacity-70">/year</span>
-            </h2>
-             <p className="text-sm opacity-70 mt-1">
-              {dbStudentCount} students × ₹{pricePerStudent} per student
-            </p>
-          </div>
-
-          <CardContent className="p-0">
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 divide-x divide-border">
-              <div className="p-4 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                  <Users className="w-3.5 h-3.5" />
-                  <span className="text-xs">Active Students</span>
+        {/* Status + Amount Header */}
+        <Card className="overflow-hidden border-0 shadow-lg">
+          <div className="p-6 bg-gradient-to-br from-primary/5 via-background to-primary/3">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Annual Subscription</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-foreground">₹{totalAmount.toLocaleString('en-IN')}</span>
+                  <span className="text-sm text-muted-foreground font-medium">/year</span>
                 </div>
-                <p className="text-2xl font-bold text-foreground">{dbStudentCount}</p>
-              </div>
-              <div className="p-4 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span className="text-xs">Valid Until</span>
-                </div>
-                <p className="text-lg font-bold text-foreground">
-                  {subscription?.end_date
-                    ? format(new Date(subscription.end_date), 'dd MMM yyyy')
-                    : '—'}
+                <p className="text-sm text-muted-foreground mt-1">
+                  {dbStudentCount} student{dbStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
                 </p>
               </div>
+              <Badge variant="outline" className={`${statusConfig.className} text-xs font-semibold px-3 py-1.5`}>
+                <StatusIcon className="w-3.5 h-3.5 mr-1.5" />
+                {statusConfig.label}
+              </Badge>
             </div>
 
-            <Separator />
+            <Button
+              className="w-full h-12 text-sm font-semibold rounded-xl"
+              size="lg"
+              onClick={handlePayment}
+              disabled={paymentLoading || isProcessing || totalAmount <= 0}
+            >
+              {(paymentLoading || isProcessing) ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : isActive ? (
+                <><CreditCard className="w-4 h-4 mr-2" /> Renew Subscription</>
+              ) : (
+                <><CreditCard className="w-4 h-4 mr-2" /> Pay ₹{totalAmount.toLocaleString('en-IN')}</>
+              )}
+            </Button>
+          </div>
+        </Card>
 
-            {/* Details */}
-            <div className="p-5 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Plan Type</span>
-                <span className="font-medium capitalize">{subscription?.plan_type || 'Yearly'}</span>
+        {/* Metric Cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-medium">Students</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Rate</span>
-                <span className="font-medium">₹{pricePerStudent}/student/year</span>
+              <p className="text-2xl font-bold text-foreground">{dbStudentCount}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Active enrolled</p>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <Calendar className="w-4 h-4" />
+                <span className="text-xs font-medium">Valid Until</span>
               </div>
-              {subscription?.start_date && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Start Date</span>
-                  <span className="font-medium">{format(new Date(subscription.start_date), 'dd MMM yyyy')}</span>
-                </div>
-              )}
-              {subscription?.end_date && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">End Date</span>
-                  <span className="font-medium">{format(new Date(subscription.end_date), 'dd MMM yyyy')}</span>
-                </div>
-              )}
+              <p className="text-lg font-bold text-foreground">
+                {subscription?.end_date
+                  ? format(new Date(subscription.end_date), 'dd MMM yy')
+                  : '—'}
+              </p>
               {daysRemaining > 0 && !isExpired && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Days Remaining</span>
-                  <span className="font-medium text-primary">{daysRemaining} days</span>
-                </div>
+                <p className="text-[10px] text-primary font-medium mt-0.5">{daysRemaining} days left</p>
               )}
-            </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                <IndianRupee className="w-4 h-4" />
+                <span className="text-xs font-medium">Rate</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">₹{pricePerStudent}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">per student/year</p>
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="px-5 pb-5">
-              <Button
-                className="w-full h-12 text-base font-semibold"
-                size="lg"
-                onClick={handlePayment}
-                disabled={paymentLoading || isProcessing || totalAmount <= 0}
-              >
-                {(paymentLoading || isProcessing) ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
-                ) : isActive ? (
-                  <><CreditCard className="w-4 h-4 mr-2" /> Renew Subscription</>
-                ) : (
-                  <><CreditCard className="w-4 h-4 mr-2" /> Pay ₹{totalAmount.toLocaleString('en-IN')}</>
-                )}
-              </Button>
-            </div>
+        {/* Subscription Details */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Plan Details</h3>
+            {[
+              { label: 'Plan Type', value: subscription?.plan_type || 'Yearly' },
+              ...(subscription?.start_date ? [{ label: 'Start Date', value: format(new Date(subscription.start_date), 'dd MMM yyyy') }] : []),
+              ...(subscription?.end_date ? [{ label: 'End Date', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
+              { label: 'Paid Students', value: paidStudentCount.toString() },
+            ].map((item, i) => (
+              <div key={i} className="flex justify-between text-sm py-1">
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="font-medium text-foreground capitalize">{item.value}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
-        {/* Top-Up Alert for New Students */}
+        {/* Top-Up Card */}
         {newStudents > 0 && (
-          <Card className="border-amber-400/40 bg-amber-50/30 dark:bg-amber-950/20">
-            <CardContent className="p-5 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-full bg-amber-400/10 shrink-0">
-                  <Users className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">
-                    {newStudents} New Student{newStudents > 1 ? 's' : ''} Added
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    You have {newStudents} student{newStudents > 1 ? 's' : ''} beyond your paid count of {paidStudentCount}. 
-                    Immediate payment of ₹{pricePerStudent}/student is required.
-                  </p>
-                </div>
+          <Card className="border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
+            <div className="bg-amber-50 dark:bg-amber-950/20 p-4 flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
+                <TrendingUp className="w-4 h-4 text-amber-700 dark:text-amber-400" />
               </div>
-
-              <div className="bg-background rounded-lg p-3 space-y-2">
+              <div className="flex-1">
+                <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+                  {newStudents} New Student{newStudents > 1 ? 's' : ''} Detected
+                </p>
+                <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-0.5">
+                  Pay for additional students to keep your subscription up to date.
+                </p>
+              </div>
+            </div>
+            <CardContent className="p-4 space-y-3">
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Paid Students</span>
-                  <span className="font-medium">{paidStudentCount}</span>
+                  <span className="text-muted-foreground">Paid for</span>
+                  <span className="font-medium">{paidStudentCount} students</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Current Active Students</span>
-                  <span className="font-medium">{dbStudentCount}</span>
+                  <span className="text-muted-foreground">Current active</span>
+                  <span className="font-medium">{dbStudentCount} students</span>
                 </div>
                 <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">New Students</span>
-                  <span className="font-semibold text-amber-600">{newStudents}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Rate</span>
-                  <span className="font-medium">₹{pricePerStudent} × {newStudents}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-base font-bold">
-                  <span>Top-Up Amount</span>
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Top-up ({newStudents} × ₹{pricePerStudent})</span>
                   <span className="text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
                 </div>
               </div>
-
               <Button
-                className="w-full h-11 font-semibold"
+                className="w-full h-11 font-semibold rounded-xl"
                 onClick={handleTopUp}
                 disabled={paymentLoading || isProcessing}
               >
                 {(paymentLoading || isProcessing) ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
                 ) : (
-                  <><IndianRupee className="w-4 h-4 mr-1" /> Pay ₹{topUpAmount.toLocaleString('en-IN')} for {newStudents} New Student{newStudents > 1 ? 's' : ''}</>
+                  <><ArrowUpRight className="w-4 h-4 mr-2" /> Pay ₹{topUpAmount.toLocaleString('en-IN')} Top-Up</>
                 )}
               </Button>
             </CardContent>
@@ -397,93 +471,92 @@ export default function SubscriptionPage() {
         )}
 
         {/* Payment History */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <div className="p-1.5 rounded-md bg-primary/10">
-                <Receipt className="w-4 h-4 text-primary" />
-              </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
               Payment History
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
+            </h3>
+
             {paymentsLoading ? (
-              <div className="p-5 space-y-3">
-                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
+              <div className="space-y-3">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
               </div>
             ) : payments && payments.length > 0 ? (
-              <div className="divide-y divide-border">
-                {payments.map((payment) => (
-                  <div key={payment.id} className="px-5 py-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`p-2 rounded-lg shrink-0 ${
-                        payment.status === 'success' ? 'bg-emerald-500/10' :
-                        payment.status === 'failed' ? 'bg-destructive/10' : 'bg-muted'
-                      }`}>
-                        {payment.status === 'success' ? (
-                          <CheckCircle className="w-4 h-4 text-emerald-600" />
-                        ) : payment.status === 'failed' ? (
-                          <XCircle className="w-4 h-4 text-destructive" />
-                        ) : (
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-foreground text-sm">
-                          ₹{payment.amount.toLocaleString('en-IN')}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {payment.paid_at
-                            ? format(new Date(payment.paid_at), 'dd MMM yyyy, hh:mm a')
-                            : format(new Date(payment.created_at), 'dd MMM yyyy')}
-                        </p>
-                        {payment.razorpay_payment_id && (
-                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
-                            {payment.razorpay_payment_id}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge
-                        variant="outline"
-                        className={
-                          payment.status === 'success'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
-                            : payment.status === 'failed'
-                            ? 'border-destructive/30 bg-destructive/5 text-destructive'
-                            : 'text-muted-foreground'
-                        }
-                      >
-                        {payment.status === 'success' ? 'Paid' : payment.status === 'failed' ? 'Failed' : 'Pending'}
-                      </Badge>
-                      {payment.status === 'success' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Download Receipt"
-                          onClick={() => downloadSubscriptionReceipt(
-                            payment,
-                            user?.schoolName || 'School',
-                            dbStudentCount,
-                            pricePerStudent
+              <div className="space-y-2">
+                {payments.map((payment) => {
+                  const isSuccess = payment.status === 'success';
+                  const isFailed = payment.status === 'failed';
+                  return (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                          isSuccess ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                          isFailed ? 'bg-destructive/10' : 'bg-muted'
+                        }`}>
+                          {isSuccess ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : isFailed ? (
+                            <XCircle className="w-4 h-4 text-destructive" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-muted-foreground" />
                           )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-foreground text-sm">
+                            ₹{payment.amount.toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {payment.paid_at
+                              ? format(new Date(payment.paid_at), 'dd MMM yyyy, hh:mm a')
+                              : format(new Date(payment.created_at), 'dd MMM yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-semibold ${
+                            isSuccess
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
+                              : isFailed
+                              ? 'border-destructive/30 bg-destructive/5 text-destructive'
+                              : 'text-muted-foreground'
+                          }`}
                         >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      )}
+                          {isSuccess ? 'Paid' : isFailed ? 'Failed' : 'Pending'}
+                        </Badge>
+                        {isSuccess && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg"
+                            title="Download Invoice"
+                            onClick={() => downloadSubscriptionReceipt(
+                              payment,
+                              user?.schoolName || 'School',
+                              dbStudentCount,
+                              pricePerStudent
+                            )}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center py-10 px-5">
+              <div className="text-center py-10">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-muted-foreground/50" />
+                  <FileText className="w-5 h-5 text-muted-foreground/40" />
                 </div>
-                <p className="font-medium text-muted-foreground text-sm">No payment history</p>
-                <p className="text-xs text-muted-foreground mt-1">Your payment records will appear here</p>
+                <p className="text-sm font-medium text-muted-foreground">No payments yet</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Your payment records will appear here</p>
               </div>
             )}
           </CardContent>
