@@ -36,7 +36,6 @@ export interface FeeInvoice {
   id: string;
   school_id: string;
   student_id: string;
-  term_id: string;
   total_amount: number;
   paid_amount: number;
   balance: number;
@@ -50,29 +49,8 @@ export interface FeeInvoice {
     section: string;
     admission_number: string;
   };
-  term?: {
-    id: string;
-    name: string;
-    academic_year?: {
-      id: string;
-      name: string;
-    };
-  };
   components?: InvoiceComponent[];
   payments?: FeePayment[];
-}
-
-export interface FeeTerm {
-  id: string;
-  school_id: string;
-  academic_year_id: string;
-  name: string;
-  due_date: string;
-  display_order: number;
-  academic_year?: {
-    id: string;
-    name: string;
-  };
 }
 
 export interface InvoiceStats {
@@ -85,59 +63,13 @@ export interface InvoiceStats {
 interface InvoiceFilters {
   status?: string;
   search?: string;
-  termId?: string;
   className?: string;
   page?: number;
   pageSize?: number;
 }
 
-// ─── Fee Terms ───────────────────────────────────────────────────────
-
-export function useFeeTerms() {
-  const schoolId = useEffectiveSchoolId();
-
-  return useQuery({
-    queryKey: ['fee-terms', schoolId],
-    queryFn: async (): Promise<FeeTerm[]> => {
-      if (!schoolId) return [];
-      const { data, error } = await supabase
-        .from('fee_terms')
-        .select('*, academic_year:academic_years(id, name)')
-        .eq('school_id', schoolId)
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-      return (data || []) as any;
-    },
-    enabled: !!schoolId,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-export function useCreateFeeTerm() {
-  const queryClient = useQueryClient();
-  const schoolId = useEffectiveSchoolId();
-
-  return useMutation({
-    mutationFn: async (term: { name: string; academic_year_id: string; due_date: string; display_order?: number }) => {
-      if (!schoolId) throw new Error('No school ID');
-      const { data, error } = await supabase
-        .from('fee_terms')
-        .insert({ ...term, school_id: schoolId })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fee-terms'] });
-      toast.success('Term created');
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
-
 // ─── Fee Invoices ────────────────────────────────────────────────────
+
 
 export function useFeeInvoices(filters?: InvoiceFilters) {
   const schoolId = useEffectiveSchoolId();
@@ -154,7 +86,6 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
         .select(`
           *,
           student:students!inner(id, full_name, class_name, section, admission_number),
-          term:fee_terms(id, name, academic_year:academic_years(id, name)),
           components:fee_invoice_components(id, fee_type, amount),
           payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, bank_name, payment_date, received_by, receipt_number, notes, created_at)
         `, { count: 'exact' })
@@ -169,9 +100,6 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
         }
       }
 
-      if (filters?.termId && filters.termId !== 'all') {
-        query = query.eq('term_id', filters.termId);
-      }
 
       if (filters?.className && filters.className !== 'all') {
         query = query.eq('student.class_name', filters.className);
@@ -243,7 +171,6 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (invoiceData: {
       student_id: string;
-      term_id: string;
       due_date: string;
       components: { fee_type: string; amount: number }[];
     }) => {
@@ -255,13 +182,12 @@ export function useCreateInvoice() {
         .insert({
           school_id: schoolId,
           student_id: invoiceData.student_id,
-          term_id: invoiceData.term_id,
           total_amount: totalAmount,
           paid_amount: 0,
           balance: totalAmount,
           status: 'pending',
           due_date: invoiceData.due_date,
-        })
+        } as any)
         .select()
         .single();
 
@@ -297,7 +223,6 @@ export function useCreateBulkInvoices() {
     mutationFn: async (params: {
       className: string;
       section?: string;
-      term_id: string;
       due_date: string;
       components: { fee_type: string; amount: number }[];
     }) => {
@@ -330,7 +255,6 @@ export function useCreateBulkInvoices() {
         const invoices = batch.map(s => ({
           school_id: schoolId,
           student_id: s.id,
-          term_id: params.term_id,
           total_amount: totalAmount,
           paid_amount: 0,
           balance: totalAmount,

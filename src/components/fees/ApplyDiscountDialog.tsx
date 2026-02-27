@@ -59,7 +59,7 @@ export function ApplyDiscountDialog({ open, onOpenChange, invoice }: Props) {
           <div className="space-y-4">
             <div className="text-sm space-y-1 p-3 rounded-lg bg-muted/50">
               <p><span className="text-muted-foreground">Student:</span> {invoice.student?.full_name}</p>
-              <p><span className="text-muted-foreground">Term:</span> {invoice.term?.name}</p>
+              <p><span className="text-muted-foreground">Due Date:</span> {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-IN') : 'N/A'}</p>
               <p><span className="text-muted-foreground">Balance:</span> <span className="font-semibold">₹{balance.toLocaleString()}</span></p>
             </div>
 

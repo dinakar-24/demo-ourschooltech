@@ -166,7 +166,7 @@ export default function ParentFees() {
         {invoices.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Term Invoices
+              Fee Invoices
             </h3>
             <div className="space-y-2">
               {invoices.map((inv) => {
@@ -193,7 +193,7 @@ export default function ParentFees() {
                               {expandedInvoice === inv.id
                                 ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                 : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                              <span className="font-medium">{inv.term?.name || 'Term'}</span>
+                              <span className="font-medium">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {hasPending && (
@@ -443,7 +443,7 @@ export default function ParentFees() {
           studentId={submitInvoice.student_id}
           schoolId={user?.schoolId || ''}
           maxAmount={Number(submitInvoice.balance)}
-          termName={submitInvoice.term?.name}
+          termName={`Due ${new Date(submitInvoice.due_date).toLocaleDateString('en-IN')}`}
         />
       )}
     </MobileLayout>

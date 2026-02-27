@@ -152,8 +152,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                 <strong>{invoice.student?.class_name} {invoice.student?.section}</strong>
               </div>
               <div>
-                <span style={{ color: '#666' }}>Term: </span>
-                <strong>{invoice.term?.name || 'N/A'}</strong>
+                <span style={{ color: '#666' }}>Due Date: </span>
+                <strong>{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-IN') : 'N/A'}</strong>
               </div>
             </div>
 

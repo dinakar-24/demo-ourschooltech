@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useCreateInvoice, useFeeTerms } from '@/hooks/useFeeInvoices';
+import { useCreateInvoice } from '@/hooks/useFeeInvoices';
 import { useStudentSearch } from '@/hooks/useStudentSearch';
 
 const FEE_COMPONENT_TYPES = [
@@ -29,12 +29,10 @@ interface CreateInvoiceDialogProps {
 }
 
 export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogProps) {
-  const { data: terms } = useFeeTerms();
   const createInvoice = useCreateInvoice();
   const studentSearch = useStudentSearch();
 
   const [studentId, setStudentId] = useState('');
-  const [termId, setTermId] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [components, setComponents] = useState<{ fee_type: string; amount: string; custom_type?: string }[]>([
     { fee_type: '', amount: '' }
@@ -42,7 +40,6 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
 
   const resetForm = () => {
     setStudentId('');
-    setTermId('');
     setDueDate(undefined);
     setComponents([{ fee_type: '', amount: '' }]);
     studentSearch.setSearchInput('');
@@ -71,20 +68,11 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
   const totalAmount = components.reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   const canSubmit = () => {
-    if (!studentId || !termId || !dueDate) return false;
+    if (!studentId || !dueDate) return false;
     return components.every(c => {
       const type = c.fee_type === 'Other' ? c.custom_type?.trim() : c.fee_type;
       return type && Number(c.amount) > 0;
     });
-  };
-
-  // Auto-fill due date from selected term
-  const handleTermChange = (id: string) => {
-    setTermId(id);
-    const term = terms?.find(t => t.id === id);
-    if (term && !dueDate) {
-      setDueDate(new Date(term.due_date));
-    }
   };
 
   const handleSubmit = async () => {
@@ -98,7 +86,6 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
     try {
       await createInvoice.mutateAsync({
         student_id: studentId,
-        term_id: termId,
         due_date: format(dueDate, 'yyyy-MM-dd'),
         components: comps,
       });
@@ -146,26 +133,6 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Term */}
-          <div className="space-y-2">
-            <Label>Term / Installment <span className="text-destructive">*</span></Label>
-            <Select value={termId} onValueChange={handleTermChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select term" />
-              </SelectTrigger>
-              <SelectContent>
-                {(terms || []).map(t => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name} {t.academic_year ? `(${(t.academic_year as any).name})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {(!terms || terms.length === 0) && (
-              <p className="text-xs text-muted-foreground">No terms found. Create terms first from Settings.</p>
             )}
           </div>
 

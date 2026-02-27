@@ -453,7 +453,7 @@ export type Database = {
           school_id: string
           status: string
           student_id: string
-          term_id: string
+          term_id: string | null
           total_amount: number
           updated_at: string
         }
@@ -466,7 +466,7 @@ export type Database = {
           school_id: string
           status?: string
           student_id: string
-          term_id: string
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -479,7 +479,7 @@ export type Database = {
           school_id?: string
           status?: string
           student_id?: string
-          term_id?: string
+          term_id?: string | null
           total_amount?: number
           updated_at?: string
         }

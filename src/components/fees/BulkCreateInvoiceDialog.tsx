@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
-import { useFeeTerms, useCreateBulkInvoices } from '@/hooks/useFeeInvoices';
+import { useCreateBulkInvoices } from '@/hooks/useFeeInvoices';
 import { useClasses } from '@/hooks/useClasses';
 
 interface Props {
@@ -16,11 +16,9 @@ interface Props {
 export function BulkCreateInvoiceDialog({ open, onOpenChange }: Props) {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('all');
-  const [selectedTerm, setSelectedTerm] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [components, setComponents] = useState([{ fee_type: '', amount: 0 }]);
 
-  const { data: terms } = useFeeTerms();
   const { data: classes } = useClasses();
   const selectedClassObj = classes?.find(c => c.name === selectedClass);
   const sections = selectedClassObj?.sections || [];
@@ -35,7 +33,7 @@ export function BulkCreateInvoiceDialog({ open, onOpenChange }: Props) {
   };
 
   const totalAmount = components.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-  const isValid = selectedClass && selectedTerm && dueDate && components.every(c => c.fee_type && c.amount > 0);
+  const isValid = selectedClass && dueDate && components.every(c => c.fee_type && c.amount > 0);
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -43,7 +41,6 @@ export function BulkCreateInvoiceDialog({ open, onOpenChange }: Props) {
       {
         className: selectedClass,
         section: selectedSection === 'all' ? undefined : selectedSection,
-        term_id: selectedTerm,
         due_date: dueDate,
         components: components.map(c => ({ fee_type: c.fee_type, amount: Number(c.amount) })),
       },
@@ -52,7 +49,6 @@ export function BulkCreateInvoiceDialog({ open, onOpenChange }: Props) {
           onOpenChange(false);
           setSelectedClass('');
           setSelectedSection('all');
-          setSelectedTerm('');
           setDueDate('');
           setComponents([{ fee_type: '', amount: 0 }]);
         },
@@ -94,22 +90,9 @@ export function BulkCreateInvoiceDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Term *</Label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger>
-                <SelectContent>
-                  {(terms || []).map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Due Date *</Label>
-              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-            </div>
+          <div className="space-y-1.5">
+            <Label>Due Date *</Label>
+            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
           </div>
 
           <div className="space-y-2">

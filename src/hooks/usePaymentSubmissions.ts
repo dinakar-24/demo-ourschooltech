@@ -35,7 +35,7 @@ export function usePaymentSubmissions(status?: string) {
         .select(`
           *,
           student:students(full_name, admission_number, class_name, section),
-          invoice:fee_invoices(total_amount, balance, due_date, term:fee_terms(name))
+          invoice:fee_invoices(total_amount, balance, due_date)
         `)
         .order('created_at', { ascending: false });
 

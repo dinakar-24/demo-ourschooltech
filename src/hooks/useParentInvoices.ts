@@ -4,13 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 export interface ParentInvoice {
   id: string;
   student_id: string;
-  term_id: string;
   total_amount: number;
   paid_amount: number;
   balance: number;
   status: string;
   due_date: string;
-  term?: { id: string; name: string };
   components?: { id: string; fee_type: string; amount: number }[];
   payments?: {
     id: string;
@@ -40,8 +38,7 @@ export function useParentInvoices(studentId?: string) {
       const { data, error } = await supabase
         .from('fee_invoices')
         .select(`
-          id, student_id, term_id, total_amount, paid_amount, balance, status, due_date,
-          term:fee_terms(id, name),
+          id, student_id, total_amount, paid_amount, balance, status, due_date,
           components:fee_invoice_components(id, fee_type, amount),
           payments:fee_payments(id, amount, payment_method, payment_date, receipt_number, transaction_id, notes, created_at),
           discounts:fee_discounts(id, discount_amount, reason, notes, created_at)

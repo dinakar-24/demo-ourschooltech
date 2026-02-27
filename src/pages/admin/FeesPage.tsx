@@ -22,10 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
-  ChevronDown, ChevronRight, Receipt, CalendarDays, FileText, User,
+  ChevronDown, ChevronRight, Receipt, FileText, User,
   Users, Download, Bell, Percent, ShieldCheck,
 } from 'lucide-react';
-import { useFeeInvoices, useInvoiceStats, useFeeTerms, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
+import { useFeeInvoices, useInvoiceStats, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import { usePaymentSubmissions } from '@/hooks/usePaymentSubmissions';
 import { PaymentVerificationPanel } from '@/components/fees/PaymentVerificationPanel';
 import { useFees, FeeRecord } from '@/hooks/useFees';
@@ -34,7 +34,6 @@ import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
-import { CreateTermDialog } from '@/components/fees/CreateTermDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { BulkCreateInvoiceDialog } from '@/components/fees/BulkCreateInvoiceDialog';
@@ -113,7 +112,6 @@ export default function FeesPage() {
   const isMobile = useIsMobile();
   const [searchInput, setSearchInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedTerm, setSelectedTerm] = useState('all');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSection, setSelectedSection] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -124,7 +122,6 @@ export default function FeesPage() {
 
   // Dialogs
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<FeeInvoice | null>(null);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
@@ -145,14 +142,12 @@ export default function FeesPage() {
   const { data: invoicesResult, isLoading } = useFeeInvoices({
     status: selectedStatus,
     search: debouncedSearch,
-    termId: selectedTerm,
     className: selectedClass,
     page: 1,
     pageSize: 500,
   });
   const invoices = invoicesResult?.data || [];
   const { data: invoiceStats } = useInvoiceStats();
-  const { data: terms } = useFeeTerms();
 
   const { data: legacyResult, isLoading: legacyLoading } = useFees({
     status: selectedStatus,
@@ -252,8 +247,8 @@ export default function FeesPage() {
               <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{inv.term?.name || 'N/A'}</span>
-                    <span className="text-xs text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                    <span className="text-sm font-medium">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                    <span className="text-xs text-muted-foreground">₹{Number(inv.total_amount).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(inv.status, inv.due_date)}
@@ -391,9 +386,6 @@ export default function FeesPage() {
                   <DropdownMenuItem onClick={generatePaymentHistory}>Payment History</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
-                <CalendarDays className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Add</span> Term
-              </Button>
               <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
                 <Users className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Bulk</span> Create
               </Button>
@@ -408,17 +400,6 @@ export default function FeesPage() {
               <Input placeholder="Search student..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
             </div>
             <div className="flex gap-2">
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Term" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Terms</SelectItem>
-                  {(terms || []).map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection('all'); }}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Class" />
@@ -491,7 +472,7 @@ export default function FeesPage() {
               <div className="text-center py-12 text-muted-foreground">
                 <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="font-medium">No student fee records found</p>
-                <p className="text-sm mt-1">Create terms and invoices to get started</p>
+                <p className="text-sm mt-1">Create invoices to get started</p>
               </div>
             ) : isMobile ? (
               /* ── Mobile: Cards ── */
@@ -584,7 +565,6 @@ export default function FeesPage() {
         </Card>
 
         {/* Dialogs */}
-        <CreateTermDialog open={termDialogOpen} onOpenChange={setTermDialogOpen} />
         <CreateInvoiceDialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen} />
         <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} />
         <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
