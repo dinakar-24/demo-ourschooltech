@@ -24,7 +24,7 @@ export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
             <Menu className="w-5 h-5" />
           </Button>
           {isSubdomain && tenant?.logo && (
-            <img src={tenant.logo} alt={tenant.name} className="w-8 h-8 rounded-lg object-contain hidden md:block" />
+            <img src={tenant.logo} alt={tenant.name} className="w-8 h-8 rounded-lg object-contain hidden md:block" loading="eager" fetchPriority="high" decoding="sync" />
           )}
           <h1 className="text-lg md:text-xl font-display font-semibold text-foreground">{title}</h1>
         </div>

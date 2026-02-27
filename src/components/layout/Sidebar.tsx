@@ -218,7 +218,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         {!isCollapsed && (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src={displayLogo} alt={displayName} className="w-10 h-10 object-contain drop-shadow-md" />
+              <img src={displayLogo} alt={displayName} className="w-10 h-10 object-contain drop-shadow-md" loading="eager" fetchPriority="high" decoding="sync" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-accent-foreground truncate">
@@ -304,7 +304,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
           isCollapsed && "justify-center"
         )}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center">
-            <img src={displayLogo} alt={displayName} className="w-9 h-9 object-contain" />
+            <img src={displayLogo} alt={displayName} className="w-9 h-9 object-contain" loading="eager" fetchPriority="high" decoding="sync" />
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
