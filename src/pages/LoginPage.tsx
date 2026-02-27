@@ -43,7 +43,7 @@ const roleIcons: Record<string, string> = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
 
   const [step, setStep] = useState<LoginStep>('splash');
   const [email, setEmail] = useState('');
@@ -55,6 +55,8 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  const handleSplashComplete = useCallback(() => setStep('email'), []);
+
   useEffect(() => {
     if (isAuthenticated && user) {
       const paths: Record<string, string> = {
@@ -64,11 +66,27 @@ export default function LoginPage() {
         parent: '/parent/dashboard',
         student: '/student/dashboard',
       };
-      navigate(paths[user.role] || '/dashboard');
+      navigate(paths[user.role] || '/dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
-  const handleSplashComplete = useCallback(() => setStep('email'), []);
+  // While auth is loading, show a centered loader instead of the login form
+  if (authLoading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
+  }
+
+  // If already authenticated, don't render login form (redirect will happen via useEffect)
+  if (isAuthenticated && user) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
+  }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
