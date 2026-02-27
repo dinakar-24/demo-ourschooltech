@@ -87,12 +87,22 @@ async function downloadSubscriptionReceipt(
   pricePerStudent: number
 ) {
   const paymentDate = payment.paid_at
-    ? format(new Date(payment.paid_at), 'dd-MMMM-yy')
-    : format(new Date(payment.created_at), 'dd-MMMM-yy');
+    ? format(new Date(payment.paid_at), 'dd MMMM yyyy')
+    : format(new Date(payment.created_at), 'dd MMMM yyyy');
+  const billingStart = payment.paid_at
+    ? format(new Date(payment.paid_at), 'dd MMM yyyy')
+    : format(new Date(payment.created_at), 'dd MMM yyyy');
+  const billingEndDate = payment.paid_at
+    ? new Date(new Date(payment.paid_at).setFullYear(new Date(payment.paid_at).getFullYear() + 1))
+    : new Date(new Date(payment.created_at).setFullYear(new Date(payment.created_at).getFullYear() + 1));
+  const billingEnd = format(billingEndDate, 'dd MMM yyyy');
   const receiptId = (payment.razorpay_payment_id || payment.id.slice(0, 8)).toUpperCase();
-  const billNo = receiptId.replace('PAY_', '').slice(0, 8);
+  const billNo = 'INV-' + receiptId.replace('PAY_', '').slice(0, 8);
   const amountWords = numberToIndianWords(payment.amount);
   const paymentType = (payment as any).payment_type === 'topup' ? 'Top-Up' : 'Renewal';
+  const subtotal = payment.amount;
+  const gst = 0;
+  const total = subtotal + gst;
 
   const logoBase64 = await getLogoBase64();
 
@@ -101,148 +111,178 @@ async function downloadSubscriptionReceipt(
 <html><head><meta charset="utf-8">
 <title>Invoice ${billNo} — Our School Tech</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .page{max-width:780px;margin:0 auto;border:1px solid #e0e0e0;}
+  body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:760px;margin:20px auto;background:#fff;}
 
   /* HEADER */
-  .hdr{background:#111;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;}
-  .hdr-left{display:flex;align-items:center;gap:16px;}
-  .hdr-left img{height:44px;width:auto;}
-  .hdr-info{}
-  .hdr-name{color:#fff;font-size:18px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;}
-  .hdr-sub{color:#777;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
-  .hdr-right{}
-  .hdr-inv{color:#fff;font-size:32px;font-weight:900;letter-spacing:3px;text-transform:uppercase;}
+  .hdr{padding:32px 40px 24px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e8e8e8;}
+  .hdr-left{display:flex;align-items:center;gap:12px;}
+  .hdr-left img{height:36px;width:auto;}
+  .hdr-co{font-size:15px;font-weight:600;color:#1a1a1a;}
+  .hdr-url{font-size:11px;color:#888;margin-top:2px;}
+  .hdr-right{text-align:right;}
+  .hdr-title{font-size:24px;font-weight:700;color:#0F766E;letter-spacing:-0.5px;}
+  .hdr-id{font-size:11px;color:#999;margin-top:4px;}
 
-  /* META */
-  .meta{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid #111;margin:0;}
-  .meta-c{padding:16px 20px;border-right:1px solid #ddd;}
+  .body{padding:28px 40px;}
+
+  /* META ROW */
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#fafafa;border-radius:8px;padding:16px 0;margin-bottom:28px;}
+  .meta-c{padding:0 20px;border-right:1px solid #eee;}
   .meta-c:last-child{border-right:none;}
-  .meta-c .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:700;}
-  .meta-c .val{font-size:15px;font-weight:800;color:#111;margin-top:5px;}
+  .meta-c .lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;}
+  .meta-c .val{font-size:13px;font-weight:600;color:#1a1a1a;margin-top:4px;}
+  .badge-paid{display:inline-flex;align-items:center;gap:4px;background:#ecfdf5;color:#059669;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
 
-  .content{padding:28px 36px;}
+  /* BILLING INFO */
+  .billing-row{display:flex;justify-content:space-between;margin-bottom:24px;}
+  .bill-block{}
+  .bill-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:6px;}
+  .bill-name{font-size:16px;font-weight:600;color:#1a1a1a;}
+  .bill-desc{font-size:12px;color:#777;margin-top:3px;}
+  .bill-period{font-size:11px;color:#888;margin-top:2px;}
 
-  /* BILLED */
-  .billed .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;}
-  .billed .name{font-size:22px;font-weight:900;color:#111;margin-top:4px;}
-  .billed .desc{font-size:12px;color:#777;margin-top:4px;}
-
-  .sep{height:1px;background:#e5e5e5;margin:24px 0;}
+  .divider{height:1px;background:#f0f0f0;margin:0 0 24px;}
 
   /* TABLE */
-  table{width:100%;border-collapse:collapse;}
-  thead{background:#111;}
-  thead th{color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:12px 16px;text-align:left;}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+  thead th{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:#999;font-weight:600;padding:10px 12px;text-align:left;border-bottom:1px solid #eee;}
   thead th.cen{text-align:center;}
   thead th.rt{text-align:right;}
-  tbody td{padding:16px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top;}
-  tbody td.cen{text-align:center;}
-  tbody td.rt{text-align:right;}
-  .svc-name{font-weight:800;font-size:14px;color:#111;}
-  .svc-sub{font-size:11px;color:#999;margin-top:3px;}
-  .amt{font-weight:900;font-size:16px;color:#111;}
+  tbody td{padding:14px 12px;font-size:13px;color:#333;border-bottom:1px solid #f5f5f5;vertical-align:top;}
+  tbody td.cen{text-align:center;color:#555;}
+  tbody td.rt{text-align:right;color:#333;}
+  .svc-name{font-weight:600;color:#1a1a1a;}
+  .svc-sub{font-size:11px;color:#aaa;margin-top:2px;font-weight:400;}
 
   /* TOTALS */
-  .totals{display:flex;justify-content:flex-end;margin-top:0;}
-  .totals-box{width:300px;}
-  .trow{display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#777;border-bottom:1px solid #f0f0f0;}
-  .trow .tv{font-weight:700;color:#333;}
-  .grand{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#111;color:#fff;margin-top:4px;}
-  .grand .gl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;}
-  .grand .gv{font-size:24px;font-weight:900;letter-spacing:.5px;}
+  .totals{display:flex;justify-content:flex-end;margin-bottom:20px;}
+  .totals-box{width:260px;}
+  .trow{display:flex;justify-content:space-between;padding:7px 0;font-size:12px;color:#777;}
+  .trow .tv{color:#333;font-weight:500;}
+  .trow-total{display:flex;justify-content:space-between;padding:10px 0;font-size:14px;font-weight:700;color:#1a1a1a;border-top:2px solid #0F766E;margin-top:4px;}
+  .trow-total .tv{color:#0F766E;font-size:16px;}
 
-  /* WORDS */
-  .words-bar{margin:24px 0;padding:14px 18px;background:#f7f7f7;border-left:4px solid #111;font-size:12px;color:#555;}
-  .words-bar strong{color:#111;font-weight:800;}
+  /* AMOUNT WORDS */
+  .words{padding:10px 14px;background:#f9fafb;border-radius:6px;font-size:11px;color:#666;margin-bottom:24px;}
+  .words strong{color:#333;font-weight:600;}
+
+  /* PAYMENT METHOD */
+  .pay-method{margin-bottom:24px;}
+  .pay-method .lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:4px;}
+  .pay-method .val{font-size:12px;color:#333;font-weight:500;}
 
   /* INFO GRID */
-  .info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e0e0e0;margin-bottom:0;}
-  .info-cell{padding:20px 24px;}
-  .info-cell+.info-cell{border-left:1px solid #e0e0e0;}
-  .info-cell .sec-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:800;margin-bottom:10px;}
-  .info-cell .row{font-size:11px;line-height:2.2;display:flex;}
-  .info-cell .row .k{color:#999;width:100px;flex-shrink:0;}
-  .info-cell .row .v{color:#222;font-weight:600;}
-  .info-cell .terms{font-size:10px;color:#888;line-height:1.8;}
+  .info{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;padding-top:20px;border-top:1px solid #f0f0f0;}
+  .info-cell{}
+  .info-cell .sec-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:8px;}
+  .info-cell .row{font-size:11px;line-height:2;display:flex;}
+  .info-cell .row .k{color:#aaa;width:80px;flex-shrink:0;}
+  .info-cell .row .v{color:#333;font-weight:500;}
+  .info-cell .terms{font-size:10px;color:#aaa;line-height:1.7;}
 
   /* FOOTER */
-  .ftr{background:#111;padding:24px 36px;display:flex;justify-content:space-between;align-items:flex-end;}
-  .ftr-l .fn{color:#fff;font-size:14px;font-weight:800;}
-  .ftr-l .fd{color:#666;font-size:9px;line-height:1.8;margin-top:4px;}
+  .ftr{padding:20px 40px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-end;background:#fafafa;}
+  .ftr-l .fn{font-size:12px;font-weight:600;color:#333;}
+  .ftr-l .fd{font-size:10px;color:#999;line-height:1.7;margin-top:2px;}
   .ftr-r{text-align:right;}
-  .ftr-r .fl{color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;}
-  .ftr-r .fsig{color:#fff;font-size:17px;font-weight:900;margin-top:6px;font-style:italic;}
-  .ftr-r .frole{color:#888;font-size:9px;margin-top:3px;}
+  .ftr-r .fl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:500;}
+  .ftr-r .fsig{font-size:13px;font-weight:600;color:#1a1a1a;margin-top:4px;}
+  .ftr-r .frole{font-size:10px;color:#999;margin-top:1px;}
 
-  .ref{padding:8px 36px;background:#f5f5f5;display:flex;justify-content:space-between;font-size:8px;color:#bbb;font-family:monospace;letter-spacing:.5px;border-top:1px solid #e0e0e0;}
+  .ref{padding:8px 40px;display:flex;justify-content:space-between;font-size:9px;color:#ccc;font-family:'SF Mono',monospace;letter-spacing:0.3px;border-top:1px solid #f0f0f0;}
 
-  @media print{.page{border:none;max-width:100%;}}
+  @media print{body{margin:0;}.page{margin:0;max-width:100%;}}
 </style></head><body>
 <div class="page">
+
   <div class="hdr">
     <div class="hdr-left">
       ${logoBase64 ? `<img src="${logoBase64}" alt="Logo"/>` : ''}
-      <div class="hdr-info">
-        <div class="hdr-name">Our School Tech</div>
-        <div class="hdr-sub">ourschooltech.com</div>
+      <div>
+        <div class="hdr-co">Our School Tech</div>
+        <div class="hdr-url">ourschooltech.com</div>
       </div>
     </div>
     <div class="hdr-right">
-      <div class="hdr-inv">Invoice</div>
+      <div class="hdr-title">Invoice</div>
+      <div class="hdr-id">${billNo}</div>
     </div>
   </div>
 
-  <div class="meta">
-    <div class="meta-c"><div class="lbl">Invoice No.</div><div class="val">${billNo}</div></div>
-    <div class="meta-c"><div class="lbl">Date</div><div class="val">${paymentDate}</div></div>
-    <div class="meta-c"><div class="lbl">Payment</div><div class="val">✓ PAID</div></div>
-    <div class="meta-c"><div class="lbl">Students</div><div class="val">${studentCount}</div></div>
-  </div>
-
-  <div class="content">
-    <div class="billed">
-      <div class="lbl">Billed To</div>
-      <div class="name">${schoolName}</div>
-      <div class="desc">School ERP Platform — Annual ${paymentType} Subscription</div>
+  <div class="body">
+    <div class="meta">
+      <div class="meta-c">
+        <div class="lbl">Invoice Date</div>
+        <div class="val">${paymentDate}</div>
+      </div>
+      <div class="meta-c">
+        <div class="lbl">Billing Period</div>
+        <div class="val">${billingStart} — ${billingEnd}</div>
+      </div>
+      <div class="meta-c">
+        <div class="lbl">Status</div>
+        <div class="val"><span class="badge-paid">✓ Paid</span></div>
+      </div>
+      <div class="meta-c">
+        <div class="lbl">Students</div>
+        <div class="val">${studentCount}</div>
+      </div>
     </div>
 
-    <div class="sep"></div>
+    <div class="billing-row">
+      <div class="bill-block">
+        <div class="bill-label">Billed To</div>
+        <div class="bill-name">${schoolName}</div>
+        <div class="bill-desc">Annual ${paymentType} — School ERP Platform</div>
+      </div>
+      <div class="bill-block" style="text-align:right;">
+        <div class="bill-label">From</div>
+        <div class="bill-name" style="font-size:13px;">Our School Tech</div>
+        <div class="bill-desc">support@ourschooltech.com</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
 
     <table>
       <thead><tr>
-        <th style="width:36px">#</th>
-        <th>Service Description</th>
-        <th class="cen" style="width:60px">Qty</th>
-        <th class="rt" style="width:100px">Rate (₹)</th>
-        <th class="rt" style="width:120px">Amount (₹)</th>
+        <th style="width:32px">#</th>
+        <th>Description</th>
+        <th class="cen" style="width:50px">Qty</th>
+        <th class="rt" style="width:90px">Rate</th>
+        <th class="rt" style="width:100px">Amount</th>
       </tr></thead>
       <tbody><tr>
-        <td>1</td>
+        <td style="color:#aaa;">1</td>
         <td>
           <div class="svc-name">School ERP Platform — Annual ${paymentType}</div>
-          <div class="svc-sub">Cloud-based school management system · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
+          <div class="svc-sub">Cloud-based school management · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
         </td>
         <td class="cen">${studentCount}</td>
-        <td class="rt">${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="rt amt">${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="rt">₹${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="rt" style="font-weight:600;">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
       </tr></tbody>
     </table>
 
     <div class="totals">
       <div class="totals-box">
-        <div class="grand">
-          <span class="gl">Total</span>
-          <span class="gv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-        </div>
+        <div class="trow"><span>Subtotal</span><span class="tv">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+        <div class="trow"><span>GST (0%)</span><span class="tv">₹${gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+        <div class="trow-total"><span>Total</span><span class="tv">₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
       </div>
     </div>
 
-    <div class="words-bar">
-      <strong>Amount in words:</strong>&nbsp; INR ${amountWords}
+    <div class="words">
+      <strong>Amount in words:</strong> INR ${amountWords}
+    </div>
+
+    <div class="pay-method">
+      <div class="lbl">Payment Method</div>
+      <div class="val">${payment.razorpay_payment_id ? 'Online Payment (Razorpay)' : 'Online Payment'}</div>
     </div>
 
     <div class="info">
@@ -267,7 +307,7 @@ async function downloadSubscriptionReceipt(
   <div class="ftr">
     <div class="ftr-l">
       <div class="fn">Our School Tech</div>
-      <div class="fd">ourschooltech.com<br/>support@ourschooltech.com</div>
+      <div class="fd">ourschooltech.com · support@ourschooltech.com</div>
     </div>
     <div class="ftr-r">
       <div class="fl">Authorized Signatory</div>
@@ -278,9 +318,10 @@ async function downloadSubscriptionReceipt(
 
   ${payment.razorpay_payment_id ? `
   <div class="ref">
-    <span>PAYMENT : ${payment.razorpay_payment_id}</span>
-    <span>ORDER : ${payment.razorpay_order_id || '—'}</span>
+    <span>Payment ID: ${payment.razorpay_payment_id}</span>
+    <span>Order ID: ${payment.razorpay_order_id || '—'}</span>
   </div>` : ''}
+
 </div>
 </body></html>`;
 
