@@ -153,6 +153,37 @@ export function useAutoCreateGroups() {
           created++;
         }
 
+        // 6. Create "All School" broadcast — includes ALL students, teachers, and parents
+        if (!existingKeys.has('broadcast::All School')) {
+          // Gather all student user_ids
+          const { data: allStudentsWithIds } = await supabase
+            .from('students')
+            .select('user_id, parent_email')
+            .eq('school_id', schoolId)
+            .eq('status', 'active');
+
+          const studentUserIds = (allStudentsWithIds || [])
+            .map(s => s.user_id)
+            .filter(Boolean) as string[];
+
+          // Gather all parent profile IDs
+          const allParentEmails = [...new Set(
+            (allStudentsWithIds || []).map(s => s.parent_email).filter(Boolean) as string[]
+          )];
+          let parentProfileIds: string[] = [];
+          if (allParentEmails.length > 0) {
+            const { data: parentProfiles } = await supabase
+              .from('profiles')
+              .select('id')
+              .in('email', allParentEmails);
+            parentProfileIds = (parentProfiles || []).map(p => p.id);
+          }
+
+          const allSchoolMembers = [...new Set([...allTeacherIds, ...studentUserIds, ...parentProfileIds])];
+          await createConv('broadcast', 'All School', allSchoolMembers);
+          created++;
+        }
+
         console.log('[AutoGroups] Total created:', created);
         if (created > 0) {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });

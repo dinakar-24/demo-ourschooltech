@@ -49,7 +49,7 @@ export default function MessagesPage() {
   if (isMobile) {
     return (
       <AdminLayout>
-        <div className="h-[calc(100dvh-8rem)]">
+        <div className="flex flex-col h-[calc(100dvh-4rem)]">
           {!selectedConv ? (
             <ConversationList
               conversations={conversations}
