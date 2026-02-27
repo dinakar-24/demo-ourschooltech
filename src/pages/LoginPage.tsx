@@ -194,11 +194,11 @@ export default function LoginPage() {
         >
           <ArrowLeft className="w-4 h-4" />
         </motion.button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg overflow-hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl overflow-hidden">
             <img src={appLogo} alt="Our School Tech" className="w-full h-full object-contain" />
           </div>
-          <span className="text-sm font-semibold text-white/70">Our School Tech</span>
+          <span className="text-base font-bold text-white/80">Our School Tech</span>
         </div>
       </header>
 
@@ -230,7 +230,7 @@ export default function LoginPage() {
       {/* Footer */}
       <footer className="relative z-10 px-5 py-3 text-center safe-area-bottom">
         <p className="text-[11px] text-white/20">
-          Need help? <a href="mailto:support@ourschooltech.in" className="hover:text-white/40 underline underline-offset-2">support@ourschooltech.in</a>
+          Need help? <a href="mailto:support@ourschooltech.com" className="hover:text-white/40 underline underline-offset-2">support@ourschooltech.com</a>
         </p>
       </footer>
 
