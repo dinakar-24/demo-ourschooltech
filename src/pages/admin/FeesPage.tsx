@@ -249,65 +249,67 @@ export default function FeesPage() {
           </h4>
           <div className="space-y-3">
             {g.invoices.map(inv => (
-              <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2">
+              <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2.5">
                 {/* Invoice Header */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
-                    <span className="text-base font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                    <span className="text-sm font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
                     {getStatusBadge(inv.status, inv.due_date)}
                   </div>
                   {inv.status !== 'paid' && (
                     <div className="flex items-center gap-1.5">
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
-                        <Percent className="w-3 h-3 mr-1" /> Discount
+                      <Button size="sm" variant="outline" className="h-8 text-xs px-3" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
+                        <Percent className="w-3.5 h-3.5 mr-1" /> Discount
                       </Button>
-                      <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openPayment(inv)}>
-                        <CreditCard className="w-3 h-3 mr-1" /> Pay All
+                      <Button size="sm" variant="default" className="h-8 text-xs px-3" onClick={() => openPayment(inv)}>
+                        <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay All
                       </Button>
                     </div>
                   )}
                 </div>
 
-                {/* Fee Components - compact table-like rows */}
+                {/* Fee Components */}
                 {(inv.components || []).length > 0 && (
-                  <div className="divide-y divide-border/50 border rounded-md overflow-hidden">
-                    {(inv.components || []).map(c => {
-                      const componentAmount = Number(c.amount);
-                      const canPayComponent = inv.status !== 'paid' && Number(inv.balance) > 0;
-                      const payableAmount = Math.min(componentAmount, Number(inv.balance));
-                      return (
-                        <div key={c.id} className="flex items-center justify-between px-3 py-2 bg-muted/20 hover:bg-muted/30">
-                          <span className="text-sm font-medium">{c.fee_type}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold tabular-nums">₹{componentAmount.toLocaleString()}</span>
-                            {canPayComponent && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 text-[10px] px-2 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
-                                onClick={() => openPayment(inv, payableAmount, c.fee_type)}
-                              >
-                                Pay
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {(inv.components || []).map(c => {
+                        const componentAmount = Number(c.amount);
+                        const canPayComponent = inv.status !== 'paid' && Number(inv.balance) > 0;
+                        const payableAmount = Math.min(componentAmount, Number(inv.balance));
+                        return (
+                          <tr key={c.id} className="border-b border-border/40 last:border-0">
+                            <td className="py-1.5 font-medium">{c.fee_type}</td>
+                            <td className="py-1.5 text-right font-bold tabular-nums w-28">₹{componentAmount.toLocaleString()}</td>
+                            <td className="py-1.5 text-right w-16">
+                              {canPayComponent && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs px-3 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                                  onClick={() => openPayment(inv, payableAmount, c.fee_type)}
+                                >
+                                  Pay
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Totals row */}
+                      <tr className="border-t border-dashed">
+                        <td className="pt-2 text-xs text-muted-foreground">
+                          Total: <span className="font-bold text-sm text-foreground">₹{Number(inv.total_amount).toLocaleString()}</span>
+                          <span className="ml-3">Paid: <span className="font-bold text-sm text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
+                          <span className="ml-3">Balance: <span className="font-bold text-sm text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tbody>
+                  </table>
                 )}
 
-                {/* Totals - inline */}
-                <div className="flex items-center justify-between text-sm border-t border-dashed pt-2 px-1">
-                  <div className="flex items-center gap-4">
-                    <span><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold">₹{Number(inv.total_amount).toLocaleString()}</span></span>
-                    <span><span className="text-muted-foreground text-xs">Paid:</span> <span className="font-bold text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
-                    <span><span className="text-muted-foreground text-xs">Balance:</span> <span className="font-bold text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
-                  </div>
-                </div>
-
-                {/* Payments - compact */}
+                {/* Payments */}
                 {(inv.payments || []).length > 0 && (
                   <div className="space-y-1">
                     {(inv.payments || []).map(p => (
@@ -317,7 +319,7 @@ export default function FeesPage() {
                           <span className="text-muted-foreground capitalize">{p.payment_method}</span>
                           <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
                         </span>
-                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openReceipt(p, inv)}>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
                           <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
                         </Button>
                       </div>
