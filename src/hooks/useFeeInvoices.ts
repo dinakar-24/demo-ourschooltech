@@ -48,6 +48,9 @@ export interface FeeInvoice {
     class_name: string;
     section: string;
     admission_number: string;
+    parent_name?: string | null;
+    parent_email?: string | null;
+    roll_number?: number | null;
   };
   components?: InvoiceComponent[];
   payments?: FeePayment[];
@@ -85,7 +88,7 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
         .from('fee_invoices')
         .select(`
           *,
-          student:students!inner(id, full_name, class_name, section, admission_number),
+          student:students!inner(id, full_name, class_name, section, admission_number, parent_name, parent_email, roll_number),
           components:fee_invoice_components(id, fee_type, amount),
           payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, bank_name, payment_date, received_by, receipt_number, notes, created_at)
         `, { count: 'exact' })

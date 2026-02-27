@@ -157,8 +157,22 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                 <span style={valueStyle}>{invoice.student?.admission_number || 'N/A'}</span>
               </div>
               <div>
+                <span style={labelStyle}>Father's Name: </span>
+                <span style={valueStyle}>{invoice.student?.parent_name || '--'}</span>
+              </div>
+              <div>
                 <span style={labelStyle}>Class: </span>
                 <span style={valueStyle}>{invoice.student?.class_name} {invoice.student?.section}</span>
+              </div>
+              {invoice.student?.parent_email && (
+                <div>
+                  <span style={labelStyle}>Email: </span>
+                  <span style={valueStyle}>{invoice.student.parent_email}</span>
+                </div>
+              )}
+              <div>
+                <span style={labelStyle}>Roll No: </span>
+                <span style={valueStyle}>{invoice.student?.roll_number || '--'}</span>
               </div>
             </div>
 
