@@ -2,21 +2,17 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatView } from '@/components/messaging/ChatView';
-import { NewChatDialog } from '@/components/messaging/NewChatDialog';
-import { useConversations, useMessages, useCreateConversation, useRealtimeConversations, Conversation } from '@/hooks/useMessages';
+import { useConversations, useMessages, useRealtimeConversations, Conversation } from '@/hooks/useMessages';
 import { useAutoCreateGroups } from '@/hooks/useAutoCreateGroups';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MessageCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function MessagesPage() {
   const isMobile = useIsMobile();
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [newChatOpen, setNewChatOpen] = useState(false);
 
   const { data: conversations = [], isLoading: convsLoading } = useConversations();
   const { data: messages = [], isLoading: msgsLoading } = useMessages(selectedConv?.id);
-  const createConversation = useCreateConversation();
 
   // Auto-create class/section groups & broadcasts
   useAutoCreateGroups();
@@ -25,21 +21,6 @@ export default function MessagesPage() {
 
   const handleSelect = (conv: Conversation) => {
     setSelectedConv(conv);
-  };
-
-  const handleCreateDirect = async (userId: string) => {
-    const conv = await createConversation.mutateAsync({ type: 'direct', participantIds: [userId] });
-    // Find the full conversation from the list or use the created one
-    const fullConv = conversations.find(c => c.id === conv.id);
-    if (fullConv) setSelectedConv(fullConv);
-  };
-
-  const handleCreateGroup = async (name: string, participantIds: string[]) => {
-    await createConversation.mutateAsync({ type: 'group', name, participantIds });
-  };
-
-  const handleCreateBroadcast = async (name: string, participantIds: string[]) => {
-    await createConversation.mutateAsync({ type: 'broadcast', name, participantIds });
   };
 
   // Update selected conversation with latest data
@@ -55,7 +36,6 @@ export default function MessagesPage() {
               conversations={conversations}
               selectedId={selectedConv?.id}
               onSelect={handleSelect}
-              onNewChat={() => setNewChatOpen(true)}
               isLoading={convsLoading}
             />
           ) : currentConv ? (
@@ -67,13 +47,6 @@ export default function MessagesPage() {
             />
           ) : null}
         </div>
-        <NewChatDialog
-          open={newChatOpen}
-          onOpenChange={setNewChatOpen}
-          onCreateDirect={handleCreateDirect}
-          onCreateGroup={handleCreateGroup}
-          onCreateBroadcast={handleCreateBroadcast}
-        />
       </AdminLayout>
     );
   }
@@ -88,7 +61,6 @@ export default function MessagesPage() {
             conversations={conversations}
             selectedId={selectedConv?.id}
             onSelect={handleSelect}
-            onNewChat={() => setNewChatOpen(true)}
             isLoading={convsLoading}
           />
         </div>
@@ -110,14 +82,6 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
-
-      <NewChatDialog
-        open={newChatOpen}
-        onOpenChange={setNewChatOpen}
-        onCreateDirect={handleCreateDirect}
-        onCreateGroup={handleCreateGroup}
-        onCreateBroadcast={handleCreateBroadcast}
-      />
     </AdminLayout>
   );
 }
