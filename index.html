@@ -30,26 +30,34 @@
 
   <body>
     <script>
-      // Kill old service workers BEFORE React loads
+      // Force reload on new deploy + kill old service workers
       (function(){
-        var hasOldSW = false;
+        var APP_VERSION = '2026022701';
+        var stored = localStorage.getItem('app_version');
+        if(stored && stored !== APP_VERSION){
+          localStorage.setItem('app_version', APP_VERSION);
+          // Clear all caches then hard reload
+          if('caches' in window){
+            caches.keys().then(function(keys){
+              var p=[];
+              for(var j=0;j<keys.length;j++) p.push(caches.delete(keys[j]));
+              Promise.all(p).then(function(){ location.reload(true); });
+            });
+          } else {
+            location.reload(true);
+          }
+          return;
+        }
+        if(!stored) localStorage.setItem('app_version', APP_VERSION);
+        // Kill old service workers
         if('serviceWorker' in navigator){
           navigator.serviceWorker.getRegistrations().then(function(regs){
-            for(var i=0;i<regs.length;i++){
-              regs[i].unregister();
-              hasOldSW=true;
-            }
-            if('caches' in window){
-              caches.keys().then(function(keys){
-                var p=[];
-                for(var j=0;j<keys.length;j++) p.push(caches.delete(keys[j]));
-                Promise.all(p).then(function(){
-                  if(hasOldSW) location.reload();
-                });
-              });
-            } else if(hasOldSW){
-              location.reload();
-            }
+            for(var i=0;i<regs.length;i++) regs[i].unregister();
+          });
+        }
+        if('caches' in window){
+          caches.keys().then(function(keys){
+            for(var j=0;j<keys.length;j++) caches.delete(keys[j]);
           });
         }
       })();
