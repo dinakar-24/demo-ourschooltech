@@ -88,13 +88,15 @@ export default function SettingsPage() {
     <AdminLayout title="Settings">
       <div className="space-y-6 animate-fade-up">
         <Tabs defaultValue="school" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[500px]">
-            <TabsTrigger value="school">School</TabsTrigger>
-            <TabsTrigger value="academic">Academic</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="language">Language</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-5 sm:w-[500px]">
+              <TabsTrigger value="school">School</TabsTrigger>
+              <TabsTrigger value="academic">Academic</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="language">Language</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* School Settings */}
           <TabsContent value="school" className="space-y-6">
