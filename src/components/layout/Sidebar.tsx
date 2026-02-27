@@ -30,11 +30,26 @@ import {
   Image,
   MessageSquare,
   HelpCircle,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
+import { useTranslation } from 'react-i18next';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
 import appLogo from '@/assets/logo.png';
+
+const LANGUAGES = [
+  { code: 'en', label: 'English', short: 'EN' },
+  { code: 'hi', label: 'हिन्दी', short: 'HI' },
+  { code: 'te', label: 'తెలుగు', short: 'TE' },
+  { code: 'kn', label: 'ಕನ್ನಡ', short: 'KN' },
+  { code: 'ta', label: 'தமிழ்', short: 'TA' },
+  { code: 'mr', label: 'मराठी', short: 'MR' },
+  { code: 'bn', label: 'বাংলা', short: 'BN' },
+  { code: 'ml', label: 'മലയാളം', short: 'ML' },
+];
 
 interface SidebarProps {
   userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
@@ -141,11 +156,20 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const menuItems = menuConfig[userRole];
   const prefix = rolePrefix[userRole];
 
+  const { t, i18n } = useTranslation();
+
   const getFullPath = (path: string) => `${prefix}${path}`;
 
   const isActive = (path: string) => {
     const fullPath = getFullPath(path);
     return location.pathname === fullPath || location.pathname.startsWith(fullPath + '/');
+  };
+
+  const handleLanguageChange = (code: string) => {
+    i18n.changeLanguage(code);
+    localStorage.setItem('app-language', code);
+    const langLabel = LANGUAGES.find(l => l.code === code)?.label || code;
+    toast.success(`Language set to ${langLabel}`);
   };
 
   return (
@@ -201,8 +225,43 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         </ul>
       </nav>
 
-      {/* User Section */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Language & User Section */}
+      <div className="p-3 border-t border-sidebar-border space-y-2">
+        {/* Language Selector */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "nav-item w-full",
+                isCollapsed && "justify-center"
+              )}
+              title={isCollapsed ? 'Language' : undefined}
+            >
+              <Globe className="w-5 h-5 shrink-0" />
+              {!isCollapsed && (
+                <span>{LANGUAGES.find(l => l.code === i18n.language)?.label || 'Language'}</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="right" align="end" className="w-44 p-1">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
+                  i18n.language === lang.code
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "hover:bg-muted text-foreground"
+                )}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+
+        {/* User */}
         <div className={cn(
           "flex items-center gap-3",
           isCollapsed && "justify-center"
