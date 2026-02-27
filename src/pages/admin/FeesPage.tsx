@@ -333,7 +333,7 @@ export default function FeesPage() {
 
   return (
     <AdminLayout title="Fees Management">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-6 animate-fade-up" key="fees-v2">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
