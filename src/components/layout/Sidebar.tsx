@@ -101,8 +101,69 @@ const labelToKey: Record<string, string> = {
   'My Profile': 'sidebar.myProfile',
 };
 
-// Menu items with relative paths (prefix will be added)
-const menuConfig = {
+// Grouped menu config for school_admin
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: any;
+}
+
+interface MenuGroup {
+  group: string;
+  items: MenuItem[];
+}
+
+const schoolAdminGrouped: MenuGroup[] = [
+  {
+    group: '',
+    items: [
+      { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    group: 'Core',
+    items: [
+      { label: 'Students', path: '/students', icon: Users },
+      { label: 'Teachers', path: '/teachers', icon: GraduationCap },
+      { label: 'Classes', path: '/classes', icon: BookOpen },
+      { label: 'Fees', path: '/fees', icon: CreditCard },
+      { label: 'Attendance', path: '/attendance', icon: ClipboardList },
+    ],
+  },
+  {
+    group: 'Academic',
+    items: [
+      { label: 'Exams', path: '/exams', icon: FileText },
+      { label: 'Timetable', path: '/timetable', icon: Clock },
+      { label: 'Online Classes', path: '/online-classes', icon: Video },
+      { label: 'Academic Years', path: '/academic-years', icon: Calendar },
+    ],
+  },
+  {
+    group: 'Communication',
+    items: [
+      { label: 'Messages', path: '/messages', icon: MessageCircle },
+      { label: 'Announcements', path: '/announcements', icon: Bell },
+      { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+      { label: 'Queries', path: '/queries', icon: HelpCircle },
+    ],
+  },
+  {
+    group: 'Administration',
+    items: [
+      { label: 'Reports', path: '/reports', icon: BarChart3 },
+      { label: 'Gallery', path: '/gallery', icon: Image },
+      { label: 'Transport', path: '/transport', icon: Bus },
+      { label: 'Bulk Upload', path: '/bulk-upload', icon: Upload },
+      { label: 'Subscription', path: '/subscription', icon: CreditCard },
+      { label: 'Settings', path: '/settings', icon: Settings },
+      { label: 'My Profile', path: '/profile', icon: Users },
+    ],
+  },
+];
+
+// Flat menu items for non-admin roles
+const menuConfig: Record<string, MenuItem[]> = {
   super_admin: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Schools', path: '/schools', icon: School },
@@ -112,29 +173,6 @@ const menuConfig = {
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Audit Logs', path: '/audit-logs', icon: ScrollText },
     { label: 'Settings', path: '/settings', icon: Settings },
-  ],
-  school_admin: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Students', path: '/students', icon: Users },
-    { label: 'Teachers', path: '/teachers', icon: GraduationCap },
-    { label: 'Classes', path: '/classes', icon: BookOpen },
-    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
-    { label: 'Fees', path: '/fees', icon: CreditCard },
-    { label: 'Exams', path: '/exams', icon: FileText },
-    { label: 'Online Classes', path: '/online-classes', icon: Video },
-    { label: 'Transport', path: '/transport', icon: Bus },
-    { label: 'Messages', path: '/messages', icon: MessageCircle },
-    { label: 'Academic Years', path: '/academic-years', icon: Calendar },
-    { label: 'Timetable', path: '/timetable', icon: Clock },
-    { label: 'Announcements', path: '/announcements', icon: Bell },
-    { label: 'Bulk Upload', path: '/bulk-upload', icon: Upload },
-    { label: 'Gallery', path: '/gallery', icon: Image },
-    { label: 'Feedback', path: '/feedback', icon: MessageSquare },
-    { label: 'Queries', path: '/queries', icon: HelpCircle },
-    { label: 'Reports', path: '/reports', icon: BarChart3 },
-    { label: 'Subscription', path: '/subscription', icon: CreditCard },
-    { label: 'Settings', path: '/settings', icon: Settings },
-    { label: 'My Profile', path: '/profile', icon: Users },
   ],
   teacher: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -203,7 +241,6 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const displayLogo = isSubdomain && tenant?.logo ? tenant.logo : appLogo;
   const displayName = isSubdomain && tenant ? tenant.name : (userRole === 'super_admin' ? 'Super Admin' : schoolName);
 
-  const menuItems = menuConfig[userRole];
   const prefix = rolePrefix[userRole];
 
   const { t, i18n } = useTranslation();
@@ -255,27 +292,66 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
-        <ul className="space-y-1">
-          {menuItems.map((item) => {
-            const translatedLabel = t(labelToKey[item.label] || item.label);
-            return (
-              <li key={item.label}>
-                <Link
-                  to={getFullPath(item.path)}
-                  className={cn(
-                    "nav-item",
-                    isActive(item.path) && "nav-item-active"
-                  )}
-                  title={isCollapsed ? translatedLabel : undefined}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{translatedLabel}</span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+        {userRole === 'school_admin' ? (
+          /* Grouped navigation for school admin */
+          <div className="space-y-3">
+            {schoolAdminGrouped.map((section) => (
+              <div key={section.group || 'top'}>
+                {section.group && !isCollapsed && (
+                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40">
+                    {section.group}
+                  </p>
+                )}
+                {section.group && isCollapsed && (
+                  <div className="mx-auto my-1.5 w-6 border-t border-sidebar-border/50" />
+                )}
+                <ul className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const translatedLabel = t(labelToKey[item.label] || item.label);
+                    return (
+                      <li key={item.label}>
+                        <Link
+                          to={getFullPath(item.path)}
+                          className={cn(
+                            "nav-item",
+                            isActive(item.path) && "nav-item-active"
+                          )}
+                          title={isCollapsed ? translatedLabel : undefined}
+                        >
+                          <item.icon className="w-5 h-5 shrink-0" />
+                          {!isCollapsed && <span>{translatedLabel}</span>}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Flat navigation for other roles */
+          <ul className="space-y-0.5">
+            {(menuConfig[userRole] || []).map((item) => {
+              const translatedLabel = t(labelToKey[item.label] || item.label);
+              return (
+                <li key={item.label}>
+                  <Link
+                    to={getFullPath(item.path)}
+                    className={cn(
+                      "nav-item",
+                      isActive(item.path) && "nav-item-active"
+                    )}
+                    title={isCollapsed ? translatedLabel : undefined}
+                  >
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    {!isCollapsed && <span>{translatedLabel}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </nav>
 
       {/* Bottom Section */}
