@@ -180,7 +180,21 @@ const menuConfig = {
 };
 
 export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Tech', userName = 'Rajesh Kumar' }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapsed = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebar-collapsed', String(next)); } catch {}
+      return next;
+    });
+  };
   const location = useLocation();
   const { logout } = useAuth();
   const { tenant, isSubdomain } = useTenant();
@@ -233,7 +247,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         <Button 
           variant="ghost" 
           size="icon-sm" 
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={toggleCollapsed}
           className="text-sidebar-foreground hover:bg-sidebar-accent"
         >
           {isCollapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
