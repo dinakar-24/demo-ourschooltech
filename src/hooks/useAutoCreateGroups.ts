@@ -105,7 +105,38 @@ export function useAutoCreateGroups() {
 
         let created = 0;
 
-        // 4. Create class/section groups only (no class-wise broadcasts)
+        // 4a. Clean up orphaned class/section groups (students deleted)
+        const activeClassKeys = new Set([...classMap.keys()]);
+        const orphanedConvs = (existing || []).filter(c => {
+          if (c.type !== 'group' || !c.name) return false;
+          // Match pattern "Class X - Y"
+          const match = c.name.match(/^Class (.+) - (.+)$/);
+          if (!match) return false;
+          const key = `${match[1]}-${match[2]}`;
+          return !activeClassKeys.has(key);
+        });
+
+        if (orphanedConvs.length > 0) {
+          const orphanedNames = orphanedConvs.map(c => c.name);
+          console.log('[AutoGroups] Cleaning up orphaned groups:', orphanedNames);
+          
+          // Get IDs of orphaned conversations
+          const { data: orphanedRows } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('school_id', schoolId)
+            .in('name', orphanedNames)
+            .eq('type', 'group');
+          
+          const orphanedIds = (orphanedRows || []).map(r => r.id);
+          if (orphanedIds.length > 0) {
+            await supabase.from('conversation_participants').delete().in('conversation_id', orphanedIds);
+            await supabase.from('messages').delete().in('conversation_id', orphanedIds);
+            await supabase.from('conversations').delete().in('id', orphanedIds);
+          }
+        }
+
+        // 4b. Create class/section groups only (no class-wise broadcasts)
         for (const [, cs] of classMap) {
           const name = `Class ${cs.className} - ${cs.section}`;
 
@@ -180,8 +211,9 @@ export function useAutoCreateGroups() {
           created++;
         }
 
-        console.log('[AutoGroups] Total created:', created);
-        if (created > 0) {
+        const totalChanges = created + orphanedConvs.length;
+        console.log('[AutoGroups] Created:', created, 'Cleaned up:', orphanedConvs.length);
+        if (totalChanges > 0) {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         }
       } catch (err) {
