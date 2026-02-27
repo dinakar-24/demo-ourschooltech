@@ -188,7 +188,7 @@ export default function LoginPage() {
       {/* Header */}
       <header className="relative z-10 flex items-center gap-3.5 px-5 pt-5 pb-2 safe-area-top">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/[0.08] p-1 border border-white/[0.1] shadow-lg">
+          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
             <img src={appLogo} alt="Our School Tech" className="w-full h-full object-contain" />
           </div>
           <span className="text-lg font-bold text-white/90 tracking-tight">Our School Tech</span>
