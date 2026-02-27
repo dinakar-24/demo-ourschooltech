@@ -65,7 +65,22 @@ function numberToIndianWords(num: number): string {
   return convert(num) + ' Rupees Only';
 }
 
-function downloadSubscriptionReceipt(
+async function getLogoBase64(): Promise<string> {
+  try {
+    const response = await fetch('/images/ost-logo.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+}
+
+async function downloadSubscriptionReceipt(
   payment: SubscriptionPayment,
   schoolName: string,
   studentCount: number,
@@ -79,185 +94,170 @@ function downloadSubscriptionReceipt(
   const amountWords = numberToIndianWords(payment.amount);
   const paymentType = (payment as any).payment_type === 'topup' ? 'Top-Up' : 'Renewal';
 
-  const logoUrl = window.location.origin + '/images/ost-logo.png';
+  const logoBase64 = await getLogoBase64();
 
   const receiptHtml = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>Invoice ${billNo} | Our School Tech</title>
+<title>Invoice ${billNo} — Our School Tech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'DM Sans', sans-serif; color: #0a0a0a; background: #fff; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .page { max-width: 800px; margin: 0 auto; padding: 0; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:780px;margin:0 auto;border:1px solid #e0e0e0;}
 
-  /* ═══ TOP BAR ═══ */
-  .topbar { background: #0a0a0a; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
-  .topbar-brand { display: flex; align-items: center; gap: 14px; }
-  .topbar-brand img { height: 40px; width: auto; filter: brightness(10); }
-  .topbar-text { color: #fff; }
-  .topbar-name { font-size: 16px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
-  .topbar-url { font-size: 9px; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-  .topbar-right { color: #fff; text-align: right; }
-  .topbar-inv { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: 2px; }
-  .topbar-inv-sub { font-size: 9px; color: #666; letter-spacing: 1px; margin-top: 4px; }
+  /* HEADER */
+  .hdr{background:#111;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;}
+  .hdr-left{display:flex;align-items:center;gap:16px;}
+  .hdr-left img{height:44px;width:auto;}
+  .hdr-info{}
+  .hdr-name{color:#fff;font-size:18px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;}
+  .hdr-sub{color:#777;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
+  .hdr-right{}
+  .hdr-inv{color:#fff;font-size:32px;font-weight:900;letter-spacing:3px;text-transform:uppercase;}
 
-  .body { padding: 32px 40px 24px; }
+  /* META */
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid #111;margin:0;}
+  .meta-c{padding:16px 20px;border-right:1px solid #ddd;}
+  .meta-c:last-child{border-right:none;}
+  .meta-c .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#999;font-weight:700;}
+  .meta-c .val{font-size:15px;font-weight:800;color:#111;margin-top:5px;}
 
-  /* ═══ META ROW ═══ */
-  .meta-strip { display: flex; background: #f5f5f5; border-radius: 4px; margin-bottom: 28px; overflow: hidden; }
-  .meta-cell { flex: 1; padding: 14px 20px; border-right: 1px solid #e5e5e5; }
-  .meta-cell:last-child { border-right: none; }
-  .mc-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; }
-  .mc-val { font-size: 14px; font-weight: 800; color: #0a0a0a; margin-top: 4px; }
-  .mc-val.paid { color: #0a0a0a; }
+  .content{padding:28px 36px;}
 
-  /* ═══ BILLED TO ═══ */
-  .billed { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
-  .bl-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; font-weight: 700; margin-bottom: 6px; }
-  .bl-name { font-size: 18px; font-weight: 900; color: #0a0a0a; }
-  .bl-desc { font-size: 11px; color: #888; margin-top: 3px; }
+  /* BILLED */
+  .billed .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:700;}
+  .billed .name{font-size:22px;font-weight:900;color:#111;margin-top:4px;}
+  .billed .desc{font-size:12px;color:#777;margin-top:4px;}
 
-  /* ═══ TABLE ═══ */
-  .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  .inv-table thead { background: #0a0a0a; }
-  .inv-table thead th { color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; padding: 12px 16px; text-align: left; }
-  .inv-table thead th.c { text-align: center; }
-  .inv-table thead th.r { text-align: right; }
-  .inv-table tbody td { padding: 18px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-  .inv-table tbody td.c { text-align: center; }
-  .inv-table tbody td.r { text-align: right; }
-  .inv-table .it-name { font-weight: 800; color: #0a0a0a; font-size: 14px; }
-  .inv-table .it-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
-  .inv-table .it-amt { font-weight: 900; color: #0a0a0a; font-size: 15px; }
+  .sep{height:1px;background:#e5e5e5;margin:24px 0;}
 
-  /* ═══ TOTALS ═══ */
-  .totals-wrap { display: flex; justify-content: flex-end; padding: 0 0 24px; }
-  .totals-box { width: 280px; }
-  .tr { display: flex; justify-content: space-between; padding: 8px 0; font-size: 12px; color: #888; border-bottom: 1px solid #f5f5f5; }
-  .tr .trv { font-weight: 700; color: #444; }
-  .tr-grand { display: flex; justify-content: space-between; padding: 16px 20px; background: #0a0a0a; color: #fff; margin-top: 8px; border-radius: 4px; }
-  .tr-grand .trl { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-  .tr-grand .trv { font-size: 20px; font-weight: 900; }
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;}
+  thead{background:#111;}
+  thead th{color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:12px 16px;text-align:left;}
+  thead th.cen{text-align:center;}
+  thead th.rt{text-align:right;}
+  tbody td{padding:16px;font-size:13px;border-bottom:1px solid #eee;vertical-align:top;}
+  tbody td.cen{text-align:center;}
+  tbody td.rt{text-align:right;}
+  .svc-name{font-weight:800;font-size:14px;color:#111;}
+  .svc-sub{font-size:11px;color:#999;margin-top:3px;}
+  .amt{font-weight:900;font-size:16px;color:#111;}
 
-  /* ═══ AMOUNT WORDS ═══ */
-  .words { background: #fafafa; padding: 12px 16px; border-left: 3px solid #0a0a0a; margin-bottom: 28px; font-size: 11px; color: #666; }
-  .words b { color: #333; }
+  /* TOTALS */
+  .totals{display:flex;justify-content:flex-end;margin-top:0;}
+  .totals-box{width:300px;}
+  .trow{display:flex;justify-content:space-between;padding:9px 16px;font-size:12px;color:#777;border-bottom:1px solid #f0f0f0;}
+  .trow .tv{font-weight:700;color:#333;}
+  .grand{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#111;color:#fff;margin-top:4px;}
+  .grand .gl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;}
+  .grand .gv{font-size:24px;font-weight:900;letter-spacing:.5px;}
 
-  /* ═══ INFO GRID ═══ */
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #eee; border: 1px solid #eee; border-radius: 4px; overflow: hidden; margin-bottom: 28px; }
-  .info-cell { background: #fff; padding: 16px 20px; }
-  .ic-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; font-weight: 700; margin-bottom: 8px; }
-  .ic-row { display: flex; font-size: 11px; line-height: 2; }
-  .ic-row .ik { color: #aaa; width: 110px; flex-shrink: 0; }
-  .ic-row .iv { color: #333; font-weight: 600; }
-  .ic-text { font-size: 10px; color: #888; line-height: 1.7; }
+  /* WORDS */
+  .words-bar{margin:24px 0;padding:14px 18px;background:#f7f7f7;border-left:4px solid #111;font-size:12px;color:#555;}
+  .words-bar strong{color:#111;font-weight:800;}
 
-  /* ═══ FOOTER ═══ */
-  .foot { background: #0a0a0a; padding: 24px 40px; display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; }
-  .foot-left {}
-  .foot-left .fl-name { font-size: 13px; font-weight: 800; color: #fff; }
-  .foot-left .fl-detail { font-size: 9px; color: #666; margin-top: 4px; line-height: 1.6; }
-  .foot-right { text-align: right; }
-  .foot-right .fr-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; font-weight: 700; }
-  .foot-right .fr-name { font-size: 16px; font-weight: 900; color: #fff; margin-top: 6px; }
-  .foot-right .fr-role { font-size: 9px; color: #888; margin-top: 2px; }
+  /* INFO GRID */
+  .info{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e0e0e0;margin-bottom:0;}
+  .info-cell{padding:20px 24px;}
+  .info-cell+.info-cell{border-left:1px solid #e0e0e0;}
+  .info-cell .sec-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;font-weight:800;margin-bottom:10px;}
+  .info-cell .row{font-size:11px;line-height:2.2;display:flex;}
+  .info-cell .row .k{color:#999;width:100px;flex-shrink:0;}
+  .info-cell .row .v{color:#222;font-weight:600;}
+  .info-cell .terms{font-size:10px;color:#888;line-height:1.8;}
 
-  .ref-bar { padding: 8px 40px; background: #f5f5f5; display: flex; justify-content: space-between; font-size: 8px; color: #bbb; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 0.3px; }
+  /* FOOTER */
+  .ftr{background:#111;padding:24px 36px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .ftr-l .fn{color:#fff;font-size:14px;font-weight:800;}
+  .ftr-l .fd{color:#666;font-size:9px;line-height:1.8;margin-top:4px;}
+  .ftr-r{text-align:right;}
+  .ftr-r .fl{color:#666;font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;}
+  .ftr-r .fsig{color:#fff;font-size:17px;font-weight:900;margin-top:6px;font-style:italic;}
+  .ftr-r .frole{color:#888;font-size:9px;margin-top:3px;}
 
-  @media print { body { padding: 0; } .page { max-width: 100%; } }
+  .ref{padding:8px 36px;background:#f5f5f5;display:flex;justify-content:space-between;font-size:8px;color:#bbb;font-family:monospace;letter-spacing:.5px;border-top:1px solid #e0e0e0;}
+
+  @media print{.page{border:none;max-width:100%;}}
 </style></head><body>
 <div class="page">
-
-  <div class="topbar">
-    <div class="topbar-brand">
-      <img src="${logoUrl}" alt="OST" />
-      <div class="topbar-text">
-        <div class="topbar-name">Our School Tech</div>
-        <div class="topbar-url">ourschooltech.in</div>
+  <div class="hdr">
+    <div class="hdr-left">
+      ${logoBase64 ? `<img src="${logoBase64}" alt="Logo"/>` : ''}
+      <div class="hdr-info">
+        <div class="hdr-name">Our School Tech</div>
+        <div class="hdr-sub">ourschooltech.in</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <div class="topbar-inv">INVOICE</div>
+    <div class="hdr-right">
+      <div class="hdr-inv">Invoice</div>
     </div>
   </div>
 
-  <div class="body">
-    <div class="meta-strip">
-      <div class="meta-cell">
-        <div class="mc-label">Invoice No.</div>
-        <div class="mc-val">${billNo}</div>
-      </div>
-      <div class="meta-cell">
-        <div class="mc-label">Date</div>
-        <div class="mc-val">${paymentDate}</div>
-      </div>
-      <div class="meta-cell">
-        <div class="mc-label">Payment</div>
-        <div class="mc-val paid">✓ PAID</div>
-      </div>
-      <div class="meta-cell">
-        <div class="mc-label">Students</div>
-        <div class="mc-val">${studentCount}</div>
-      </div>
-    </div>
+  <div class="meta">
+    <div class="meta-c"><div class="lbl">Invoice No.</div><div class="val">${billNo}</div></div>
+    <div class="meta-c"><div class="lbl">Date</div><div class="val">${paymentDate}</div></div>
+    <div class="meta-c"><div class="lbl">Payment</div><div class="val">✓ PAID</div></div>
+    <div class="meta-c"><div class="lbl">Students</div><div class="val">${studentCount}</div></div>
+  </div>
 
+  <div class="content">
     <div class="billed">
-      <div class="bl-label">Billed To</div>
-      <div class="bl-name">${schoolName}</div>
-      <div class="bl-desc">School ERP Platform — Annual ${paymentType} Subscription</div>
+      <div class="lbl">Billed To</div>
+      <div class="name">${schoolName}</div>
+      <div class="desc">School ERP Platform — Annual ${paymentType} Subscription</div>
     </div>
 
-    <table class="inv-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Service Description</th>
-          <th class="c" style="width:60px">Qty</th>
-          <th class="r" style="width:100px">Rate (₹)</th>
-          <th class="r" style="width:120px">Amount (₹)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td>
-            <div class="it-name">School ERP Platform — Annual ${paymentType}</div>
-            <div class="it-sub">Cloud-based school management system · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
-          </td>
-          <td class="c">${studentCount}</td>
-          <td class="r">${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-          <td class="r it-amt">${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        </tr>
-      </tbody>
+    <div class="sep"></div>
+
+    <table>
+      <thead><tr>
+        <th style="width:36px">#</th>
+        <th>Service Description</th>
+        <th class="cen" style="width:60px">Qty</th>
+        <th class="rt" style="width:100px">Rate (₹)</th>
+        <th class="rt" style="width:120px">Amount (₹)</th>
+      </tr></thead>
+      <tbody><tr>
+        <td>1</td>
+        <td>
+          <div class="svc-name">School ERP Platform — Annual ${paymentType}</div>
+          <div class="svc-sub">Cloud-based school management system · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
+        </td>
+        <td class="cen">${studentCount}</td>
+        <td class="rt">${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="rt amt">${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr></tbody>
     </table>
 
-    <div class="totals-wrap">
+    <div class="totals">
       <div class="totals-box">
-        <div class="tr"><span>Subtotal</span><span class="trv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-        <div class="tr"><span>Tax (0%)</span><span class="trv">₹0.00</span></div>
-        <div class="tr"><span>Discount</span><span class="trv">₹0.00</span></div>
-        <div class="tr-grand">
-          <span class="trl">Total</span>
-          <span class="trv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+        <div class="trow"><span>Subtotal</span><span class="tv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+        <div class="trow"><span>Tax (0%)</span><span class="tv">₹0.00</span></div>
+        <div class="trow"><span>Discount</span><span class="tv">₹0.00</span></div>
+        <div class="grand">
+          <span class="gl">Total</span>
+          <span class="gv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
     </div>
 
-    <div class="words">
-      <b>Amount in words:</b>&nbsp; INR ${amountWords}
+    <div class="words-bar">
+      <strong>Amount in words:</strong>&nbsp; INR ${amountWords}
     </div>
 
-    <div class="info-grid">
+    <div class="info">
       <div class="info-cell">
-        <div class="ic-label">Company Details</div>
-        <div class="ic-row"><span class="ik">Company</span><span class="iv">Our School Tech</span></div>
-        <div class="ic-row"><span class="ik">Website</span><span class="iv">ourschooltech.in</span></div>
-        <div class="ic-row"><span class="ik">Email</span><span class="iv">support@ourschooltech.in</span></div>
+        <div class="sec-lbl">Company Details</div>
+        <div class="row"><span class="k">Company</span><span class="v">Our School Tech</span></div>
+        <div class="row"><span class="k">Website</span><span class="v">ourschooltech.in</span></div>
+        <div class="row"><span class="k">Email</span><span class="v">support@ourschooltech.in</span></div>
       </div>
       <div class="info-cell">
-        <div class="ic-label">Terms & Conditions</div>
-        <div class="ic-text">
+        <div class="sec-lbl">Terms & Conditions</div>
+        <div class="terms">
           1. Subscription fees are non-refundable once activated.<br/>
           2. Service validity as per subscription period.<br/>
           3. This is a computer-generated invoice.<br/>
@@ -267,24 +267,23 @@ function downloadSubscriptionReceipt(
     </div>
   </div>
 
-  <div class="foot">
-    <div class="foot-left">
-      <div class="fl-name">Our School Tech</div>
-      <div class="fl-detail">ourschooltech.in<br/>support@ourschooltech.in</div>
+  <div class="ftr">
+    <div class="ftr-l">
+      <div class="fn">Our School Tech</div>
+      <div class="fd">ourschooltech.in<br/>support@ourschooltech.in</div>
     </div>
-    <div class="foot-right">
-      <div class="fr-label">Authorized Signatory</div>
-      <div class="fr-name">Dinakar Sai Reddy Lingala</div>
-      <div class="fr-role">CEO & Founder</div>
+    <div class="ftr-r">
+      <div class="fl">Authorized Signatory</div>
+      <div class="fsig">Dinakar Sai Reddy Lingala</div>
+      <div class="frole">CEO & Founder</div>
     </div>
   </div>
 
   ${payment.razorpay_payment_id ? `
-  <div class="ref-bar">
-    <span>PAYMENT: ${payment.razorpay_payment_id}</span>
-    <span>ORDER: ${payment.razorpay_order_id || '—'}</span>
+  <div class="ref">
+    <span>PAYMENT : ${payment.razorpay_payment_id}</span>
+    <span>ORDER : ${payment.razorpay_order_id || '—'}</span>
   </div>` : ''}
-
 </div>
 </body></html>`;
 
