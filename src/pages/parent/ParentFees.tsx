@@ -208,7 +208,7 @@ export default function ParentFees() {
                             <span className="text-muted-foreground">
                               Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}
                             </span>
-                            <span className="font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                            <span className="text-xl font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
                           </div>
                           {Number(inv.total_amount) > 0 && (
                             <div className="mt-2 space-y-1">
@@ -257,15 +257,18 @@ export default function ParentFees() {
                             </div>
                           ))}
 
-                          {/* Components */}
+                          {/* Components - Clear fee breakdown with amounts */}
                           {(inv.components || []).length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-muted-foreground mb-1.5">Fee Breakdown</p>
-                              <div className="space-y-1">
+                              <p className="text-xs font-semibold text-muted-foreground mb-2">Fee Breakdown</p>
+                              <div className="space-y-2">
                                 {(inv.components || []).map(c => (
-                                  <div key={c.id} className="flex justify-between text-sm py-1 px-2 bg-muted/40 rounded">
-                                    <span>{c.fee_type}</span>
-                                    <span className="font-medium">₹{Number(c.amount).toLocaleString()}</span>
+                                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-1.5 h-7 rounded-full bg-primary/30" />
+                                      <span className="text-sm font-medium">{c.fee_type}</span>
+                                    </div>
+                                    <span className="text-base font-bold">₹{Number(c.amount).toLocaleString()}</span>
                                   </div>
                                 ))}
                               </div>
