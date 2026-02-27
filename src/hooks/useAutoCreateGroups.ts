@@ -125,11 +125,16 @@ export function useAutoCreateGroups() {
           }
         }
 
-        // 6. "All Teachers" group & broadcast
-        if (!existingMap.has('group::All Teachers')) {
-          await createConv('group', 'All Teachers', allTeacherIds);
+        // 6. Remove "All Teachers" group if it exists (no longer needed)
+        if (existingMap.has('group::All Teachers')) {
+          const convId = existingMap.get('group::All Teachers')!.id;
+          await supabase.from('conversation_participants').delete().eq('conversation_id', convId);
+          await supabase.from('messages').delete().eq('conversation_id', convId);
+          await supabase.from('conversations').delete().eq('id', convId);
           changes++;
         }
+
+        // "All Teachers" broadcast only
         if (!existingMap.has('broadcast::All Teachers')) {
           await createConv('broadcast', 'All Teachers', allTeacherIds);
           changes++;
