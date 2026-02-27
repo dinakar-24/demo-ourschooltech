@@ -1,41 +1,94 @@
 
+# Fees Management - New Features Plan
 
-## Fix: Stale App Loading from Old Service Worker Cache
+## Overview
+Adding 4 major features to the Fees Management system: Bulk Invoice Creation, Export Reports, Send Fee Reminders, and Fee Discounts/Concessions.
 
-### Root Cause
-The old PWA service worker cached `index.html` and all JS bundles. When users open the app, the old service worker intercepts the request and serves the OLD cached files -- meaning the new cleanup code in `main.tsx` never executes. It's a loop: new code can't run because old code is being served.
+---
 
-### Solution
-Move the service worker unregistration and cache cleanup into an **inline script in `index.html`** that runs BEFORE the app's JavaScript loads. Since `index.html` is always fetched fresh (we have no-cache headers), this guarantees the cleanup runs immediately.
+## Feature 1: Bulk Invoice Creation
 
-### Changes
+Create invoices for an entire class/section at once instead of one student at a time.
 
-**1. `index.html` -- Add inline cleanup script before the app script**
-- Add a `<script>` block (not module) at the top of `<body>` that:
-  - Unregisters ALL service workers
-  - Clears ALL Cache Storage entries  
-  - If any service worker was found and unregistered, force-reloads the page to bypass the SW cache
-- This runs before React loads, ensuring the old SW is killed first
+**What you'll see:**
+- A new "Bulk Create" button next to the existing "Create Invoice" button
+- A dialog where you select a Class, Section, Term, Due Date, and Fee Components
+- The system will automatically create invoices for ALL active students in that class/section
+- A progress indicator showing how many invoices are being created
 
-**2. `src/main.tsx` -- Keep the cleanup as a safety net (no changes needed)**
-- The existing cleanup in main.tsx stays as a backup
-- No modifications required
+**Technical details:**
+- New `BulkCreateInvoiceDialog` component with class/section selector
+- New `useCreateBulkInvoices` mutation hook that creates invoices in batch
+- Fetches active students for the selected class/section, then creates one invoice per student with identical fee components
 
-### How It Works
+---
 
-```text
-User opens app:
-  1. Browser fetches index.html (no-cache headers force fresh fetch)
-  2. Inline script runs IMMEDIATELY
-  3. Finds old service worker -> unregisters it
-  4. Clears all caches
-  5. Forces page reload (bypassing SW)
-  6. Second load: no SW, fresh JS bundles loaded from server
-  7. App shows latest version
-```
+## Feature 2: Export Reports (Excel/PDF)
 
-### For Existing Users
-- First visit after this deploy: page will do one quick auto-reload to clear the old SW
-- Every visit after that: loads instantly with latest code
-- No manual cache clearing needed
+Download fee collection data as Excel spreadsheets.
 
+**What you'll see:**
+- A "Download Report" button with a dropdown menu offering:
+  - **Fee Summary Report** - Overview by class with totals (collected, pending, overdue)
+  - **Pending Fees List** - All students with outstanding balances
+  - **Payment History** - All recorded payments with receipt numbers
+- Downloads as `.xlsx` Excel file (using the already-installed `exceljs` library)
+
+**Technical details:**
+- New `useFeeReports` hook with functions to generate each report type
+- Uses ExcelJS (already in dependencies) to create professionally formatted spreadsheets with:
+  - School header, date range, formatted currency columns
+  - Auto-width columns and frozen header rows
+
+---
+
+## Feature 3: Send Fee Reminders
+
+Send push notification reminders to parents of students with pending/overdue fees.
+
+**What you'll see:**
+- A "Send Reminders" button in the toolbar area
+- Option to send to: All pending students, Only overdue students, or a specific student
+- Confirmation dialog showing how many parents will be notified
+- Uses the existing push notification system (no SMS/email cost)
+
+**Technical details:**
+- New `SendReminderDialog` component
+- Uses existing `sendNotification` utility to push notifications to parent and student user IDs
+- Queries `fee_invoices` for pending/overdue balances, then resolves parent user IDs via `students.parent_email` joined to `profiles`
+
+---
+
+## Feature 4: Fee Discounts/Concessions
+
+Apply discounts or scholarships to specific student invoices.
+
+**What you'll see:**
+- An "Apply Discount" button visible when expanding a student's invoice details
+- Dialog to enter: Discount amount, Reason (e.g., Scholarship, Sibling Discount, Staff Ward), and optional notes
+- The discount reduces the invoice balance immediately
+- Discounts are tracked and visible in the expanded invoice view with the reason displayed
+
+**Technical details:**
+- The `student_fee_overrides` table already exists in the database with columns: `student_id`, `fee_structure_id`, `override_amount`, `reason`, `notes`, `approved_by`
+- New `fee_discounts` table will be created (linked to invoices) since the existing overrides table is linked to fee_structures, not invoices
+- Migration: Create `fee_discounts` table with columns: `id`, `school_id`, `invoice_id`, `student_id`, `discount_amount`, `reason`, `notes`, `applied_by`, `created_at`
+- RLS policies: Admin full access, parent/student read-only for their own records
+- New `ApplyDiscountDialog` component
+- When a discount is applied, the invoice's `total_amount` and `balance` are reduced accordingly via an RPC function to maintain atomicity
+
+---
+
+## Files to Create
+1. `src/components/fees/BulkCreateInvoiceDialog.tsx` - Bulk invoice creation dialog
+2. `src/components/fees/SendReminderDialog.tsx` - Fee reminder sending dialog
+3. `src/components/fees/ApplyDiscountDialog.tsx` - Discount/concession dialog
+4. `src/hooks/useFeeReports.ts` - Excel report generation hooks
+
+## Files to Modify
+1. `src/pages/admin/FeesPage.tsx` - Add new action buttons and integrate all dialogs
+2. `src/hooks/useFeeInvoices.ts` - Add bulk creation mutation and discount-related hooks
+
+## Database Changes
+1. New `fee_discounts` table with RLS policies
+2. New `apply_fee_discount` RPC function for atomic discount application
