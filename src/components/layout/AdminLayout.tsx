@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useMyAdminPermissions, PATH_TO_MODULE } from '@/hooks/useAdminPermissions';
 import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner';
 import { useTranslation } from 'react-i18next';
 import {
@@ -101,6 +102,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   const { user, school, logout } = useAuth();
   const { impersonatedSchool, isImpersonating } = useImpersonation();
   const { t } = useTranslation();
+  const { hasPathAccess } = useMyAdminPermissions();
   const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
   const displaySchoolLogo = isImpersonating ? impersonatedSchool?.logo : school?.logo;
   const navigate = useNavigate();
@@ -170,7 +172,11 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
         <ul className="space-y-1">
-          {menuItems.map((item) => (
+          {menuItems.filter(item => {
+            // Extract path segment for permission check
+            const pathSegment = item.href.replace('/admin', '');
+            return hasPathAccess(pathSegment);
+          }).map((item) => (
             <li key={item.label}>
               {'children' in item && item.children ? (
                 <div>

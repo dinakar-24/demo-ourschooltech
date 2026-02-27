@@ -39,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import appLogo from '@/assets/logo.png';
+import { useMyAdminPermissions, PATH_TO_MODULE } from '@/hooks/useAdminPermissions';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', short: 'EN' },
@@ -244,6 +245,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const prefix = rolePrefix[userRole];
 
   const { t, i18n } = useTranslation();
+  const { hasPathAccess } = useMyAdminPermissions();
 
   const getFullPath = (path: string) => `${prefix}${path}`;
 
@@ -296,38 +298,43 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         {userRole === 'school_admin' ? (
           /* Grouped navigation for school admin */
           <div className="space-y-3">
-            {schoolAdminGrouped.map((section) => (
-              <div key={section.group || 'top'}>
-                {section.group && !isCollapsed && (
-                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40">
-                    {section.group}
-                  </p>
-                )}
-                {section.group && isCollapsed && (
-                  <div className="mx-auto my-1.5 w-6 border-t border-sidebar-border/50" />
-                )}
-                <ul className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const translatedLabel = t(labelToKey[item.label] || item.label);
-                    return (
-                      <li key={item.label}>
-                        <Link
-                          to={getFullPath(item.path)}
-                          className={cn(
-                            "nav-item",
-                            isActive(item.path) && "nav-item-active"
-                          )}
-                          title={isCollapsed ? translatedLabel : undefined}
-                        >
-                          <item.icon className="w-5 h-5 shrink-0" />
-                          {!isCollapsed && <span>{translatedLabel}</span>}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+            {schoolAdminGrouped.map((section) => {
+              // Filter items based on permissions
+              const visibleItems = section.items.filter(item => hasPathAccess(item.path));
+              if (visibleItems.length === 0) return null;
+              return (
+                <div key={section.group || 'top'}>
+                  {section.group && !isCollapsed && (
+                    <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40">
+                      {section.group}
+                    </p>
+                  )}
+                  {section.group && isCollapsed && (
+                    <div className="mx-auto my-1.5 w-6 border-t border-sidebar-border/50" />
+                  )}
+                  <ul className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const translatedLabel = t(labelToKey[item.label] || item.label);
+                      return (
+                        <li key={item.label}>
+                          <Link
+                            to={getFullPath(item.path)}
+                            className={cn(
+                              "nav-item",
+                              isActive(item.path) && "nav-item-active"
+                            )}
+                            title={isCollapsed ? translatedLabel : undefined}
+                          >
+                            <item.icon className="w-5 h-5 shrink-0" />
+                            {!isCollapsed && <span>{translatedLabel}</span>}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         ) : (
           /* Flat navigation for other roles */

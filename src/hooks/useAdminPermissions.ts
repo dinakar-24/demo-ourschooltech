@@ -1,0 +1,237 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+// All controllable modules for school admins
+export const ALL_ADMIN_MODULES = [
+  'students',
+  'teachers',
+  'classes',
+  'fees',
+  'attendance',
+  'exams',
+  'timetable',
+  'online-classes',
+  'academic-years',
+  'messages',
+  'announcements',
+  'feedback',
+  'queries',
+  'reports',
+  'gallery',
+  'transport',
+  'bulk-upload',
+  'subscription',
+  'settings',
+] as const;
+
+export type AdminModule = typeof ALL_ADMIN_MODULES[number];
+
+// Human-readable labels for modules
+export const MODULE_LABELS: Record<AdminModule, string> = {
+  'students': 'Students',
+  'teachers': 'Teachers',
+  'classes': 'Classes',
+  'fees': 'Fees',
+  'attendance': 'Attendance',
+  'exams': 'Exams',
+  'timetable': 'Timetable',
+  'online-classes': 'Online Classes',
+  'academic-years': 'Academic Years',
+  'messages': 'Messages',
+  'announcements': 'Announcements',
+  'feedback': 'Feedback',
+  'queries': 'Queries',
+  'reports': 'Reports',
+  'gallery': 'Gallery',
+  'transport': 'Transport',
+  'bulk-upload': 'Bulk Upload',
+  'subscription': 'Subscription',
+  'settings': 'Settings',
+};
+
+// Map sidebar paths to module keys
+export const PATH_TO_MODULE: Record<string, AdminModule> = {
+  '/students': 'students',
+  '/teachers': 'teachers',
+  '/classes': 'classes',
+  '/fees': 'fees',
+  '/attendance': 'attendance',
+  '/exams': 'exams',
+  '/timetable': 'timetable',
+  '/online-classes': 'online-classes',
+  '/academic-years': 'academic-years',
+  '/messages': 'messages',
+  '/announcements': 'announcements',
+  '/feedback': 'feedback',
+  '/queries': 'queries',
+  '/reports': 'reports',
+  '/gallery': 'gallery',
+  '/transport': 'transport',
+  '/bulk-upload': 'bulk-upload',
+  '/subscription': 'subscription',
+  '/settings': 'settings',
+};
+
+interface PermissionRow {
+  module: string;
+  can_access: boolean;
+}
+
+/**
+ * Hook for the currently logged-in school_admin to check their own permissions.
+ * If no permissions are stored, all modules are accessible (backward compat).
+ */
+export function useMyAdminPermissions() {
+  const { user } = useAuth();
+  const [permissions, setPermissions] = useState<Set<AdminModule> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user || user.role !== 'school_admin') {
+      setPermissions(null);
+      setLoading(false);
+      return;
+    }
+
+    const fetch = async () => {
+      const { data, error } = await supabase
+        .from('admin_permissions')
+        .select('module, can_access')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching permissions:', error);
+        setPermissions(null);
+      } else if (!data || data.length === 0) {
+        // No permissions stored = full access (backward compat)
+        setPermissions(null);
+      } else {
+        const allowed = new Set<AdminModule>();
+        (data as PermissionRow[]).forEach(row => {
+          if (row.can_access) allowed.add(row.module as AdminModule);
+        });
+        setPermissions(allowed);
+      }
+      setLoading(false);
+    };
+
+    fetch();
+  }, [user]);
+
+  const hasAccess = useCallback((module: AdminModule): boolean => {
+    // null means no restrictions (full access)
+    if (permissions === null) return true;
+    return permissions.has(module);
+  }, [permissions]);
+
+  const hasPathAccess = useCallback((path: string): boolean => {
+    const module = PATH_TO_MODULE[path];
+    if (!module) return true; // Dashboard, profile, etc. always accessible
+    return hasAccess(module);
+  }, [hasAccess]);
+
+  return { hasAccess, hasPathAccess, loading, hasRestrictions: permissions !== null };
+}
+
+/**
+ * Hook for super admin to manage permissions for a specific admin user.
+ */
+export function useManageAdminPermissions(userId: string, schoolId: string) {
+  const [allowedModules, setAllowedModules] = useState<Set<AdminModule>>(new Set(ALL_ADMIN_MODULES));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const fetchPermissions = useCallback(async () => {
+    if (!userId || !schoolId) return;
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from('admin_permissions')
+      .select('module, can_access')
+      .eq('user_id', userId)
+      .eq('school_id', schoolId);
+
+    if (error) {
+      console.error('Error:', error);
+      setLoading(false);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      // No permissions = full access
+      setAllowedModules(new Set(ALL_ADMIN_MODULES));
+    } else {
+      const allowed = new Set<AdminModule>();
+      (data as PermissionRow[]).forEach(row => {
+        if (row.can_access) allowed.add(row.module as AdminModule);
+      });
+      setAllowedModules(allowed);
+    }
+    setLoading(false);
+  }, [userId, schoolId]);
+
+  useEffect(() => {
+    fetchPermissions();
+  }, [fetchPermissions]);
+
+  const toggleModule = (module: AdminModule) => {
+    setAllowedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(module)) next.delete(module);
+      else next.add(module);
+      return next;
+    });
+  };
+
+  const setAll = (allowed: boolean) => {
+    setAllowedModules(allowed ? new Set(ALL_ADMIN_MODULES) : new Set());
+  };
+
+  const savePermissions = async () => {
+    if (!userId || !schoolId) return false;
+    setSaving(true);
+
+    try {
+      // Delete existing permissions for this user+school
+      await supabase
+        .from('admin_permissions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('school_id', schoolId);
+
+      // Insert new permissions
+      const rows = ALL_ADMIN_MODULES.map(module => ({
+        user_id: userId,
+        school_id: schoolId,
+        module,
+        can_access: allowedModules.has(module),
+      }));
+
+      const { error } = await supabase
+        .from('admin_permissions')
+        .insert(rows);
+
+      if (error) throw error;
+
+      toast.success('Permissions updated successfully');
+      return true;
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      toast.error('Failed to save permissions');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return {
+    allowedModules,
+    toggleModule,
+    setAll,
+    savePermissions,
+    loading,
+    saving,
+  };
+}
