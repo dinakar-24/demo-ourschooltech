@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import {
   Select,
@@ -24,7 +25,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Mail,
   Phone,
-  School,
   Settings,
   LogOut,
   ChevronRight,
@@ -38,7 +38,10 @@ import {
   X,
   MapPin,
   Building,
+  User,
+  Calendar,
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -56,18 +59,16 @@ export default function AdminProfilePage() {
   const { impersonatedSchool, isImpersonating } = useImpersonation();
   const schoolId = useEffectiveSchoolId();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const displaySchool = isImpersonating ? impersonatedSchool : school;
 
-  // Profile edit state
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profilePhone, setProfilePhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // School info edit state
   const [editingSchool, setEditingSchool] = useState(false);
   const [schoolName, setSchoolName] = useState(displaySchool?.name || '');
   const [schoolAddress, setSchoolAddress] = useState((school as any)?.address || '');
@@ -76,16 +77,12 @@ export default function AdminProfilePage() {
   const [schoolPhone, setSchoolPhone] = useState('');
   const [savingSchool, setSavingSchool] = useState(false);
 
-  // Push notifications
-  const [pushEnabled, setPushEnabled] = useState(false);
-
-  // Fetch profile details
   const { data: profileData } = useQuery({
     queryKey: ['admin-profile', user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, phone, email')
+        .select('full_name, phone, email, created_at')
         .eq('id', user!.id)
         .single();
       return data;
@@ -93,13 +90,12 @@ export default function AdminProfilePage() {
     enabled: !!user?.id,
   });
 
-  // Fetch school details
   const { data: schoolData } = useQuery({
     queryKey: ['school-details', schoolId],
     queryFn: async () => {
       const { data } = await supabase
         .from('schools')
-        .select('name, address, city, email, phone')
+        .select('name, address, city, email, phone, logo, code')
         .eq('id', schoolId)
         .single();
       return data;
@@ -143,7 +139,6 @@ export default function AdminProfilePage() {
     }
   };
 
-
   const handleSaveSchool = async () => {
     if (!schoolId) return;
     setSavingSchool(true);
@@ -154,7 +149,6 @@ export default function AdminProfilePage() {
           name: schoolName.trim(),
           address: schoolAddress.trim(),
           city: schoolCity.trim(),
-          email: schoolEmail.trim() || null,
           phone: schoolPhone.trim() || null,
         })
         .eq('id', schoolId);
@@ -183,52 +177,57 @@ export default function AdminProfilePage() {
 
   return (
     <AdminLayout title="My Profile">
-      <div className="max-w-2xl mx-auto space-y-4 pb-8">
-        {/* Profile Card */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <AvatarUpload
-                value={user?.avatar}
-                onChange={async (url) => {
-                  if (user?.id) {
-                    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
-                    queryClient.invalidateQueries({ queryKey: ['admin-profile'] });
-                  }
-                }}
-                fallback={user?.name}
-                size="lg"
-                folder="admins"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground truncate">{profileData?.full_name || user?.name}</h2>
-                    <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
-                  </div>
+      <div className="max-w-2xl mx-auto space-y-5 pb-8">
+
+        {/* Hero Profile Card */}
+        <Card className="overflow-hidden">
+          <div className="h-24 bg-gradient-to-r from-primary/80 to-primary/40" />
+          <CardContent className="relative px-5 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
+              <div className="ring-4 ring-background rounded-full">
+                <AvatarUpload
+                  value={user?.avatar}
+                  onChange={async (url) => {
+                    if (user?.id) {
+                      await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+                      queryClient.invalidateQueries({ queryKey: ['admin-profile'] });
+                    }
+                  }}
+                  fallback={user?.name}
+                  size="lg"
+                  folder="admins"
+                />
+              </div>
+              <div className="flex-1 min-w-0 sm:pb-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground truncate">
+                    {profileData?.full_name || user?.name}
+                  </h2>
                   {!editingProfile && (
-                    <Button variant="ghost" size="icon" onClick={() => setEditingProfile(true)}>
-                      <Pencil className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setEditingProfile(true)}>
+                      <Pencil className="w-3.5 h-3.5" />
                     </Button>
                   )}
                 </div>
-                <Badge variant="secondary" className="mt-1.5">
+                <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                <Badge className="mt-1.5 bg-primary/10 text-primary hover:bg-primary/15 border-0">
                   <Shield className="w-3 h-3 mr-1" />
                   School Admin
                 </Badge>
               </div>
             </div>
 
-            {/* Editable fields */}
             {editingProfile ? (
-              <div className="mt-4 pt-4 border-t border-border space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Full Name</Label>
-                  <Input value={profileName} onChange={e => setProfileName(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Phone Number</Label>
-                  <Input value={profilePhone} onChange={e => setProfilePhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+              <div className="mt-5 pt-4 border-t border-border space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Full Name</Label>
+                    <Input value={profileName} onChange={e => setProfileName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Phone Number</Label>
+                    <Input value={profilePhone} onChange={e => setProfilePhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile}>
@@ -241,20 +240,36 @@ export default function AdminProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-4 pt-4 border-t border-border space-y-2.5">
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-foreground truncate">{user?.email}</span>
-                </div>
-                {profileData?.phone && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-foreground">{profileData.phone}</span>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Mail className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Email</p>
+                    <p className="text-sm text-foreground truncate">{user?.email}</p>
                   </div>
-                )}
-                <div className="flex items-center gap-3 text-sm">
-                  <School className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-foreground">{displaySchool?.name || 'Your School'}</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Phone className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Phone</p>
+                    <p className="text-sm text-foreground">{profileData?.phone || '—'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Building className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">School</p>
+                    <p className="text-sm text-foreground truncate">{displaySchool?.name || '—'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Calendar className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Member Since</p>
+                    <p className="text-sm text-foreground">
+                      {profileData?.created_at ? format(new Date(profileData.created_at), 'MMM yyyy') : '—'}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -263,41 +278,46 @@ export default function AdminProfilePage() {
 
         {/* School Info */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Building className="w-5 h-5" />
+                <div className="p-1.5 rounded-md bg-primary/10">
+                  <Building className="w-4 h-4 text-primary" />
+                </div>
                 School Information
               </CardTitle>
               {!editingSchool && (
-                <Button variant="ghost" size="icon" onClick={() => setEditingSchool(true)}>
-                  <Pencil className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setEditingSchool(true)}>
+                  <Pencil className="w-3 h-3" /> Edit
                 </Button>
               )}
             </div>
+            {schoolData?.code && (
+              <p className="text-xs text-muted-foreground mt-1">School Code: <span className="font-mono font-medium text-foreground">{schoolData.code}</span></p>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             {editingSchool ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">School Name</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">School Name</Label>
                     <Input value={schoolName} onChange={e => setSchoolName(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">City</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">City</Label>
                     <Input value={schoolCity} onChange={e => setSchoolCity(e.target.value)} />
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label className="text-xs">Address</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Address</Label>
                     <Input value={schoolAddress} onChange={e => setSchoolAddress(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Email</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Email</Label>
                     <Input value={schoolEmail} disabled className="opacity-60 cursor-not-allowed" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Phone</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
                     <Input value={schoolPhone} onChange={e => setSchoolPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
                   </div>
                 </div>
@@ -313,44 +333,43 @@ export default function AdminProfilePage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                <div className="flex items-center gap-3 text-sm">
-                  <Building className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-foreground">{schoolData?.name || displaySchool?.name || '—'}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-foreground">{schoolData?.address || '—'}, {schoolData?.city || '—'}</span>
-                </div>
-                {schoolData?.email && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-foreground">{schoolData.email}</span>
+                {[
+                  { icon: Building, label: schoolData?.name || displaySchool?.name || '—' },
+                  { icon: MapPin, label: `${schoolData?.address || '—'}, ${schoolData?.city || '—'}` },
+                  { icon: Mail, label: schoolData?.email, show: !!schoolData?.email },
+                  { icon: Phone, label: schoolData?.phone, show: !!schoolData?.phone },
+                ].filter(item => item.show !== false).map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">{item.label}</span>
                   </div>
-                )}
-                {schoolData?.phone && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-foreground">{schoolData.phone}</span>
-                  </div>
-                )}
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Language */}
+        {/* Preferences */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-primary/10">
+                <Settings className="w-4 h-4 text-primary" />
+              </div>
+              Preferences
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-muted-foreground" />
+                <Globe className="w-4 h-4 text-muted-foreground" />
                 <div>
                   <p className="font-medium text-foreground text-sm">Language</p>
                   <p className="text-xs text-muted-foreground">Interface language</p>
                 </div>
               </div>
               <Select value={i18n.language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px] h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -360,28 +379,28 @@ export default function AdminProfilePage() {
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Navigation */}
-        <Card>
-          <CardContent className="p-0 divide-y divide-border">
+            <Separator />
             {[
-              { label: 'Notification Settings', icon: Bell, href: '/admin/settings' },
-              { label: 'Subscription', icon: CreditCard, href: '/admin/subscription' },
-              { label: 'School Settings', icon: Settings, href: '/admin/settings' },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.href)}
-                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-medium text-foreground text-sm">{item.label}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
+              { label: 'Notification Settings', icon: Bell, href: '/admin/settings', desc: 'Manage alerts & reminders' },
+              { label: 'Subscription', icon: CreditCard, href: '/admin/subscription', desc: 'Plan & billing details' },
+              { label: 'School Settings', icon: Settings, href: '/admin/settings', desc: 'Configure school preferences' },
+            ].map((item, i) => (
+              <div key={item.label}>
+                <button
+                  onClick={() => navigate(item.href)}
+                  className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="w-4 h-4 text-muted-foreground" />
+                    <div className="text-left">
+                      <span className="font-medium text-foreground text-sm block">{item.label}</span>
+                      <span className="text-xs text-muted-foreground">{item.desc}</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+                {i < 2 && <Separator />}
+              </div>
             ))}
           </CardContent>
         </Card>
@@ -389,7 +408,7 @@ export default function AdminProfilePage() {
         {/* Logout */}
         <Button
           variant="outline"
-          className="w-full text-destructive hover:text-destructive"
+          className="w-full text-destructive hover:text-destructive hover:bg-destructive/5 border-destructive/20"
           onClick={handleLogout}
         >
           <LogOut className="w-4 h-4 mr-2" />
