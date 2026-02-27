@@ -7,11 +7,13 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParentData } from '@/hooks/useParentData';
 import { useParentInvoices, ParentInvoice } from '@/hooks/useParentInvoices';
+import { useParentPaymentSubmissions } from '@/hooks/usePaymentSubmissions';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
+import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
 import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import {
   CreditCard, CheckCircle, AlertCircle, Clock, IndianRupee, TrendingUp,
-  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight,
+  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -19,11 +21,14 @@ export default function ParentFees() {
   const { user } = useAuth();
   const { childProfile, fees, isLoading } = useParentData();
   const { data: invoices = [], isLoading: invoicesLoading } = useParentInvoices(childProfile?.id);
+  const { data: submissions = [] } = useParentPaymentSubmissions(childProfile?.id);
 
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptPayment, setReceiptPayment] = useState<FeePayment | null>(null);
   const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [submitInvoice, setSubmitInvoice] = useState<ParentInvoice | null>(null);
 
   const childName = childProfile?.full_name || user?.childName || 'Your Child';
 
@@ -47,8 +52,11 @@ export default function ParentFees() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Helper: get submissions for an invoice
+  const getInvoiceSubmissions = (invoiceId: string) =>
+    submissions.filter(s => s.invoice_id === invoiceId);
+
   const openReceipt = (payment: ParentInvoice['payments'][0], invoice: ParentInvoice) => {
-    // Adapt to FeePayment/FeeInvoice shape for PaymentReceiptDialog
     setReceiptPayment({
       ...payment,
       invoice_id: invoice.id,
@@ -72,6 +80,11 @@ export default function ParentFees() {
       } : undefined,
     } as FeeInvoice);
     setReceiptOpen(true);
+  };
+
+  const openSubmitPayment = (inv: ParentInvoice) => {
+    setSubmitInvoice(inv);
+    setSubmitDialogOpen(true);
   };
 
   const getStatusBadge = (status: string, dueDate: string) => {
@@ -119,7 +132,7 @@ export default function ParentFees() {
             {totalPending > 0 && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-white/10 text-sm mt-3">
                 <Building2 className="w-4 h-4 flex-shrink-0" />
-                <span>Please visit the school office to make payment</span>
+                <span>Pay via UPI and submit proof, or visit school office</span>
               </div>
             )}
           </CardContent>
@@ -161,6 +174,10 @@ export default function ParentFees() {
                 const payPct = Number(inv.total_amount) > 0
                   ? Math.round((Number(inv.paid_amount) / Number(inv.total_amount)) * 100)
                   : 0;
+                const invSubmissions = getInvoiceSubmissions(inv.id);
+                const hasPending = invSubmissions.some(s => s.status === 'pending');
+                const rejectedSubmissions = invSubmissions.filter(s => s.status === 'rejected');
+                const canSubmit = inv.status !== 'paid' && Number(inv.balance) > 0 && !hasPending;
 
                 return (
                   <Collapsible
@@ -178,7 +195,14 @@ export default function ParentFees() {
                                 : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                               <span className="font-medium">{inv.term?.name || 'Term'}</span>
                             </div>
-                            {getStatusBadge(inv.status, inv.due_date)}
+                            <div className="flex items-center gap-1.5">
+                              {hasPending && (
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">
+                                  <Clock className="w-3 h-3 mr-0.5" /> Verifying
+                                </Badge>
+                              )}
+                              {getStatusBadge(inv.status, inv.due_date)}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">
@@ -200,6 +224,39 @@ export default function ParentFees() {
 
                       <CollapsibleContent>
                         <CardContent className="pt-0 px-4 pb-4 space-y-3">
+                          {/* Submit Payment Button */}
+                          {canSubmit && (
+                            <Button
+                              className="w-full"
+                              onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
+                            >
+                              <Send className="w-4 h-4 mr-2" />
+                              Submit Payment Proof (₹{Number(inv.balance).toLocaleString()} due)
+                            </Button>
+                          )}
+
+                          {/* Pending verification notice */}
+                          {hasPending && (
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm">
+                              <Clock className="w-4 h-4 flex-shrink-0" />
+                              <span>Payment proof submitted — awaiting admin verification</span>
+                            </div>
+                          )}
+
+                          {/* Rejected submissions */}
+                          {rejectedSubmissions.map(rs => (
+                            <div key={rs.id} className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 text-destructive text-sm">
+                              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-medium">Payment rejected</p>
+                                <p className="text-xs mt-0.5">{rs.rejection_reason || 'No reason provided'}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  ₹{Number(rs.amount).toLocaleString()} · UTR: {rs.transaction_id}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+
                           {/* Components */}
                           {(inv.components || []).length > 0 && (
                             <div>
@@ -376,6 +433,19 @@ export default function ParentFees() {
         payment={receiptPayment}
         invoice={receiptInvoice}
       />
+
+      {/* Submit Payment Dialog */}
+      {submitInvoice && (
+        <SubmitPaymentDialog
+          open={submitDialogOpen}
+          onOpenChange={setSubmitDialogOpen}
+          invoiceId={submitInvoice.id}
+          studentId={submitInvoice.student_id}
+          schoolId={user?.schoolId || ''}
+          maxAmount={Number(submitInvoice.balance)}
+          termName={submitInvoice.term?.name}
+        />
+      )}
     </MobileLayout>
   );
 }
