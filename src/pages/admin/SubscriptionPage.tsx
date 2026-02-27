@@ -131,12 +131,16 @@ export default function SubscriptionPage() {
   const { data: dbStudentCount = 0, isLoading: studentsLoading } = useStudentCount();
   const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
   const { pricePerStudent } = useSubscriptionPricing();
-  const studentCount = subscription?.student_count || dbStudentCount;
-  const totalAmount = studentCount * pricePerStudent;
+  const paidStudentCount = subscription?.student_count || 0;
+  const totalAmount = dbStudentCount * pricePerStudent;
 
   const isActive = subscription?.status === 'active';
   const isTrial = subscription?.status === 'trial';
   const isExpired = subscription?.status === 'expired';
+
+  // Calculate new (unpaid) students
+  const newStudents = isActive ? Math.max(0, dbStudentCount - paidStudentCount) : 0;
+  const topUpAmount = newStudents * pricePerStudent;
 
   const daysRemaining = subscription?.end_date
     ? differenceInDays(new Date(subscription.end_date), new Date())
@@ -155,6 +159,25 @@ export default function SubscriptionPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
+        queryClient.invalidateQueries({ queryKey: ['student-count'] });
+      },
+    });
+  };
+
+  const handleTopUp = async () => {
+    if (topUpAmount <= 0) return;
+    initiatePayment({
+      subscriptionId: subscription?.id,
+      amount: topUpAmount,
+      schoolName: user?.schoolName || 'School',
+      userEmail: user?.email,
+      userName: user?.name,
+      schoolId: user?.schoolId || '',
+      studentCount: dbStudentCount,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
+        queryClient.invalidateQueries({ queryKey: ['student-count'] });
       },
     });
   };
@@ -233,8 +256,8 @@ export default function SubscriptionPage() {
               ₹{totalAmount.toLocaleString('en-IN')}
               <span className="text-base font-normal opacity-70">/year</span>
             </h2>
-            <p className="text-sm opacity-70 mt-1">
-              {studentCount} students × ₹{pricePerStudent} per student
+             <p className="text-sm opacity-70 mt-1">
+              {dbStudentCount} students × ₹{pricePerStudent} per student
             </p>
           </div>
 
@@ -246,7 +269,7 @@ export default function SubscriptionPage() {
                   <Users className="w-3.5 h-3.5" />
                   <span className="text-xs">Active Students</span>
                 </div>
-                <p className="text-2xl font-bold text-foreground">{studentCount}</p>
+                <p className="text-2xl font-bold text-foreground">{dbStudentCount}</p>
               </div>
               <div className="p-4 text-center">
                 <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
@@ -311,6 +334,65 @@ export default function SubscriptionPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Top-Up Alert for New Students */}
+        {newStudents > 0 && (
+          <Card className="border-amber-400/40 bg-amber-50/30 dark:bg-amber-950/20">
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-full bg-amber-400/10 shrink-0">
+                  <Users className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">
+                    {newStudents} New Student{newStudents > 1 ? 's' : ''} Added
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You have {newStudents} student{newStudents > 1 ? 's' : ''} beyond your paid count of {paidStudentCount}. 
+                    Immediate payment of ₹{pricePerStudent}/student is required.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-background rounded-lg p-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Paid Students</span>
+                  <span className="font-medium">{paidStudentCount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Current Active Students</span>
+                  <span className="font-medium">{dbStudentCount}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">New Students</span>
+                  <span className="font-semibold text-amber-600">{newStudents}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Rate</span>
+                  <span className="font-medium">₹{pricePerStudent} × {newStudents}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-base font-bold">
+                  <span>Top-Up Amount</span>
+                  <span className="text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-11 font-semibold"
+                onClick={handleTopUp}
+                disabled={paymentLoading || isProcessing}
+              >
+                {(paymentLoading || isProcessing) ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+                ) : (
+                  <><IndianRupee className="w-4 h-4 mr-1" /> Pay ₹{topUpAmount.toLocaleString('en-IN')} for {newStudents} New Student{newStudents > 1 ? 's' : ''}</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Payment History */}
         <Card>
@@ -382,7 +464,7 @@ export default function SubscriptionPage() {
                           onClick={() => downloadSubscriptionReceipt(
                             payment,
                             user?.schoolName || 'School',
-                            studentCount,
+                            dbStudentCount,
                             pricePerStudent
                           )}
                         >
