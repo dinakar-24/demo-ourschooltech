@@ -1,56 +1,44 @@
 
 
-## Redesign Fees Page: Student-Grouped View
+## Fix: App Always Showing Previous Cached Version
 
-### Current Problem
-The fees page has two separate tabs (Invoices and Legacy Fees) showing flat lists of individual fee records. This is confusing and hard to navigate, especially on mobile.
+### Root Cause
+The PWA service worker precaches all JS and CSS files (`globPatterns: ["**/*.{js,css,...}"]`). When a new version is deployed, the old service worker still serves cached JS bundles until it updates -- which happens asynchronously AFTER the page has already loaded with stale code.
 
-### New Design
-Replace the tabbed layout with a single, unified view where fees are **grouped by student**. Each student appears once as a card/row, and expanding it reveals all their fee items (both invoices and legacy fees) inside.
+### Solution: Remove PWA Precaching Entirely
 
-### Layout
+Since this is a school management app (not an offline-first app), precaching assets causes more harm than good. Users should always get the latest build.
 
-**Desktop**: A table where each row is a student with summary info (total due, total paid, balance). Clicking expands to show individual fee items (invoices + legacy fees) underneath.
+### Changes
 
-**Mobile**: Cards per student showing name, class, admission number, and total balance. Tapping expands to show all fee items as a nested list.
+**1. `vite.config.ts` -- Disable precaching, keep only runtime caching for API calls**
+- Remove `globPatterns` (stops precaching JS/CSS/images)
+- Remove `maximumFileSizeToCacheInBytes` (no longer needed)
+- Keep `navigateFallback: null` and `NetworkOnly` for HTML
+- Keep `NetworkFirst` for backend API calls only
+- This means the service worker will NOT cache any app assets -- every load fetches fresh files from the server
 
-### What stays
-- Stats cards at the top (Collected, Pending, Overdue, Collection Rate)
-- Search by student name/admission number
-- Status filter (All, Paid, Pending, Overdue)
-- Term filter (for invoice-based fees)
-- "Add Term" and "Create Invoice" buttons
-- All payment and receipt dialogs
+**2. `src/main.tsx` -- Aggressively unregister old service workers and clear ALL caches**
+- On every app load, unregister ALL existing service workers (not just update them)
+- Delete ALL cache storage entries (not just precache/workbox ones)
+- This ensures any previously installed service worker from older deploys is fully removed
+- The PWA will still work for "Add to Home Screen" but won't cache stale files
 
-### What changes
-- Remove the Tabs component (no more Invoices/Fees separation)
-- Fetch both invoices and legacy fees, then group them client-side by `student_id`
-- Each student group shows:
-  - Student name, admission number, class-section
-  - Summary: total amount, total paid, total balance
-  - Status badge based on overall balance
-- Expanded view shows:
-  - Invoice items (with components, payments, pay button)
-  - Legacy fee items (with receipt links)
+### Technical Detail
 
-### Technical Details
+```text
+Before (problematic):
+  User opens app -> Service worker intercepts -> Serves OLD cached JS -> Page renders OLD UI
+  Service worker checks for update in background -> Downloads new SW -> Activates on NEXT visit
 
-**File: `src/pages/admin/FeesPage.tsx`** (rewrite)
-1. Remove `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` usage
-2. Fetch both `useFeeInvoices` and `useFees` simultaneously
-3. Create a `groupByStudent()` utility that merges records by `student_id`:
-   ```text
-   Map<student_id, {
-     student: { name, admission, class, section },
-     invoices: FeeInvoice[],
-     legacyFees: FeeRecord[],
-     totalAmount, totalPaid, totalBalance
-   }>
-   ```
-4. Desktop: Expandable table rows per student
-5. Mobile: Expandable cards per student
-6. Inside each expanded student, show two sections:
-   - "Invoices" with term name, components, payments, pay button
-   - "Fee Records" with fee type, amount, status, receipt
-7. Keep all existing dialog integrations (CreateTerm, CreateInvoice, RecordPayment, receipts)
+After (fixed):
+  User opens app -> No precached assets -> Browser fetches FRESH JS from server -> Page renders LATEST UI
+  Old service workers and caches are cleaned up on every load
+```
+
+### What Users Will Experience
+- Every app open loads the latest version instantly
+- No more "clear cache" needed after updates
+- Slightly longer initial load (no precache) but always fresh -- acceptable tradeoff for 200K+ users who need accurate, up-to-date UI
+- "Add to Home Screen" PWA functionality still works (manifest is kept)
 
