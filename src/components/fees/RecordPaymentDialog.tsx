@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,9 +22,11 @@ interface RecordPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: FeeInvoice | null;
+  prefillAmount?: number;
+  prefillLabel?: string;
 }
 
-export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPaymentDialogProps) {
+export function RecordPaymentDialog({ open, onOpenChange, invoice, prefillAmount, prefillLabel }: RecordPaymentDialogProps) {
   const { user } = useAuth();
   const recordPayment = useRecordInvoicePayment();
 
@@ -36,6 +38,16 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
   const [chequeDate, setChequeDate] = useState<Date | undefined>();
   const [bankName, setBankName] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Pre-fill amount when dialog opens with a specific component amount
+  useEffect(() => {
+    if (open && prefillAmount && prefillAmount > 0) {
+      setAmount(String(prefillAmount));
+      if (prefillLabel) {
+        setNotes(`Payment for ${prefillLabel}`);
+      }
+    }
+  }, [open, prefillAmount, prefillLabel]);
 
   const resetForm = () => {
     setAmount('');
@@ -94,7 +106,9 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>
+            {prefillLabel ? `Pay ${prefillLabel}` : 'Record Payment'}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Invoice Summary */}
@@ -170,7 +184,6 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
             </Select>
           </div>
 
-          {/* Cash: auto receipt info */}
           {isCash && (
             <div className="rounded-lg border bg-success/5 p-3 text-sm space-y-1">
               <p className="text-muted-foreground">Receipt Number will be auto-generated</p>
@@ -178,7 +191,6 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
             </div>
           )}
 
-          {/* Digital: Transaction ID */}
           {isDigital && (
             <>
               <div className="space-y-2">
@@ -192,7 +204,6 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
             </>
           )}
 
-          {/* Cheque */}
           {isCheque && (
             <>
               <div className="space-y-2">
@@ -220,7 +231,6 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
             </>
           )}
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
             <Input placeholder="Any remarks" value={notes} onChange={(e) => setNotes(e.target.value)} />
