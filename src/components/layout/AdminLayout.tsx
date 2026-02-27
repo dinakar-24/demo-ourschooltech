@@ -43,45 +43,78 @@ interface AdminLayoutProps {
   title?: string;
 }
 
-const menuItems = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { 
-    label: 'Students', 
-    href: '/admin/students', 
-    icon: Users,
-    children: [
-      { label: 'All Students', href: '/admin/students' },
-      { label: 'Add Student', href: '/admin/students?action=add' },
-      { label: 'Bulk Upload', href: '/admin/students/bulk-upload' },
-    ]
+interface MenuItem {
+  label: string;
+  href: string;
+  icon: any;
+  children?: { label: string; href: string }[];
+}
+
+interface MenuGroup {
+  group: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    group: '',
+    items: [
+      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    ],
   },
-  { label: 'Teachers', href: '/admin/teachers', icon: GraduationCap },
-  { label: 'Classes', href: '/admin/classes', icon: BookOpen },
-  { 
-    label: 'Attendance', 
-    href: '/admin/attendance', 
-    icon: ClipboardList,
-    children: [
-      { label: 'Students', href: '/admin/attendance' },
-      { label: 'Holiday Calendar', href: '/admin/holiday-calendar' },
-      { label: 'Employees', href: '/admin/employee-attendance' },
-    ]
+  {
+    group: 'Core',
+    items: [
+      { 
+        label: 'Students', href: '/admin/students', icon: Users,
+        children: [
+          { label: 'All Students', href: '/admin/students' },
+          { label: 'Add Student', href: '/admin/students?action=add' },
+          { label: 'Bulk Upload', href: '/admin/students/bulk-upload' },
+        ]
+      },
+      { label: 'Teachers', href: '/admin/teachers', icon: GraduationCap },
+      { label: 'Classes', href: '/admin/classes', icon: BookOpen },
+      { label: 'Fees', href: '/admin/fees', icon: CreditCard },
+      { 
+        label: 'Attendance', href: '/admin/attendance', icon: ClipboardList,
+        children: [
+          { label: 'Students', href: '/admin/attendance' },
+          { label: 'Holiday Calendar', href: '/admin/holiday-calendar' },
+          { label: 'Employees', href: '/admin/employee-attendance' },
+        ]
+      },
+    ],
   },
-  { label: 'Fees', href: '/admin/fees', icon: CreditCard },
-  { label: 'Exams', href: '/admin/exams', icon: FileText },
-  { label: 'Online Classes', href: '/admin/online-classes', icon: Video },
-  { label: 'Transport', href: '/admin/transport', icon: Bus },
-  { label: 'Messages', href: '/admin/messages', icon: MessageCircle },
-  { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
-  { label: 'Timetable', href: '/admin/timetable', icon: Clock },
-  { label: 'Announcements', href: '/admin/announcements', icon: Bell },
-  { label: 'Gallery', href: '/admin/gallery', icon: Image },
-  { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
-  { label: 'Queries', href: '/admin/queries', icon: HelpCircle },
-  { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
-  { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
-  { label: 'My Profile', href: '/admin/profile', icon: Users },
-  { label: 'Settings', href: '/admin/settings', icon: Settings },
+  {
+    group: 'Academic',
+    items: [
+      { label: 'Exams', href: '/admin/exams', icon: FileText },
+      { label: 'Timetable', href: '/admin/timetable', icon: Clock },
+      { label: 'Online Classes', href: '/admin/online-classes', icon: Video },
+      { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
+    ],
+  },
+  {
+    group: 'Communication',
+    items: [
+      { label: 'Messages', href: '/admin/messages', icon: MessageCircle },
+      { label: 'Announcements', href: '/admin/announcements', icon: Bell },
+      { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
+      { label: 'Queries', href: '/admin/queries', icon: HelpCircle },
+    ],
+  },
+  {
+    group: 'Administration',
+    items: [
+      { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
+      { label: 'Gallery', href: '/admin/gallery', icon: Image },
+      { label: 'Transport', href: '/admin/transport', icon: Bus },
+      { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
+      { label: 'My Profile', href: '/admin/profile', icon: Users },
+      { label: 'Settings', href: '/admin/settings', icon: Settings },
+    ],
+  },
 ];
 
 // Translation key mapping
@@ -111,13 +144,15 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   // Auto-expand menu items based on current route
   const getInitialExpanded = () => {
     const expanded: string[] = [];
-    menuItems.forEach(item => {
-      if ('children' in item && item.children) {
-        const isChildActive = item.children.some(child => 
-          location.pathname === child.href || location.pathname.startsWith(child.href + '/')
-        );
-        if (isChildActive) expanded.push(item.label);
-      }
+    menuGroups.forEach(group => {
+      group.items.forEach(item => {
+        if (item.children) {
+          const isChildActive = item.children.some(child => 
+            location.pathname === child.href || location.pathname.startsWith(child.href + '/')
+          );
+          if (isChildActive) expanded.push(item.label);
+        }
+      });
     });
     return expanded;
   };
@@ -170,71 +205,88 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
-        <ul className="space-y-1">
-          {menuItems.filter(item => {
-            // Extract path segment for permission check
-            const pathSegment = item.href.replace('/admin', '');
-            return hasPathAccess(pathSegment);
-          }).map((item) => (
-            <li key={item.label}>
-              {'children' in item && item.children ? (
-                <div>
-                  <button
-                    onClick={() => toggleExpanded(item.label)}
-                    className={cn(
-                      "nav-item w-full justify-between",
-                      isActive(item.href) && "nav-item-active"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
-                    </div>
-                    {!isCollapsed && (
-                      expandedItems.includes(item.label) 
-                        ? <ChevronDown className="w-4 h-4" />
-                        : <ChevronRight className="w-4 h-4" />
-                    )}
-                  </button>
-                  {!isCollapsed && expandedItems.includes(item.label) && (
-                    <ul className="mt-1 ml-8 space-y-1">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link
-                            to={child.href}
-                            onClick={() => setMobileMenuOpen(false)}
+      <nav className="flex-1 overflow-y-auto py-2 px-2 scrollbar-thin">
+        <div className="space-y-3">
+          {menuGroups.map((section) => {
+            const visibleItems = section.items.filter(item => {
+              const pathSegment = item.href.replace('/admin', '');
+              return hasPathAccess(pathSegment);
+            });
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={section.group || 'top'}>
+                {section.group && !isCollapsed && (
+                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40">
+                    {section.group}
+                  </p>
+                )}
+                {section.group && isCollapsed && (
+                  <div className="mx-auto my-1.5 w-6 border-t border-sidebar-border/50" />
+                )}
+                <ul className="space-y-0.5">
+                  {visibleItems.map((item) => (
+                    <li key={item.label}>
+                      {item.children ? (
+                        <div>
+                          <button
+                            onClick={() => toggleExpanded(item.label)}
                             className={cn(
-                              "block py-2 px-3 rounded-md text-sm transition-colors",
-                              isExactActive(child.href)
-                                ? "text-sidebar-primary bg-sidebar-accent"
-                                : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
+                              "nav-item w-full justify-between",
+                              isActive(item.href) && "nav-item-active"
                             )}
                           >
-                            {t(labelToKey[child.label] || child.label)}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  to={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "nav-item",
-                    isActive(item.href) && "nav-item-active"
-                  )}
-                  title={isCollapsed ? t(labelToKey[item.label] || item.label) : undefined}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
+                            <div className="flex items-center gap-3">
+                              <item.icon className="w-5 h-5 shrink-0" />
+                              {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
+                            </div>
+                            {!isCollapsed && (
+                              expandedItems.includes(item.label) 
+                                ? <ChevronDown className="w-4 h-4" />
+                                : <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                          {!isCollapsed && expandedItems.includes(item.label) && (
+                            <ul className="mt-1 ml-8 space-y-1">
+                              {item.children.map((child) => (
+                                <li key={child.href}>
+                                  <Link
+                                    to={child.href}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={cn(
+                                      "block py-2 px-3 rounded-md text-sm transition-colors",
+                                      isExactActive(child.href)
+                                        ? "text-sidebar-primary bg-sidebar-accent"
+                                        : "text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
+                                    )}
+                                  >
+                                    {t(labelToKey[child.label] || child.label)}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        <Link
+                          to={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            "nav-item",
+                            isActive(item.href) && "nav-item-active"
+                          )}
+                          title={isCollapsed ? t(labelToKey[item.label] || item.label) : undefined}
+                        >
+                          <item.icon className="w-5 h-5 shrink-0" />
+                          {!isCollapsed && <span>{t(labelToKey[item.label] || item.label)}</span>}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       </nav>
 
       {/* User Section */}
