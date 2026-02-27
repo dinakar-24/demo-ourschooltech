@@ -98,7 +98,7 @@ const labelToKey: Record<string, string> = {
   'All Users': 'sidebar.allUsers',
   'Audit Logs': 'sidebar.auditLogs',
   'Holiday Calendar': 'sidebar.holidayCalendar',
-  'My Profile': 'sidebar.profile',
+  'My Profile': 'sidebar.myProfile',
 };
 
 // Menu items with relative paths (prefix will be added)

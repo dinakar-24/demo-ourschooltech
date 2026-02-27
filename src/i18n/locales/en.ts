@@ -38,6 +38,7 @@ const en = {
     homework: 'Homework',
     marks: 'Marks',
     profile: 'Profile',
+    myProfile: 'My Profile',
     results: 'Results',
     schools: 'Schools',
     schoolAdmins: 'School Admins',
