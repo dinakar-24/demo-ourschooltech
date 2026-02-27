@@ -188,7 +188,7 @@ async function downloadSubscriptionReceipt(
       ${logoBase64 ? `<img src="${logoBase64}" alt="Logo"/>` : ''}
       <div class="hdr-info">
         <div class="hdr-name">Our School Tech</div>
-        <div class="hdr-sub">ourschooltech.in</div>
+        <div class="hdr-sub">ourschooltech.com</div>
       </div>
     </div>
     <div class="hdr-right">
@@ -234,9 +234,6 @@ async function downloadSubscriptionReceipt(
 
     <div class="totals">
       <div class="totals-box">
-        <div class="trow"><span>Subtotal</span><span class="tv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-        <div class="trow"><span>Tax (0%)</span><span class="tv">₹0.00</span></div>
-        <div class="trow"><span>Discount</span><span class="tv">₹0.00</span></div>
         <div class="grand">
           <span class="gl">Total</span>
           <span class="gv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
@@ -252,8 +249,8 @@ async function downloadSubscriptionReceipt(
       <div class="info-cell">
         <div class="sec-lbl">Company Details</div>
         <div class="row"><span class="k">Company</span><span class="v">Our School Tech</span></div>
-        <div class="row"><span class="k">Website</span><span class="v">ourschooltech.in</span></div>
-        <div class="row"><span class="k">Email</span><span class="v">support@ourschooltech.in</span></div>
+        <div class="row"><span class="k">Website</span><span class="v">ourschooltech.com</span></div>
+        <div class="row"><span class="k">Email</span><span class="v">support@ourschooltech.com</span></div>
       </div>
       <div class="info-cell">
         <div class="sec-lbl">Terms & Conditions</div>
@@ -270,7 +267,7 @@ async function downloadSubscriptionReceipt(
   <div class="ftr">
     <div class="ftr-l">
       <div class="fn">Our School Tech</div>
-      <div class="fd">ourschooltech.in<br/>support@ourschooltech.in</div>
+      <div class="fd">ourschooltech.com<br/>support@ourschooltech.com</div>
     </div>
     <div class="ftr-r">
       <div class="fl">Authorized Signatory</div>
