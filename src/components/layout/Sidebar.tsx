@@ -66,6 +66,40 @@ const rolePrefix = {
   student: '/student',
 };
 
+// Translation key mapping for menu labels
+const labelToKey: Record<string, string> = {
+  'Dashboard': 'sidebar.dashboard',
+  'Students': 'sidebar.students',
+  'Teachers': 'sidebar.teachers',
+  'Classes': 'sidebar.classes',
+  'Attendance': 'sidebar.attendance',
+  'Fees': 'sidebar.fees',
+  'Exams': 'sidebar.exams',
+  'Online Classes': 'sidebar.onlineClasses',
+  'Transport': 'sidebar.transport',
+  'Messages': 'sidebar.messages',
+  'Academic Years': 'sidebar.academicYears',
+  'Timetable': 'sidebar.timetable',
+  'Announcements': 'sidebar.announcements',
+  'Bulk Upload': 'sidebar.bulkUpload',
+  'Gallery': 'sidebar.gallery',
+  'Feedback': 'sidebar.feedback',
+  'Queries': 'sidebar.queries',
+  'Reports': 'sidebar.reports',
+  'Subscription': 'sidebar.subscription',
+  'Subscriptions': 'sidebar.subscriptions',
+  'Settings': 'sidebar.settings',
+  'Homework': 'sidebar.homework',
+  'Marks': 'sidebar.marks',
+  'Profile': 'sidebar.profile',
+  'Results': 'sidebar.results',
+  'Schools': 'sidebar.schools',
+  'School Admins': 'sidebar.schoolAdmins',
+  'All Users': 'sidebar.allUsers',
+  'Audit Logs': 'sidebar.auditLogs',
+  'Holiday Calendar': 'sidebar.holidayCalendar',
+};
+
 // Menu items with relative paths (prefix will be added)
 const menuConfig = {
   super_admin: [
@@ -207,21 +241,24 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin">
         <ul className="space-y-1">
-          {menuItems.map((item) => (
-            <li key={item.label}>
-              <Link
-                to={getFullPath(item.path)}
-                className={cn(
-                  "nav-item",
-                  isActive(item.path) && "nav-item-active"
-                )}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
-              </Link>
-            </li>
-          ))}
+          {menuItems.map((item) => {
+            const translatedLabel = t(labelToKey[item.label] || item.label);
+            return (
+              <li key={item.label}>
+                <Link
+                  to={getFullPath(item.path)}
+                  className={cn(
+                    "nav-item",
+                    isActive(item.path) && "nav-item-active"
+                  )}
+                  title={isCollapsed ? translatedLabel : undefined}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {!isCollapsed && <span>{translatedLabel}</span>}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -277,7 +314,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                 className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors"
               >
                 <LogOut className="w-3 h-3" />
-                Sign out
+                {t('sidebar.signOut')}
               </button>
             </div>
           )}
