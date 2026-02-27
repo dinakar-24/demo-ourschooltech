@@ -82,156 +82,194 @@ function downloadSubscriptionReceipt(
   const receiptHtml = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>Bill Of Service - ${schoolName}</title>
+<title>Invoice - ${schoolName} | Nimblix Technologies</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Times, serif; color: #000; padding: 24px; background: #fff; font-size: 13px; }
-  .invoice { max-width: 700px; margin: 0 auto; border: 1px solid #000; padding: 0; }
-  
-  .header { text-align: center; padding: 20px 24px 16px; border-bottom: 1px solid #000; }
-  .company-name { font-size: 24px; font-weight: 700; color: #1a3a6b; margin-bottom: 8px; }
-  .company-details { font-size: 11px; color: #333; line-height: 1.6; }
-  .company-details a { color: #1a3a6b; }
-  
-  .bill-title { text-align: center; padding: 10px 0; border-bottom: 1px solid #000; }
-  .bill-title h2 { font-size: 16px; text-decoration: underline; font-weight: 700; }
-  
-  .meta-section { display: flex; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid #000; }
-  .meta-left, .meta-right { font-size: 13px; }
-  .meta-right { text-align: right; }
-  .meta-label { font-weight: 400; }
-  .meta-value { font-weight: 700; }
-  
-  .to-section { padding: 8px 24px 12px; border-bottom: 1px solid #000; }
-  .to-section .to-label { font-size: 12px; color: #555; }
-  .to-section .to-name { font-size: 14px; font-weight: 700; }
-  
-  .terms { padding: 8px 24px; border-bottom: 1px solid #000; font-size: 12px; color: #c00; font-weight: 600; text-align: center; }
-  
-  table { width: 100%; border-collapse: collapse; }
-  table th { background: #fff; font-size: 12px; font-weight: 700; padding: 8px 12px; text-align: left; border: 1px solid #000; }
-  table th:last-child { text-align: right; }
-  table td { padding: 10px 12px; font-size: 13px; border: 1px solid #000; vertical-align: top; }
-  table td:last-child { text-align: right; font-weight: 600; }
-  table td:first-child { text-align: center; width: 50px; }
-  .desc-cell { min-height: 80px; }
-  .desc-cell .balance { margin-top: 12px; font-weight: 400; }
-  
-  .total-row td { font-weight: 700; font-size: 14px; }
-  .total-row td:last-child { color: #000; }
-  
-  .footer-section { display: flex; border-top: 1px solid #000; }
-  .footer-left { flex: 1; padding: 12px 16px; border-right: 1px solid #000; font-size: 11px; }
-  .footer-right { flex: 1; padding: 12px 16px; font-size: 11px; }
-  
-  .amount-words { font-size: 12px; padding: 8px 16px; border-top: 1px solid #000; }
-  .amount-words strong { font-weight: 700; }
-  .oe-row { display: flex; justify-content: space-between; }
-  
-  .bank-details { line-height: 1.7; }
-  .bank-details .bank-label { display: inline-block; min-width: 130px; }
-  
-  .declaration { border-top: 1px solid #000; padding: 10px 16px; font-size: 10px; line-height: 1.5; }
-  .declaration u { font-weight: 700; }
-  
-  .signature { text-align: right; padding: 8px 24px 16px; font-weight: 700; font-size: 13px; }
-  
+  body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a2e; padding: 0; background: #fff; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: 780px; margin: 0 auto; padding: 40px; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+  .brand { }
+  .brand-name { font-size: 20px; font-weight: 800; color: #0d1b2a; letter-spacing: -0.3px; }
+  .brand-sub { font-size: 10px; color: #64748b; margin-top: 3px; letter-spacing: 0.3px; text-transform: uppercase; font-weight: 500; }
+  .brand-reg { font-size: 9px; color: #94a3b8; margin-top: 6px; }
+  .invoice-badge { text-align: right; }
+  .invoice-badge h1 { font-size: 28px; font-weight: 800; color: #0d1b2a; letter-spacing: -0.5px; }
+  .invoice-badge .inv-no { font-size: 11px; color: #64748b; font-weight: 500; margin-top: 4px; }
+
+  /* Divider */
+  .divider { height: 2px; background: linear-gradient(90deg, #0f766e, #0ea5e9, #8b5cf6); border-radius: 2px; margin-bottom: 28px; }
+
+  /* Meta grid */
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+  .meta-box { }
+  .meta-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; }
+  .meta-val { font-size: 14px; font-weight: 700; color: #0d1b2a; }
+  .meta-val-sm { font-size: 12px; font-weight: 500; color: #475569; margin-top: 1px; }
+
+  /* Table */
+  .items-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  .items-table thead th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #fff; font-weight: 600; padding: 10px 16px; background: #0f766e; }
+  .items-table thead th:first-child { border-radius: 6px 0 0 0; text-align: center; width: 48px; }
+  .items-table thead th:last-child { border-radius: 0 6px 0 0; text-align: right; }
+  .items-table tbody td { padding: 16px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .items-table tbody td:first-child { text-align: center; color: #94a3b8; font-weight: 600; }
+  .items-table tbody td:last-child { text-align: right; font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .item-title { font-weight: 600; color: #0d1b2a; margin-bottom: 4px; }
+  .item-desc { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+  /* Totals */
+  .totals-section { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 280px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 8px 16px; font-size: 12px; }
+  .totals-row.sub { color: #64748b; }
+  .totals-row.grand { background: #0f766e; color: #fff; border-radius: 6px; padding: 12px 16px; font-size: 15px; font-weight: 800; margin-top: 4px; }
+  .totals-row .t-label { }
+  .totals-row .t-val { font-weight: 700; }
+
+  /* Amount words */
+  .amount-words { background: #f8fafc; border-radius: 6px; padding: 12px 16px; margin-bottom: 28px; font-size: 11px; color: #475569; }
+  .amount-words strong { color: #0d1b2a; font-weight: 600; }
+
+  /* Paid stamp */
+  .paid-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 100px; font-weight: 900; color: rgba(16, 185, 129, 0.06); letter-spacing: 20px; pointer-events: none; z-index: 0; }
+
+  /* Info grid */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .info-card { background: #f8fafc; border-radius: 8px; padding: 16px; }
+  .info-card h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 600; margin-bottom: 10px; }
+  .info-card p { font-size: 11px; color: #334155; line-height: 1.7; }
+  .info-card .info-row { display: flex; gap: 4px; font-size: 11px; line-height: 1.8; }
+  .info-card .info-row .il { color: #94a3b8; min-width: 110px; }
+  .info-card .info-row .iv { color: #334155; font-weight: 500; }
+
+  /* Footer */
+  .footer-bar { border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .footer-left { font-size: 9px; color: #94a3b8; line-height: 1.6; }
+  .footer-right { text-align: right; }
+  .footer-right .sig-name { font-size: 13px; font-weight: 700; color: #0d1b2a; }
+  .footer-right .sig-title { font-size: 10px; color: #64748b; margin-top: 2px; }
+  .footer-right .sig-co { font-size: 9px; color: #94a3b8; margin-top: 1px; }
+
+  .ref-bar { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; font-size: 9px; color: #cbd5e1; }
+
   @media print { 
-    body { padding: 0; } 
-    .invoice { border: 1px solid #000; }
+    body { padding: 0; }
+    .page { padding: 24px; }
+    .paid-watermark { position: absolute; }
   }
 </style></head><body>
-<div class="invoice">
+<div class="paid-watermark">PAID</div>
+<div class="page">
   <div class="header">
-    <div class="company-name">Nimblix Technologies OPC Pvt Ltd</div>
-    <div class="company-details">
-      MSME Reg. No. : U62099KA2025OPC203124<br/>
-      Phone: 81234-02974, E-mail: <a href="mailto:info@nimblix.in">info@nimblix.in</a>
+    <div class="brand">
+      <div class="brand-name">NIMBLIX TECHNOLOGIES</div>
+      <div class="brand-sub">OPC Private Limited</div>
+      <div class="brand-reg">CIN: U62099KA2025OPC203124 &nbsp;|&nbsp; MSME Registered</div>
+    </div>
+    <div class="invoice-badge">
+      <h1>INVOICE</h1>
+      <div class="inv-no">#${billNo}</div>
     </div>
   </div>
-  
-  <div class="bill-title">
-    <h2>Bill Of Service</h2>
-  </div>
-  
-  <div class="meta-section">
-    <div class="meta-left">
-      <span class="meta-label">Bill No. : </span>
-      <span class="meta-value">${billNo}</span>
+
+  <div class="divider"></div>
+
+  <div class="meta-grid">
+    <div class="meta-box">
+      <div class="meta-label">Billed To</div>
+      <div class="meta-val">${schoolName}</div>
+      <div class="meta-val-sm">School ERP Subscription</div>
     </div>
-    <div class="meta-right">
-      <span class="meta-label">Date : </span>
-      <span class="meta-value">${paymentDate}</span>
+    <div class="meta-box" style="text-align: right;">
+      <div class="meta-label">Invoice Date</div>
+      <div class="meta-val">${paymentDate}</div>
+      <div class="meta-val-sm" style="color: #10b981; font-weight: 600;">● Paid</div>
     </div>
   </div>
-  
-  <div class="to-section">
-    <div class="to-label">To</div>
-    <div class="to-name">${schoolName}</div>
-  </div>
-  
-  <div class="terms">
-    Terms & conditions : The Subscription Fees will not be refunded under any circumstances.
-  </div>
-  
-  <table>
+
+  <table class="items-table">
     <thead>
       <tr>
-        <th>Sl No</th>
-        <th>Description & Service Details</th>
-        <th>Amount</th>
+        <th>#</th>
+        <th>Service Description</th>
+        <th>Amount (₹)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>1</td>
-        <td class="desc-cell">
-          <strong>School ERP Platform - Annual ${paymentType} Subscription</strong><br/><br/>
-          ${studentCount} Students × ₹${pricePerStudent.toLocaleString('en-IN')}/student/year
+        <td>
+          <div class="item-title">School ERP Platform — Annual ${paymentType}</div>
+          <div class="item-desc">
+            Cloud-based School Management System<br/>
+            ${studentCount} active student${studentCount !== 1 ? 's' : ''} × ₹${pricePerStudent.toLocaleString('en-IN')} per student per year
+          </div>
         </td>
         <td>${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
       </tr>
-      <tr class="total-row">
-        <td colspan="2" style="text-align:right; padding-right: 16px;">Total</td>
-        <td>₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
     </tbody>
   </table>
-  
-  <div class="amount-words">
-    <div class="oe-row">
-      <div>
-        <strong>Amount Chargeable (in words)</strong><br/>
-        INR&nbsp; ${amountWords}
+
+  <div class="totals-section">
+    <div class="totals-box">
+      <div class="totals-row sub">
+        <span class="t-label">Subtotal</span>
+        <span class="t-val">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
       </div>
-      <div style="text-align:right; font-weight: 700; font-size: 12px;">E. &amp; O.E</div>
+      <div class="totals-row sub">
+        <span class="t-label">Tax</span>
+        <span class="t-val">₹0.00</span>
+      </div>
+      <div class="totals-row grand">
+        <span class="t-label">Total Paid</span>
+        <span class="t-val">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+      </div>
     </div>
   </div>
-  
-  <div class="footer-section">
+
+  <div class="amount-words">
+    <strong>Amount in words:</strong>&nbsp; INR ${amountWords}
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h4>Bank Details</h4>
+      <div class="info-row"><span class="il">Account Name</span><span class="iv">Nimblix Technologies OPC Pvt Ltd</span></div>
+      <div class="info-row"><span class="il">Bank</span><span class="iv">HDFC Bank — Current A/c</span></div>
+      <div class="info-row"><span class="il">Account No.</span><span class="iv">50200114739507</span></div>
+      <div class="info-row"><span class="il">IFSC Code</span><span class="iv">HDFC0000041</span></div>
+      <div class="info-row"><span class="il">Branch</span><span class="iv">Malleshwaram</span></div>
+    </div>
+    <div class="info-card">
+      <h4>Terms & Conditions</h4>
+      <p>
+        • Subscription fees are non-refundable once activated.<br/>
+        • Payment is due within 15 days from invoice date per MSME rules under Section 43B(h) of the Income Tax Act.<br/>
+        • This is a computer-generated invoice.
+      </p>
+    </div>
+  </div>
+
+  <div class="footer-bar">
     <div class="footer-left">
-      <u><strong>Declaration</strong></u><br/>
-      Payment against the invoice should be done within 15 days from the date of the invoice as per the new MSME rule incorporated under Section 43B(h) of the Income Tax Act.
+      Nimblix Technologies OPC Pvt Ltd<br/>
+      info@nimblix.in &nbsp;|&nbsp; +91 81234-02974<br/>
+      CIN: U62099KA2025OPC203124
     </div>
     <div class="footer-right">
-      <strong>Company's Bank Details</strong><br/>
-      <div class="bank-details">
-        <span class="bank-label">A/c Holder's Name</span> : Nimblix Technologies OPC Private Limited<br/>
-        <span class="bank-label">Bank Name</span> : HDFC Current Account<br/>
-        <span class="bank-label">A/c No.</span> : 50200114739507<br/>
-        <span class="bank-label">Branch & IFS Code</span> : Malleshwaram & HDFC0000041
-      </div>
+      <div class="sig-name">Suresh Chandra</div>
+      <div class="sig-title">Director</div>
+      <div class="sig-co">Nimblix Technologies OPC Pvt Ltd</div>
     </div>
   </div>
-  
-  <div class="signature">
-    <br/>Suresh Chandra
-  </div>
-  
+
   ${payment.razorpay_payment_id ? `
-  <div style="padding: 8px 16px; border-top: 1px solid #ccc; font-size: 10px; color: #666; display: flex; justify-content: space-between;">
+  <div class="ref-bar">
     <span>Payment ID: ${payment.razorpay_payment_id}</span>
-    <span>Order ID: ${payment.razorpay_order_id || 'N/A'}</span>
+    <span>Order ID: ${payment.razorpay_order_id || '—'}</span>
   </div>` : ''}
 </div>
 </body></html>`;
