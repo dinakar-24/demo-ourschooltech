@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Plus, Users, Megaphone, MessageCircle } from 'lucide-react';
+import { Search, Plus, Users, Megaphone } from 'lucide-react';
 import { Conversation } from '@/hooks/useMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,18 +17,16 @@ interface ConversationListProps {
   isLoading?: boolean;
 }
 
-type TabType = 'group' | 'broadcast' | 'direct';
+type TabType = 'group' | 'broadcast';
 
 const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
   { key: 'group', label: 'Groups', icon: Users },
   { key: 'broadcast', label: 'Broadcast', icon: Megaphone },
-  { key: 'direct', label: 'Direct', icon: MessageCircle },
 ];
 
 const avatarColors: Record<TabType, string> = {
   group: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
   broadcast: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  direct: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400',
 };
 
 export function ConversationList({ conversations, selectedId, onSelect, onNewChat, isLoading }: ConversationListProps) {
@@ -47,7 +45,6 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
   const counts = {
     group: conversations.filter(c => c.type === 'group').length,
     broadcast: conversations.filter(c => c.type === 'broadcast').length,
-    direct: conversations.filter(c => c.type === 'direct').length,
   };
 
   return (
@@ -123,7 +120,6 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
           <div className="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center">
             {activeTab === 'group' && <Users className="w-12 h-12 text-muted-foreground/30" />}
             {activeTab === 'broadcast' && <Megaphone className="w-12 h-12 text-muted-foreground/30" />}
-            {activeTab === 'direct' && <MessageCircle className="w-12 h-12 text-muted-foreground/30" />}
             <div>
               <p className="text-sm font-medium text-foreground">
                 {search ? 'No results found' : `No ${activeTab} conversations`}
@@ -160,7 +156,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
                   {/* Avatar */}
                   <div className="relative shrink-0">
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback className={cn("text-sm font-bold", avatarColors[conv.type as TabType] || avatarColors.direct)}>
+                      <AvatarFallback className={cn("text-sm font-bold", avatarColors[conv.type as TabType] || 'bg-muted text-muted-foreground')}>
                         {initials}
                       </AvatarFallback>
                     </Avatar>
