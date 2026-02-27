@@ -37,7 +37,7 @@ function numberToWords(num: number): string {
 const printStyles = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 24px; color: #1a1a1a; font-size: 13px; background: #fff; }
-  @media print { body { padding: 0; } .receipt-outer { box-shadow: none !important; } }
+  @media print { body { padding: 0; } .receipt-outer { box-shadow: none !important; border: none !important; } }
 `;
 
 export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: PaymentReceiptDialogProps) {
@@ -66,14 +66,22 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
   const formattedDate = paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const formattedTime = createdAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
+  // Get installment month from payment date
+  const installmentLabel = paymentDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
+  // Calculate discount/concession
+  const totalDiscounts = 0;
+
   const thStyle: React.CSSProperties = {
-    background: '#1a1a2e', color: '#fff', border: '1px solid #1a1a2e',
-    padding: '8px 10px', textAlign: 'left', fontWeight: 600, fontSize: '11px',
-    textTransform: 'uppercase', letterSpacing: '0.5px',
+    border: '1.5px solid #222', padding: '8px 10px', textAlign: 'center',
+    fontWeight: 700, fontSize: '12px', background: '#f5f5f5',
   };
-  const thStyleRight: React.CSSProperties = { ...thStyle, textAlign: 'right' };
-  const tdStyle: React.CSSProperties = { border: '1px solid #e0e0e0', padding: '8px 10px', fontSize: '12px' };
-  const tdStyleRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
+  const tdStyle: React.CSSProperties = {
+    border: '1px solid #999', padding: '7px 10px', fontSize: '12px', textAlign: 'center',
+  };
+  const tdRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
+  const labelStyle: React.CSSProperties = { fontWeight: 700, fontSize: '12px', color: '#1a1a1a' };
+  const valueStyle: React.CSSProperties = { fontSize: '12px', color: '#1a1a1a' };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,169 +101,166 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
         </DialogHeader>
 
         <div ref={receiptRef}>
-          <div className="receipt-outer" style={{ maxWidth: '680px', margin: '0 auto', border: '2px solid #1a1a2e', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff' }}>
-            {/* Top accent bar */}
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #0f766e, #14b8a6, #0f766e)' }} />
+          <div className="receipt-outer" style={{ maxWidth: '700px', margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '20px 24px' }}>
 
-            <div style={{ padding: '24px' }}>
-              {/* Office Copy tag */}
-              <div style={{ textAlign: 'right', marginBottom: '4px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 700, color: '#fff', background: '#6b7280', padding: '2px 8px', borderRadius: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Office Copy
-                </span>
-              </div>
+            {/* OFFICE COPY - top right */}
+            <div style={{ textAlign: 'right', marginBottom: '4px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#dc2626', fontStyle: 'italic' }}>
+                OFFICE COPY
+              </span>
+            </div>
 
-              {/* School Header */}
-              <div style={{ textAlign: 'center', marginBottom: '16px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
-                {school?.logo && (
-                  <img src={school.logo} alt={school.name} style={{ height: '56px', margin: '0 auto 8px', display: 'block', objectFit: 'contain' }} />
-                )}
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f766e', letterSpacing: '0.5px', marginBottom: '4px' }}>
+            {/* School Header - Logo left, Info center */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '16px' }}>
+              {school?.logo && (
+                <img src={school.logo} alt={school.name} style={{ height: '70px', width: '70px', objectFit: 'contain', flexShrink: 0 }} />
+              )}
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#1a1a1a', letterSpacing: '0.5px' }}>
                   {school?.name || 'School Name'}
                 </div>
-                <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>
-                  {[school?.address, school?.city].filter(Boolean).join(', ')}
+                <div style={{ fontSize: '12px', color: '#444', marginTop: '2px' }}>
+                  Address: {[school?.address, school?.city].filter(Boolean).join(', ')}
                 </div>
                 {(school?.phone || school?.email) && (
-                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: '#444', marginTop: '1px' }}>
                     {school?.phone && <>Tel: {school.phone}</>}
-                    {school?.phone && school?.email && ' | '}
+                    {school?.phone && school?.email && ', '}
                     {school?.email && <>Email: {school.email}</>}
                   </div>
                 )}
-              </div>
-
-              {/* Title Banner */}
-              <div style={{ textAlign: 'center', margin: '0 0 16px', padding: '8px', background: '#0f766e', borderRadius: '4px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                  Fee Receipt
-                </span>
-              </div>
-
-              {/* Receipt Meta Row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '14px', padding: '8px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-                <div>
-                  <span style={{ color: '#6b7280' }}>Receipt No: </span>
-                  <strong style={{ color: '#0f766e' }}>{payment.receipt_number}</strong>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', marginTop: '4px' }}>
+                  FEE RECEIPT
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ color: '#6b7280' }}>Date: </span>
-                  <strong>{formattedDate}</strong>
-                  <span style={{ color: '#9ca3af', marginLeft: '6px', fontSize: '11px' }}>{formattedTime}</span>
-                </div>
-              </div>
-
-              {/* Student Details */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: '16px', fontSize: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-                <div>
-                  <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Student Name</span>
-                  <div style={{ fontWeight: 700, marginTop: '2px' }}>{invoice.student?.full_name || 'N/A'}</div>
-                </div>
-                <div>
-                  <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Admission No</span>
-                  <div style={{ fontWeight: 700, marginTop: '2px' }}>{invoice.student?.admission_number || 'N/A'}</div>
-                </div>
-                <div>
-                  <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Class</span>
-                  <div style={{ fontWeight: 700, marginTop: '2px' }}>{invoice.student?.class_name} {invoice.student?.section}</div>
-                </div>
-                <div>
-                  <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</span>
-                  <div style={{ fontWeight: 700, marginTop: '2px' }}>{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-IN') : 'N/A'}</div>
-                </div>
-              </div>
-
-              {/* Fee Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '14px' }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...thStyle, width: '40px' }}>S.No</th>
-                    <th style={thStyle}>Particulars</th>
-                    <th style={thStyleRight}>Fee Due</th>
-                    <th style={thStyleRight}>Paid</th>
-                    <th style={thStyleRight}>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(invoice.components || []).map((c, idx) => (
-                    <tr key={c.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                      <td style={tdStyle}>{idx + 1}</td>
-                      <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
-                      <td style={tdStyleRight}>₹{Number(c.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ ...tdStyleRight, color: '#9ca3af' }}>—</td>
-                      <td style={{ ...tdStyleRight, color: '#9ca3af' }}>—</td>
-                    </tr>
-                  ))}
-                  {/* Total Row */}
-                  <tr>
-                    <td colSpan={2} style={{ ...tdStyle, fontWeight: 700, background: '#f1f5f9', fontSize: '13px' }}>Total</td>
-                    <td style={{ ...tdStyleRight, fontWeight: 700, background: '#f1f5f9', fontSize: '13px' }}>
-                      ₹{Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ ...tdStyleRight, fontWeight: 700, background: '#f1f5f9', color: '#0f766e', fontSize: '13px' }}>
-                      ₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ ...tdStyleRight, fontWeight: 700, background: '#f1f5f9', color: '#dc2626', fontSize: '13px' }}>
-                      ₹{Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Amount in Words */}
-              <div style={{ fontSize: '12px', margin: '0 0 12px', padding: '8px 12px', background: '#ecfdf5', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
-                <strong>Amount In Words:</strong> {numberToWords(totalPaid)}
-              </div>
-
-              {/* Payment Info */}
-              <div style={{ fontSize: '12px', margin: '0 0 8px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e5e7eb' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px' }}>
-                  <div>
-                    <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase' }}>Payment Mode</span>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize', marginTop: '2px' }}>{payment.payment_method}</div>
-                  </div>
-                  {payment.transaction_id && (
-                    <div>
-                      <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase' }}>Transaction No</span>
-                      <div style={{ fontWeight: 600, marginTop: '2px', fontFamily: "'Courier New', monospace" }}>{payment.transaction_id}</div>
-                    </div>
-                  )}
-                  {payment.cheque_number && (
-                    <>
-                      <div>
-                        <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase' }}>Cheque No</span>
-                        <div style={{ fontWeight: 600, marginTop: '2px' }}>{payment.cheque_number}</div>
-                      </div>
-                      {payment.bank_name && (
-                        <div>
-                          <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase' }}>Bank</span>
-                          <div style={{ fontWeight: 600, marginTop: '2px' }}>{payment.bank_name}</div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {payment.received_by && (
-                    <div>
-                      <span style={{ color: '#6b7280', fontSize: '10px', textTransform: 'uppercase' }}>Received By</span>
-                      <div style={{ fontWeight: 600, marginTop: '2px' }}>{payment.received_by}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Disclaimer */}
-              <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '16px', lineHeight: 1.6, borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
-                <strong style={{ color: '#6b7280' }}>Note:</strong> Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred. Cheques subject to realization.
-              </div>
-
-              {/* System Note */}
-              <div style={{ textAlign: 'center', fontSize: '10px', color: '#a1a1aa', marginTop: '10px', fontStyle: 'italic' }}>
-                This is a system-generated Fee Receipt and does not require any stamp or signature.
               </div>
             </div>
 
-            {/* Bottom accent bar */}
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #0f766e, #14b8a6, #0f766e)' }} />
+            {/* Divider */}
+            <hr style={{ border: 'none', borderTop: '2px solid #333', margin: '0 0 14px' }} />
+
+            {/* Receipt & Student Details - two column label: value layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', marginBottom: '16px', fontSize: '12px' }}>
+              <div>
+                <span style={labelStyle}>Receipt No: </span>
+                <span style={valueStyle}>{payment.receipt_number}</span>
+              </div>
+              <div>
+                <span style={labelStyle}>Receipt Date: </span>
+                <span style={valueStyle}>{formattedDate} {formattedTime}</span>
+              </div>
+              <div>
+                <span style={labelStyle}>Student Name: </span>
+                <span style={valueStyle}>{invoice.student?.full_name || 'N/A'}</span>
+              </div>
+              <div>
+                <span style={labelStyle}>Admission No: </span>
+                <span style={valueStyle}>{invoice.student?.admission_number || 'N/A'}</span>
+              </div>
+              <div>
+                <span style={labelStyle}>Class: </span>
+                <span style={valueStyle}>{invoice.student?.class_name} {invoice.student?.section}</span>
+              </div>
+            </div>
+
+            {/* Fee Table */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '14px' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: '50px' }}>S.No</th>
+                  <th style={thStyle}>Particulars</th>
+                  <th style={thStyle}>Installment</th>
+                  <th style={thStyle}>Fee Due</th>
+                  <th style={thStyle}>Concession</th>
+                  <th style={thStyle}>Fine</th>
+                  <th style={{ ...thStyle, background: '#e8f5e9' }}>Paid</th>
+                  <th style={thStyle}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(invoice.components || []).map((c, idx) => {
+                  const compAmount = Number(c.amount);
+                  return (
+                    <tr key={c.id}>
+                      <td style={tdStyle}>{idx + 1}</td>
+                      <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 500 }}>{c.fee_type}</td>
+                      <td style={tdStyle}>{installmentLabel}</td>
+                      <td style={tdRight}>{compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td style={tdRight}>0.00</td>
+                      <td style={tdRight}>0.00</td>
+                      <td style={{ ...tdRight, fontWeight: 700 }}>
+                        {idx === 0 ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'}
+                      </td>
+                      <td style={tdRight}>0.00</td>
+                    </tr>
+                  );
+                })}
+                {/* If no components, show a single row */}
+                {(!invoice.components || invoice.components.length === 0) && (
+                  <tr>
+                    <td style={tdStyle}>1</td>
+                    <td style={{ ...tdStyle, textAlign: 'left' }}>Fee Payment</td>
+                    <td style={tdStyle}>{installmentLabel}</td>
+                    <td style={tdRight}>{Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={tdRight}>{totalDiscounts.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={tdRight}>0.00</td>
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={tdRight}>{Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                )}
+                {/* Total Row */}
+                <tr style={{ background: '#f5f5f5' }}>
+                  <td colSpan={5} />
+                  <td style={{ ...tdStyle, fontWeight: 700, textAlign: 'right' }}>Total</td>
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '13px' }}>
+                    {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '13px' }}>
+                    {Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Amount in Words */}
+            <div style={{ fontSize: '12px', marginBottom: '6px' }}>
+              <span style={labelStyle}>Amount In Words: </span>
+              <span style={valueStyle}>{numberToWords(totalPaid)}</span>
+            </div>
+
+            {/* Payment Mode */}
+            <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <span style={labelStyle}>Payment Mode: </span>
+              <span style={{ ...valueStyle, textTransform: 'capitalize' }}>{payment.payment_method}</span>
+            </div>
+
+            {/* Transaction / Cheque Info */}
+            {payment.transaction_id && (
+              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                <span style={labelStyle}>Transaction No: </span>
+                <span style={valueStyle}>{payment.transaction_id}</span>
+              </div>
+            )}
+            {payment.cheque_number && (
+              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                <span style={labelStyle}>Cheque No: </span>
+                <span style={valueStyle}>{payment.cheque_number}</span>
+                {payment.bank_name && <> | <span style={labelStyle}>Bank: </span><span style={valueStyle}>{payment.bank_name}</span></>}
+              </div>
+            )}
+
+            {/* Disclaimer */}
+            <div style={{ fontSize: '11px', color: '#333', marginTop: '20px', lineHeight: 1.7 }}>
+              <strong style={{ color: '#dc2626' }}>Note: </strong>
+              Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred. Cheques subject to realization.
+            </div>
+
+            {/* Divider */}
+            <hr style={{ border: 'none', borderTop: '1px solid #999', margin: '14px 0 10px' }} />
+
+            {/* System Note */}
+            <div style={{ textAlign: 'center', fontSize: '11px', color: '#555', fontStyle: 'italic' }}>
+              This is a system-generated Fee Receipt and does not require any stamp or signature.
+            </div>
           </div>
         </div>
       </DialogContent>
