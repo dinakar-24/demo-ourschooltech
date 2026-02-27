@@ -42,6 +42,7 @@ import AnnouncementsPage from "./pages/admin/AnnouncementsPage";
 import AcademicYearsPage from "./pages/admin/AcademicYearsPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import AdminProfilePage from "./pages/admin/AdminProfilePage";
 import SubscriptionPage from "./pages/admin/SubscriptionPage";
 import TimetablePage from "./pages/admin/TimetablePage";
 import BulkUploadPage from "./pages/admin/BulkUploadPage";
@@ -216,6 +217,7 @@ function AppRoutes() {
         <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AnnouncementsPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><ReportsPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><SettingsPage /></SubscriptionGuard></ProtectedRoute>} />
+        <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminProfilePage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/subscription" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionPage /></ProtectedRoute>} />
         <Route path="/admin/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BulkUploadPage /></SubscriptionGuard></ProtectedRoute>} />
         <Route path="/admin/online-classes" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><OnlineClassesPage /></SubscriptionGuard></ProtectedRoute>} />

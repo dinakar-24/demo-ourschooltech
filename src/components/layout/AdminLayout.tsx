@@ -79,6 +79,7 @@ const menuItems = [
   { label: 'Queries', href: '/admin/queries', icon: HelpCircle },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
+  { label: 'My Profile', href: '/admin/profile', icon: Users },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
@@ -93,6 +94,7 @@ const labelToKey: Record<string, string> = {
   'Subscription': 'sidebar.subscription', 'Settings': 'sidebar.settings',
   'All Students': 'sidebar.allStudents', 'Add Student': 'sidebar.addStudent',
   'Holiday Calendar': 'sidebar.holidayCalendar', 'Employees': 'sidebar.employees',
+  'My Profile': 'sidebar.myProfile',
 };
 
 export function AdminLayout({ children, title }: AdminLayoutProps) {
@@ -232,11 +234,13 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
       {/* User Section */}
       <div className="p-3 border-t border-sidebar-border">
         <div className={cn(
-          "flex items-center gap-3",
+          "flex items-center gap-3 cursor-pointer",
           isCollapsed && "justify-center"
-        )}>
-          {displaySchoolLogo ? (
-            <img src={displaySchoolLogo} alt={user?.name || 'User'} className="w-9 h-9 rounded-full object-cover" />
+        )}
+        onClick={() => { navigate('/admin/profile'); setMobileMenuOpen(false); }}
+        >
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user?.name || 'User'} className="w-9 h-9 rounded-full object-cover" />
           ) : (
             <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center text-sm font-medium text-sidebar-accent-foreground">
               {user?.name.split(' ').map(n => n[0]).join('')}
