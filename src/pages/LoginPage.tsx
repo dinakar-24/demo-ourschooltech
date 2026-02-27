@@ -15,7 +15,8 @@ type LoginStep = 'splash' | 'email' | 'password' | 'superadmin';
 
 interface SchoolInfo {
   school_name: string;
-  school_logo: string | null;
+  school_id: string | null;
+  has_logo: boolean;
   primary_color: string | null;
   secondary_color: string | null;
   background_color: string | null;
@@ -346,6 +347,21 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
   onForgotPassword: () => void;
 }) {
   const hasBanner = !!schoolInfo.splash_screen_image_url;
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+
+  // Lazy-load logo in background
+  useEffect(() => {
+    if (!schoolInfo.has_logo || !schoolInfo.school_id) return;
+    let cancelled = false;
+    supabase.rpc('get_school_logo_by_id', { _school_id: schoolInfo.school_id }).then(({ data }) => {
+      const result = data as any;
+      if (!cancelled && result?.logo) {
+        setLogoUrl(result.logo);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [schoolInfo.school_id, schoolInfo.has_logo]);
 
   return (
     <motion.div
@@ -373,16 +389,25 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
 
         {/* School info card */}
         <div className={`bg-white/[0.04] backdrop-blur-2xl p-4 flex items-center gap-3.5 ${hasBanner ? '-mt-8 relative z-10 mx-3 rounded-xl border border-white/[0.08] bg-[hsl(225,50%,12%)/0.9] mb-3' : ''}`}>
-          {/* Logo */}
-          {schoolInfo.school_logo ? (
-            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
-              <img src={schoolInfo.school_logo} alt={schoolInfo.school_name} className="w-full h-full object-cover" loading="eager" fetchPriority="high" decoding="sync" />
-            </div>
-          ) : (
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shrink-0 shadow-lg">
+          {/* Logo - letter avatar placeholder with lazy-loaded image */}
+          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative">
+            {/* Always show letter avatar as base */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shadow-lg transition-opacity duration-300 ${logoLoaded ? 'opacity-0' : 'opacity-100'}`}>
               <span className="text-2xl font-bold text-white/60">{schoolInfo.school_name?.charAt(0)}</span>
             </div>
-          )}
+            {/* Fade in real logo on top */}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={schoolInfo.school_name}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setLogoLoaded(true)}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm truncate leading-tight">
               {schoolInfo.app_display_name || schoolInfo.school_name}
