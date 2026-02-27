@@ -133,6 +133,7 @@ const menuConfig = {
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Subscription', path: '/subscription', icon: CreditCard },
     { label: 'Settings', path: '/settings', icon: Settings },
+    { label: 'Profile', path: '/profile', icon: Users },
   ],
   teacher: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
