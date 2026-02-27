@@ -3,25 +3,16 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
 
-// Service worker: auto-update and reload on new version
+// Aggressively unregister all service workers and clear ALL caches
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(reg => reg.update().catch(() => {}));
-  });
-
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+    registrations.forEach(reg => reg.unregister());
   });
 }
 
-// Clear stale workbox/precache entries on startup
 if ('caches' in window) {
   caches.keys().then(names => {
-    names.forEach(name => {
-      if (name.includes('precache') || name.includes('workbox')) {
-        caches.delete(name);
-      }
-    });
+    names.forEach(name => caches.delete(name));
   });
 }
 
