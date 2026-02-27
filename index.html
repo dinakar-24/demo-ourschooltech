@@ -25,6 +25,31 @@
   </head>
 
   <body>
+    <script>
+      // Kill old service workers BEFORE React loads
+      (function(){
+        var hasOldSW = false;
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(function(regs){
+            for(var i=0;i<regs.length;i++){
+              regs[i].unregister();
+              hasOldSW=true;
+            }
+            if('caches' in window){
+              caches.keys().then(function(keys){
+                var p=[];
+                for(var j=0;j<keys.length;j++) p.push(caches.delete(keys[j]));
+                Promise.all(p).then(function(){
+                  if(hasOldSW) location.reload();
+                });
+              });
+            } else if(hasOldSW){
+              location.reload();
+            }
+          });
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
