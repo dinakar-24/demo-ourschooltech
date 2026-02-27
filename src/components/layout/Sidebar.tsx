@@ -98,6 +98,7 @@ const labelToKey: Record<string, string> = {
   'All Users': 'sidebar.allUsers',
   'Audit Logs': 'sidebar.auditLogs',
   'Holiday Calendar': 'sidebar.holidayCalendar',
+  'My Profile': 'sidebar.profile',
 };
 
 // Menu items with relative paths (prefix will be added)
@@ -133,7 +134,7 @@ const menuConfig = {
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Subscription', path: '/subscription', icon: CreditCard },
     { label: 'Settings', path: '/settings', icon: Settings },
-    { label: 'Profile', path: '/profile', icon: Users },
+    { label: 'My Profile', path: '/profile', icon: Users },
   ],
   teacher: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
