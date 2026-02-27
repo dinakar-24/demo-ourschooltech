@@ -84,186 +84,207 @@ function downloadSubscriptionReceipt(
   const receiptHtml = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>Invoice #${billNo} | Our School Tech</title>
+<title>Invoice ${billNo} | Our School Tech</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; color: #111; background: #fff; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .page { max-width: 780px; margin: 0 auto; padding: 48px 48px 36px; }
+  body { font-family: 'DM Sans', sans-serif; color: #0a0a0a; background: #fff; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { max-width: 800px; margin: 0 auto; padding: 0; }
 
-  /* ── Header ── */
-  .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 28px; border-bottom: 2px solid #111; margin-bottom: 28px; }
-  .brand { display: flex; align-items: center; gap: 16px; }
-  .brand img { height: 52px; width: auto; }
-  .brand-info {}
-  .brand-name { font-size: 20px; font-weight: 900; color: #111; letter-spacing: -0.5px; text-transform: uppercase; }
-  .brand-site { font-size: 10px; color: #888; font-weight: 500; letter-spacing: 0.5px; margin-top: 2px; }
-  .inv-title { text-align: right; }
-  .inv-title h1 { font-size: 36px; font-weight: 900; color: #111; letter-spacing: -1.5px; text-transform: uppercase; }
+  /* ═══ TOP BAR ═══ */
+  .topbar { background: #0a0a0a; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar-brand { display: flex; align-items: center; gap: 14px; }
+  .topbar-brand img { height: 40px; width: auto; filter: brightness(10); }
+  .topbar-text { color: #fff; }
+  .topbar-name { font-size: 16px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .topbar-url { font-size: 9px; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .topbar-right { color: #fff; text-align: right; }
+  .topbar-inv { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: 2px; }
+  .topbar-inv-sub { font-size: 9px; color: #666; letter-spacing: 1px; margin-top: 4px; }
 
-  /* ── Invoice meta ── */
-  .inv-meta { display: flex; justify-content: flex-end; gap: 32px; margin-bottom: 32px; }
-  .inv-meta-item {}
-  .inv-meta-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; }
-  .inv-meta-val { font-size: 13px; font-weight: 700; color: #111; margin-top: 3px; }
+  .body { padding: 32px 40px 24px; }
 
-  /* ── Parties ── */
-  .parties { display: grid; grid-template-columns: 1fr auto; gap: 40px; margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px solid #e5e5e5; }
-  .bill-to {}
-  .section-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; margin-bottom: 8px; }
-  .bill-name { font-size: 16px; font-weight: 800; color: #111; }
-  .bill-desc { font-size: 11px; color: #777; margin-top: 4px; }
-  .status-box { text-align: right; }
-  .paid-badge { display: inline-block; border: 2px solid #111; padding: 6px 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #111; }
+  /* ═══ META ROW ═══ */
+  .meta-strip { display: flex; background: #f5f5f5; border-radius: 4px; margin-bottom: 28px; overflow: hidden; }
+  .meta-cell { flex: 1; padding: 14px 20px; border-right: 1px solid #e5e5e5; }
+  .meta-cell:last-child { border-right: none; }
+  .mc-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; }
+  .mc-val { font-size: 14px; font-weight: 800; color: #0a0a0a; margin-top: 4px; }
+  .mc-val.paid { color: #0a0a0a; }
 
-  /* ── Table ── */
-  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-  thead th { font-size: 8px; text-transform: uppercase; letter-spacing: 1.2px; color: #999; font-weight: 700; padding: 0 0 10px; border-bottom: 2px solid #111; text-align: left; }
-  thead th:nth-child(1) { width: 36px; }
-  thead th:nth-child(3) { width: 60px; text-align: center; }
-  thead th:nth-child(4) { width: 90px; text-align: right; }
-  thead th:last-child { text-align: right; width: 110px; }
-  tbody td { padding: 16px 0; font-size: 13px; border-bottom: 1px solid #eee; vertical-align: top; }
-  tbody td:nth-child(1) { color: #bbb; font-weight: 600; }
-  tbody td:nth-child(3) { text-align: center; color: #555; }
-  tbody td:nth-child(4) { text-align: right; color: #555; }
-  tbody td:last-child { text-align: right; font-weight: 800; color: #111; font-size: 14px; }
-  .item-name { font-weight: 700; color: #111; }
-  .item-sub { font-size: 11px; color: #999; margin-top: 3px; }
+  /* ═══ BILLED TO ═══ */
+  .billed { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+  .bl-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; font-weight: 700; margin-bottom: 6px; }
+  .bl-name { font-size: 18px; font-weight: 900; color: #0a0a0a; }
+  .bl-desc { font-size: 11px; color: #888; margin-top: 3px; }
 
-  /* ── Totals ── */
-  .totals { display: flex; justify-content: flex-end; margin-bottom: 24px; }
-  .totals-inner { width: 260px; }
-  .t-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; color: #777; }
-  .t-row .tv { font-weight: 600; color: #333; }
-  .t-row-grand { display: flex; justify-content: space-between; padding: 14px 0; margin-top: 8px; border-top: 2px solid #111; border-bottom: 2px solid #111; }
-  .t-row-grand .tl { font-size: 13px; font-weight: 800; color: #111; text-transform: uppercase; letter-spacing: 1px; }
-  .t-row-grand .tv { font-size: 18px; font-weight: 900; color: #111; }
+  /* ═══ TABLE ═══ */
+  .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  .inv-table thead { background: #0a0a0a; }
+  .inv-table thead th { color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; padding: 12px 16px; text-align: left; }
+  .inv-table thead th.c { text-align: center; }
+  .inv-table thead th.r { text-align: right; }
+  .inv-table tbody td { padding: 18px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  .inv-table tbody td.c { text-align: center; }
+  .inv-table tbody td.r { text-align: right; }
+  .inv-table .it-name { font-weight: 800; color: #0a0a0a; font-size: 14px; }
+  .inv-table .it-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+  .inv-table .it-amt { font-weight: 900; color: #0a0a0a; font-size: 15px; }
 
-  /* ── Words ── */
-  .words { font-size: 11px; color: #888; margin-bottom: 36px; padding: 12px 0; border-bottom: 1px solid #eee; }
-  .words strong { color: #555; font-weight: 600; }
+  /* ═══ TOTALS ═══ */
+  .totals-wrap { display: flex; justify-content: flex-end; padding: 0 0 24px; }
+  .totals-box { width: 280px; }
+  .tr { display: flex; justify-content: space-between; padding: 8px 0; font-size: 12px; color: #888; border-bottom: 1px solid #f5f5f5; }
+  .tr .trv { font-weight: 700; color: #444; }
+  .tr-grand { display: flex; justify-content: space-between; padding: 16px 20px; background: #0a0a0a; color: #fff; margin-top: 8px; border-radius: 4px; }
+  .tr-grand .trl { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .tr-grand .trv { font-size: 20px; font-weight: 900; }
 
-  /* ── Notes ── */
-  .notes { margin-bottom: 40px; }
-  .notes-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; margin-bottom: 6px; }
-  .notes p { font-size: 10px; color: #999; line-height: 1.7; }
+  /* ═══ AMOUNT WORDS ═══ */
+  .words { background: #fafafa; padding: 12px 16px; border-left: 3px solid #0a0a0a; margin-bottom: 28px; font-size: 11px; color: #666; }
+  .words b { color: #333; }
 
-  /* ── Footer ── */
-  .footer { border-top: 2px solid #111; padding-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .footer-left { }
-  .footer-left .fl-brand { font-size: 13px; font-weight: 800; color: #111; }
-  .footer-left .fl-url { font-size: 10px; color: #999; margin-top: 2px; }
-  .footer-left .fl-email { font-size: 10px; color: #999; margin-top: 1px; }
-  .footer-right { text-align: right; }
-  .footer-right .fr-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; font-weight: 700; }
-  .footer-right .fr-name { font-size: 15px; font-weight: 800; color: #111; margin-top: 4px; }
-  .footer-right .fr-role { font-size: 10px; color: #777; margin-top: 2px; }
+  /* ═══ INFO GRID ═══ */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #eee; border: 1px solid #eee; border-radius: 4px; overflow: hidden; margin-bottom: 28px; }
+  .info-cell { background: #fff; padding: 16px 20px; }
+  .ic-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; font-weight: 700; margin-bottom: 8px; }
+  .ic-row { display: flex; font-size: 11px; line-height: 2; }
+  .ic-row .ik { color: #aaa; width: 110px; flex-shrink: 0; }
+  .ic-row .iv { color: #333; font-weight: 600; }
+  .ic-text { font-size: 10px; color: #888; line-height: 1.7; }
 
-  .ref { margin-top: 20px; padding-top: 10px; border-top: 1px dashed #ddd; display: flex; justify-content: space-between; font-size: 8px; color: #ccc; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 0.5px; }
+  /* ═══ FOOTER ═══ */
+  .foot { background: #0a0a0a; padding: 24px 40px; display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; }
+  .foot-left {}
+  .foot-left .fl-name { font-size: 13px; font-weight: 800; color: #fff; }
+  .foot-left .fl-detail { font-size: 9px; color: #666; margin-top: 4px; line-height: 1.6; }
+  .foot-right { text-align: right; }
+  .foot-right .fr-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; font-weight: 700; }
+  .foot-right .fr-name { font-size: 16px; font-weight: 900; color: #fff; margin-top: 6px; }
+  .foot-right .fr-role { font-size: 9px; color: #888; margin-top: 2px; }
 
-  @media print { body { padding: 0; } .page { padding: 32px; } }
+  .ref-bar { padding: 8px 40px; background: #f5f5f5; display: flex; justify-content: space-between; font-size: 8px; color: #bbb; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: 0.3px; }
+
+  @media print { body { padding: 0; } .page { max-width: 100%; } }
 </style></head><body>
 <div class="page">
 
-  <div class="header">
-    <div class="brand">
-      <img src="${logoUrl}" alt="Our School Tech" />
-      <div class="brand-info">
-        <div class="brand-name">Our School Tech</div>
-        <div class="brand-site">ourschooltech.in</div>
+  <div class="topbar">
+    <div class="topbar-brand">
+      <img src="${logoUrl}" alt="OST" />
+      <div class="topbar-text">
+        <div class="topbar-name">Our School Tech</div>
+        <div class="topbar-url">ourschooltech.in</div>
       </div>
     </div>
-    <div class="inv-title">
-      <h1>Invoice</h1>
+    <div class="topbar-right">
+      <div class="topbar-inv">INVOICE</div>
     </div>
   </div>
 
-  <div class="inv-meta">
-    <div class="inv-meta-item">
-      <div class="inv-meta-label">Invoice No.</div>
-      <div class="inv-meta-val">${billNo}</div>
+  <div class="body">
+    <div class="meta-strip">
+      <div class="meta-cell">
+        <div class="mc-label">Invoice No.</div>
+        <div class="mc-val">${billNo}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="mc-label">Date</div>
+        <div class="mc-val">${paymentDate}</div>
+      </div>
+      <div class="meta-cell">
+        <div class="mc-label">Payment</div>
+        <div class="mc-val paid">✓ PAID</div>
+      </div>
+      <div class="meta-cell">
+        <div class="mc-label">Students</div>
+        <div class="mc-val">${studentCount}</div>
+      </div>
     </div>
-    <div class="inv-meta-item">
-      <div class="inv-meta-label">Date</div>
-      <div class="inv-meta-val">${paymentDate}</div>
-    </div>
-  </div>
 
-  <div class="parties">
-    <div class="bill-to">
-      <div class="section-label">Billed To</div>
-      <div class="bill-name">${schoolName}</div>
-      <div class="bill-desc">School ERP Platform — Annual ${paymentType}</div>
+    <div class="billed">
+      <div class="bl-label">Billed To</div>
+      <div class="bl-name">${schoolName}</div>
+      <div class="bl-desc">School ERP Platform — Annual ${paymentType} Subscription</div>
     </div>
-    <div class="status-box">
-      <div class="section-label">Status</div>
-      <div class="paid-badge">Paid</div>
+
+    <table class="inv-table">
+      <thead>
+        <tr>
+          <th style="width:36px">#</th>
+          <th>Service Description</th>
+          <th class="c" style="width:60px">Qty</th>
+          <th class="r" style="width:100px">Rate (₹)</th>
+          <th class="r" style="width:120px">Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>
+            <div class="it-name">School ERP Platform — Annual ${paymentType}</div>
+            <div class="it-sub">Cloud-based school management system · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
+          </td>
+          <td class="c">${studentCount}</td>
+          <td class="r">${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="r it-amt">${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tr"><span>Subtotal</span><span class="trv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+        <div class="tr"><span>Tax (0%)</span><span class="trv">₹0.00</span></div>
+        <div class="tr"><span>Discount</span><span class="trv">₹0.00</span></div>
+        <div class="tr-grand">
+          <span class="trl">Total</span>
+          <span class="trv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Description</th>
-        <th>Qty</th>
-        <th>Rate</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>1</td>
-        <td>
-          <div class="item-name">School ERP — Annual ${paymentType}</div>
-          <div class="item-sub">Cloud-based school management platform</div>
-        </td>
-        <td>${studentCount}</td>
-        <td>₹${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td>₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-    </tbody>
-  </table>
+    <div class="words">
+      <b>Amount in words:</b>&nbsp; INR ${amountWords}
+    </div>
 
-  <div class="totals">
-    <div class="totals-inner">
-      <div class="t-row"><span>Subtotal</span><span class="tv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-      <div class="t-row"><span>Tax</span><span class="tv">₹0.00</span></div>
-      <div class="t-row-grand">
-        <span class="tl">Total</span>
-        <span class="tv">₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="ic-label">Company Details</div>
+        <div class="ic-row"><span class="ik">Company</span><span class="iv">Our School Tech</span></div>
+        <div class="ic-row"><span class="ik">Website</span><span class="iv">ourschooltech.in</span></div>
+        <div class="ic-row"><span class="ik">Email</span><span class="iv">support@ourschooltech.in</span></div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-label">Terms & Conditions</div>
+        <div class="ic-text">
+          1. Subscription fees are non-refundable once activated.<br/>
+          2. Service validity as per subscription period.<br/>
+          3. This is a computer-generated invoice.<br/>
+          4. No physical signature required.
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="words">
-    <strong>In words:</strong>&nbsp; INR ${amountWords}
-  </div>
-
-  <div class="notes">
-    <div class="notes-label">Terms</div>
-    <p>Subscription fees are non-refundable once activated. This is a computer-generated invoice and does not require a physical signature.</p>
-  </div>
-
-  <div class="footer">
-    <div class="footer-left">
-      <div class="fl-brand">Our School Tech</div>
-      <div class="fl-url">ourschooltech.in</div>
-      <div class="fl-email">support@ourschooltech.in</div>
+  <div class="foot">
+    <div class="foot-left">
+      <div class="fl-name">Our School Tech</div>
+      <div class="fl-detail">ourschooltech.in<br/>support@ourschooltech.in</div>
     </div>
-    <div class="footer-right">
+    <div class="foot-right">
       <div class="fr-label">Authorized Signatory</div>
       <div class="fr-name">Dinakar Sai Reddy Lingala</div>
-      <div class="fr-role">CEO & Founder, Our School Tech</div>
+      <div class="fr-role">CEO & Founder</div>
     </div>
   </div>
 
   ${payment.razorpay_payment_id ? `
-  <div class="ref">
-    <span>PAY ${payment.razorpay_payment_id}</span>
-    <span>ORD ${payment.razorpay_order_id || '—'}</span>
+  <div class="ref-bar">
+    <span>PAYMENT: ${payment.razorpay_payment_id}</span>
+    <span>ORDER: ${payment.razorpay_order_id || '—'}</span>
   </div>` : ''}
+
 </div>
 </body></html>`;
 
