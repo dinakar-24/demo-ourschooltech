@@ -2,31 +2,28 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ConversationList } from '@/components/messaging/ConversationList';
 import { ChatView } from '@/components/messaging/ChatView';
+import { NewChatDialog } from '@/components/messaging/NewChatDialog';
 import { useConversations, useMessages, useRealtimeConversations, Conversation } from '@/hooks/useMessages';
 import { useAutoCreateGroups } from '@/hooks/useAutoCreateGroups';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle } from 'lucide-react';
 
 export default function MessagesPage() {
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   const { data: conversations = [], isLoading: convsLoading } = useConversations();
   const { data: messages = [], isLoading: msgsLoading } = useMessages(selectedConv?.id);
 
-  // Auto-create class/section groups & broadcasts
   useAutoCreateGroups();
-  // Realtime for conversation list
   useRealtimeConversations();
 
-  const handleSelect = (conv: Conversation) => {
-    setSelectedConv(conv);
-  };
-
-  // Update selected conversation with latest data
+  const handleSelect = (conv: Conversation) => setSelectedConv(conv);
   const currentConv = selectedConv ? conversations.find(c => c.id === selectedConv.id) || selectedConv : null;
 
-  // Mobile: show either list or chat
   if (isMobile) {
     return (
       <AdminLayout>
@@ -36,6 +33,7 @@ export default function MessagesPage() {
               conversations={conversations}
               selectedId={selectedConv?.id}
               onSelect={handleSelect}
+              onNewChat={() => setNewDialogOpen(true)}
               isLoading={convsLoading}
             />
           ) : currentConv ? (
@@ -47,32 +45,26 @@ export default function MessagesPage() {
             />
           ) : null}
         </div>
+        <NewChatDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={() => queryClient.invalidateQueries({ queryKey: ['conversations'] })} />
       </AdminLayout>
     );
   }
 
-  // Desktop: side-by-side
   return (
     <AdminLayout>
       <div className="flex h-[calc(100vh-5rem)] rounded-lg border border-border overflow-hidden bg-card">
-        {/* Left panel - Conversation list */}
         <div className="w-80 shrink-0">
           <ConversationList
             conversations={conversations}
             selectedId={selectedConv?.id}
             onSelect={handleSelect}
+            onNewChat={() => setNewDialogOpen(true)}
             isLoading={convsLoading}
           />
         </div>
-
-        {/* Right panel - Chat */}
         <div className="flex-1 min-w-0">
           {currentConv ? (
-            <ChatView
-              conversation={currentConv}
-              messages={messages}
-              isLoading={msgsLoading}
-            />
+            <ChatView conversation={currentConv} messages={messages} isLoading={msgsLoading} />
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
               <MessageCircle className="w-16 h-16 mb-4 opacity-30" />
@@ -82,6 +74,7 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+      <NewChatDialog open={newDialogOpen} onOpenChange={setNewDialogOpen} onCreated={() => queryClient.invalidateQueries({ queryKey: ['conversations'] })} />
     </AdminLayout>
   );
 }

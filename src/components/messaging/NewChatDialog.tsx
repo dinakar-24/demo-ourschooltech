@@ -4,121 +4,51 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Loader2, Users, Megaphone } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface NewChatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateDirect: (userId: string) => void;
-  onCreateGroup: (name: string, participantIds: string[]) => void;
-  onCreateBroadcast: (name: string, participantIds: string[]) => void;
+  onCreated: () => void;
 }
 
-export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDialogProps) {
+type ConvType = 'group' | 'broadcast';
+
+export function NewChatDialog({ open, onOpenChange, onCreated }: NewChatDialogProps) {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
+  const [convType, setConvType] = useState<ConvType>('group');
+  const [name, setName] = useState('');
   const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [classFilter, setClassFilter] = useState<string>('all');
-  const [sectionFilter, setSectionFilter] = useState<string>('all');
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [creating, setCreating] = useState(false);
 
-  // Fetch distinct classes/sections from profiles
-  const { data: classOptions = [] } = useQuery({
-    queryKey: ['chat-class-options', schoolId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('students')
-        .select('class_name, section')
-        .eq('school_id', schoolId!)
-        .eq('status', 'active');
-      if (error) throw error;
-
-      const classSet = new Set<string>();
-      const sectionMap = new Map<string, Set<string>>();
-      (data || []).forEach(s => {
-        classSet.add(s.class_name);
-        if (!sectionMap.has(s.class_name)) sectionMap.set(s.class_name, new Set());
-        sectionMap.get(s.class_name)!.add(s.section);
-      });
-
-      return Array.from(classSet)
-        .sort((a, b) => {
-          const an = parseInt(a), bn = parseInt(b);
-          if (!isNaN(an) && !isNaN(bn)) return an - bn;
-          return a.localeCompare(b);
-        })
-        .map(c => ({
-          className: c,
-          sections: Array.from(sectionMap.get(c) || []).sort(),
-        }));
-    },
-    enabled: open && !!schoolId,
-  });
-
-  const sections = classFilter !== 'all'
-    ? classOptions.find(c => c.className === classFilter)?.sections || []
-    : [];
-
-  // Fetch users filtered by class/section
+  // Fetch all school users
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['school-users-for-chat', schoolId, search, classFilter, sectionFilter],
+    queryKey: ['school-users-for-chat', schoolId, search],
     queryFn: async () => {
-      // If filtering by class/section, get parent emails from students table
-      if (classFilter !== 'all') {
-        let studentsQuery = supabase
-          .from('students')
-          .select('parent_email, parent_name')
-          .eq('school_id', schoolId!)
-          .eq('status', 'active')
-          .eq('class_name', classFilter);
-        
-        if (sectionFilter !== 'all') {
-          studentsQuery = studentsQuery.eq('section', sectionFilter);
-        }
-
-        const { data: studentData } = await studentsQuery;
-        const parentEmails = [...new Set((studentData || []).map(s => s.parent_email).filter(Boolean))] as string[];
-        
-        if (parentEmails.length === 0) return [];
-
-        let query = supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, email')
-          .in('email', parentEmails)
-          .neq('id', user!.id)
-          .order('full_name');
-
-        if (search) {
-          query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-      }
-
-      // Default: all school users
       let query = supabase
         .from('profiles')
         .select('id, full_name, avatar_url, email')
         .eq('school_id', schoolId!)
         .neq('id', user!.id)
         .order('full_name')
-        .limit(50);
-      
+        .limit(100);
+
       if (search) {
         query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
@@ -126,11 +56,28 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDia
     enabled: open && !!schoolId,
   });
 
+  const toggleUser = (id: string) => {
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(users.map(u => u.id)));
+    }
+  };
+
   const reset = () => {
+    setName('');
     setSearch('');
-    setSelectedUser(null);
-    setClassFilter('all');
-    setSectionFilter('all');
+    setSelectedUsers(new Set());
+    setConvType('group');
   };
 
   const handleClose = (v: boolean) => {
@@ -138,53 +85,88 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDia
     onOpenChange(v);
   };
 
-  const handleSubmit = () => {
-    if (selectedUser) {
-      onCreateDirect(selectedUser);
+  const handleCreate = async () => {
+    if (!name.trim()) { toast.error('Please enter a name'); return; }
+    if (selectedUsers.size === 0) { toast.error('Select at least one member'); return; }
+    setCreating(true);
+    try {
+      const { data: conv, error: convErr } = await supabase
+        .from('conversations')
+        .insert({
+          school_id: schoolId!,
+          type: convType,
+          name: name.trim(),
+          created_by: user!.id,
+        })
+        .select()
+        .single();
+      if (convErr) throw convErr;
+
+      const parts = [
+        { conversation_id: conv.id, user_id: user!.id, role: 'admin' },
+        ...[...selectedUsers].map(id => ({ conversation_id: conv.id, user_id: id, role: 'member' })),
+      ];
+      const { error: partErr } = await supabase.from('conversation_participants').insert(parts);
+      if (partErr) throw partErr;
+
+      toast.success(`${convType === 'group' ? 'Group' : 'Broadcast'} created!`);
+      onCreated();
       handleClose(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create');
+    } finally {
+      setCreating(false);
     }
   };
 
   const formContent = (
     <div className="space-y-4">
-      {/* Class / Section Filters */}
+      {/* Type selector */}
       <div className="flex gap-2">
-        <div className="flex-1 space-y-1">
-          <Label className="text-xs">Class</Label>
-          <Select value={classFilter} onValueChange={v => { setClassFilter(v); setSectionFilter('all'); setSelectedUser(null); }}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              {classOptions.map(c => (
-                <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {classFilter !== 'all' && sections.length > 0 && (
-          <div className="flex-1 space-y-1">
-            <Label className="text-xs">Section</Label>
-            <Select value={sectionFilter} onValueChange={v => { setSectionFilter(v); setSelectedUser(null); }}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
-                {sections.map(s => (
-                  <SelectItem key={s} value={s}>Section {s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <Button
+          type="button"
+          variant={convType === 'group' ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1"
+          onClick={() => setConvType('group')}
+        >
+          <Users className="w-4 h-4 mr-1.5" />
+          Group
+        </Button>
+        <Button
+          type="button"
+          variant={convType === 'broadcast' ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1"
+          onClick={() => setConvType('broadcast')}
+        >
+          <Megaphone className="w-4 h-4 mr-1.5" />
+          Broadcast
+        </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      {/* Name */}
+      <div className="space-y-1">
+        <Label className="text-xs">{convType === 'group' ? 'Group' : 'Broadcast'} Name</Label>
+        <Input
+          placeholder={`e.g. ${convType === 'group' ? 'Study Group' : 'Fee Reminder'}`}
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+      </div>
+
+      {/* Search + select all */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search members..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={selectAll} className="text-xs text-primary hover:underline">
+            {selectedUsers.size === users.length && users.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
+          <span className="text-xs text-muted-foreground">{selectedUsers.size} selected</span>
+        </div>
       </div>
 
       {/* User List */}
@@ -198,21 +180,17 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDia
             <button
               key={u.id}
               type="button"
-              onClick={() => setSelectedUser(prev => prev === u.id ? null : u.id)}
+              onClick={() => toggleUser(u.id)}
               className={cn(
-                "w-full text-left px-3 py-2.5 text-sm hover:bg-accent/50 transition-colors flex items-center justify-between border-b border-border last:border-0",
-                selectedUser === u.id && "bg-accent font-medium"
+                "w-full text-left px-3 py-2.5 text-sm hover:bg-accent/50 transition-colors flex items-center gap-3 border-b border-border last:border-0",
+                selectedUsers.has(u.id) && "bg-accent/30"
               )}
             >
-              <div>
-                <p className="text-sm">{u.full_name}</p>
-                <p className="text-xs text-muted-foreground">{u.email}</p>
+              <Checkbox checked={selectedUsers.has(u.id)} className="pointer-events-none" />
+              <div className="min-w-0">
+                <p className="text-sm truncate">{u.full_name}</p>
+                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
               </div>
-              {selectedUser === u.id && (
-                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground text-xs">✓</span>
-                </div>
-              )}
             </button>
           ))
         )}
@@ -220,15 +198,20 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDia
     </div>
   );
 
+  const title = `New ${convType === 'group' ? 'Group' : 'Broadcast'}`;
+
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={handleClose}>
         <DrawerContent className="max-h-[90dvh] flex flex-col bg-background">
-          <DrawerHeader className="text-left"><DrawerTitle>New Direct Message</DrawerTitle></DrawerHeader>
+          <DrawerHeader className="text-left"><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-4">{formContent}</div>
           <DrawerFooter className="flex-row gap-2">
             <Button variant="outline" onClick={() => handleClose(false)} className="flex-1">Cancel</Button>
-            <Button onClick={handleSubmit} disabled={!selectedUser} className="flex-1">Start Chat</Button>
+            <Button onClick={handleCreate} disabled={creating || !name.trim() || selectedUsers.size === 0} className="flex-1">
+              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Create
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -238,11 +221,14 @@ export function NewChatDialog({ open, onOpenChange, onCreateDirect }: NewChatDia
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>New Direct Message</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         {formContent}
         <DialogFooter>
           <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!selectedUser}>Start Chat</Button>
+          <Button onClick={handleCreate} disabled={creating || !name.trim() || selectedUsers.size === 0}>
+            {creating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+            Create
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
