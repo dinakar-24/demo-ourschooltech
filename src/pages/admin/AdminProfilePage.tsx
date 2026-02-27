@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import {
   Select,
@@ -24,7 +22,6 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  User,
   Mail,
   Phone,
   School,
@@ -34,15 +31,11 @@ import {
   Bell,
   Shield,
   CreditCard,
-  Lock,
   Globe,
   Loader2,
   Pencil,
   Check,
   X,
-  Eye,
-  EyeOff,
-  Calendar,
   MapPin,
   Building,
 } from 'lucide-react';
@@ -73,13 +66,6 @@ export default function AdminProfilePage() {
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profilePhone, setProfilePhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-
-  // Password change state
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
 
   // School info edit state
   const [editingSchool, setEditingSchool] = useState(false);
@@ -157,23 +143,6 @@ export default function AdminProfilePage() {
     }
   };
 
-  const handleChangePassword = async () => {
-    if (newPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
-    if (newPassword !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    setChangingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      toast.success('Password changed successfully');
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowPasswordSection(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to change password');
-    } finally {
-      setChangingPassword(false);
-    }
-  };
 
   const handleSaveSchool = async () => {
     if (!schoolId) return;
@@ -287,54 +256,6 @@ export default function AdminProfilePage() {
                   <School className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-foreground">{displaySchool?.name || 'Your School'}</span>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Change Password */}
-        <Card>
-          <CardContent className="p-0">
-            <button
-              onClick={() => setShowPasswordSection(!showPasswordSection)}
-              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Lock className="w-5 h-5 text-muted-foreground" />
-                <span className="font-medium text-foreground">Change Password</span>
-              </div>
-              <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showPasswordSection ? 'rotate-90' : ''}`} />
-            </button>
-            {showPasswordSection && (
-              <div className="px-4 pb-4 space-y-3">
-                <Separator />
-                <div className="space-y-1.5">
-                  <Label className="text-xs">New Password</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Min 6 characters"
-                    />
-                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Confirm Password</Label>
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                  />
-                </div>
-                <Button size="sm" onClick={handleChangePassword} disabled={changingPassword || !newPassword}>
-                  {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                  Update Password
-                </Button>
               </div>
             )}
           </CardContent>
