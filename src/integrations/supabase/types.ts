@@ -1850,10 +1850,12 @@ export type Database = {
           parent_email: string | null
           parent_name: string | null
           parent_phone: string | null
+          parent_user_id: string | null
           roll_number: number | null
           school_id: string
           section: string
           status: string | null
+          student_email: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1873,10 +1875,12 @@ export type Database = {
           parent_email?: string | null
           parent_name?: string | null
           parent_phone?: string | null
+          parent_user_id?: string | null
           roll_number?: number | null
           school_id: string
           section: string
           status?: string | null
+          student_email?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1896,10 +1900,12 @@ export type Database = {
           parent_email?: string | null
           parent_name?: string | null
           parent_phone?: string | null
+          parent_user_id?: string | null
           roll_number?: number | null
           school_id?: string
           section?: string
           status?: string | null
+          student_email?: string | null
           updated_at?: string
           user_id?: string | null
         }

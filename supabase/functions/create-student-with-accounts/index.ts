@@ -16,6 +16,7 @@ interface CreateStudentRequest {
   parent_name?: string;
   parent_phone?: string;
   alternate_phone?: string;
+  student_email?: string;
   parent_email?: string;
   blood_group?: string;
   avatar_url?: string;
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     const {
       full_name, admission_number, class_name, section, roll_number,
       gender, date_of_birth, parent_name, parent_phone, alternate_phone,
-      parent_email, blood_group, avatar_url, school_id,
+      student_email, parent_email, blood_group, avatar_url, school_id,
     } = body;
 
     if (!full_name || !admission_number || !class_name || !section || !school_id) {
@@ -107,74 +108,79 @@ Deno.serve(async (req) => {
       return newUser.user.id;
     }
 
-    // Use the parent_email (user's own Gmail) for both student and parent
-    const userEmail = parent_email?.trim();
-    if (!userEmail) {
-      // No email provided — create student record without auth accounts
-      const { data: studentRecord, error: studentError } = await supabaseAdmin
-        .from("students")
-        .insert({
-          school_id, full_name, admission_number, class_name, section,
-          roll_number: roll_number || null, gender: gender || null,
-          date_of_birth: date_of_birth || null, parent_name: parent_name || null,
-          parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
-          parent_email: null, blood_group: blood_group || null, avatar_url: avatar_url || null, status: "active",
-        })
-        .select().single();
+    const studentEmailTrimmed = student_email?.trim() || null;
+    const parentEmailTrimmed = parent_email?.trim() || null;
+    const sameEmail = studentEmailTrimmed && parentEmailTrimmed && studentEmailTrimmed === parentEmailTrimmed;
 
-      if (studentError) throw new Error(`Failed to create student: ${studentError.message}`);
+    let studentUserId: string | null = null;
+    let parentUserId: string | null = null;
 
-      return new Response(
-        JSON.stringify({ success: true, student: studentRecord, created_accounts: [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
+    if (sameEmail) {
+      // Same email for both → single account with both roles (backward-compatible)
+      const password = `Student@${admission_number}`;
+      const userId = await ensureAuthUser(studentEmailTrimmed!, password, full_name);
+
+      await supabaseAdmin.from("profiles").update({
+        school_id, full_name, class_name, section,
+        phone: parent_phone || null,
+      }).eq("id", userId);
+
+      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "student" });
+      const { data: existingParentRole } = await supabaseAdmin
+        .from("user_roles").select("id").eq("user_id", userId).eq("role", "parent").single();
+      if (!existingParentRole) {
+        await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "parent" });
+      }
+
+      studentUserId = userId;
+      parentUserId = userId;
+
+      createdAccounts.push({ role: "Student", email: studentEmailTrimmed!, password, name: full_name });
+      createdAccounts.push({ role: "Parent", email: parentEmailTrimmed!, password: "Parent@123", name: parent_name || `Parent of ${full_name}` });
+    } else {
+      // Separate accounts
+      if (studentEmailTrimmed) {
+        const studentPassword = `Student@${admission_number}`;
+        studentUserId = await ensureAuthUser(studentEmailTrimmed, studentPassword, full_name);
+
+        await supabaseAdmin.from("profiles").update({
+          school_id, full_name, class_name, section,
+        }).eq("id", studentUserId);
+
+        await supabaseAdmin.from("user_roles").insert({ user_id: studentUserId, role: "student" });
+
+        createdAccounts.push({ role: "Student", email: studentEmailTrimmed, password: studentPassword, name: full_name });
+      }
+
+      if (parentEmailTrimmed) {
+        const parentPassword = "Parent@123";
+        const parentName = parent_name || `Parent of ${full_name}`;
+        parentUserId = await ensureAuthUser(parentEmailTrimmed, parentPassword, parentName);
+
+        await supabaseAdmin.from("profiles").update({
+          school_id, full_name: parentName,
+          phone: parent_phone || null,
+        }).eq("id", parentUserId);
+
+        await supabaseAdmin.from("user_roles").insert({ user_id: parentUserId, role: "parent" });
+
+        createdAccounts.push({ role: "Parent", email: parentEmailTrimmed, password: parentPassword, name: parentName });
+      }
     }
-
-    // ── Create single auth account with provided email ──
-    const studentPassword = `Student@${admission_number}`;
-    const parentPassword = "Parent@123";
-
-    const userId = await ensureAuthUser(userEmail, studentPassword, full_name);
-
-    // Update profile
-    await supabaseAdmin.from("profiles").update({
-      school_id, full_name, class_name, section,
-      phone: parent_phone || null,
-    }).eq("id", userId);
-
-    // Assign both student and parent roles
-    await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "student" });
-
-    // Check if parent role already exists
-    const { data: existingParentRole } = await supabaseAdmin
-      .from("user_roles").select("id").eq("user_id", userId).eq("role", "parent").single();
-    if (!existingParentRole) {
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "parent" });
-    }
-
-    createdAccounts.push({
-      role: "Student",
-      email: userEmail,
-      password: studentPassword,
-      name: full_name,
-    });
-
-    createdAccounts.push({
-      role: "Parent",
-      email: userEmail,
-      password: parentPassword,
-      name: parent_name || `Parent of ${full_name}`,
-    });
 
     // ── Create student record ──
     const { data: studentRecord, error: studentError } = await supabaseAdmin
       .from("students")
       .insert({
-        user_id: userId, school_id, full_name, admission_number, class_name, section,
+        user_id: studentUserId, 
+        parent_user_id: parentUserId,
+        school_id, full_name, admission_number, class_name, section,
         roll_number: roll_number || null, gender: gender || null,
         date_of_birth: date_of_birth || null, parent_name: parent_name || null,
         parent_phone: parent_phone || null, alternate_phone: alternate_phone || null,
-        parent_email: userEmail, blood_group: blood_group || null, avatar_url: avatar_url || null, status: "active",
+        student_email: studentEmailTrimmed,
+        parent_email: parentEmailTrimmed,
+        blood_group: blood_group || null, avatar_url: avatar_url || null, status: "active",
       })
       .select().single();
 
