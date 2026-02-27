@@ -78,7 +78,7 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
       </div>
 
       {/* Tabs - horizontal scroll on mobile */}
-      <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 px-4 pb-3" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.key;
           return (
