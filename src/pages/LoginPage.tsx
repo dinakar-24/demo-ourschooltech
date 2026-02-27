@@ -187,13 +187,6 @@ export default function LoginPage() {
 
       {/* Header */}
       <header className="relative z-10 flex items-center gap-3 px-5 pt-5 pb-2 safe-area-top">
-        <motion.button
-          onClick={handleBack}
-          className="w-9 h-9 rounded-xl bg-white/[0.06] flex items-center justify-center text-white/50 hover:bg-white/[0.1] hover:text-white/80 transition-all border border-white/[0.06]"
-          whileTap={{ scale: 0.9 }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </motion.button>
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-xl overflow-hidden">
             <img src={appLogo} alt="Our School Tech" className="w-full h-full object-contain" />
