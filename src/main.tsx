@@ -3,16 +3,21 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
 
-// Aggressively unregister all service workers and clear ALL caches
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(reg => reg.unregister());
+// Remove any lingering service workers from previous PWA builds
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) {
+      reg.unregister();
+    }
   });
 }
 
-if ('caches' in window) {
-  caches.keys().then(names => {
-    names.forEach(name => caches.delete(name));
+// Purge all browser caches left by old service workers
+if ("caches" in window) {
+  caches.keys().then((keys) => {
+    for (const key of keys) {
+      caches.delete(key);
+    }
   });
 }
 
