@@ -94,22 +94,33 @@ export default function LoginPage() {
     setLookupLoading(true);
     setError('');
     try {
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
       const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: email.trim() });
+      clearTimeout(timeoutId);
+      
       if (rpcError) throw rpcError;
       const result = data as any;
       if (!result?.found) {
         setError('No account found with this email address');
+        setLookupLoading(false);
         return;
       }
       if (result.role === 'super_admin') {
+        setLookupLoading(false);
         setStep('superadmin');
         return;
       }
       setSchoolInfo(result);
+      setLookupLoading(false);
       setStep('password');
     } catch (err: any) {
-      setError(err.message || 'Failed to look up account');
-    } finally {
+      const message = err?.name === 'AbortError' 
+        ? 'Request timed out. Please check your internet connection and try again.'
+        : (err.message || 'Failed to look up account. Please try again.');
+      setError(message);
       setLookupLoading(false);
     }
   };
