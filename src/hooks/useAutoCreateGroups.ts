@@ -105,7 +105,7 @@ export function useAutoCreateGroups() {
 
         let created = 0;
 
-        // 4. Create class/section groups & broadcasts
+        // 4. Create class/section groups only (no class-wise broadcasts)
         for (const [, cs] of classMap) {
           const name = `Class ${cs.className} - ${cs.section}`;
 
@@ -135,10 +135,6 @@ export function useAutoCreateGroups() {
 
           if (!existingKeys.has(`group::${name}`)) {
             await createConv('group', name, memberIds, cs.className, cs.section);
-            created++;
-          }
-          if (!existingKeys.has(`broadcast::${name}`)) {
-            await createConv('broadcast', name, memberIds, cs.className, cs.section);
             created++;
           }
         }
