@@ -2550,6 +2550,7 @@ export type Database = {
       }
       get_role_counts: { Args: never; Returns: Json }
       get_school_by_code: { Args: { _code: string }; Returns: Json }
+      get_school_logo_by_id: { Args: { _school_id: string }; Returns: Json }
       get_student_counts_by_class: {
         Args: { p_school_id: string }
         Returns: {
