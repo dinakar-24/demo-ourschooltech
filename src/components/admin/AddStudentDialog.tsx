@@ -36,6 +36,7 @@ interface AddStudentDialogProps {
     parent_name: string;
     parent_phone: string;
     alternate_phone: string;
+    student_email: string;
     parent_email: string;
     blood_group: string;
     avatar_url: string;
@@ -322,17 +323,26 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
         </div>
       </div>
 
-      {/* Alternate Phone & Email */}
+      {/* Alternate Phone */}
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Alternate Phone (Emergency)</Label>
+        <IndianPhoneInput value={formData.alternate_phone} onChange={(v) => onInputChange('alternate_phone', v)} placeholder="Emergency contact" />
+      </div>
+
+      {/* Student Email & Parent Email - Separate Gmail accounts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Alternate Phone (Emergency)</Label>
-          <IndianPhoneInput value={formData.alternate_phone} onChange={(v) => onInputChange('alternate_phone', v)} placeholder="Emergency contact" />
+          <Label className="text-sm font-medium">Student Email</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input type="email" value={formData.student_email} onChange={(e) => onInputChange('student_email', e.target.value)} placeholder="Student's Gmail (for student login)" className="pl-10 h-11" />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Parent Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input type="email" value={formData.parent_email} onChange={(e) => onInputChange('parent_email', e.target.value)} placeholder="Enter email" className="pl-10 h-11" />
+            <Input type="email" value={formData.parent_email} onChange={(e) => onInputChange('parent_email', e.target.value)} placeholder="Parent's Gmail (for parent login)" className="pl-10 h-11" />
           </div>
         </div>
       </div>

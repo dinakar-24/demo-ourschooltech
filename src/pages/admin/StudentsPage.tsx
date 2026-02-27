@@ -112,6 +112,7 @@ export default function StudentsPage() {
     parent_name: '',
     parent_phone: '',
     alternate_phone: '',
+    student_email: '',
     parent_email: '',
     blood_group: '',
     avatar_url: '',
@@ -155,8 +156,20 @@ export default function StudentsPage() {
     try {
       const response = await supabase.functions.invoke('create-student-with-accounts', {
         body: {
-          ...formData,
+          full_name: formData.full_name,
+          admission_number: formData.admission_number,
+          class_name: formData.class_name,
+          section: formData.section,
           roll_number: formData.roll_number ? parseInt(formData.roll_number) : undefined,
+          gender: formData.gender || undefined,
+          date_of_birth: formData.date_of_birth || undefined,
+          parent_name: formData.parent_name || undefined,
+          parent_phone: formData.parent_phone || undefined,
+          alternate_phone: formData.alternate_phone || undefined,
+          student_email: formData.student_email || undefined,
+          parent_email: formData.parent_email || undefined,
+          blood_group: formData.blood_group || undefined,
+          avatar_url: formData.avatar_url || undefined,
           school_id: schoolId,
         },
       });
@@ -202,7 +215,7 @@ export default function StudentsPage() {
       setFormData({
         full_name: '', admission_number: '', class_name: '', section: '',
         roll_number: '', gender: '', date_of_birth: '', parent_name: '',
-        parent_phone: '', alternate_phone: '', parent_email: '', blood_group: '',
+        parent_phone: '', alternate_phone: '', student_email: '', parent_email: '', blood_group: '',
         avatar_url: '',
       });
       setFeeEntries([]);
