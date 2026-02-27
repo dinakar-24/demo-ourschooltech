@@ -112,7 +112,7 @@ export function useFeeReports() {
 
       const { data, error } = await supabase
         .from('fee_invoices')
-        .select('total_amount, paid_amount, balance, due_date, status, student:students!inner(full_name, admission_number, class_name, section, parent_phone), term:fee_terms(name)')
+        .select('total_amount, paid_amount, balance, due_date, status, student:students!inner(full_name, admission_number, class_name, section, parent_phone)')
         .eq('school_id', schoolId)
         .neq('status', 'paid')
         .order('due_date', { ascending: true });

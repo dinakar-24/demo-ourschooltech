@@ -104,8 +104,8 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
             <span className="font-medium">{invoice.student?.full_name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Term</span>
-            <span className="font-medium">{invoice.term?.name}</span>
+            <span className="text-muted-foreground">Due Date</span>
+            <span className="font-medium">{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-IN') : 'N/A'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total</span>
