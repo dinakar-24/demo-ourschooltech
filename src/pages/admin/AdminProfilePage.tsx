@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import {
   Select,
@@ -38,7 +37,6 @@ import {
   X,
   MapPin,
   Building,
-  User,
   Calendar,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -175,16 +173,21 @@ export default function AdminProfilePage() {
     navigate('/login');
   };
 
+  const displayName = profileData?.full_name || user?.name || 'Admin';
+
   return (
     <AdminLayout title="Profile">
-      <div className="max-w-4xl mx-auto space-y-5 pb-8">
+      <div className="max-w-2xl mx-auto space-y-4 pb-8">
 
-        {/* Hero Profile Card */}
-        <Card className="overflow-hidden">
-          <div className="h-24 bg-gradient-to-r from-primary/80 to-primary/40" />
-          <CardContent className="relative px-5 pb-5">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
-              <div className="ring-4 ring-background rounded-full">
+        {/* Profile Hero */}
+        <Card className="overflow-hidden border-border/60">
+          <div className="h-28 sm:h-32 bg-gradient-to-br from-primary via-primary/70 to-accent relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.12),transparent_60%)]" />
+          </div>
+          <CardContent className="relative px-4 sm:px-6 pb-5 pt-0">
+            {/* Avatar */}
+            <div className="flex justify-center -mt-14 sm:-mt-16 mb-2">
+              <div className="ring-4 ring-background rounded-full shadow-lg">
                 <AvatarUpload
                   value={user?.avatar}
                   onChange={async (url) => {
@@ -193,32 +196,33 @@ export default function AdminProfilePage() {
                       queryClient.invalidateQueries({ queryKey: ['admin-profile'] });
                     }
                   }}
-                  fallback={user?.name}
+                  fallback={displayName}
                   size="lg"
                   folder="admins"
                 />
               </div>
-              <div className="flex-1 min-w-0 sm:pb-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-foreground truncate">
-                    {profileData?.full_name || user?.name}
-                  </h2>
-                  {!editingProfile && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setEditingProfile(true)}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
-                <Badge className="mt-1.5 bg-primary/10 text-primary hover:bg-primary/15 border-0">
-                  <Shield className="w-3 h-3 mr-1" />
-                  School Admin
-                </Badge>
-              </div>
             </div>
 
+            {/* Name & Role - Centered */}
+            <div className="text-center mb-4">
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-foreground">{displayName}</h2>
+                {!editingProfile && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingProfile(true)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
+              <Badge className="mt-2 bg-primary/10 text-primary hover:bg-primary/15 border-0 text-xs">
+                <Shield className="w-3 h-3 mr-1" />
+                School Admin
+              </Badge>
+            </div>
+
+            {/* Edit Profile Form */}
             {editingProfile ? (
-              <div className="mt-5 pt-4 border-t border-border space-y-3">
+              <div className="border-t border-border pt-4 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">Full Name</Label>
@@ -240,63 +244,38 @@ export default function AdminProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <Mail className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Email</p>
-                    <p className="text-sm text-foreground truncate">{user?.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <Phone className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Phone</p>
-                    <p className="text-sm text-foreground">{profileData?.phone || '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <Building className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">School</p>
-                    <p className="text-sm text-foreground truncate">{displaySchool?.name || '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <Calendar className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Member Since</p>
-                    <p className="text-sm text-foreground">
-                      {profileData?.created_at ? format(new Date(profileData.created_at), 'MMM yyyy') : '—'}
-                    </p>
-                  </div>
-                </div>
+              /* Info Cards */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <InfoRow icon={Mail} label="EMAIL" value={user?.email || '—'} />
+                <InfoRow icon={Phone} label="PHONE" value={profileData?.phone || '—'} />
+                <InfoRow icon={Building} label="SCHOOL" value={displaySchool?.name || '—'} />
+                <InfoRow icon={Calendar} label="MEMBER SINCE" value={profileData?.created_at ? format(new Date(profileData.created_at), 'MMM yyyy') : '—'} />
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* School Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <div className="p-1.5 rounded-md bg-primary/10">
-                  <Building className="w-4 h-4 text-primary" />
-                </div>
-                School Information
-              </CardTitle>
-              {!editingSchool && (
-                <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setEditingSchool(true)}>
-                  <Pencil className="w-3 h-3" /> Edit
-                </Button>
-              )}
+        <Card className="border-border/60">
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between border-b border-border/50">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <Building className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">School Information</h3>
+                {schoolData?.code && (
+                  <p className="text-[11px] text-muted-foreground">Code: <span className="font-mono font-medium text-foreground">{schoolData.code}</span></p>
+                )}
+              </div>
             </div>
-            {schoolData?.code && (
-              <p className="text-xs text-muted-foreground mt-1">School Code: <span className="font-mono font-medium text-foreground">{schoolData.code}</span></p>
+            {!editingSchool && (
+              <Button variant="ghost" size="sm" className="text-xs gap-1 h-8" onClick={() => setEditingSchool(true)}>
+                <Pencil className="w-3 h-3" /> Edit
+              </Button>
             )}
-          </CardHeader>
-          <CardContent className="space-y-3">
+          </div>
+          <CardContent className="px-4 sm:px-5 py-3.5">
             {editingSchool ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -332,16 +311,16 @@ export default function AdminProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {[
                   { icon: Building, label: schoolData?.name || displaySchool?.name || '—' },
                   { icon: MapPin, label: `${schoolData?.address || '—'}, ${schoolData?.city || '—'}` },
                   { icon: Mail, label: schoolData?.email, show: !!schoolData?.email },
                   { icon: Phone, label: schoolData?.phone, show: !!schoolData?.phone },
                 ].filter(item => item.show !== false).map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
+                  <div key={i} className="flex items-center gap-3 text-sm py-1">
                     <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-foreground">{item.label}</span>
+                    <span className="text-foreground truncate">{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -349,60 +328,59 @@ export default function AdminProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Preferences */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <div className="p-1.5 rounded-md bg-primary/10">
+        {/* Preferences & Quick Links */}
+        <Card className="border-border/60 overflow-hidden">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-border/50">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
                 <Settings className="w-4 h-4 text-primary" />
               </div>
-              Preferences
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="px-5 py-3.5 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Preferences</h3>
+            </div>
+          </div>
+
+          {/* Language */}
+          <div className="px-4 sm:px-5 py-3 flex items-center justify-between border-b border-border/30">
+            <div className="flex items-center gap-3">
+              <Globe className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium text-foreground text-sm">Language</p>
+                <p className="text-xs text-muted-foreground">Interface language</p>
+              </div>
+            </div>
+            <Select value={i18n.language} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>{lang.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Navigation Links */}
+          {[
+            { label: 'Notification Settings', icon: Bell, href: '/admin/settings', desc: 'Manage alerts & reminders' },
+            { label: 'Subscription', icon: CreditCard, href: '/admin/subscription', desc: 'Plan & billing details' },
+            { label: 'School Settings', icon: Settings, href: '/admin/settings', desc: 'Configure school preferences' },
+          ].map((item, i, arr) => (
+            <button
+              key={item.label}
+              onClick={() => navigate(item.href)}
+              className={`w-full flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors ${i < arr.length - 1 ? 'border-b border-border/30' : ''}`}
+            >
               <div className="flex items-center gap-3">
-                <Globe className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium text-foreground text-sm">Language</p>
-                  <p className="text-xs text-muted-foreground">Interface language</p>
+                <item.icon className="w-4 h-4 text-muted-foreground" />
+                <div className="text-left">
+                  <span className="font-medium text-foreground text-sm block">{item.label}</span>
+                  <span className="text-xs text-muted-foreground">{item.desc}</span>
                 </div>
               </div>
-              <Select value={i18n.language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>{lang.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Separator />
-            {[
-              { label: 'Notification Settings', icon: Bell, href: '/admin/settings', desc: 'Manage alerts & reminders' },
-              { label: 'Subscription', icon: CreditCard, href: '/admin/subscription', desc: 'Plan & billing details' },
-              { label: 'School Settings', icon: Settings, href: '/admin/settings', desc: 'Configure school preferences' },
-            ].map((item, i) => (
-              <div key={item.label}>
-                <button
-                  onClick={() => navigate(item.href)}
-                  className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-4 h-4 text-muted-foreground" />
-                    <div className="text-left">
-                      <span className="font-medium text-foreground text-sm block">{item.label}</span>
-                      <span className="text-xs text-muted-foreground">{item.desc}</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-                {i < 2 && <Separator />}
-              </div>
-            ))}
-          </CardContent>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ))}
         </Card>
 
         {/* Logout */}
@@ -416,5 +394,20 @@ export default function AdminProfilePage() {
         </Button>
       </div>
     </AdminLayout>
+  );
+}
+
+/* Reusable info row for profile details */
+function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/30">
+      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+        <Icon className="w-4 h-4 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-medium text-foreground truncate">{value}</p>
+      </div>
+    </div>
   );
 }
