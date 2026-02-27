@@ -176,8 +176,8 @@ export default function AdminProfilePage() {
   };
 
   return (
-    <AdminLayout title="My Profile">
-      <div className="max-w-2xl mx-auto space-y-5 pb-8">
+    <AdminLayout title="Profile">
+      <div className="max-w-4xl mx-auto space-y-5 pb-8">
 
         {/* Hero Profile Card */}
         <Card className="overflow-hidden">
