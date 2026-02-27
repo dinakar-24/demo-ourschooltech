@@ -91,8 +91,8 @@ const labelToKey: Record<string, string> = {
   'Announcements': 'sidebar.announcements', 'Bulk Upload': 'sidebar.bulkUpload', 'Gallery': 'sidebar.gallery',
   'Feedback': 'sidebar.feedback', 'Queries': 'sidebar.queries', 'Reports': 'sidebar.reports',
   'Subscription': 'sidebar.subscription', 'Settings': 'sidebar.settings',
-  'All Students': 'sidebar.students', 'Add Student': 'sidebar.students',
-  'Holiday Calendar': 'sidebar.holidayCalendar', 'Employees': 'sidebar.attendance',
+  'All Students': 'sidebar.allStudents', 'Add Student': 'sidebar.addStudent',
+  'Holiday Calendar': 'sidebar.holidayCalendar', 'Employees': 'sidebar.employees',
 };
 
 export function AdminLayout({ children, title }: AdminLayoutProps) {
@@ -115,7 +115,6 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         if (isChildActive) expanded.push(item.label);
       }
     });
-    if (expanded.length === 0) expanded.push('Students');
     return expanded;
   };
   const [expandedItems, setExpandedItems] = useState<string[]>(getInitialExpanded);

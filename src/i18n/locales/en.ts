@@ -47,6 +47,9 @@ const en = {
     signOut: 'Sign out',
     language: 'Language',
     holidayCalendar: 'Holiday Calendar',
+    allStudents: 'All Students',
+    addStudent: 'Add Student',
+    employees: 'Employees',
   },
   // Common
   common: {
