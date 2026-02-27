@@ -1,6 +1,9 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
+import { useClasses } from '@/hooks/useClasses';
+import { useSections } from '@/hooks/useSections';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,7 +112,12 @@ export default function FeesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedTerm, setSelectedTerm] = useState('all');
+  const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedSection, setSelectedSection] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const { data: classes } = useClasses();
+  const { data: sections } = useSections(selectedClass !== 'all' ? selectedClass : undefined);
 
   // Dialogs
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
@@ -135,6 +143,7 @@ export default function FeesPage() {
     status: selectedStatus,
     search: debouncedSearch,
     termId: selectedTerm,
+    className: selectedClass,
     page: 1,
     pageSize: 500,
   });
@@ -145,6 +154,7 @@ export default function FeesPage() {
   const { data: legacyResult, isLoading: legacyLoading } = useFees({
     status: selectedStatus,
     search: debouncedSearch,
+    className: selectedClass,
     page: 1,
     pageSize: 500,
   });
@@ -160,8 +170,15 @@ export default function FeesPage() {
 
   // Filter by status at group level
   const filteredGroups = useMemo(() => {
-    if (selectedStatus === 'all') return studentGroups;
-    return studentGroups.filter(g => {
+    let groups = studentGroups;
+
+    // Filter by section client-side
+    if (selectedSection !== 'all') {
+      groups = groups.filter(g => g.section === selectedSection);
+    }
+
+    if (selectedStatus === 'all') return groups;
+    return groups.filter(g => {
       if (selectedStatus === 'paid') return g.totalBalance === 0 && g.totalAmount > 0;
       if (selectedStatus === 'pending') return g.totalBalance > 0;
       if (selectedStatus === 'overdue') {
@@ -171,7 +188,7 @@ export default function FeesPage() {
       }
       return true;
     });
-  }, [studentGroups, selectedStatus]);
+  }, [studentGroups, selectedStatus, selectedSection]);
 
   const openPayment = (inv: FeeInvoice) => {
     setPaymentInvoice(inv);
@@ -384,6 +401,30 @@ export default function FeesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={selectedClass} onValueChange={(v) => { setSelectedClass(v); setSelectedSection('all'); }}>
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {(classes || []).map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedClass !== 'all' && (
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger className="w-full sm:w-[130px]">
+                    <SelectValue placeholder="Section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {(sections || []).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Status" />
@@ -441,6 +482,11 @@ export default function FeesPage() {
                         <span>Paid: ₹{g.totalPaid.toLocaleString()}</span>
                         <span className="font-medium text-foreground">Balance: ₹{g.totalBalance.toLocaleString()}</span>
                       </div>
+                      {g.totalAmount > 0 && (
+                        <div className="pl-6 mt-1.5">
+                          <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-1.5" />
+                        </div>
+                      )}
                     </CollapsibleTrigger>
                     <CollapsibleContent className="px-4 pb-4">
                       {renderExpandedContent(g)}
@@ -459,6 +505,7 @@ export default function FeesPage() {
                     <TableHead>Total Due</TableHead>
                     <TableHead>Paid</TableHead>
                     <TableHead>Balance</TableHead>
+                    <TableHead className="w-24">Progress</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -479,11 +526,19 @@ export default function FeesPage() {
                         <TableCell className="font-medium">₹{g.totalAmount.toLocaleString()}</TableCell>
                         <TableCell className="text-success">₹{g.totalPaid.toLocaleString()}</TableCell>
                         <TableCell className="text-destructive font-medium">₹{g.totalBalance.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {g.totalAmount > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-2 flex-1" />
+                              <span className="text-xs text-muted-foreground w-8">{Math.round((g.totalPaid / g.totalAmount) * 100)}%</span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{getGroupBadge(g)}</TableCell>
                       </TableRow>
                       {expandedId === g.studentId && (
                         <TableRow className="bg-muted/20 hover:bg-muted/20">
-                          <TableCell colSpan={7} className="p-4">
+                          <TableCell colSpan={8} className="p-4">
                             {renderExpandedContent(g)}
                           </TableCell>
                         </TableRow>
