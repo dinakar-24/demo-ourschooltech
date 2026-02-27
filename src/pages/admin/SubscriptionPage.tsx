@@ -156,6 +156,7 @@ export default function SubscriptionPage() {
       userName: user?.name,
       schoolId: user?.schoolId || '',
       studentCount: dbStudentCount,
+      paymentType: 'renewal',
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
@@ -174,6 +175,7 @@ export default function SubscriptionPage() {
       userName: user?.name,
       schoolId: user?.schoolId || '',
       studentCount: dbStudentCount,
+      paymentType: 'topup',
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });

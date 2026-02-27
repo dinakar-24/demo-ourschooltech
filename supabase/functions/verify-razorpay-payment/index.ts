@@ -51,59 +51,71 @@ const corsHeaders = {
        const payload = JSON.parse(body);
        const event = payload.event;
  
-       if (event === 'payment.captured') {
-         const payment = payload.payload.payment.entity;
-         const orderId = payment.order_id;
-         const paymentId = payment.id;
- 
-         // Update payment record
-         const { data: paymentRecord, error: fetchError } = await adminClient
-           .from('subscription_payments')
-           .select('*, subscription:subscriptions(*)')
-           .eq('razorpay_order_id', orderId)
-           .single();
- 
-         if (fetchError || !paymentRecord) {
-           console.error('Payment record not found:', orderId);
-           return new Response(
-             JSON.stringify({ error: 'Payment record not found' }),
-             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-           );
-         }
- 
-         // Update payment status
-         await adminClient
-           .from('subscription_payments')
-           .update({
-             razorpay_payment_id: paymentId,
-             status: 'success',
-             paid_at: new Date().toISOString(),
-           })
-           .eq('id', paymentRecord.id);
- 
-         // Calculate subscription dates (1 year from now)
-         const startDate = new Date();
-         const endDate = new Date();
-         endDate.setFullYear(endDate.getFullYear() + 1);
- 
-         // Update subscription status
-         await adminClient
-           .from('subscriptions')
-           .update({
-             status: 'active',
-             start_date: startDate.toISOString(),
-             end_date: endDate.toISOString(),
-           })
-           .eq('id', paymentRecord.subscription_id);
- 
-         // Update school subscription status
-         await adminClient
-           .from('schools')
-           .update({ subscription_status: 'active' })
-           .eq('id', paymentRecord.school_id);
- 
-         console.log('Payment verified and subscription activated:', paymentId);
-       }
+        if (event === 'payment.captured') {
+          const payment = payload.payload.payment.entity;
+          const orderId = payment.order_id;
+          const paymentId = payment.id;
+
+          // Update payment record
+          const { data: paymentRecord, error: fetchError } = await adminClient
+            .from('subscription_payments')
+            .select('*, subscription:subscriptions(*)')
+            .eq('razorpay_order_id', orderId)
+            .single();
+
+          if (fetchError || !paymentRecord) {
+            console.error('Payment record not found:', orderId);
+            return new Response(
+              JSON.stringify({ error: 'Payment record not found' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Update payment status
+          await adminClient
+            .from('subscription_payments')
+            .update({
+              razorpay_payment_id: paymentId,
+              status: 'success',
+              paid_at: new Date().toISOString(),
+            })
+            .eq('id', paymentRecord.id);
+
+          const isTopUp = paymentRecord.payment_type === 'topup';
+
+          if (isTopUp) {
+            // Top-up: only update student_count, don't touch dates
+            await adminClient
+              .from('subscriptions')
+              .update({
+                student_count: paymentRecord.student_count || paymentRecord.subscription?.student_count,
+              })
+              .eq('id', paymentRecord.subscription_id);
+          } else {
+            // Renewal: set dates to now + 1 year, activate
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setFullYear(endDate.getFullYear() + 1);
+
+            await adminClient
+              .from('subscriptions')
+              .update({
+                status: 'active',
+                start_date: startDate.toISOString(),
+                end_date: endDate.toISOString(),
+                student_count: paymentRecord.student_count || paymentRecord.subscription?.student_count,
+              })
+              .eq('id', paymentRecord.subscription_id);
+
+            // Update school subscription status
+            await adminClient
+              .from('schools')
+              .update({ subscription_status: 'active' })
+              .eq('id', paymentRecord.school_id);
+          }
+
+          console.log(`Payment verified (${paymentRecord.payment_type}):`, paymentId);
+        }
  
        return new Response(
          JSON.stringify({ status: 'ok' }),
@@ -134,51 +146,63 @@ const corsHeaders = {
          );
        }
  
-       // Update payment record
-       const { data: paymentRecord, error: fetchError } = await adminClient
-         .from('subscription_payments')
-         .select('*')
-         .eq('razorpay_order_id', razorpay_order_id)
-         .single();
- 
-       if (fetchError || !paymentRecord) {
-         return new Response(
-           JSON.stringify({ error: 'Payment record not found' }),
-           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-         );
-       }
- 
-       // Update payment status
-       await adminClient
-         .from('subscription_payments')
-         .update({
-           razorpay_payment_id,
-           razorpay_signature,
-           status: 'success',
-           paid_at: new Date().toISOString(),
-         })
-         .eq('id', paymentRecord.id);
- 
-       // Calculate subscription dates
-       const startDate = new Date();
-       const endDate = new Date();
-       endDate.setFullYear(endDate.getFullYear() + 1);
- 
-       // Update subscription
-       await adminClient
-         .from('subscriptions')
-         .update({
-           status: 'active',
-           start_date: startDate.toISOString(),
-           end_date: endDate.toISOString(),
-         })
-         .eq('id', paymentRecord.subscription_id);
- 
-       // Update school
-       await adminClient
-         .from('schools')
-         .update({ subscription_status: 'active' })
-         .eq('id', paymentRecord.school_id);
+        // Update payment record
+        const { data: paymentRecord, error: fetchError } = await adminClient
+          .from('subscription_payments')
+          .select('*')
+          .eq('razorpay_order_id', razorpay_order_id)
+          .single();
+
+        if (fetchError || !paymentRecord) {
+          return new Response(
+            JSON.stringify({ error: 'Payment record not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Update payment status
+        await adminClient
+          .from('subscription_payments')
+          .update({
+            razorpay_payment_id,
+            razorpay_signature,
+            status: 'success',
+            paid_at: new Date().toISOString(),
+          })
+          .eq('id', paymentRecord.id);
+
+        const isTopUp = paymentRecord.payment_type === 'topup';
+
+        if (isTopUp) {
+          // Top-up: only update student_count, keep existing dates
+          await adminClient
+            .from('subscriptions')
+            .update({
+              student_count: paymentRecord.student_count,
+            })
+            .eq('id', paymentRecord.subscription_id);
+        } else {
+          // Renewal: set dates, activate
+          const startDate = new Date();
+          const endDate = new Date();
+          endDate.setFullYear(endDate.getFullYear() + 1);
+
+          await adminClient
+            .from('subscriptions')
+            .update({
+              status: 'active',
+              start_date: startDate.toISOString(),
+              end_date: endDate.toISOString(),
+              student_count: paymentRecord.student_count,
+            })
+            .eq('id', paymentRecord.subscription_id);
+
+          // Update school
+          await adminClient
+            .from('schools')
+            .update({ subscription_status: 'active' })
+            .eq('id', paymentRecord.school_id);
+        }
  
        return new Response(
          JSON.stringify({ verified: true, message: 'Payment verified successfully' }),
