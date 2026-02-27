@@ -29,6 +29,9 @@ import {
   Video,
   Bus,
   MessageCircle,
+  Image,
+  MessageSquare,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +73,9 @@ const menuItems = [
   { label: 'Academic Years', href: '/admin/academic-years', icon: Calendar },
   { label: 'Timetable', href: '/admin/timetable', icon: Clock },
   { label: 'Announcements', href: '/admin/announcements', icon: Bell },
+  { label: 'Gallery', href: '/admin/gallery', icon: Image },
+  { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
+  { label: 'Queries', href: '/admin/queries', icon: HelpCircle },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
