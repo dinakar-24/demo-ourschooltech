@@ -298,12 +298,13 @@ export default function FeesPage() {
                       })}
                       {/* Totals row */}
                       <tr className="border-t border-dashed">
-                        <td className="pt-2 text-xs text-muted-foreground">
-                          Total: <span className="font-bold text-sm text-foreground">₹{Number(inv.total_amount).toLocaleString()}</span>
-                          <span className="ml-3">Paid: <span className="font-bold text-sm text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
-                          <span className="ml-3">Balance: <span className="font-bold text-sm text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
+                        <td colSpan={3} className="pt-2">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>Total: <span className="font-bold text-sm text-foreground">₹{Number(inv.total_amount).toLocaleString()}</span></span>
+                            <span>Paid: <span className="font-bold text-sm text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
+                            <span>Balance: <span className="font-bold text-sm text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
+                          </div>
                         </td>
-                        <td colSpan={2} />
                       </tr>
                     </tbody>
                   </table>
@@ -313,14 +314,12 @@ export default function FeesPage() {
                 {(inv.payments || []).length > 0 && (
                   <div className="space-y-1">
                     {(inv.payments || []).map(p => (
-                      <div key={p.id} className="flex items-center justify-between text-xs bg-muted/20 rounded px-3 py-1.5">
-                        <span className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
-                          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
-                          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
-                        </span>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openReceipt(p, inv)}>
-                          <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+                      <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs bg-muted/20 rounded px-3 py-1.5">
+                        <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
+                        <span className="text-muted-foreground capitalize">{p.payment_method}</span>
+                        <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto shrink-0" onClick={() => openReceipt(p, inv)}>
+                          <Receipt className="w-3 h-3 mr-1" /> <span className="truncate max-w-[120px]">{p.receipt_number}</span>
                         </Button>
                       </div>
                     ))}
