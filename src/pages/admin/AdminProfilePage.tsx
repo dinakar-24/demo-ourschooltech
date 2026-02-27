@@ -294,7 +294,7 @@ export default function AdminProfilePage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Email</Label>
-                    <Input value={schoolEmail} onChange={e => setSchoolEmail(e.target.value)} placeholder="school@example.com" />
+                    <Input value={schoolEmail} disabled className="opacity-60 cursor-not-allowed" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Phone</Label>
