@@ -17,9 +17,8 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      selfDestroying: true,
       includeAssets: ["favicon.png", "favicon.ico"],
-      injectManifest: undefined,
       manifest: {
         name: "Our School Tech",
         short_name: "SchoolTech",
@@ -40,28 +39,6 @@ export default defineConfig(({ mode }) => ({
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
-          },
-        ],
-      },
-      workbox: {
-      globPatterns: [],
-      navigateFallback: null,
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
-        runtimeCaching: [
-          {
-            // HTML pages - always network, never cache
-            urlPattern: /\/[^.]*$/,
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: /^https:\/\/.*supabase.*$/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-            },
           },
         ],
       },
