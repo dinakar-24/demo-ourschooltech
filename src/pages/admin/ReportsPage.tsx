@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,10 @@ import {
   IndianRupee,
 } from 'lucide-react';
 import { useSchoolReportStats } from '@/hooks/useSchoolReportStats';
+import { useReportGenerators, type ReportFilters } from '@/hooks/useReportGenerators';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { ReportFilterDialog, type ReportType } from '@/components/reports/ReportFilterDialog';
+import { CustomReportDialog } from '@/components/reports/CustomReportDialog';
 
 const reportCategories = [
   {
@@ -21,8 +24,8 @@ const reportCategories = [
     icon: Users,
     color: 'bg-primary/10 text-primary',
     reports: [
-      { name: 'Student List Report', description: 'Complete list of all enrolled students', key: 'student-list' },
-      { name: 'Class-wise Report', description: 'Students categorized by class and section', key: 'class-wise' },
+      { name: 'Student List Report', description: 'Complete list of all enrolled students', key: 'student-list' as ReportType },
+      { name: 'Class-wise Report', description: 'Students categorized by class and section', key: 'class-wise' as ReportType },
     ],
   },
   {
@@ -30,8 +33,8 @@ const reportCategories = [
     icon: ClipboardList,
     color: 'bg-success/10 text-success',
     reports: [
-      { name: 'Daily Attendance', description: 'Day-wise attendance summary', key: 'daily-attendance' },
-      { name: 'Absentee Report', description: 'List of absent students', key: 'absentee' },
+      { name: 'Daily Attendance', description: 'Day-wise attendance summary', key: 'daily-attendance' as ReportType },
+      { name: 'Absentee Report', description: 'List of absent students', key: 'absentee' as ReportType },
     ],
   },
   {
@@ -39,8 +42,8 @@ const reportCategories = [
     icon: CreditCard,
     color: 'bg-warning/10 text-warning',
     reports: [
-      { name: 'Collection Report', description: 'Fee collection summary', key: 'fee-collection' },
-      { name: 'Pending Dues', description: 'List of pending fee payments', key: 'pending-dues' },
+      { name: 'Collection Report', description: 'Fee collection summary', key: 'fee-collection' as ReportType },
+      { name: 'Pending Dues', description: 'List of pending fee payments', key: 'pending-dues' as ReportType },
     ],
   },
   {
@@ -48,23 +51,45 @@ const reportCategories = [
     icon: Award,
     color: 'bg-info/10 text-info',
     reports: [
-      { name: 'Exam Results', description: 'Subject-wise exam results', key: 'exam-results' },
-      { name: 'Performance Analysis', description: 'Class-wise performance comparison', key: 'performance' },
+      { name: 'Exam Results', description: 'Subject-wise exam results', key: 'exam-results' as ReportType },
+      { name: 'Performance Analysis', description: 'Class-wise performance comparison', key: 'performance' as ReportType },
     ],
   },
 ];
 
 export default function ReportsPage() {
   const { data: stats, isLoading } = useSchoolReportStats();
+  const generators = useReportGenerators();
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [activeReport, setActiveReport] = useState<ReportType>('student-list');
 
-  const handleGenerate = (reportKey: string) => {
-    toast.info('Report generation is coming soon. This feature will export data as CSV/PDF.');
+  const handleGenerate = (reportKey: ReportType) => {
+    setActiveReport(reportKey);
+    // Class-wise report has no filters, generate directly
+    if (reportKey === 'class-wise') {
+      generators.generateClassWise();
+      return;
+    }
+    setFilterDialogOpen(true);
+  };
+
+  const handleReportGenerate = async (filters: ReportFilters) => {
+    switch (activeReport) {
+      case 'student-list': return generators.generateStudentList(filters);
+      case 'daily-attendance': return generators.generateDailyAttendance(filters);
+      case 'absentee': return generators.generateAbsenteeReport(filters);
+      case 'fee-collection': return generators.generateFeeCollection(filters);
+      case 'pending-dues': return generators.generatePendingDues(filters);
+      case 'exam-results': return generators.generateExamResults(filters);
+      case 'performance': return generators.generatePerformanceAnalysis(filters);
+    }
   };
 
   return (
     <AdminLayout title="Reports">
       <div className="space-y-6 animate-fade-up">
-        {/* Quick Stats from real data */}
+        {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
@@ -173,13 +198,26 @@ export default function ReportsPage() {
             <p className="text-muted-foreground mb-4">
               Create custom reports by selecting specific data fields and filters.
             </p>
-            <Button onClick={() => toast.info('Custom report builder coming soon')}>
+            <Button onClick={() => setCustomDialogOpen(true)}>
               <FileText className="w-4 h-4 mr-2" />
               Create Custom Report
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      <ReportFilterDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        reportType={activeReport}
+        onGenerate={handleReportGenerate}
+      />
+
+      <CustomReportDialog
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        onGenerate={generators.generateCustomReport}
+      />
     </AdminLayout>
   );
 }
