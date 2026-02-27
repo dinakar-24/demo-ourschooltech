@@ -1,72 +1,73 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useQueryClient } from '@tanstack/react-query';
 
 /**
- * Auto-creates group & broadcast conversations for each class/section
- * and an "All Teachers" group when the admin opens messages.
- * Runs fresh on every mount (page visit).
+ * Auto-creates group & broadcast conversations for each class/section (students only),
+ * plus "All Teachers", "All Parents", "All Students", "All School" broadcasts.
+ * Syncs participants when students are added/deleted.
  */
 export function useAutoCreateGroups() {
   const { user } = useAuth();
   const schoolId = useEffectiveSchoolId();
   const queryClient = useQueryClient();
-  const runningRef = useRef(false); // prevent concurrent runs, NOT "already ran"
+  const runningRef = useRef(false);
 
   useEffect(() => {
-    if (!user?.id || !schoolId || runningRef.current) {
-      console.log('[AutoGroups] Skipped:', { userId: user?.id, schoolId, running: runningRef.current });
-      return;
-    }
+    if (!user?.id || !schoolId || runningRef.current) return;
     runningRef.current = true;
-    console.log('[AutoGroups] Running for school:', schoolId);
 
     const run = async () => {
       try {
-        // 1. Get existing conversations for this school
+        // 1. Get existing conversations
         const { data: existing, error: existErr } = await supabase
           .from('conversations')
-          .select('name, type')
+          .select('id, name, type')
           .eq('school_id', schoolId);
+        if (existErr) { console.error('[AutoGroups]', existErr); return; }
 
-        if (existErr) {
-          console.error('[AutoGroups] Failed to fetch existing conversations:', existErr);
-          return;
-        }
-        console.log('[AutoGroups] Existing conversations:', existing?.length || 0);
-
-        const existingKeys = new Set(
-          (existing || []).map(c => `${c.type}::${c.name}`)
+        const existingMap = new Map(
+          (existing || []).map(c => [`${c.type}::${c.name}`, c])
         );
 
-        // 2. Get class/section combos
+        // 2. Get active students with user_id
         const { data: students } = await supabase
           .from('students')
-          .select('class_name, section, parent_email')
+          .select('id, user_id, class_name, section, parent_email')
           .eq('school_id', schoolId)
           .eq('status', 'active');
 
-        console.log('[AutoGroups] Students found:', students?.length || 0);
-        const classMap = new Map<string, { className: string; section: string; parentEmails: Set<string> }>();
+        // Build class-section map with student user_ids
+        const classMap = new Map<string, { className: string; section: string; studentUserIds: string[]; parentEmails: Set<string> }>();
         (students || []).forEach(s => {
+          if (!s.user_id) return;
           const key = `${s.class_name}-${s.section}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { className: s.class_name, section: s.section, parentEmails: new Set() });
+            classMap.set(key, { className: s.class_name, section: s.section, studentUserIds: [], parentEmails: new Set() });
           }
+          classMap.get(key)!.studentUserIds.push(s.user_id);
           if (s.parent_email) classMap.get(key)!.parentEmails.add(s.parent_email);
         });
-        console.log('[AutoGroups] Class/section combos:', [...classMap.keys()]);
 
         // 3. Get all teachers
         const { data: teachers } = await supabase
           .from('teachers')
-          .select('user_id, classes')
+          .select('user_id')
           .eq('school_id', schoolId);
-
         const allTeacherIds = (teachers || []).map(t => t.user_id).filter(Boolean) as string[];
-        console.log('[AutoGroups] Teachers found:', teachers?.length || 0, 'with user_ids:', allTeacherIds);
+
+        // All student user_ids
+        const allStudentUserIds = (students || []).map(s => s.user_id).filter(Boolean) as string[];
+
+        // All parent profile IDs
+        const allParentEmails = [...new Set((students || []).map(s => s.parent_email).filter(Boolean) as string[])];
+        let parentProfileIds: string[] = [];
+        if (allParentEmails.length > 0) {
+          const { data: parentProfiles } = await supabase.from('profiles').select('id').in('email', allParentEmails);
+          parentProfileIds = (parentProfiles || []).map(p => p.id);
+        }
 
         const createConv = async (
           type: 'group' | 'broadcast',
@@ -76,40 +77,26 @@ export function useAutoCreateGroups() {
           section?: string
         ) => {
           const uniqueIds = [...new Set(participantIds.filter(Boolean).filter(id => id !== user!.id))];
-
           const { data: conv, error: convErr } = await supabase
             .from('conversations')
-            .insert({
-              school_id: schoolId,
-              type,
-              name,
-              created_by: user!.id,
-              class_name: className || null,
-              section: section || null,
-            })
+            .insert({ school_id: schoolId, type, name, created_by: user!.id, class_name: className || null, section: section || null })
             .select()
             .single();
-
-          if (convErr) {
-            console.error('Conv create error:', convErr);
-            return;
-          }
+          if (convErr) { console.error('[AutoGroups] Conv error:', convErr); return; }
 
           const parts = [
             { conversation_id: conv.id, user_id: user!.id, role: 'admin' },
             ...uniqueIds.map(id => ({ conversation_id: conv.id, user_id: id, role: 'member' })),
           ];
-          const { error: partErr } = await supabase.from('conversation_participants').insert(parts);
-          if (partErr) console.error('Participant insert error:', partErr);
+          await supabase.from('conversation_participants').insert(parts);
         };
 
-        let created = 0;
+        let changes = 0;
 
-        // 4a. Clean up orphaned class/section groups (students deleted)
+        // 4. Clean up orphaned class groups/broadcasts
         const activeClassKeys = new Set([...classMap.keys()]);
         const orphanedConvs = (existing || []).filter(c => {
-          if (c.type !== 'group' || !c.name) return false;
-          // Match pattern "Class X - Y"
+          if (!c.name) return false;
           const match = c.name.match(/^Class (.+) - (.+)$/);
           if (!match) return false;
           const key = `${match[1]}-${match[2]}`;
@@ -117,114 +104,64 @@ export function useAutoCreateGroups() {
         });
 
         if (orphanedConvs.length > 0) {
-          const orphanedNames = orphanedConvs.map(c => c.name);
-          console.log('[AutoGroups] Cleaning up orphaned groups:', orphanedNames);
-          
-          // Get IDs of orphaned conversations
-          const { data: orphanedRows } = await supabase
-            .from('conversations')
-            .select('id')
-            .eq('school_id', schoolId)
-            .in('name', orphanedNames)
-            .eq('type', 'group');
-          
-          const orphanedIds = (orphanedRows || []).map(r => r.id);
-          if (orphanedIds.length > 0) {
-            await supabase.from('conversation_participants').delete().in('conversation_id', orphanedIds);
-            await supabase.from('messages').delete().in('conversation_id', orphanedIds);
-            await supabase.from('conversations').delete().in('id', orphanedIds);
-          }
+          const orphanedIds = orphanedConvs.map(c => c.id);
+          await supabase.from('conversation_participants').delete().in('conversation_id', orphanedIds);
+          await supabase.from('messages').delete().in('conversation_id', orphanedIds);
+          await supabase.from('conversations').delete().in('id', orphanedIds);
+          changes += orphanedConvs.length;
         }
 
-        // 4b. Create class/section groups only (no class-wise broadcasts)
+        // 5. Create/sync class groups (STUDENTS ONLY)
         for (const [, cs] of classMap) {
-          const name = `Class ${cs.className} - ${cs.section}`;
+          const convName = `Class ${cs.className} - ${cs.section}`;
+          const groupKey = `group::${convName}`;
 
-          let parentIds: string[] = [];
-          const emails = [...cs.parentEmails];
-          if (emails.length > 0) {
-            const { data: profiles } = await supabase
-              .from('profiles')
-              .select('id')
-              .in('email', emails);
-            parentIds = (profiles || []).map(p => p.id);
-          }
-
-          const classTeacherIds = (teachers || [])
-            .filter(t => {
-              if (!t.classes || !t.user_id) return false;
-              return t.classes.some((c: string) => {
-                const lower = c.toLowerCase();
-                const target = cs.className.toLowerCase();
-                const targetFull = `${cs.className}-${cs.section}`.toLowerCase();
-                return lower === target || lower === targetFull;
-              });
-            })
-            .map(t => t.user_id) as string[];
-
-          const memberIds = [...new Set([...parentIds, ...classTeacherIds])];
-
-          if (!existingKeys.has(`group::${name}`)) {
-            await createConv('group', name, memberIds, cs.className, cs.section);
-            created++;
+          if (!existingMap.has(groupKey)) {
+            await createConv('group', convName, cs.studentUserIds, cs.className, cs.section);
+            changes++;
+          } else {
+            // Sync participants - add/remove students
+            await syncParticipants(existingMap.get(groupKey)!.id, cs.studentUserIds, user!.id);
           }
         }
 
-        // 5. Create "All Teachers" group & broadcast
-        if (!existingKeys.has('group::All Teachers')) {
+        // 6. "All Teachers" group & broadcast
+        if (!existingMap.has('group::All Teachers')) {
           await createConv('group', 'All Teachers', allTeacherIds);
-          created++;
+          changes++;
         }
-        if (!existingKeys.has('broadcast::All Teachers')) {
+        if (!existingMap.has('broadcast::All Teachers')) {
           await createConv('broadcast', 'All Teachers', allTeacherIds);
-          created++;
+          changes++;
         }
 
-        // 6. Gather all student & parent IDs (shared across multiple broadcasts)
-        const { data: allStudentsWithIds } = await supabase
-          .from('students')
-          .select('user_id, parent_email')
-          .eq('school_id', schoolId)
-          .eq('status', 'active');
-
-        const studentUserIds = (allStudentsWithIds || [])
-          .map(s => s.user_id)
-          .filter(Boolean) as string[];
-
-        const allParentEmails = [...new Set(
-          (allStudentsWithIds || []).map(s => s.parent_email).filter(Boolean) as string[]
-        )];
-        let parentProfileIds: string[] = [];
-        if (allParentEmails.length > 0) {
-          const { data: parentProfiles } = await supabase
-            .from('profiles')
-            .select('id')
-            .in('email', allParentEmails);
-          parentProfileIds = (parentProfiles || []).map(p => p.id);
-        }
-
-        // 6a. "All Parents" broadcast
-        if (!existingKeys.has('broadcast::All Parents') && parentProfileIds.length > 0) {
+        // 7. "All Parents" broadcast
+        if (!existingMap.has('broadcast::All Parents') && parentProfileIds.length > 0) {
           await createConv('broadcast', 'All Parents', parentProfileIds);
-          created++;
+          changes++;
+        } else if (existingMap.has('broadcast::All Parents')) {
+          await syncParticipants(existingMap.get('broadcast::All Parents')!.id, parentProfileIds, user!.id);
         }
 
-        // 6b. "All Students" broadcast
-        if (!existingKeys.has('broadcast::All Students') && studentUserIds.length > 0) {
-          await createConv('broadcast', 'All Students', studentUserIds);
-          created++;
+        // 8. "All Students" broadcast
+        if (!existingMap.has('broadcast::All Students') && allStudentUserIds.length > 0) {
+          await createConv('broadcast', 'All Students', allStudentUserIds);
+          changes++;
+        } else if (existingMap.has('broadcast::All Students')) {
+          await syncParticipants(existingMap.get('broadcast::All Students')!.id, allStudentUserIds, user!.id);
         }
 
-        // 6c. "All School" broadcast — includes ALL students, teachers, and parents
-        if (!existingKeys.has('broadcast::All School')) {
-          const allSchoolMembers = [...new Set([...allTeacherIds, ...studentUserIds, ...parentProfileIds])];
-          await createConv('broadcast', 'All School', allSchoolMembers);
-          created++;
+        // 9. "All School" broadcast
+        if (!existingMap.has('broadcast::All School')) {
+          const allMembers = [...new Set([...allTeacherIds, ...allStudentUserIds, ...parentProfileIds])];
+          await createConv('broadcast', 'All School', allMembers);
+          changes++;
+        } else {
+          const allMembers = [...new Set([...allTeacherIds, ...allStudentUserIds, ...parentProfileIds])];
+          await syncParticipants(existingMap.get('broadcast::All School')!.id, allMembers, user!.id);
         }
 
-        const totalChanges = created + orphanedConvs.length;
-        console.log('[AutoGroups] Created:', created, 'Cleaned up:', orphanedConvs.length);
-        if (totalChanges > 0) {
+        if (changes > 0) {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         }
       } catch (err) {
@@ -236,4 +173,34 @@ export function useAutoCreateGroups() {
 
     run();
   }, [user?.id, schoolId, queryClient]);
+}
+
+/**
+ * Sync conversation participants: add missing members, remove deleted ones.
+ * Preserves the admin user.
+ */
+async function syncParticipants(conversationId: string, expectedUserIds: string[], adminUserId: string) {
+  const { data: currentParts } = await supabase
+    .from('conversation_participants')
+    .select('id, user_id, role')
+    .eq('conversation_id', conversationId);
+
+  const currentMap = new Map((currentParts || []).map(p => [p.user_id, p]));
+  const expectedSet = new Set(expectedUserIds);
+
+  // Remove participants who are no longer expected (but not admin)
+  const toRemove = (currentParts || []).filter(
+    p => p.user_id !== adminUserId && p.role !== 'admin' && !expectedSet.has(p.user_id)
+  );
+  if (toRemove.length > 0) {
+    await supabase.from('conversation_participants').delete().in('id', toRemove.map(p => p.id));
+  }
+
+  // Add new participants
+  const toAdd = expectedUserIds.filter(id => id !== adminUserId && !currentMap.has(id));
+  if (toAdd.length > 0) {
+    await supabase.from('conversation_participants').insert(
+      toAdd.map(id => ({ conversation_id: conversationId, user_id: id, role: 'member' }))
+    );
+  }
 }
