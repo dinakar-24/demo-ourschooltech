@@ -15,18 +15,26 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
   ChevronDown, ChevronRight, Receipt, CalendarDays, FileText, User,
+  Users, Download, Bell, Percent,
 } from 'lucide-react';
 import { useFeeInvoices, useInvoiceStats, useFeeTerms, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import { useFees, FeeRecord } from '@/hooks/useFees';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
 import { CreateTermDialog } from '@/components/fees/CreateTermDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
+import { BulkCreateInvoiceDialog } from '@/components/fees/BulkCreateInvoiceDialog';
+import { SendReminderDialog } from '@/components/fees/SendReminderDialog';
+import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
 
 interface StudentGroup {
   studentId: string;
@@ -113,6 +121,12 @@ export default function FeesPage() {
   const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
   const [legacyReceiptOpen, setLegacyReceiptOpen] = useState(false);
   const [legacyReceiptFee, setLegacyReceiptFee] = useState<any>(null);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
+  const [discountInvoice, setDiscountInvoice] = useState<FeeInvoice | null>(null);
+
+  const { generateFeeSummary, generatePendingList, generatePaymentHistory } = useFeeReports();
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
@@ -221,9 +235,14 @@ export default function FeesPage() {
                   <div className="flex items-center gap-2">
                     {getStatusBadge(inv.status, inv.due_date)}
                     {inv.status !== 'paid' && (
-                      <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openPayment(inv)}>
-                        <CreditCard className="w-3 h-3 mr-1" /> Pay
-                      </Button>
+                      <>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
+                          <Percent className="w-3 h-3 mr-1" /> Discount
+                        </Button>
+                        <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openPayment(inv)}>
+                          <CreditCard className="w-3 h-3 mr-1" /> Pay
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -321,9 +340,27 @@ export default function FeesPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <h2 className="text-lg font-semibold">Student Fees</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setReminderDialogOpen(true)}>
+                <Bell className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Send</span> Reminders
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Export</span> Report
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={generateFeeSummary}>Fee Summary Report</DropdownMenuItem>
+                  <DropdownMenuItem onClick={generatePendingList}>Pending Fees List</DropdownMenuItem>
+                  <DropdownMenuItem onClick={generatePaymentHistory}>Payment History</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="sm" onClick={() => setTermDialogOpen(true)}>
                 <CalendarDays className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Add</span> Term
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
+                <Users className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Bulk</span> Create
               </Button>
               <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Create</span> Invoice
@@ -465,6 +502,9 @@ export default function FeesPage() {
         <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} />
         <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
         <FeeReceiptDialog open={legacyReceiptOpen} onOpenChange={setLegacyReceiptOpen} fee={legacyReceiptFee} />
+        <BulkCreateInvoiceDialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen} />
+        <SendReminderDialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen} />
+        <ApplyDiscountDialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen} invoice={discountInvoice} />
       </div>
     </AdminLayout>
   );

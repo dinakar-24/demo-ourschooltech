@@ -287,6 +287,130 @@ export function useCreateInvoice() {
   });
 }
 
+// ─── Bulk Create Invoices ────────────────────────────────────────────
+
+export function useCreateBulkInvoices() {
+  const queryClient = useQueryClient();
+  const schoolId = useEffectiveSchoolId();
+
+  return useMutation({
+    mutationFn: async (params: {
+      className: string;
+      section?: string;
+      term_id: string;
+      due_date: string;
+      components: { fee_type: string; amount: number }[];
+    }) => {
+      if (!schoolId) throw new Error('No school ID');
+
+      // Fetch active students for this class/section
+      let query = supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('status', 'active')
+        .eq('class_name', params.className);
+
+      if (params.section) {
+        query = query.eq('section', params.section);
+      }
+
+      const { data: students, error: studErr } = await query;
+      if (studErr) throw studErr;
+      if (!students?.length) throw new Error('No active students found for this class/section');
+
+      const totalAmount = params.components.reduce((s, c) => s + c.amount, 0);
+      let created = 0;
+
+      // Create in batches of 50
+      const batchSize = 50;
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize);
+
+        const invoices = batch.map(s => ({
+          school_id: schoolId,
+          student_id: s.id,
+          term_id: params.term_id,
+          total_amount: totalAmount,
+          paid_amount: 0,
+          balance: totalAmount,
+          status: 'pending',
+          due_date: params.due_date,
+        }));
+
+        const { data: createdInvoices, error: invErr } = await supabase
+          .from('fee_invoices')
+          .insert(invoices)
+          .select('id');
+
+        if (invErr) throw invErr;
+
+        // Insert components for each invoice
+        const allComps = (createdInvoices || []).flatMap(inv =>
+          params.components.map(c => ({
+            invoice_id: inv.id,
+            fee_type: c.fee_type,
+            amount: c.amount,
+          }))
+        );
+
+        if (allComps.length > 0) {
+          const { error: compErr } = await supabase.from('fee_invoice_components').insert(allComps);
+          if (compErr) throw compErr;
+        }
+
+        created += batch.length;
+      }
+
+      return { created };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      toast.success(`Created invoices for ${data.created} students`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Apply Discount (via RPC) ────────────────────────────────────────
+
+export function useApplyDiscount() {
+  const queryClient = useQueryClient();
+  const schoolId = useEffectiveSchoolId();
+
+  return useMutation({
+    mutationFn: async (params: {
+      invoice_id: string;
+      student_id: string;
+      discount_amount: number;
+      reason: string;
+      notes?: string;
+    }) => {
+      if (!schoolId) throw new Error('No school ID');
+
+      const { data, error } = await supabase.rpc('apply_fee_discount' as any, {
+        _school_id: schoolId,
+        _invoice_id: params.invoice_id,
+        _student_id: params.student_id,
+        _discount_amount: params.discount_amount,
+        _reason: params.reason,
+        _notes: params.notes || null,
+        _applied_by: null,
+      } as any);
+
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      toast.success('Discount applied successfully');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 // ─── Record Payment (via RPC) ────────────────────────────────────────
 
 export function useRecordInvoicePayment() {

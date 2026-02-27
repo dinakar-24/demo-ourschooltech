@@ -353,6 +353,64 @@ export type Database = {
           },
         ]
       }
+      fee_discounts: {
+        Row: {
+          applied_by: string | null
+          created_at: string
+          discount_amount: number
+          id: string
+          invoice_id: string
+          notes: string | null
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          applied_by?: string | null
+          created_at?: string
+          discount_amount: number
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          applied_by?: string | null
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          reason?: string
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_discounts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_discounts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_discounts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_invoice_components: {
         Row: {
           amount: number
@@ -2379,6 +2437,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_fee_discount: {
+        Args: {
+          _applied_by?: string
+          _discount_amount: number
+          _invoice_id: string
+          _notes?: string
+          _reason: string
+          _school_id: string
+          _student_id: string
+        }
+        Returns: Json
+      }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_ticket_number: { Args: { _school_id: string }; Returns: string }
       get_admin_attendance_by_class: {
