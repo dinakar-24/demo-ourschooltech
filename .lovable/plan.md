@@ -1,43 +1,59 @@
 
 
-## Performance Fix: Sub-Second Email Lookup for 2L+ Users
+# Top-Up Payment Without Extending Subscription
 
-### Problem Identified
-The email lookup (`lookup_user_by_email` RPC) returns the school logo as a **1MB+ base64-encoded string** embedded directly in the response. This massive payload causes slow response times regardless of how fast the database query runs (which is already ~7ms).
+## Problem
+Currently, both full subscription payments and top-up payments for new students reset the subscription dates (start = today, end = today + 1 year). When a school admin pays for new students mid-subscription, the expiry date should remain unchanged -- only the `student_count` should update.
 
-### Solution
+## Solution
 
-**1. Create an optimized lookup RPC that excludes the heavy logo**
+### 1. Track payment type in the flow
+Pass a `payment_type` field ("renewal" or "topup") from the frontend through the entire payment pipeline so the verification function knows whether to update dates.
 
-Update the `lookup_user_by_email` function to return a lightweight `logo_url` (a storage bucket URL) instead of the raw base64 blob. Since some schools store logos as base64, we'll add a flag (`has_logo`) and truncate/omit the base64 data from the lookup response entirely.
+### 2. Frontend changes (`SubscriptionPage.tsx`)
+- `handlePayment` (full/renewal): pass `paymentType: 'renewal'`
+- `handleTopUp` (new students only): pass `paymentType: 'topup'`
 
-- Modify the RPC to return `has_logo: true/false` and a small `school_logo_thumb` (or skip logo entirely in lookup)
-- The full logo will be loaded separately via a normal `<img>` tag only on the password step
+### 3. Hook changes (`useRazorpay.ts`)
+- Add `paymentType` to the `initiatePayment` params and forward it to the `create-razorpay-order` edge function body.
 
-**2. Two-phase logo loading on the frontend**
+### 4. Edge function: `create-razorpay-order`
+- Accept `paymentType` from the request body
+- Store it in the Razorpay order `notes` so it flows through to verification
+- Also store it in the `subscription_payments` table (requires a new column or use of an existing field)
 
-- **Phase 1 (Email lookup):** Return all metadata instantly WITHOUT the logo (~1KB response instead of ~1MB). Show a placeholder/initial while transitioning.
-- **Phase 2 (Password step):** Load the school logo lazily via a separate lightweight query or directly from the school record, so the transition to the password screen is instant.
+### 5. Database migration
+- Add a `payment_type` text column to `subscription_payments` table (default: `'renewal'`)
 
-### Technical Steps
+### 6. Edge function: `verify-razorpay-payment`
+- Read the `payment_type` from the payment record
+- If `payment_type = 'topup'`: only update `student_count` on the subscription, do NOT change `start_date`, `end_date`, or `status`
+- If `payment_type = 'renewal'`: current behavior (set dates to now + 1 year, activate)
 
-**Database Migration:**
-- Create a new version of `lookup_user_by_email` that excludes `s.logo` from the response and instead returns `has_logo: (s.logo IS NOT NULL)` boolean flag
-- Add a new tiny RPC `get_school_logo_by_id(school_id)` that returns just the logo for lazy loading
+## Technical Details
 
-**Frontend (`LoginPage.tsx`):**
-- Remove dependency on `school_logo` from the lookup response for the transition
-- Show a letter-avatar placeholder immediately on the password step
-- Fetch the logo in the background after the password step renders, then fade it in
-- This makes the step transition feel instant
+**New column:**
+```sql
+ALTER TABLE subscription_payments ADD COLUMN payment_type text NOT NULL DEFAULT 'renewal';
+```
 
-### Expected Impact
-- Lookup response drops from ~1MB to ~1KB (1000x smaller)
-- Response time drops from potentially seconds to under 100ms
-- Password step appears instantly with school name/role badge
-- Logo fades in smoothly 200-500ms later
+**verify-razorpay-payment logic change (both webhook and direct paths):**
+```
+if payment_type === 'topup':
+  -- Only update student_count on subscriptions table
+  UPDATE subscriptions SET student_count = <new_count> WHERE id = ...
+else:
+  -- Full renewal: set dates, activate (existing behavior)
+  UPDATE subscriptions SET status='active', start_date=now, end_date=now+1y, student_count=...
+```
 
-### Files to Modify
-- **Database migration**: Update `lookup_user_by_email` RPC, add `get_school_logo_by_id` RPC
-- **`src/pages/LoginPage.tsx`**: Lazy-load school logo on password step instead of relying on lookup response
+**create-razorpay-order change:**
+- Store `paymentType` and `studentCount` in the `subscription_payments` record
+- Forward to Razorpay order notes for traceability
 
+## Files to modify
+1. `src/pages/admin/SubscriptionPage.tsx` -- pass `paymentType` in both handlers
+2. `src/hooks/useRazorpay.ts` -- accept and forward `paymentType`
+3. `supabase/functions/create-razorpay-order/index.ts` -- store `payment_type` in payment record
+4. `supabase/functions/verify-razorpay-payment/index.ts` -- conditional logic based on `payment_type`
+5. Database migration -- add `payment_type` column to `subscription_payments`
