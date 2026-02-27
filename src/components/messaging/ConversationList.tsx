@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Users, Megaphone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, Users, Megaphone, Plus } from 'lucide-react';
 import { Conversation } from '@/hooks/useMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +13,7 @@ interface ConversationListProps {
   conversations: Conversation[];
   selectedId?: string;
   onSelect: (conv: Conversation) => void;
+  onNewChat?: () => void;
   isLoading?: boolean;
 }
 
@@ -27,7 +29,7 @@ const avatarColors: Record<TabType, string> = {
   broadcast: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
 };
 
-export function ConversationList({ conversations, selectedId, onSelect, isLoading }: ConversationListProps) {
+export function ConversationList({ conversations, selectedId, onSelect, onNewChat, isLoading }: ConversationListProps) {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('group');
   const { user } = useAuth();
@@ -51,6 +53,11 @@ export function ConversationList({ conversations, selectedId, onSelect, isLoadin
       <div className="px-4 pt-4 pb-3 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-foreground text-xl tracking-tight">Messages</h2>
+          {onNewChat && (
+            <Button size="icon-sm" variant="outline" onClick={onNewChat} className="rounded-full">
+              <Plus className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

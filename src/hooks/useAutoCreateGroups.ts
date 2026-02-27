@@ -180,32 +180,43 @@ export function useAutoCreateGroups() {
           created++;
         }
 
-        // 6. Create "All School" broadcast — includes ALL students, teachers, and parents
+        // 6. Gather all student & parent IDs (shared across multiple broadcasts)
+        const { data: allStudentsWithIds } = await supabase
+          .from('students')
+          .select('user_id, parent_email')
+          .eq('school_id', schoolId)
+          .eq('status', 'active');
+
+        const studentUserIds = (allStudentsWithIds || [])
+          .map(s => s.user_id)
+          .filter(Boolean) as string[];
+
+        const allParentEmails = [...new Set(
+          (allStudentsWithIds || []).map(s => s.parent_email).filter(Boolean) as string[]
+        )];
+        let parentProfileIds: string[] = [];
+        if (allParentEmails.length > 0) {
+          const { data: parentProfiles } = await supabase
+            .from('profiles')
+            .select('id')
+            .in('email', allParentEmails);
+          parentProfileIds = (parentProfiles || []).map(p => p.id);
+        }
+
+        // 6a. "All Parents" broadcast
+        if (!existingKeys.has('broadcast::All Parents') && parentProfileIds.length > 0) {
+          await createConv('broadcast', 'All Parents', parentProfileIds);
+          created++;
+        }
+
+        // 6b. "All Students" broadcast
+        if (!existingKeys.has('broadcast::All Students') && studentUserIds.length > 0) {
+          await createConv('broadcast', 'All Students', studentUserIds);
+          created++;
+        }
+
+        // 6c. "All School" broadcast — includes ALL students, teachers, and parents
         if (!existingKeys.has('broadcast::All School')) {
-          // Gather all student user_ids
-          const { data: allStudentsWithIds } = await supabase
-            .from('students')
-            .select('user_id, parent_email')
-            .eq('school_id', schoolId)
-            .eq('status', 'active');
-
-          const studentUserIds = (allStudentsWithIds || [])
-            .map(s => s.user_id)
-            .filter(Boolean) as string[];
-
-          // Gather all parent profile IDs
-          const allParentEmails = [...new Set(
-            (allStudentsWithIds || []).map(s => s.parent_email).filter(Boolean) as string[]
-          )];
-          let parentProfileIds: string[] = [];
-          if (allParentEmails.length > 0) {
-            const { data: parentProfiles } = await supabase
-              .from('profiles')
-              .select('id')
-              .in('email', allParentEmails);
-            parentProfileIds = (parentProfiles || []).map(p => p.id);
-          }
-
           const allSchoolMembers = [...new Set([...allTeacherIds, ...studentUserIds, ...parentProfileIds])];
           await createConv('broadcast', 'All School', allSchoolMembers);
           created++;
