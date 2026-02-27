@@ -1,4 +1,5 @@
 import { useState, useMemo, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useClasses } from '@/hooks/useClasses';
@@ -19,11 +20,12 @@ import {
 } from '@/components/ui/collapsible';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
   ChevronDown, ChevronRight, Receipt, FileText, User,
-  Users, Download, Bell, Percent, ShieldCheck,
+  Download, Bell, Percent, ShieldCheck, Upload, MoreHorizontal,
 } from 'lucide-react';
 import { useFeeInvoices, useInvoiceStats, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import { usePaymentSubmissions } from '@/hooks/usePaymentSubmissions';
@@ -36,7 +38,6 @@ import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
-import { BulkCreateInvoiceDialog } from '@/components/fees/BulkCreateInvoiceDialog';
 import { SendReminderDialog } from '@/components/fees/SendReminderDialog';
 import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
 
@@ -110,6 +111,7 @@ function groupByStudent(invoices: FeeInvoice[], legacyFees: FeeRecord[]): Studen
 
 export default function FeesPage() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedClass, setSelectedClass] = useState('all');
@@ -129,12 +131,11 @@ export default function FeesPage() {
   const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
   const [legacyReceiptOpen, setLegacyReceiptOpen] = useState(false);
   const [legacyReceiptFee, setLegacyReceiptFee] = useState<any>(null);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
   const [discountInvoice, setDiscountInvoice] = useState<FeeInvoice | null>(null);
 
-  const { generateFeeSummary, generatePendingList, generatePaymentHistory } = useFeeReports();
+  const { generateFeeSummary, generatePendingList, generatePaymentHistory, generateAllInvoices } = useFeeReports();
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
@@ -356,44 +357,99 @@ export default function FeesPage() {
 
         {/* Actions + Filters */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-lg font-semibold">Student Fees</h2>
-            <div className="flex gap-2 flex-wrap">
-              {pendingCount > 0 && (
-                <Button
-                  variant={showVerifications ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowVerifications(!showVerifications)}
-                  className="relative"
-                >
-                  <ShieldCheck className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">Verify</span>
-                  <Badge className="ml-1 bg-warning text-warning-foreground text-xs px-1.5 py-0">{pendingCount}</Badge>
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setReminderDialogOpen(true)}>
-                <Bell className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Send</span> Reminders
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Export</span> Report
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={generateFeeSummary}>Fee Summary Report</DropdownMenuItem>
-                  <DropdownMenuItem onClick={generatePendingList}>Pending Fees List</DropdownMenuItem>
-                  <DropdownMenuItem onClick={generatePaymentHistory}>Payment History</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(true)}>
-                <Users className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Bulk</span> Create
-              </Button>
-              <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Create</span> Invoice
-              </Button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Student Fees</h2>
+              <Badge variant="secondary" className="text-xs">
+                {filteredGroups.length}{filteredGroups.length !== studentGroups.length ? `/${studentGroups.length}` : ''} students
+              </Badge>
             </div>
+            
+            {/* Desktop actions */}
+            {!isMobile ? (
+              <div className="flex gap-2 flex-wrap">
+                {pendingCount > 0 && (
+                  <Button
+                    variant={showVerifications ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowVerifications(!showVerifications)}
+                    className="relative"
+                  >
+                    <ShieldCheck className="w-4 h-4 mr-1" />
+                    Verify
+                    <Badge className="ml-1 bg-warning text-warning-foreground text-xs px-1.5 py-0">{pendingCount}</Badge>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setReminderDialogOpen(true)}>
+                  <Bell className="w-4 h-4 mr-1" /> Reminders
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-1" /> Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={generateFeeSummary}>Fee Summary Report</DropdownMenuItem>
+                    <DropdownMenuItem onClick={generatePendingList}>Pending Fees List</DropdownMenuItem>
+                    <DropdownMenuItem onClick={generatePaymentHistory}>Payment History</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={generateAllInvoices}>All Invoices (Detailed)</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="outline" size="sm" onClick={() => navigate('/admin/bulk-upload', { state: { tab: 'fees' } })}>
+                  <Upload className="w-4 h-4 mr-1" /> Import
+                </Button>
+                <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Create Invoice
+                </Button>
+              </div>
+            ) : (
+              /* Mobile actions: primary + more dropdown */
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Create
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon-sm">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem onClick={() => setReminderDialogOpen(true)}>
+                      <Bell className="w-4 h-4 mr-2" /> Send Reminders
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/admin/bulk-upload', { state: { tab: 'fees' } })}>
+                      <Upload className="w-4 h-4 mr-2" /> Import from Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Download className="w-4 h-4 mr-2" /> Export Report
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={generateFeeSummary}>Fee Summary</DropdownMenuItem>
+                        <DropdownMenuItem onClick={generatePendingList}>Pending Fees</DropdownMenuItem>
+                        <DropdownMenuItem onClick={generatePaymentHistory}>Payment History</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={generateAllInvoices}>All Invoices</DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    {pendingCount > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setShowVerifications(!showVerifications)}>
+                          <ShieldCheck className="w-4 h-4 mr-2" /> Verify Payments ({pendingCount})
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
+
+          {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -569,7 +625,6 @@ export default function FeesPage() {
         <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} />
         <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
         <FeeReceiptDialog open={legacyReceiptOpen} onOpenChange={setLegacyReceiptOpen} fee={legacyReceiptFee} />
-        <BulkCreateInvoiceDialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen} />
         <SendReminderDialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen} />
         <ApplyDiscountDialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen} invoice={discountInvoice} />
       </div>

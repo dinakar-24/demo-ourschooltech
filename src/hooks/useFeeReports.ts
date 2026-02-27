@@ -18,11 +18,15 @@ function autoWidth(ws: ExcelJS.Worksheet) {
   ws.columns.forEach(col => {
     let max = 12;
     col.eachCell?.({ includeEmpty: false }, cell => {
-      const len = String(cell.value || '').length + 2;
+      const len = String(cell.value || '').length + 4;
       if (len > max) max = len;
     });
-    col.width = Math.min(max, 40);
+    col.width = Math.min(max, 45);
   });
+  // Enable word wrap on header row (row 4 after title rows)
+  const headerRow = ws.getRow(4);
+  headerRow.alignment = { wrapText: true, vertical: 'middle' };
+  headerRow.height = 28;
 }
 
 function addHeader(ws: ExcelJS.Worksheet, title: string) {
@@ -30,6 +34,14 @@ function addHeader(ws: ExcelJS.Worksheet, title: string) {
   row.font = { bold: true, size: 14 };
   ws.addRow([`Generated: ${new Date().toLocaleDateString('en-IN')}`]);
   ws.addRow([]);
+}
+
+function styleHeaderRow(headerRow: ExcelJS.Row) {
+  headerRow.font = { bold: true };
+  headerRow.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+    cell.border = { bottom: { style: 'thin', color: { argb: 'FFD0D5DD' } } };
+  });
 }
 
 export function useFeeReports() {
@@ -47,7 +59,6 @@ export function useFeeReports() {
 
       if (error) throw error;
 
-      // Group by class
       const classMap = new Map<string, { total: number; collected: number; pending: number; overdue: number; count: number }>();
       const today = new Date().toISOString().split('T')[0];
 
@@ -70,15 +81,13 @@ export function useFeeReports() {
       addHeader(ws, 'Fee Summary Report');
 
       const headerRow = ws.addRow(['Class', 'Invoices', 'Total Amount', 'Collected', 'Pending', 'Overdue', 'Collection %']);
-      headerRow.font = { bold: true };
-      headerRow.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; });
+      styleHeaderRow(headerRow);
 
       for (const [cls, stats] of Array.from(classMap.entries()).sort()) {
         const rate = stats.total > 0 ? ((stats.collected / stats.total) * 100).toFixed(1) + '%' : '0%';
         ws.addRow([cls, stats.count, stats.total, stats.collected, stats.pending, stats.overdue, rate]);
       }
 
-      // Totals
       const totals = Array.from(classMap.values()).reduce((a, b) => ({
         count: a.count + b.count, total: a.total + b.total, collected: a.collected + b.collected,
         pending: a.pending + b.pending, overdue: a.overdue + b.overdue,
@@ -88,11 +97,7 @@ export function useFeeReports() {
         totals.total > 0 ? ((totals.collected / totals.total) * 100).toFixed(1) + '%' : '0%']);
       totalRow.font = { bold: true };
 
-      // Format currency columns
-      [3, 4, 5, 6].forEach(col => {
-        ws.getColumn(col).numFmt = '₹#,##0';
-      });
-
+      [3, 4, 5, 6].forEach(col => { ws.getColumn(col).numFmt = '₹#,##0'; });
       autoWidth(ws);
       ws.views = [{ state: 'frozen', ySplit: 4 }];
 
@@ -123,17 +128,15 @@ export function useFeeReports() {
       const ws = wb.addWorksheet('Pending Fees');
       addHeader(ws, 'Pending Fees List');
 
-      const headerRow = ws.addRow(['Student', 'Admission No', 'Class', 'Term', 'Total', 'Paid', 'Balance', 'Due Date', 'Status', 'Parent Phone']);
-      headerRow.font = { bold: true };
-      headerRow.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; });
+      const headerRow = ws.addRow(['Student', 'Admission No', 'Class', 'Section', 'Total', 'Paid', 'Balance', 'Due Date', 'Status', 'Parent Phone']);
+      styleHeaderRow(headerRow);
 
       const today = new Date().toISOString().split('T')[0];
       for (const inv of data || []) {
         const s = (inv as any).student;
         const isOverdue = inv.status === 'pending' && inv.due_date < today;
         ws.addRow([
-          s?.full_name, s?.admission_number, `${s?.class_name}-${s?.section}`,
-          (inv as any).term?.name || 'N/A',
+          s?.full_name, s?.admission_number, s?.class_name, s?.section,
           Number(inv.total_amount), Number(inv.paid_amount), Number(inv.balance),
           new Date(inv.due_date).toLocaleDateString('en-IN'),
           isOverdue ? 'Overdue' : inv.status,
@@ -173,8 +176,7 @@ export function useFeeReports() {
       addHeader(ws, 'Payment History');
 
       const headerRow = ws.addRow(['Receipt No', 'Student', 'Admission No', 'Class', 'Amount', 'Payment Method', 'Date', 'Transaction ID', 'Notes']);
-      headerRow.font = { bold: true };
-      headerRow.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; });
+      styleHeaderRow(headerRow);
 
       for (const p of data || []) {
         const s = (p as any).student;
@@ -199,5 +201,56 @@ export function useFeeReports() {
     }
   };
 
-  return { generateFeeSummary, generatePendingList, generatePaymentHistory };
+  const generateAllInvoices = async () => {
+    if (!schoolId) return;
+    try {
+      toast.loading('Generating all invoices export...');
+
+      const { data, error } = await supabase
+        .from('fee_invoices')
+        .select(`
+          total_amount, paid_amount, balance, due_date, status,
+          student:students!inner(full_name, admission_number, class_name, section),
+          components:fee_invoice_components(fee_type, amount)
+        `)
+        .eq('school_id', schoolId)
+        .order('due_date', { ascending: false });
+
+      if (error) throw error;
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('All Invoices');
+      addHeader(ws, 'All Invoices');
+
+      const headerRow = ws.addRow(['Student', 'Admission No', 'Class', 'Section', 'Fee Components', 'Total Amount', 'Paid', 'Balance', 'Due Date', 'Status']);
+      styleHeaderRow(headerRow);
+
+      const today = new Date().toISOString().split('T')[0];
+      for (const inv of data || []) {
+        const s = (inv as any).student;
+        const comps = ((inv as any).components || []).map((c: any) => `${c.fee_type}: ₹${Number(c.amount).toLocaleString()}`).join(', ');
+        const isOverdue = inv.status === 'pending' && inv.due_date < today;
+        ws.addRow([
+          s?.full_name, s?.admission_number, s?.class_name, s?.section,
+          comps,
+          Number(inv.total_amount), Number(inv.paid_amount), Number(inv.balance),
+          new Date(inv.due_date).toLocaleDateString('en-IN'),
+          isOverdue ? 'Overdue' : inv.status,
+        ]);
+      }
+
+      [6, 7, 8].forEach(col => { ws.getColumn(col).numFmt = '₹#,##0'; });
+      autoWidth(ws);
+      ws.views = [{ state: 'frozen', ySplit: 4 }];
+
+      await downloadWorkbook(wb, `all-invoices-${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.dismiss();
+      toast.success('Report downloaded');
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err.message || 'Failed to generate report');
+    }
+  };
+
+  return { generateFeeSummary, generatePendingList, generatePaymentHistory, generateAllInvoices };
 }
