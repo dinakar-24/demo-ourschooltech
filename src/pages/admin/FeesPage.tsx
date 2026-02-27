@@ -240,55 +240,52 @@ export default function FeesPage() {
   const collectionRate = stats && stats.totalDue > 0 ? ((stats.collected / stats.totalDue) * 100).toFixed(0) : '0';
 
   const renderExpandedContent = (g: StudentGroup) => (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Invoices */}
       {g.invoices.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-1.5">
-            <FileText className="w-4 h-4" /> Invoices ({g.invoices.length})
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Invoices ({g.invoices.length})
           </h4>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {g.invoices.map(inv => (
-              <div key={inv.id} className="rounded-xl border bg-card p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2">
                 {/* Invoice Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm sm:text-base font-semibold">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
-                    <span className="text-lg sm:text-xl font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                    <span className="text-sm font-medium text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                    <span className="text-base font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
                     {getStatusBadge(inv.status, inv.due_date)}
                   </div>
                   {inv.status !== 'paid' && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" className="h-8 text-xs flex-1 sm:flex-none" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
-                        <Percent className="w-3.5 h-3.5 mr-1" /> Discount
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
+                        <Percent className="w-3 h-3 mr-1" /> Discount
                       </Button>
-                      <Button size="sm" variant="default" className="h-8 text-xs flex-1 sm:flex-none" onClick={() => openPayment(inv)}>
-                        <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay All
+                      <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openPayment(inv)}>
+                        <CreditCard className="w-3 h-3 mr-1" /> Pay All
                       </Button>
                     </div>
                   )}
                 </div>
 
-                {/* Fee Components - Each with its own Pay button */}
+                {/* Fee Components - compact table-like rows */}
                 {(inv.components || []).length > 0 && (
-                  <div className="space-y-2">
+                  <div className="divide-y divide-border/50 border rounded-md overflow-hidden">
                     {(inv.components || []).map(c => {
                       const componentAmount = Number(c.amount);
                       const canPayComponent = inv.status !== 'paid' && Number(inv.balance) > 0;
                       const payableAmount = Math.min(componentAmount, Number(inv.balance));
                       return (
-                        <div key={c.id} className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg bg-muted/40 border border-border/50 gap-2">
-                          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                            <div className="w-1.5 sm:w-2 h-7 sm:h-8 rounded-full bg-primary/30 shrink-0" />
-                            <span className="text-xs sm:text-sm font-medium text-foreground truncate">{c.fee_type}</span>
-                          </div>
-                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            <span className="text-sm sm:text-base font-bold text-foreground">₹{componentAmount.toLocaleString()}</span>
+                        <div key={c.id} className="flex items-center justify-between px-3 py-2 bg-muted/20 hover:bg-muted/30">
+                          <span className="text-sm font-medium">{c.fee_type}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold tabular-nums">₹{componentAmount.toLocaleString()}</span>
                             {canPayComponent && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-[10px] sm:text-xs px-2 sm:px-3 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+                                className="h-6 text-[10px] px-2 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
                                 onClick={() => openPayment(inv, payableAmount, c.fee_type)}
                               >
                                 Pay
@@ -301,34 +298,27 @@ export default function FeesPage() {
                   </div>
                 )}
 
-                {/* Totals Row */}
-                <div className="grid grid-cols-3 gap-1 text-center border-t border-dashed pt-3">
-                  <div>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
-                    <p className="text-sm sm:text-lg font-bold">₹{Number(inv.total_amount).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Paid</p>
-                    <p className="text-sm sm:text-lg font-bold text-success">₹{Number(inv.paid_amount).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Balance</p>
-                    <p className="text-sm sm:text-lg font-bold text-destructive">₹{Number(inv.balance).toLocaleString()}</p>
+                {/* Totals - inline */}
+                <div className="flex items-center justify-between text-sm border-t border-dashed pt-2 px-1">
+                  <div className="flex items-center gap-4">
+                    <span><span className="text-muted-foreground text-xs">Total:</span> <span className="font-bold">₹{Number(inv.total_amount).toLocaleString()}</span></span>
+                    <span><span className="text-muted-foreground text-xs">Paid:</span> <span className="font-bold text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
+                    <span><span className="text-muted-foreground text-xs">Balance:</span> <span className="font-bold text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
                   </div>
                 </div>
 
-                {/* Payments */}
+                {/* Payments - compact */}
                 {(inv.payments || []).length > 0 && (
-                  <div className="border-t pt-3 space-y-1.5">
+                  <div className="space-y-1">
                     {(inv.payments || []).map(p => (
-                      <div key={p.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm bg-muted/20 rounded-lg px-3 py-2 gap-1">
-                        <span className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm sm:text-base">₹{Number(p.amount).toLocaleString()}</span>
-                          <span className="text-muted-foreground capitalize text-xs">{p.payment_method}</span>
-                          <span className="text-muted-foreground text-xs">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+                      <div key={p.id} className="flex items-center justify-between text-xs bg-muted/20 rounded px-3 py-1.5">
+                        <span className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
+                          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
+                          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
                         </span>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs justify-start sm:justify-center" onClick={() => openReceipt(p, inv)}>
-                          <Receipt className="w-3.5 h-3.5 mr-1" /> {p.receipt_number}
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openReceipt(p, inv)}>
+                          <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
                         </Button>
                       </div>
                     ))}
@@ -343,22 +333,22 @@ export default function FeesPage() {
       {/* Legacy Fees */}
       {g.legacyFees.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-1.5">
-            <CreditCard className="w-4 h-4" /> Fee Records ({g.legacyFees.length})
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" /> Fee Records ({g.legacyFees.length})
           </h4>
-          <div className="space-y-2">
+          <div className="divide-y divide-border/50 border rounded-md overflow-hidden">
             {g.legacyFees.map(fee => (
-              <div key={fee.id} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
+              <div key={fee.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/20">
                 <div className="flex items-center gap-3">
-                  <span className="font-medium text-base">{fee.fee_type}</span>
-                  <span className="text-muted-foreground text-sm">Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
+                  <span className="font-medium text-sm">{fee.fee_type}</span>
+                  <span className="text-muted-foreground text-xs">Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-base">₹{Number(fee.amount).toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm">₹{Number(fee.amount).toLocaleString()}</span>
                   {getStatusBadge(fee.status, fee.due_date)}
                   {fee.status === 'paid' && fee.receipt_number && (
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openLegacyReceipt(fee)}>
-                      <Receipt className="w-3.5 h-3.5 mr-1" /> {fee.receipt_number}
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openLegacyReceipt(fee)}>
+                      <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
                     </Button>
                   )}
                 </div>
