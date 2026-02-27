@@ -77,8 +77,8 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 px-4 pb-3">
+      {/* Tabs - horizontal scroll on mobile */}
+      <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
         {tabs.map(tab => {
           const isActive = activeTab === tab.key;
           return (
@@ -86,17 +86,17 @@ export function ConversationList({ conversations, selectedId, onSelect, onNewCha
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200",
+                "flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap shrink-0",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <tab.icon className="w-4 h-4" />
+              <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
               {counts[tab.key] > 0 && (
                 <span className={cn(
-                  "text-[11px] font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5",
+                  "text-[11px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1",
                   isActive
                     ? "bg-primary-foreground/20 text-primary-foreground"
                     : "bg-background text-muted-foreground"
