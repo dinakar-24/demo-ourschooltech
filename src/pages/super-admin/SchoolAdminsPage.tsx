@@ -11,6 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { AdminCard } from '@/components/super-admin/AdminCard';
 import { CreateSchoolAdminDialog } from '@/components/super-admin/CreateSchoolAdminDialog';
+import { ManagePermissionsDialog } from '@/components/super-admin/ManagePermissionsDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolAdmins } from '@/hooks/useSchoolAdmins';
 import { usePagination } from '@/hooks/usePagination';
@@ -162,15 +163,24 @@ export default function SchoolAdminsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <UserActionsMenu
-                                userId={admin.id}
-                                userName={admin.full_name}
-                                userEmail={admin.email}
-                                isDisabled={disabledAdmins.has(admin.id)}
-                                isSelf={user?.id === admin.id}
-                                onActionComplete={handleActionComplete}
-                                currentFullName={admin.full_name}
-                              />
+                              <div className="flex items-center gap-1.5">
+                                {admin.school_id && (
+                                  <ManagePermissionsDialog
+                                    userId={admin.id}
+                                    schoolId={admin.school_id}
+                                    adminName={admin.full_name}
+                                  />
+                                )}
+                                <UserActionsMenu
+                                  userId={admin.id}
+                                  userName={admin.full_name}
+                                  userEmail={admin.email}
+                                  isDisabled={disabledAdmins.has(admin.id)}
+                                  isSelf={user?.id === admin.id}
+                                  onActionComplete={handleActionComplete}
+                                  currentFullName={admin.full_name}
+                                />
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
