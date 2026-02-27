@@ -114,86 +114,85 @@ async function downloadSubscriptionReceipt(
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a;background:#fff;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Inter',system-ui,sans-serif;color:#111827;background:#fff;font-size:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5;}
   .page{max-width:760px;margin:20px auto;background:#fff;}
 
   /* HEADER */
-  .hdr{padding:32px 40px 24px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e8e8e8;}
-  .hdr-left{display:flex;align-items:center;gap:12px;}
-  .hdr-left img{height:36px;width:auto;}
-  .hdr-co{font-size:15px;font-weight:600;color:#1a1a1a;}
-  .hdr-url{font-size:11px;color:#888;margin-top:2px;}
+  .hdr{padding:30px 40px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e5e7eb;}
+  .hdr-left{display:flex;align-items:center;gap:14px;}
+  .hdr-left img{height:46px;width:auto;}
+  .hdr-co{font-size:17px;font-weight:700;color:#111827;}
+  .hdr-url{font-size:12px;color:#6B7280;margin-top:2px;font-weight:500;}
   .hdr-right{text-align:right;}
-  .hdr-title{font-size:24px;font-weight:700;color:#0F766E;letter-spacing:-0.5px;}
-  .hdr-id{font-size:11px;color:#999;margin-top:4px;}
+  .hdr-title{font-size:26px;font-weight:700;color:#0F766E;letter-spacing:-0.3px;}
+  .hdr-id{font-size:13px;color:#4B5563;margin-top:3px;font-weight:600;}
 
-  .body{padding:28px 40px;}
+  .body{padding:30px 40px;}
 
   /* META ROW */
-  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#fafafa;border-radius:8px;padding:16px 0;margin-bottom:28px;}
-  .meta-c{padding:0 20px;border-right:1px solid #eee;}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:18px 0;margin-bottom:30px;}
+  .meta-c{padding:0 22px;border-right:1px solid #E5E7EB;}
   .meta-c:last-child{border-right:none;}
-  .meta-c .lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;}
-  .meta-c .val{font-size:13px;font-weight:600;color:#1a1a1a;margin-top:4px;}
-  .badge-paid{display:inline-flex;align-items:center;gap:4px;background:#ecfdf5;color:#059669;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+  .meta-c .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;}
+  .meta-c .val{font-size:14px;font-weight:600;color:#111827;margin-top:5px;}
+  .badge-paid{display:inline-flex;align-items:center;gap:4px;background:#D1FAE5;color:#047857;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;}
 
   /* BILLING INFO */
-  .billing-row{display:flex;justify-content:space-between;margin-bottom:24px;}
+  .billing-row{display:flex;justify-content:space-between;margin-bottom:28px;}
   .bill-block{}
-  .bill-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:6px;}
-  .bill-name{font-size:16px;font-weight:600;color:#1a1a1a;}
-  .bill-desc{font-size:12px;color:#777;margin-top:3px;}
-  .bill-period{font-size:11px;color:#888;margin-top:2px;}
+  .bill-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:6px;}
+  .bill-name{font-size:18px;font-weight:700;color:#111827;}
+  .bill-desc{font-size:13px;color:#4B5563;margin-top:4px;font-weight:500;}
 
-  .divider{height:1px;background:#f0f0f0;margin:0 0 24px;}
+  .divider{height:1px;background:#E5E7EB;margin:0 0 28px;}
 
   /* TABLE */
-  table{width:100%;border-collapse:collapse;margin-bottom:20px;}
-  thead th{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:#999;font-weight:600;padding:10px 12px;text-align:left;border-bottom:1px solid #eee;}
+  table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+  thead th{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#4B5563;font-weight:700;padding:12px 14px;text-align:left;border-bottom:2px solid #E5E7EB;background:#F9FAFB;}
   thead th.cen{text-align:center;}
   thead th.rt{text-align:right;}
-  tbody td{padding:14px 12px;font-size:13px;color:#333;border-bottom:1px solid #f5f5f5;vertical-align:top;}
-  tbody td.cen{text-align:center;color:#555;}
-  tbody td.rt{text-align:right;color:#333;}
-  .svc-name{font-weight:600;color:#1a1a1a;}
-  .svc-sub{font-size:11px;color:#aaa;margin-top:2px;font-weight:400;}
+  tbody td{padding:16px 14px;font-size:14px;color:#1F2937;border-bottom:1px solid #F3F4F6;vertical-align:top;}
+  tbody td.cen{text-align:center;color:#4B5563;}
+  tbody td.rt{text-align:right;color:#1F2937;}
+  .svc-name{font-weight:600;color:#111827;font-size:14px;}
+  .svc-sub{font-size:12px;color:#6B7280;margin-top:3px;font-weight:400;}
 
   /* TOTALS */
-  .totals{display:flex;justify-content:flex-end;margin-bottom:20px;}
-  .totals-box{width:260px;}
-  .trow{display:flex;justify-content:space-between;padding:7px 0;font-size:12px;color:#777;}
-  .trow .tv{color:#333;font-weight:500;}
-  .trow-total{display:flex;justify-content:space-between;padding:10px 0;font-size:14px;font-weight:700;color:#1a1a1a;border-top:2px solid #0F766E;margin-top:4px;}
-  .trow-total .tv{color:#0F766E;font-size:16px;}
+  .totals{display:flex;justify-content:flex-end;margin-bottom:24px;}
+  .totals-box{width:280px;}
+  .trow{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#6B7280;}
+  .trow .tv{color:#1F2937;font-weight:600;}
+  .trow-total{display:flex;justify-content:space-between;padding:12px 0;font-size:15px;font-weight:700;color:#111827;border-top:2px solid #0F766E;margin-top:6px;}
+  .trow-total .tv{color:#0F766E;font-size:18px;font-weight:700;}
 
   /* AMOUNT WORDS */
-  .words{padding:10px 14px;background:#f9fafb;border-radius:6px;font-size:11px;color:#666;margin-bottom:24px;}
-  .words strong{color:#333;font-weight:600;}
+  .words{padding:12px 16px;background:#F9FAFB;border-radius:6px;border:1px solid #E5E7EB;font-size:13px;color:#4B5563;margin-bottom:28px;}
+  .words strong{color:#111827;font-weight:700;}
 
   /* PAYMENT METHOD */
-  .pay-method{margin-bottom:24px;}
-  .pay-method .lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:4px;}
-  .pay-method .val{font-size:12px;color:#333;font-weight:500;}
+  .pay-method{margin-bottom:28px;}
+  .pay-method .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:5px;}
+  .pay-method .val{font-size:14px;color:#1F2937;font-weight:600;}
 
   /* INFO GRID */
-  .info{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;padding-top:20px;border-top:1px solid #f0f0f0;}
+  .info{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:0;padding-top:24px;border-top:1px solid #E5E7EB;}
   .info-cell{}
-  .info-cell .sec-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#999;font-weight:500;margin-bottom:8px;}
-  .info-cell .row{font-size:11px;line-height:2;display:flex;}
-  .info-cell .row .k{color:#aaa;width:80px;flex-shrink:0;}
-  .info-cell .row .v{color:#333;font-weight:500;}
-  .info-cell .terms{font-size:10px;color:#aaa;line-height:1.7;}
+  .info-cell .sec-lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:10px;}
+  .info-cell .row{font-size:13px;line-height:2.2;display:flex;}
+  .info-cell .row .k{color:#6B7280;width:85px;flex-shrink:0;font-weight:500;}
+  .info-cell .row .v{color:#1F2937;font-weight:600;}
+  .info-cell .terms{font-size:11px;color:#6B7280;line-height:1.8;}
 
   /* FOOTER */
-  .ftr{padding:20px 40px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-end;background:#fafafa;}
-  .ftr-l .fn{font-size:12px;font-weight:600;color:#333;}
-  .ftr-l .fd{font-size:10px;color:#999;line-height:1.7;margin-top:2px;}
+  .ftr{padding:20px 40px;border-top:2px solid #E5E7EB;display:flex;justify-content:space-between;align-items:flex-end;background:#F9FAFB;}
+  .ftr-l .fn{font-size:13px;font-weight:700;color:#1F2937;}
+  .ftr-l .fd{font-size:11px;color:#6B7280;line-height:1.7;margin-top:3px;font-weight:500;}
   .ftr-r{text-align:right;}
-  .ftr-r .fl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#bbb;font-weight:500;}
-  .ftr-r .fsig{font-size:13px;font-weight:600;color:#1a1a1a;margin-top:4px;}
-  .ftr-r .frole{font-size:10px;color:#999;margin-top:1px;}
+  .ftr-r .fl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;}
+  .ftr-r .fsig{font-size:14px;font-weight:700;color:#111827;margin-top:5px;}
+  .ftr-r .frole{font-size:11px;color:#4B5563;margin-top:2px;font-weight:500;}
 
-  .ref{padding:8px 40px;display:flex;justify-content:space-between;font-size:9px;color:#ccc;font-family:'SF Mono',monospace;letter-spacing:0.3px;border-top:1px solid #f0f0f0;}
+  .ref{padding:10px 40px;display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;font-family:'SF Mono','Fira Code',monospace;letter-spacing:0.3px;border-top:1px solid #E5E7EB;}
 
   @media print{body{margin:0;}.page{margin:0;max-width:100%;}}
 </style></head><body>
@@ -241,7 +240,7 @@ async function downloadSubscriptionReceipt(
       </div>
       <div class="bill-block" style="text-align:right;">
         <div class="bill-label">From</div>
-        <div class="bill-name" style="font-size:13px;">Our School Tech</div>
+        <div class="bill-name" style="font-size:14px;">Our School Tech</div>
         <div class="bill-desc">support@ourschooltech.com</div>
       </div>
     </div>
@@ -252,19 +251,19 @@ async function downloadSubscriptionReceipt(
       <thead><tr>
         <th style="width:32px">#</th>
         <th>Description</th>
-        <th class="cen" style="width:50px">Qty</th>
-        <th class="rt" style="width:90px">Rate</th>
-        <th class="rt" style="width:100px">Amount</th>
+        <th class="cen" style="width:55px">Qty</th>
+        <th class="rt" style="width:95px">Rate</th>
+        <th class="rt" style="width:110px">Amount</th>
       </tr></thead>
       <tbody><tr>
-        <td style="color:#aaa;">1</td>
+        <td style="color:#6B7280;">1</td>
         <td>
           <div class="svc-name">School ERP Platform — Annual ${paymentType}</div>
           <div class="svc-sub">Cloud-based school management · ${studentCount} student${studentCount !== 1 ? 's' : ''}</div>
         </td>
         <td class="cen">${studentCount}</td>
         <td class="rt">₹${pricePerStudent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="rt" style="font-weight:600;">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td class="rt" style="font-weight:700;">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
       </tr></tbody>
     </table>
 
