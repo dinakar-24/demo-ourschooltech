@@ -84,19 +84,45 @@ export default function SettingsPage() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState('school');
+
+  const TABS = [
+    { value: 'school', label: 'School', icon: School },
+    { value: 'academic', label: 'Academic', icon: Calendar },
+    { value: 'notifications', label: 'Notifications', icon: Bell },
+    { value: 'security', label: 'Security', icon: Lock },
+    { value: 'language', label: 'Language', icon: Globe },
+  ];
+
   return (
     <AdminLayout title="Settings">
       <div className="space-y-6 animate-fade-up">
-        <Tabs defaultValue="school" className="space-y-6">
-          <div className="overflow-x-auto -mx-1 px-1 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <TabsList className="inline-flex w-auto min-w-max sm:grid sm:grid-cols-5 sm:w-[500px]">
-              <TabsTrigger value="school" className="text-xs sm:text-sm">School</TabsTrigger>
-              <TabsTrigger value="academic" className="text-xs sm:text-sm">Academic</TabsTrigger>
-              <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
-              <TabsTrigger value="security" className="text-xs sm:text-sm">Security</TabsTrigger>
-              <TabsTrigger value="language" className="text-xs sm:text-sm">Language</TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Mobile: Select dropdown */}
+          <div className="sm:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TABS.map((tab) => (
+                  <SelectItem key={tab.value} value={tab.value}>
+                    <span className="flex items-center gap-2">
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Desktop: Tab bar */}
+          <TabsList className="hidden sm:grid sm:grid-cols-5 sm:w-[500px]">
+            {TABS.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+            ))}
+          </TabsList>
 
           {/* School Settings */}
           <TabsContent value="school" className="space-y-6">
