@@ -1932,11 +1932,13 @@ export type Database = {
           created_at: string
           id: string
           paid_at: string | null
+          payment_type: string
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           razorpay_signature: string | null
           school_id: string
           status: string
+          student_count: number | null
           subscription_id: string
         }
         Insert: {
@@ -1944,11 +1946,13 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          payment_type?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
           school_id: string
           status?: string
+          student_count?: number | null
           subscription_id: string
         }
         Update: {
@@ -1956,11 +1960,13 @@ export type Database = {
           created_at?: string
           id?: string
           paid_at?: string | null
+          payment_type?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
           school_id?: string
           status?: string
+          student_count?: number | null
           subscription_id?: string
         }
         Relationships: [

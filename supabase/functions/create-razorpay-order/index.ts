@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { subscriptionId, amount, schoolId, studentCount } = await req.json();
+    const { subscriptionId, amount, schoolId, studentCount, paymentType = 'renewal' } = await req.json();
 
     if (!amount) {
       return new Response(
@@ -145,6 +145,8 @@ Deno.serve(async (req) => {
           subscription_id: actualSubscriptionId,
           school_id: subscription.school_id,
           school_name: subscription.school?.name,
+          payment_type: paymentType,
+          student_count: studentCount?.toString() || '0',
         },
       }),
     });
@@ -168,6 +170,8 @@ Deno.serve(async (req) => {
         amount: amount,
         razorpay_order_id: order.id,
         status: 'pending',
+        payment_type: paymentType,
+        student_count: studentCount || 0,
       });
 
     if (paymentError) {
