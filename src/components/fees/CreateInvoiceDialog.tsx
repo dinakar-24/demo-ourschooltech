@@ -68,7 +68,7 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
   const totalAmount = components.reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   const canSubmit = () => {
-    if (!studentId || !dueDate) return false;
+    if (!studentId) return false;
     return components.every(c => {
       const type = c.fee_type === 'Other' ? c.custom_type?.trim() : c.fee_type;
       return type && Number(c.amount) > 0;
@@ -76,7 +76,7 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit() || !dueDate) return;
+    if (!canSubmit()) return;
 
     const comps = components.map(c => ({
       fee_type: c.fee_type === 'Other' ? (c.custom_type?.trim() || 'Other') : c.fee_type,
@@ -86,7 +86,7 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
     try {
       await createInvoice.mutateAsync({
         student_id: studentId,
-        due_date: format(dueDate, 'yyyy-MM-dd'),
+        due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         components: comps,
       });
       handleClose(false);
@@ -136,9 +136,9 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
             )}
           </div>
 
-          {/* Due Date */}
+          {/* Due Date (Optional) */}
           <div className="space-y-2">
-            <Label>Due Date <span className="text-destructive">*</span></Label>
+            <Label>Due Date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
