@@ -225,11 +225,45 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
         </ul>
       </nav>
 
-      {/* User & Language Section */}
-      <div className="p-3 border-t border-sidebar-border space-y-2">
-        {/* User */}
+      {/* Bottom Section */}
+      <div className="border-t border-sidebar-border">
+        {/* Language Selector */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "nav-item w-full mx-2 mt-2",
+                isCollapsed && "justify-center mx-auto"
+              )}
+              title={isCollapsed ? 'Language' : undefined}
+            >
+              <Globe className="w-5 h-5 shrink-0" />
+              {!isCollapsed && (
+                <span>{LANGUAGES.find(l => l.code === i18n.language)?.label || 'English'}</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="right" align="end" className="w-44 p-1">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
+                  i18n.language === lang.code
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "hover:bg-muted text-foreground"
+                )}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+
+        {/* User & Sign Out */}
         <div className={cn(
-          "flex items-center gap-3",
+          "flex items-center gap-3 p-3",
           isCollapsed && "justify-center"
         )}>
           <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center">
@@ -238,66 +272,14 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{userName}</p>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={logout}
-                  className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors"
-                >
-                  <LogOut className="w-3 h-3" />
-                  Sign out
-                </button>
-                <span className="text-sidebar-foreground/30">|</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="text-xs text-sidebar-foreground/70 hover:text-primary flex items-center gap-1 transition-colors">
-                      <Globe className="w-3 h-3" />
-                      {LANGUAGES.find(l => l.code === i18n.language)?.short || 'EN'}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent side="right" align="end" className="w-44 p-1">
-                    {LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => handleLanguageChange(lang.code)}
-                        className={cn(
-                          "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
-                          i18n.language === lang.code
-                            ? "bg-primary/10 text-primary font-medium"
-                            : "hover:bg-muted text-foreground"
-                        )}
-                      >
-                        {lang.label}
-                      </button>
-                    ))}
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <button 
+                onClick={logout}
+                className="text-xs text-sidebar-foreground/70 hover:text-destructive flex items-center gap-1 transition-colors"
+              >
+                <LogOut className="w-3 h-3" />
+                Sign out
+              </button>
             </div>
-          )}
-          {isCollapsed && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-sidebar-foreground/70 hover:text-primary" title="Language">
-                  <Globe className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="right" align="end" className="w-44 p-1">
-                {LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
-                      i18n.language === lang.code
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "hover:bg-muted text-foreground"
-                    )}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
           )}
         </div>
       </div>
