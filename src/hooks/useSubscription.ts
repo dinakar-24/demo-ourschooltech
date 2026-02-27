@@ -29,6 +29,8 @@ export interface SubscriptionPayment {
   status: 'pending' | 'success' | 'failed';
   paid_at: string | null;
   created_at: string;
+  student_count: number | null;
+  payment_type: string | null;
 }
 
 export function useSubscription() {
