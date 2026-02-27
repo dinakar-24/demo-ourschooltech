@@ -27,6 +27,9 @@ import {
   Video,
   Bus,
   MessageCircle,
+  Image,
+  MessageSquare,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +78,9 @@ const menuConfig = {
     { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Bulk Upload', path: '/bulk-upload', icon: Upload },
+    { label: 'Gallery', path: '/gallery', icon: Image },
+    { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+    { label: 'Queries', path: '/queries', icon: HelpCircle },
     { label: 'Reports', path: '/reports', icon: BarChart3 },
     { label: 'Subscription', path: '/subscription', icon: CreditCard },
     { label: 'Settings', path: '/settings', icon: Settings },
@@ -89,6 +95,8 @@ const menuConfig = {
     { label: 'Timetable', path: '/timetable', icon: Clock },
     { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+    { label: 'Queries', path: '/queries', icon: HelpCircle },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
   parent: [
@@ -101,6 +109,9 @@ const menuConfig = {
     { label: 'Transport', path: '/transport', icon: Bus },
     { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Gallery', path: '/gallery', icon: Image },
+    { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+    { label: 'Queries', path: '/queries', icon: HelpCircle },
     { label: 'Profile', path: '/profile', icon: Users },
   ],
   student: [
@@ -112,6 +123,7 @@ const menuConfig = {
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Transport', path: '/transport', icon: Bus },
     { label: 'Announcements', path: '/announcements', icon: Bell },
+    { label: 'Gallery', path: '/gallery', icon: Image },
     { label: 'Profile', path: '/profile', icon: GraduationCap },
   ],
 };

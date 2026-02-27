@@ -631,6 +631,88 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          message: string
+          rating: number
+          school_id: string
+          status: string
+          submitted_by: string | null
+          submitter_name: string | null
+          submitter_role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          message: string
+          rating: number
+          school_id: string
+          status?: string
+          submitted_by?: string | null
+          submitter_name?: string | null
+          submitter_role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          message?: string
+          rating?: number
+          school_id?: string
+          status?: string
+          submitted_by?: string | null
+          submitter_name?: string | null
+          submitter_role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_responses: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          id: string
+          responded_by: string | null
+          response: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          id?: string
+          responded_by?: string | null
+          response: string
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          responded_by?: string | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_responses_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fees: {
         Row: {
           amount: number
@@ -690,6 +772,104 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_albums: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string | null
+          id: string
+          is_published: boolean
+          school_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_published?: boolean
+          school_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_published?: boolean
+          school_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_albums_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_items: {
+        Row: {
+          album_id: string
+          caption: string | null
+          created_at: string
+          display_order: number | null
+          file_type: string
+          file_url: string
+          id: string
+          school_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          album_id: string
+          caption?: string | null
+          created_at?: string
+          display_order?: number | null
+          file_type?: string
+          file_url: string
+          id?: string
+          school_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          album_id?: string
+          caption?: string | null
+          created_at?: string
+          display_order?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          school_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_items_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "gallery_albums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gallery_items_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -1051,6 +1231,41 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      query_responses: {
+        Row: {
+          created_at: string
+          id: string
+          query_id: string
+          responded_by: string
+          responder_name: string | null
+          response: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query_id: string
+          responded_by: string
+          responder_name?: string | null
+          response: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query_id?: string
+          responded_by?: string
+          responder_name?: string | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "query_responses_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "support_queries"
             referencedColumns: ["id"]
           },
         ]
@@ -1705,6 +1920,68 @@ export type Database = {
         }
         Relationships: []
       }
+      support_queries: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          resolved_at: string | null
+          school_id: string
+          status: string
+          subject: string
+          submitted_by: string
+          submitter_name: string | null
+          submitter_role: string | null
+          ticket_number: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          school_id: string
+          status?: string
+          subject: string
+          submitted_by: string
+          submitter_name?: string | null
+          submitter_role?: string | null
+          ticket_number: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          school_id?: string
+          status?: string
+          subject?: string
+          submitted_by?: string
+          submitter_name?: string | null
+          submitter_role?: string | null
+          ticket_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_queries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_announcements: {
         Row: {
           content: string
@@ -2103,6 +2380,7 @@ export type Database = {
     }
     Functions: {
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
+      generate_ticket_number: { Args: { _school_id: string }; Returns: string }
       get_admin_attendance_by_class: {
         Args: { _date: string; _school_id: string }
         Returns: Json
