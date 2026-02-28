@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
@@ -27,18 +27,16 @@ export default function ParentFeedback() {
   const [selectedFb, setSelectedFb] = useState<Feedback | null>(null);
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  
 
   const { data: responses } = useFeedbackResponses(selectedFb?.id);
 
   const handleSubmit = async () => {
     if (!rating || !message.trim()) return;
-    await submitFeedback.mutateAsync({ rating, message, is_anonymous: isAnonymous });
+    await submitFeedback.mutateAsync({ rating, message, is_anonymous: false });
     setIsOpen(false);
     setRating(0);
     setMessage('');
-    setIsAnonymous(false);
-  };
 
   const renderStars = (value: number, interactive = false) => (
     <div className="flex gap-1.5">
@@ -66,10 +64,6 @@ export default function ParentFeedback() {
           onChange={e => setMessage(e.target.value)}
           className="min-h-[120px] text-base"
         />
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
-        <Label className="text-sm">Submit anonymously</Label>
       </div>
       <Button
         className="w-full h-12 text-base"
