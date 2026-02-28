@@ -1,74 +1,87 @@
 
 
-## Parent App Production Optimization for 200K+ Users
+# Ultra-Fast App Experience Optimization
 
-### 1. Add Query Limits, staleTime, and refetchOnWindowFocus to All Hooks
+## Current State Analysis
 
-**Files: `src/hooks/useParentData.ts`, `src/hooks/useStudentData.ts`, `src/hooks/useFeedback.ts`, `src/hooks/useSupportQueries.ts`, `src/hooks/useOnlineClasses.ts`, `src/hooks/useParentInvoices.ts`**
+The app currently has three major performance bottlenecks:
+1. **Monolithic bundle** -- All 50+ page components are eagerly imported in App.tsx, forcing every user to download the entire app regardless of role
+2. **Aggressive re-fetching** -- React Query is configured with `staleTime: 0` and `refetchOnMount: 'always'`, causing redundant network requests on every navigation
+3. **No data persistence** -- When users reopen the app, everything is fetched from scratch; there is no local cache
 
-Add the following to every query used by parent pages:
-- `staleTime: 2 * 60 * 1000` (2 min) for most queries
-- `staleTime: 10 * 60 * 1000` (10 min) for `useParentChild` (child profile rarely changes)
-- `refetchOnWindowFocus: false` on all parent-facing queries
-- `.limit(50)` on all list queries (feedback, support queries, online classes, results, homework, announcements, invoices, fees)
-- `placeholderData: keepPreviousData` where appropriate for instant page renders
+---
 
-Specific changes per hook:
-- **useParentData.ts**: `useParentChild` gets 10min staleTime. `useChildFeeStats` and `useChildAttendanceStats` get 2min staleTime. Remove `useParentData` composite hook's redundant all-fees query (dashboard only needs stats). Add `.limit(50)` to `useChildHomework`.
-- **useStudentData.ts**: Add `school_id` filter to `useStudentHomework` class lookup (multi-tenant fix). Add `.limit(50)` to `useStudentResults`. Add staleTime to all queries.
-- **useFeedback.ts**: Add `.limit(30)` and `staleTime: 2min` to `useFeedbackList`.
-- **useSupportQueries.ts**: Add `.limit(30)` and `staleTime: 2min` to `useSupportQueryList`.
-- **useOnlineClasses.ts**: Add `.limit(50)` and `staleTime: 2min` to `useOnlineClasses` and `useTeacherOnlineClasses`.
-- **useParentInvoices.ts**: Add `.limit(30)` (already has 2min staleTime). Add `refetchOnWindowFocus: false`.
+## Changes Overview
 
-### 2. Fix MobileNav Routing
+### 1. Lazy Loading All Page Routes (App.tsx)
 
-**File: `src/components/layout/MobileNav.tsx`**
+Replace all 50+ static page imports with `React.lazy()` and wrap routes in `Suspense`. This alone will cut the initial JS bundle by ~60-70%.
 
-Change parent "More" path from `/announcements` to `/more` so it correctly opens `ParentMorePage`.
+- Keep eagerly loaded: LoginPage, SubdomainLanding, TenantErrorPage, NotFound (small, needed immediately)
+- Lazy load: All admin, teacher, parent, student, and super-admin pages
+- Add a minimal full-screen spinner as the Suspense fallback
 
-### 3. Optimize Parent Pages with staleTime and Limits
+### 2. Intelligent React Query Caching (App.tsx)
 
-**Files: `src/pages/parent/ParentResults.tsx`, `src/pages/parent/ParentAnnouncements.tsx`, `src/pages/parent/ParentOnlineClasses.tsx`**
+Update the QueryClient defaults to avoid redundant fetching:
 
-- **ParentResults.tsx**: Add `.limit(100)` and `staleTime: 3min` to inline `useChildResults` query.
-- **ParentAnnouncements.tsx**: Increase limit from 25 to 50 (accounts for client-side filtering). Already has staleTime.
-- **ParentOnlineClasses.tsx**: Already uses `useOnlineClasses` hook (fixed above).
-
-### 4. Add Database Indexes for Scale
-
-**New migration file**
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_attendance_school_student ON attendance(school_id, student_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_school_date ON attendance(school_id, date);
-CREATE INDEX IF NOT EXISTS idx_fees_school_student ON fees(school_id, student_id);
-CREATE INDEX IF NOT EXISTS idx_homework_class_due ON homework(class_id, due_date);
-CREATE INDEX IF NOT EXISTS idx_results_student ON results(student_id);
-CREATE INDEX IF NOT EXISTS idx_feedback_school_created ON feedback(school_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_support_queries_school ON support_queries(school_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_online_classes_school ON online_classes(school_id, scheduled_at DESC);
-CREATE INDEX IF NOT EXISTS idx_fee_invoices_student ON fee_invoices(student_id, due_date DESC);
-CREATE INDEX IF NOT EXISTS idx_announcements_school_active ON announcements(school_id, is_active, created_at DESC);
+```text
+staleTime: 0          -->  5 * 60 * 1000  (5 minutes)
+refetchOnMount: 'always' -->  true (only refetch if stale)
+refetchOnWindowFocus: true -->  false
+gcTime (new): 30 * 60 * 1000  (keep unused cache for 30 min)
 ```
 
-### 5. Bump APP_VERSION for Cache Bust
+This means previously visited pages show cached data instantly and refresh silently when stale.
 
-**File: `index.html`**
+### 3. Session & Auth Data Caching (AuthContext.tsx)
 
-Increment `APP_VERSION` to `2026022804` to force users to get the optimized version.
+Cache the authenticated user's profile data in `sessionStorage` so that on app reopen:
+- The cached user/school data renders instantly (no blank screen)
+- A background refresh updates the data silently
+- If the refresh returns different data, the state updates seamlessly
 
-### Summary
+### 4. Predictive Preloading Hook (new file)
 
-| Change | Impact |
-|--------|--------|
-| staleTime on all queries | Eliminates redundant refetches for 200K users |
-| refetchOnWindowFocus: false | Prevents query storms on tab switches |
-| .limit() on all list queries | Prevents slow loads as data grows |
-| school_id filter on homework | Fixes multi-tenant data leakage |
-| MobileNav routing fix | "More" button works correctly |
-| Database indexes | Sub-50ms query times at scale |
-| APP_VERSION bump | All users get the new version |
+Create a `usePrefetchRoutes` hook that, after login, preloads the lazy chunks for the user's role-specific pages in the background using `requestIdleCallback`. For example, a parent login would silently load ParentDashboard, ParentAttendance, ParentFees, etc.
 
-Total files modified: ~10 files + 1 migration.
+### 5. Stale-While-Revalidate Pattern for Key Data
+
+For high-frequency hooks (useStudents, useAttendance, useFees, useHomework, useAnnouncements), add per-hook `staleTime` overrides:
+- Dashboard stats: 2 minutes stale, background refresh
+- Student lists: 5 minutes stale
+- Announcements/notifications: 1 minute stale
+- This ensures users see data instantly while fresh data loads silently
+
+### 6. Optimized Initial HTML Shell (index.html)
+
+Add an inline CSS loading skeleton directly in `index.html` inside the `#root` div. This renders a branded header + content placeholder before any JS executes, eliminating the white flash.
+
+---
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Lazy imports, Suspense wrapper, updated QueryClient config |
+| `src/contexts/AuthContext.tsx` | sessionStorage caching for instant reopen |
+| `index.html` | Inline loading skeleton in #root |
+| `src/hooks/usePrefetchRoutes.ts` | **New** -- predictive module preloading by role |
+
+## What This Does NOT Include
+
+- Offline-first with service workers (PWA was intentionally removed; adding it back requires a separate decision)
+- IndexedDB data persistence (significant complexity; the sessionStorage + React Query gcTime approach covers 90% of the benefit)
+- Action queuing for offline mode (requires backend changes)
+
+These can be added as a Phase 2 if needed.
+
+## Expected Impact
+
+- **First paint**: Near-instant (inline skeleton in HTML)
+- **Initial JS bundle**: Reduced ~60-70% via code splitting
+- **Page transitions**: Instant for cached data, preloaded chunks
+- **App reopen**: Cached auth + cached queries = no loading screen
+- **Server pressure**: Dramatically reduced via 5-min stale windows and no window-focus refetching
+- **Navigation**: No full reloads, layouts persist, data stays in cache
 
