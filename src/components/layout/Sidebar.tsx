@@ -56,6 +56,8 @@ interface SidebarProps {
   userRole?: 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
   schoolName?: string;
   userName?: string;
+  isMobileOverlay?: boolean;
+  onMobileClose?: () => void;
 }
 
 // Route prefixes for each role
@@ -218,7 +220,7 @@ const menuConfig: Record<string, MenuItem[]> = {
   ],
 };
 
-export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Tech', userName = 'Rajesh Kumar' }: SidebarProps) {
+export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Tech', userName = 'Rajesh Kumar', isMobileOverlay, onMobileClose }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -264,8 +266,9 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   return (
     <aside 
       className={cn(
-        "hidden md:flex flex-col bg-sidebar text-sidebar-foreground h-screen sticky top-0 transition-all duration-300 z-40",
-        isCollapsed ? "w-16" : "w-64"
+        "flex flex-col bg-sidebar text-sidebar-foreground h-screen sticky top-0 transition-all duration-300 z-40",
+        isMobileOverlay ? "w-64" : "hidden md:flex",
+        !isMobileOverlay && (isCollapsed ? "w-16" : "w-64")
       )}
     >
       {/* Header */}
@@ -324,6 +327,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                               isActive(item.path) && "nav-item-active"
                             )}
                             title={isCollapsed ? translatedLabel : undefined}
+                            onClick={onMobileClose}
                           >
                             <item.icon className="w-5 h-5 shrink-0" />
                             {!isCollapsed && <span>{translatedLabel}</span>}
@@ -350,6 +354,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                       isActive(item.path) && "nav-item-active"
                     )}
                     title={isCollapsed ? translatedLabel : undefined}
+                    onClick={onMobileClose}
                   >
                     <item.icon className="w-5 h-5 shrink-0" />
                     {!isCollapsed && <span>{translatedLabel}</span>}

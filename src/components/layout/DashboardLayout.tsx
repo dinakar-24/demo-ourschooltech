@@ -1,9 +1,10 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { TopBar } from './TopBar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -13,10 +14,16 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, school } = useAuth();
+  const location = useLocation();
   
   const userRole = user?.role || 'school_admin';
   const schoolName = school?.name || 'Our School Tech';
   const userName = user?.name || 'User';
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -41,6 +48,8 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
               userRole={userRole}
               schoolName={schoolName}
               userName={userName}
+              isMobileOverlay
+              onMobileClose={() => setMobileMenuOpen(false)}
             />
           </div>
         </div>
@@ -52,7 +61,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         
         <main className={cn(
           "flex-1 p-4 md:p-6 overflow-auto",
-          "pb-24 md:pb-6" // Extra padding for mobile nav
+          "pb-24 md:pb-6"
         )}>
           {children}
         </main>
