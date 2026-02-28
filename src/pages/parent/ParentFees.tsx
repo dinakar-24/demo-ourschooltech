@@ -254,7 +254,7 @@ export default function ParentFees() {
                             </div>
                           ))}
 
-                          {/* Components - Clear fee breakdown with amounts */}
+                          {/* Components - Clear fee breakdown with amounts + Pay option */}
                           {(inv.components || []).length > 0 && (
                             <div>
                               <p className="text-xs font-semibold text-muted-foreground mb-2">Fee Breakdown</p>
@@ -265,7 +265,23 @@ export default function ParentFees() {
                                       <div className="w-1.5 h-7 rounded-full bg-primary/30" />
                                       <span className="text-sm font-medium">{c.fee_type}</span>
                                     </div>
-                                    <span className="text-base font-bold">₹{Number(c.amount).toLocaleString()}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-base font-bold">₹{Number(c.amount).toLocaleString()}</span>
+                                      {canSubmit && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs px-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSubmitInvoice(inv);
+                                            setSubmitDialogOpen(true);
+                                          }}
+                                        >
+                                          Pay
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -293,24 +309,26 @@ export default function ParentFees() {
                           {(inv.payments || []).length > 0 && (
                             <div>
                               <p className="text-xs font-semibold text-muted-foreground mb-1.5">Payment History</p>
-                              <div className="space-y-1.5">
+                              <div className="space-y-2">
                                 {(inv.payments || []).map(p => (
-                                  <div key={p.id} className="flex items-center justify-between text-sm bg-muted/30 rounded p-2">
-                                    <div>
-                                      <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
-                                      <span className="text-muted-foreground ml-2 capitalize text-xs">{p.payment_method}</span>
-                                      <span className="text-muted-foreground ml-2 text-xs">
-                                        {new Date(p.payment_date).toLocaleDateString('en-IN')}
+                                  <div key={p.id} className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                       </span>
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={(e) => { e.stopPropagation(); openReceipt(p, inv); }}
-                                    >
-                                      <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
-                                    </Button>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground capitalize">{p.payment_method}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs px-2 text-primary"
+                                        onClick={(e) => { e.stopPropagation(); openReceipt(p, inv); }}
+                                      >
+                                        <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+                                      </Button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
