@@ -73,18 +73,18 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Fee Receipt
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-1" /> Print
-              </Button>
-              <Button size="sm" onClick={handlePrint}>
-                <Download className="w-4 h-4 mr-1" /> PDF
-              </Button>
-            </div>
-          </DialogTitle>
+          <DialogTitle className="text-base font-semibold">Fee Receipt</DialogTitle>
         </DialogHeader>
+
+        {/* Action buttons below header */}
+        <div className="flex gap-2 -mt-2 mb-1">
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
+            <Printer className="w-3.5 h-3.5 mr-1.5" /> Print Receipt
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
+            <Download className="w-3.5 h-3.5 mr-1.5" /> Download PDF
+          </Button>
+        </div>
 
         <div ref={receiptRef}>
           <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '16px' }}>
