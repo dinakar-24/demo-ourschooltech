@@ -67,6 +67,7 @@ export function useHomework(filters?: {
       return data as Homework[];
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -92,6 +93,7 @@ export function useTeacherHomework() {
       return data as Homework[];
     },
     enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
