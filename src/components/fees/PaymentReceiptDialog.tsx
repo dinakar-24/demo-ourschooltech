@@ -61,16 +61,64 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
   };
 
   const handleShare = async () => {
-    if (!receiptRef.current) return;
-    const text = `Fee Receipt - ${payment.receipt_number}\nStudent: ${invoice.student?.full_name || 'N/A'}\nAmount Paid: ₹${Number(payment.amount).toLocaleString('en-IN')}\nDate: ${new Date(payment.payment_date).toLocaleDateString('en-IN')}\nPayment Mode: ${payment.payment_method}`;
+    if (!receiptRef.current || !invoice || !payment) return;
+
+    const studentName = invoice.student?.full_name || 'N/A';
+    const admNo = invoice.student?.admission_number || 'N/A';
+    const className = [invoice.student?.class_name, invoice.student?.section].filter(Boolean).join(' ');
+    const paidAmount = Number(payment.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const totalAmount = Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const balanceAmount = Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const pDate = new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const schoolName = school?.name || 'School';
+
+    const components = (invoice.components || [])
+      .map(c => `  • ${c.fee_type}: ₹${Number(c.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`)
+      .join('\n');
+
+    const receiptText = [
+      `📄 *FEE RECEIPT - ${schoolName}*`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `Receipt No: ${payment.receipt_number}`,
+      `Date: ${pDate}`,
+      ``,
+      `👤 *Student Details*`,
+      `Name: ${studentName}`,
+      `Adm No: ${admNo}`,
+      className ? `Class: ${className}` : '',
+      invoice.student?.parent_name ? `Father: ${invoice.student.parent_name}` : '',
+      ``,
+      components ? `📋 *Fee Breakdown*\n${components}\n` : '',
+      `💰 *Payment Summary*`,
+      `Total Fee: ₹${totalAmount}`,
+      `Amount Paid: ₹${paidAmount}`,
+      Number(invoice.balance) > 0 ? `Balance Due: ₹${balanceAmount}` : `Balance: Nil`,
+      ``,
+      `Payment Mode: ${payment.payment_method?.charAt(0).toUpperCase() + payment.payment_method?.slice(1)}`,
+      payment.transaction_id ? `Transaction ID: ${payment.transaction_id}` : '',
+      payment.cheque_number ? `Cheque No: ${payment.cheque_number}` : '',
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `_This is a system-generated receipt._`,
+    ].filter(Boolean).join('\n');
+
     if (navigator.share) {
       try {
-        await navigator.share({ title: `Receipt ${payment.receipt_number}`, text });
-      } catch { /* user cancelled */ }
+        await navigator.share({
+          title: `Fee Receipt - ${payment.receipt_number}`,
+          text: receiptText,
+        });
+      } catch {
+        // user cancelled share
+      }
     } else {
-      await navigator.clipboard.writeText(text);
-      const { toast } = await import('@/hooks/use-toast');
-      toast({ title: 'Copied to clipboard', description: 'Receipt details copied successfully' });
+      try {
+        await navigator.clipboard.writeText(receiptText);
+        const { toast } = await import('@/hooks/use-toast');
+        toast({ title: 'Copied!', description: 'Receipt details copied to clipboard' });
+      } catch {
+        const { toast } = await import('@/hooks/use-toast');
+        toast({ title: 'Error', description: 'Could not copy to clipboard', variant: 'destructive' });
+      }
     }
   };
 
