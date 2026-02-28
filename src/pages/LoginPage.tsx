@@ -17,6 +17,7 @@ interface SchoolInfo {
   school_name: string;
   school_id: string | null;
   has_logo: boolean;
+  logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
   background_color: string | null;
@@ -114,6 +115,11 @@ export default function LoginPage() {
         setLookupLoading(false);
         setStep('superadmin');
         return;
+      }
+      // Prefetch logo so it's cached before password step renders
+      if (result.logo_url) {
+        const img = new Image();
+        img.src = result.logo_url;
       }
       setSchoolInfo(result);
       setLookupLoading(false);
@@ -349,21 +355,8 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
   onForgotPassword: () => void;
 }) {
   const hasBanner = !!schoolInfo.splash_screen_image_url;
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const logoUrl = schoolInfo.logo_url || null;
   const [logoLoaded, setLogoLoaded] = useState(false);
-
-  // Lazy-load logo in background
-  useEffect(() => {
-    if (!schoolInfo.has_logo || !schoolInfo.school_id) return;
-    let cancelled = false;
-    supabase.rpc('get_school_logo_by_id', { _school_id: schoolInfo.school_id }).then(({ data }) => {
-      const result = data as any;
-      if (!cancelled && result?.logo) {
-        setLogoUrl(result.logo);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [schoolInfo.school_id, schoolInfo.has_logo]);
 
   return (
     <motion.div
