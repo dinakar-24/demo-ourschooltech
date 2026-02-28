@@ -6,6 +6,11 @@ const bn = {
     results: 'ফলাফল',
     profile: 'প্রোফাইল',
     more: 'আরও',
+    marks: 'নম্বর',
+    students: 'শিক্ষার্থী',
+    timetable: 'সময়সূচি',
+    announcements: 'ঘোষণা',
+    fees: 'ফি',
   },
   sidebar: {
     dashboard: 'ড্যাশবোর্ড',

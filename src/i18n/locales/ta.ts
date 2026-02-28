@@ -6,6 +6,11 @@ const ta = {
     results: 'முடிவுகள்',
     profile: 'சுயவிவரம்',
     more: 'மேலும்',
+    marks: 'மதிப்பெண்கள்',
+    students: 'மாணவர்கள்',
+    timetable: 'கால அட்டவணை',
+    announcements: 'அறிவிப்புகள்',
+    fees: 'கட்டணம்',
   },
   sidebar: {
     dashboard: 'டாஷ்போர்டு',

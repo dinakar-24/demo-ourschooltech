@@ -6,6 +6,11 @@ const kn = {
     results: 'ಫಲಿತಾಂಶ',
     profile: 'ಪ್ರೊಫೈಲ್',
     more: 'ಇನ್ನಷ್ಟು',
+    marks: 'ಅಂಕಗಳು',
+    students: 'ವಿದ್ಯಾರ್ಥಿಗಳು',
+    timetable: 'ವೇಳಾಪಟ್ಟಿ',
+    announcements: 'ಪ್ರಕಟಣೆಗಳು',
+    fees: 'ಶುಲ್ಕ',
   },
   sidebar: {
     dashboard: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
