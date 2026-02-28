@@ -11,7 +11,7 @@ export interface AttendanceRecord {
   student_id: string;
   school_id: string;
   date: string;
-  status: 'present' | 'absent' | 'late';
+  status: 'present' | 'absent' | 'late' | 'half_day';
   notes: string | null;
   marked_by: string | null;
   created_at: string;
@@ -29,6 +29,7 @@ export interface AttendanceSummary {
   present: number;
   absent: number;
   late: number;
+  half_day: number;
   total: number;
 }
 
@@ -91,6 +92,7 @@ export function useAttendanceSummary(date: Date) {
         present: Number(result?.present ?? 0),
         absent: Number(result?.absent ?? 0),
         late: Number(result?.late ?? 0),
+        half_day: Number(result?.half_day ?? 0),
         total: Number(result?.total ?? 0),
       };
     },
@@ -154,7 +156,7 @@ export function useMarkAttendance() {
       records 
     }: { 
       date: string;
-      records: { studentId: string; status: 'present' | 'absent' | 'late'; notes?: string }[];
+      records: { studentId: string; status: 'present' | 'absent' | 'late' | 'half_day'; notes?: string }[];
     }) => {
       if (!schoolId || !user?.id) throw new Error('No user context');
 

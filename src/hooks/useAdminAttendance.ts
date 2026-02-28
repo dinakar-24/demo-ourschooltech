@@ -7,6 +7,7 @@ interface ClassAttendance {
   present: number;
   absent: number;
   late: number;
+  half_day: number;
   total: number;
   percentage: number;
 }
@@ -18,7 +19,7 @@ export function useAdminAttendance(date: Date) {
   return useQuery({
     queryKey: ['admin-attendance', schoolId, dateStr],
     queryFn: async () => {
-      if (!schoolId) return { classWise: [], totals: { present: 0, absent: 0, late: 0, total: 0 } };
+      if (!schoolId) return { classWise: [], totals: { present: 0, absent: 0, late: 0, half_day: 0, total: 0 } };
 
       const { data, error } = await supabase.rpc('get_admin_attendance_by_class' as any, {
         _school_id: schoolId,
@@ -33,6 +34,7 @@ export function useAdminAttendance(date: Date) {
         present: Number(c.present ?? 0),
         absent: Number(c.absent ?? 0),
         late: Number(c.late ?? 0),
+        half_day: Number(c.half_day ?? 0),
         total: Number(c.total ?? 0),
         percentage: Number(c.percentage ?? 0),
       }));
@@ -42,9 +44,10 @@ export function useAdminAttendance(date: Date) {
             present: Number(result.totals.present ?? 0),
             absent: Number(result.totals.absent ?? 0),
             late: Number(result.totals.late ?? 0),
+            half_day: Number(result.totals.half_day ?? 0),
             total: Number(result.totals.total ?? 0),
           }
-        : { present: 0, absent: 0, late: 0, total: 0 };
+        : { present: 0, absent: 0, late: 0, half_day: 0, total: 0 };
 
       return { classWise, totals };
     },
