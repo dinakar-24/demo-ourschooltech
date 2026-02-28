@@ -101,17 +101,18 @@ export function useChildFeeStats(studentId?: string) {
     queryFn: async (): Promise<ChildFeeStats> => {
       if (!studentId) throw new Error('No student ID');
 
+      // Query fee_invoices (the actual invoice system) instead of the legacy fees table
       const { data, error } = await supabase
-        .from('fees')
-        .select('amount, status, due_date')
+        .from('fee_invoices')
+        .select('total_amount, paid_amount, balance, status, due_date')
         .eq('student_id', studentId);
 
       if (error) throw error;
 
       const now = new Date();
-      const pending = data?.filter(f => f.status === 'pending').reduce((sum, f) => sum + Number(f.amount), 0) || 0;
-      const paid = data?.filter(f => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0) || 0;
-      const overdue = data?.filter(f => f.status === 'pending' && new Date(f.due_date) < now).reduce((sum, f) => sum + Number(f.amount), 0) || 0;
+      const pending = data?.filter(f => f.status !== 'paid').reduce((sum, f) => sum + Number(f.balance), 0) || 0;
+      const paid = data?.reduce((sum, f) => sum + Number(f.paid_amount), 0) || 0;
+      const overdue = data?.filter(f => f.status !== 'paid' && new Date(f.due_date) < now).reduce((sum, f) => sum + Number(f.balance), 0) || 0;
 
       return { pending, paid, overdue };
     },
