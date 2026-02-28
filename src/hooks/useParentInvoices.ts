@@ -44,12 +44,14 @@ export function useParentInvoices(studentId?: string) {
           discounts:fee_discounts(id, discount_amount, reason, notes, created_at)
         `)
         .eq('student_id', studentId)
-        .order('due_date', { ascending: false });
+        .order('due_date', { ascending: false })
+        .limit(30);
 
       if (error) throw error;
       return (data || []) as unknown as ParentInvoice[];
     },
     enabled: !!studentId,
     staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }

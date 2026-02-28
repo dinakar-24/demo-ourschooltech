@@ -47,11 +47,13 @@ export function useSupportQueryList(isAdmin = false) {
         query = query.eq('school_id', schoolId);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(30);
       if (error) throw error;
       return data as SupportQuery[];
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

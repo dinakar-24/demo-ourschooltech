@@ -32,11 +32,14 @@ function useChildResults(studentId?: string) {
         .from('results')
         .select('*, exam:exams(*)')
         .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
       return (data || []) as ExamResult[];
     },
     enabled: !!studentId,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -47,6 +47,8 @@ export function useStudentProfile() {
       return data as StudentProfile | null;
     },
     enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -78,6 +80,8 @@ export function useStudentAttendanceStats(studentId?: string) {
       return { present, absent, late, total, percentage };
     },
     enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -87,11 +91,13 @@ export function useStudentHomework(className?: string, section?: string) {
     queryFn: async () => {
       if (!className) return [];
 
-      // Get class ID
+      // Get class ID - filter by school_id for multi-tenant safety
+      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', (await supabase.auth.getUser()).data.user?.id || '').single();
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('id')
         .eq('name', className)
+        .eq('school_id', profile?.school_id || '')
         .single();
 
       if (classError) return [];
@@ -114,6 +120,8 @@ export function useStudentHomework(className?: string, section?: string) {
       return data?.filter(hw => !hw.section_id || hw.section?.name === section) || [];
     },
     enabled: !!className,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -130,12 +138,15 @@ export function useStudentResults(studentId?: string) {
           exam:exams(id, name, subject, max_marks, exam_date)
         `)
         .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       return data || [];
     },
     enabled: !!studentId,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -161,5 +172,7 @@ export function useStudentAnnouncements(schoolId?: string, className?: string) {
       ) || [];
     },
     enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
