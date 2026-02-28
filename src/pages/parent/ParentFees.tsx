@@ -318,7 +318,7 @@ export default function ParentFees() {
                                     <div className="flex items-center justify-between">
                                       <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
                                       <span className="text-xs text-muted-foreground">
-                                        {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {new Date(p.payment_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                                       </span>
                                     </div>
                                     <div className="flex items-center justify-between">
