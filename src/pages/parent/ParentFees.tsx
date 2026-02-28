@@ -114,23 +114,23 @@ export default function ParentFees() {
 
   return (
     <MobileLayout title="Fees" showBack>
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-2.5">
         {/* Summary Card */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-4 shadow-lg">
+        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-3 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-primary-foreground/70">Pending Fees</p>
-              <p className="text-2xl font-extrabold tracking-tight mt-0.5">₹{totalPending.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-extrabold tracking-tight mt-0.5">₹{totalPending.toLocaleString('en-IN')}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
+              <CreditCard className="w-4 h-4" />
             </div>
           </div>
           {grandTotal > 0 && (
-            <div className="mt-2.5 space-y-1">
+            <div className="mt-2 space-y-0.5">
               <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-white/70 transition-all"
+                  className="h-full rounded-full bg-white transition-all"
                   style={{ width: `${paidPercentage}%` }}
                 />
               </div>
@@ -139,41 +139,30 @@ export default function ParentFees() {
               </p>
             </div>
           )}
-          {totalPending > 0 && (
-            <div className="flex items-center gap-2 mt-2.5 p-2.5 rounded-lg bg-white/10 text-xs">
-              <Building2 className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
-              <span className="text-primary-foreground/90">Pay via UPI and submit proof, or visit school office</span>
-            </div>
-          )}
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1.5">
-            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-success" />
-            </div>
-            <p className="text-lg font-bold text-foreground">
-              ₹{totalPaid >= 100000 ? `${(totalPaid / 100000).toFixed(1)}L` : totalPaid >= 1000 ? `${(totalPaid / 1000).toFixed(0)}K` : totalPaid.toLocaleString('en-IN')}
-            </p>
-            <p className="text-xs text-muted-foreground">Paid This Year</p>
+        {/* Quick Stats - Inline */}
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card px-3 py-2">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle className="w-3.5 h-3.5 text-success" />
+            <span className="text-xs text-muted-foreground">Paid:</span>
+            <span className="text-xs font-semibold text-foreground">₹{totalPaid.toLocaleString('en-IN')}</span>
           </div>
-          <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-primary" />
-            </div>
-            <p className="text-lg font-bold text-foreground">{paidPercentage}%</p>
-            <p className="text-xs text-muted-foreground">Payment Progress</p>
+          <div className="w-px h-4 bg-border" />
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs text-muted-foreground">Progress:</span>
+            <span className="text-xs font-semibold text-foreground">{paidPercentage}%</span>
           </div>
         </div>
 
         {/* Invoice-Based Fees */}
         {invoices.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Fee Invoices
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {invoices.map((inv) => {
                 const isOverdue = inv.status === 'pending' && inv.due_date < today;
                 const payPct = Number(inv.total_amount) > 0
@@ -192,8 +181,8 @@ export default function ParentFees() {
                   >
                     <div className={`rounded-xl border bg-card overflow-hidden ${isOverdue ? 'border-warning/60' : 'border-border/60'}`}>
                       <CollapsibleTrigger className="w-full text-left">
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               {expandedInvoice === inv.id
                                 ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -217,11 +206,11 @@ export default function ParentFees() {
                                 </span>
                               )}
                             </div>
-                            <span className="text-2xl font-bold text-foreground">₹{Number(inv.total_amount).toLocaleString('en-IN')}</span>
+                            <span className="text-lg font-bold text-foreground">₹{Number(inv.total_amount).toLocaleString('en-IN')}</span>
                           </div>
                           {Number(inv.total_amount) > 0 && (
-                            <div className="mt-3 space-y-1.5">
-                              <Progress value={payPct} className="h-1.5" />
+                            <div className="mt-2 space-y-1">
+                              <Progress value={payPct} className="h-1" />
                               <div className="flex justify-between text-[11px] text-muted-foreground">
                                 <span>Paid: ₹{Number(inv.paid_amount).toLocaleString('en-IN')}</span>
                                 <span>Balance: ₹{Number(inv.balance).toLocaleString('en-IN')}</span>
