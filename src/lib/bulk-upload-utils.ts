@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export interface ParsedRow {
   rowIndex: number;
@@ -103,34 +103,50 @@ function normalizeHeader(header: string): string {
 export function parseFile(file: File): Promise<{ headers: string[]; rawRows: Record<string, string>[] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array', dateNF: 'yyyy-mm-dd' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
-
-        if (jsonData.length === 0) {
+        const data = e.target?.result as ArrayBuffer;
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(data);
+        const ws = wb.worksheets[0];
+        
+        if (!ws || ws.rowCount < 2) {
           reject(new Error('File is empty or has no data rows'));
           return;
         }
 
-        // Normalize headers
-        const originalHeaders = Object.keys(jsonData[0]);
+        // Get headers from first row
+        const headerRow = ws.getRow(1);
+        const originalHeaders: string[] = [];
+        headerRow.eachCell((cell, colNumber) => {
+          originalHeaders[colNumber - 1] = String(cell.value ?? '').trim();
+        });
+
         const headerMap: Record<string, string> = {};
         originalHeaders.forEach(h => {
-          headerMap[h] = normalizeHeader(h);
+          if (h) headerMap[h] = normalizeHeader(h);
         });
 
         const normalizedHeaders = [...new Set(Object.values(headerMap))];
-        const rawRows = jsonData.map(row => {
+        const rawRows: Record<string, string>[] = [];
+
+        ws.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // skip header
           const normalized: Record<string, string> = {};
-          for (const [orig, norm] of Object.entries(headerMap)) {
-            const val = row[orig];
-            normalized[norm] = val !== null && val !== undefined ? String(val).trim() : '';
-          }
-          return normalized;
+          originalHeaders.forEach((origHeader, idx) => {
+            if (!origHeader) return;
+            const normHeader = headerMap[origHeader];
+            const cell = row.getCell(idx + 1);
+            const val = cell.value;
+            normalized[normHeader] = val !== null && val !== undefined ? String(val).trim() : '';
+          });
+          rawRows.push(normalized);
         });
+
+        if (rawRows.length === 0) {
+          reject(new Error('File is empty or has no data rows'));
+          return;
+        }
 
         resolve({ headers: normalizedHeaders, rawRows });
       } catch (err) {
@@ -166,7 +182,7 @@ export function validateRows(
       if (row.roll_number && isNaN(Number(row.roll_number))) {
         errors.push('roll_number must be a number');
       }
-      if (row.parent_email && row.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.parent_email)) {
+      if (row.parent_email && row.parent_email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(row.parent_email)) {
         errors.push('Invalid parent_email');
       }
       if (row.gender && !['male', 'female', 'other'].includes(row.gender.toLowerCase())) {
@@ -175,7 +191,7 @@ export function validateRows(
     }
 
     if (type === 'teachers') {
-      if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
+      if (row.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(row.email)) {
         errors.push('Invalid email');
       }
     }
@@ -217,22 +233,30 @@ export function validateRows(
   };
 }
 
-export function generateErrorReport(rows: ParsedRow[], type: string): Blob {
+export async function generateErrorReport(rows: ParsedRow[], type: string): Promise<Blob> {
   const errorRows = rows.filter(r => !r.isValid);
-  const wsData = errorRows.map(r => ({
-    Row: r.rowIndex,
-    ...r.data,
-    Errors: r.errors.join('; '),
-  }));
-  const ws = XLSX.utils.json_to_sheet(wsData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Errors');
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-  return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Errors');
+  
+  if (errorRows.length === 0) {
+    const buffer = await wb.xlsx.writeBuffer();
+    return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  // Build headers from data keys + Row + Errors columns
+  const dataKeys = Object.keys(errorRows[0].data);
+  const headers = ['Row', ...dataKeys, 'Errors'];
+  ws.addRow(headers);
+
+  for (const r of errorRows) {
+    ws.addRow([r.rowIndex, ...dataKeys.map(k => r.data[k] || ''), r.errors.join('; ')]);
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): Promise<Blob> {
-  const ExcelJS = await import('exceljs');
   const fields = type === 'students' ? STUDENT_FIELDS : type === 'teachers' ? TEACHER_FIELDS : FEE_FIELDS;
   const headers = [...fields.required, ...fields.optional];
 
