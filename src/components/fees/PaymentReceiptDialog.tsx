@@ -242,16 +242,13 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
             )}
 
             {/* Disclaimer */}
-            <div style={{ fontSize: '10px', color: '#333', marginTop: '16px', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '10px', color: '#333', marginTop: '10px', lineHeight: 1.5 }}>
               <strong style={{ color: '#dc2626' }}>Note: </strong>
               Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred.
             </div>
 
-            {/* Divider */}
-            <hr style={{ border: 'none', borderTop: '1px solid #999', margin: '10px 0 8px' }} />
-
             {/* System Note */}
-            <div style={{ textAlign: 'center', fontSize: '10px', color: '#555', fontStyle: 'italic' }}>
+            <div style={{ textAlign: 'center', fontSize: '10px', color: '#dc2626', fontStyle: 'italic', marginTop: '8px' }}>
               This is a system-generated Fee Receipt and does not require any stamp or signature.
             </div>
           </div>
