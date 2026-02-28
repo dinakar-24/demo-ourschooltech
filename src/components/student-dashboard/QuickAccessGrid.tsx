@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle, Award, Calendar, ClipboardList, ImageIcon, Bus, Video, Megaphone, CreditCard, MessageSquare, Star, HelpCircle } from 'lucide-react';
+import { CheckCircle, Award, Calendar, ClipboardList, ImageIcon, Bus, Video, Megaphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const quickActions = [
@@ -7,14 +7,10 @@ const quickActions = [
   { label: 'Results', icon: Award, href: '/student/results', color: 'text-violet-600', bg: 'bg-violet-500/10' },
   { label: 'Timetable', icon: Calendar, href: '/student/timetable', color: 'text-blue-600', bg: 'bg-blue-500/10' },
   { label: 'Homework', icon: ClipboardList, href: '/student/homework', color: 'text-amber-600', bg: 'bg-amber-500/10' },
-  { label: 'Fees', icon: CreditCard, href: '/parent/fees', color: 'text-teal-600', bg: 'bg-teal-500/10' },
   { label: 'Gallery', icon: ImageIcon, href: '/student/gallery', color: 'text-pink-600', bg: 'bg-pink-500/10' },
   { label: 'Transport', icon: Bus, href: '/student/transport', color: 'text-cyan-600', bg: 'bg-cyan-500/10' },
   { label: 'Online Class', icon: Video, href: '/student/online-classes', color: 'text-red-600', bg: 'bg-red-500/10' },
-  { label: 'Messages', icon: MessageSquare, href: '/parent/messages', color: 'text-indigo-600', bg: 'bg-indigo-500/10' },
   { label: 'Notices', icon: Megaphone, href: '/student/announcements', color: 'text-orange-600', bg: 'bg-orange-500/10' },
-  { label: 'Feedback', icon: Star, href: '/parent/feedback', color: 'text-yellow-600', bg: 'bg-yellow-500/10' },
-  { label: 'Queries', icon: HelpCircle, href: '/parent/queries', color: 'text-slate-600', bg: 'bg-slate-500/10' },
 ];
 
 export function QuickAccessGrid() {
