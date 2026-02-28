@@ -13,7 +13,7 @@ interface ForgotPasswordDialogProps {
 
 type Step = 'email' | 'otp' | 'success';
 
-export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProps) {
+export const ForgotPasswordDialog = React.forwardRef<HTMLDivElement, ForgotPasswordDialogProps>(function ForgotPasswordDialog({ open, onClose }, _ref) {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -357,7 +357,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     </AnimatePresence>,
     document.body
   );
-}
+});
 
 /* ── Helpers ── */
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
