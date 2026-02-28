@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { CheckCircle, Award, Calendar, BookOpen, ImageIcon, Bus, Video, Megaphone } from 'lucide-react';
+import { CheckCircle, Award, Calendar, ClipboardList, ImageIcon, Bus, Video, Megaphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const quickActions = [
   { label: 'Attendance', icon: CheckCircle, href: '/student/attendance', color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
   { label: 'Results', icon: Award, href: '/student/results', color: 'text-violet-600', bg: 'bg-violet-500/10' },
   { label: 'Timetable', icon: Calendar, href: '/student/timetable', color: 'text-blue-600', bg: 'bg-blue-500/10' },
-  { label: 'Subjects', icon: BookOpen, href: '/student/subjects', color: 'text-amber-600', bg: 'bg-amber-500/10' },
+  { label: 'Homework', icon: ClipboardList, href: '/student/homework', color: 'text-amber-600', bg: 'bg-amber-500/10' },
   { label: 'Gallery', icon: ImageIcon, href: '/student/gallery', color: 'text-pink-600', bg: 'bg-pink-500/10' },
   { label: 'Transport', icon: Bus, href: '/student/transport', color: 'text-cyan-600', bg: 'bg-cyan-500/10' },
   { label: 'Online Class', icon: Video, href: '/student/online-classes', color: 'text-red-600', bg: 'bg-red-500/10' },
