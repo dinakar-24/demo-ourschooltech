@@ -3,27 +3,43 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { useParentChild } from '@/hooks/useParentData';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  User,
   Mail,
   Phone,
   GraduationCap,
   Settings,
   LogOut,
   ChevronRight,
-  Bell,
+  MessageSquare,
   HelpCircle,
-  FileText,
 } from 'lucide-react';
 
 export default function ParentProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: child, isLoading: childLoading } = useParentChild();
+
+  // Fetch parent profile for phone
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['parent-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('phone, avatar_url')
+        .eq('id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const handleLogout = () => {
     logout();
@@ -31,11 +47,13 @@ export default function ParentProfile() {
   };
 
   const menuItems = [
-    { label: 'Notification Settings', icon: Bell, href: '/parent/notifications' },
-    { label: 'Documents', icon: FileText, href: '/parent/documents' },
-    { label: 'Help & Support', icon: HelpCircle, href: '/parent/help' },
-    { label: 'App Settings', icon: Settings, href: '/parent/settings' },
+    { label: 'Feedback', icon: MessageSquare, href: '/parent/feedback' },
+    { label: 'Help & Queries', icon: HelpCircle, href: '/parent/queries' },
+    { label: 'Settings', icon: Settings, href: '/parent/settings' },
   ];
+
+  const avatarUrl = user?.avatar || profile?.avatar_url;
+  const isLoading = profileLoading;
 
   return (
     <MobileLayout title="Profile">
@@ -45,12 +63,12 @@ export default function ParentProfile() {
           <CardContent className="p-5">
             <div className="flex items-center gap-4 mb-4">
               <AvatarUpload
-                value={user?.avatar}
+                value={avatarUrl}
                 onChange={async (url) => {
                   if (user?.id) {
                     await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
                   }
-                  queryClient.invalidateQueries({ queryKey: ['parent-child'] });
+                  queryClient.invalidateQueries({ queryKey: ['parent-profile'] });
                 }}
                 fallback={user?.name}
                 size="lg"
@@ -61,7 +79,7 @@ export default function ParentProfile() {
                 <Badge variant="secondary" className="mt-1">Parent</Badge>
               </div>
             </div>
-            
+
             <div className="space-y-3 pt-4 border-t">
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="w-4 h-4 text-muted-foreground" />
@@ -69,7 +87,11 @@ export default function ParentProfile() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                <span>+91 98765 43210</span>
+                {isLoading ? (
+                  <Skeleton className="h-4 w-28" />
+                ) : (
+                  <span>{profile?.phone || 'Not provided'}</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -79,17 +101,30 @@ export default function ParentProfile() {
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3">WARD DETAILS</h3>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-success" />
+            {childLoading ? (
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-12 h-12 rounded-full" />
+                <div>
+                  <Skeleton className="h-5 w-28 mb-1" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
               </div>
-              <div>
-                <p className="font-bold">{user?.childName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {user?.className} - {user?.section}
-                </p>
+            ) : child ? (
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-success" />
+                </div>
+                <div>
+                  <p className="font-bold">{child.full_name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {child.class_name} - {child.section}
+                    {child.roll_number ? ` | Roll No. ${child.roll_number}` : ''}
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No child linked to your account.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -99,6 +134,7 @@ export default function ParentProfile() {
             {menuItems.map((item) => (
               <button
                 key={item.label}
+                onClick={() => navigate(item.href)}
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -112,8 +148,8 @@ export default function ParentProfile() {
         </Card>
 
         {/* Logout */}
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full text-destructive hover:text-destructive"
           onClick={handleLogout}
         >
