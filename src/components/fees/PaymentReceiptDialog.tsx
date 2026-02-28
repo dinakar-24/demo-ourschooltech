@@ -66,26 +66,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
   const formattedDate = paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const formattedTime = createdAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  // Get installment month from payment date
-  const installmentLabel = paymentDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-
-  // Calculate discount/concession
-  const totalDiscounts = 0;
-
-  const thStyle: React.CSSProperties = {
-    border: '1.5px solid #222', padding: '8px 10px', textAlign: 'center',
-    fontWeight: 700, fontSize: '12px', background: '#f5f5f5',
-  };
-  const tdStyle: React.CSSProperties = {
-    border: '1px solid #999', padding: '7px 10px', fontSize: '12px', textAlign: 'center',
-  };
-  const tdRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
   const labelStyle: React.CSSProperties = { fontWeight: 700, fontSize: '12px', color: '#1a1a1a' };
   const valueStyle: React.CSSProperties = { fontSize: '12px', color: '#1a1a1a' };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Fee Receipt
@@ -101,93 +87,84 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
         </DialogHeader>
 
         <div ref={receiptRef}>
-          <div className="receipt-outer" style={{ maxWidth: '700px', margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '20px 24px' }}>
+          <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '16px' }}>
 
             {/* OFFICE COPY - top right */}
             <div style={{ textAlign: 'right', marginBottom: '4px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#dc2626', fontStyle: 'italic' }}>
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#dc2626', fontStyle: 'italic' }}>
                 OFFICE COPY
               </span>
             </div>
 
-            {/* School Header - Logo left, Info center */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '16px' }}>
+            {/* School Header */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
               {school?.logo && (
-                <img src={school.logo} alt={school.name} style={{ height: '70px', width: '70px', objectFit: 'contain', flexShrink: 0 }} />
+                <img src={school.logo} alt={school.name} style={{ height: '50px', width: '50px', objectFit: 'contain', flexShrink: 0 }} />
               )}
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#1a1a1a', letterSpacing: '0.5px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#1a1a1a', letterSpacing: '0.5px' }}>
                   {school?.name || 'School Name'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#444', marginTop: '2px' }}>
-                  Address: {[school?.address, school?.city].filter(Boolean).join(', ')}
+                <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+                  {[school?.address, school?.city].filter(Boolean).join(', ')}
                 </div>
                 {(school?.phone || school?.email) && (
-                  <div style={{ fontSize: '12px', color: '#444', marginTop: '1px' }}>
+                  <div style={{ fontSize: '11px', color: '#444', marginTop: '1px' }}>
                     {school?.phone && <>Tel: {school.phone}</>}
                     {school?.phone && school?.email && ', '}
                     {school?.email && <>Email: {school.email}</>}
                   </div>
                 )}
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', marginTop: '4px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a1a1a', marginTop: '4px' }}>
                   FEE RECEIPT
                 </div>
               </div>
             </div>
 
             {/* Divider */}
-            <hr style={{ border: 'none', borderTop: '2px solid #333', margin: '0 0 14px' }} />
+            <hr style={{ border: 'none', borderTop: '2px solid #333', margin: '0 0 12px' }} />
 
-            {/* Receipt & Student Details - two column label: value layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', marginBottom: '16px', fontSize: '12px' }}>
+            {/* Receipt & Student Details */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: '14px', fontSize: '11px' }}>
               <div>
                 <span style={labelStyle}>Receipt No: </span>
                 <span style={valueStyle}>{payment.receipt_number}</span>
               </div>
               <div>
-                <span style={labelStyle}>Receipt Date: </span>
+                <span style={labelStyle}>Date: </span>
                 <span style={valueStyle}>{formattedDate} {formattedTime}</span>
               </div>
               <div>
-                <span style={labelStyle}>Student Name: </span>
+                <span style={labelStyle}>Student: </span>
                 <span style={valueStyle}>{invoice.student?.full_name || 'N/A'}</span>
               </div>
               <div>
-                <span style={labelStyle}>Admission No: </span>
+                <span style={labelStyle}>Adm No: </span>
                 <span style={valueStyle}>{invoice.student?.admission_number || 'N/A'}</span>
               </div>
               <div>
-                <span style={labelStyle}>Father's Name: </span>
+                <span style={labelStyle}>Father: </span>
                 <span style={valueStyle}>{invoice.student?.parent_name || '--'}</span>
               </div>
               <div>
                 <span style={labelStyle}>Class: </span>
                 <span style={valueStyle}>{invoice.student?.class_name} {invoice.student?.section}</span>
               </div>
-              {invoice.student?.parent_email && (
-                <div>
-                  <span style={labelStyle}>Email: </span>
-                  <span style={valueStyle}>{invoice.student.parent_email}</span>
-                </div>
-              )}
-              <div>
-                <span style={labelStyle}>Roll No: </span>
-                <span style={valueStyle}>{invoice.student?.roll_number || '--'}</span>
-              </div>
             </div>
 
-            {/* Fee Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '14px' }}>
+            {/* Simplified Fee Table - 3 columns for mobile */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '11px' }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '50px' }}>S.No</th>
-                  <th style={thStyle}>Particulars</th>
-                  <th style={thStyle}>Installment</th>
-                  <th style={thStyle}>Fee Due</th>
-                  <th style={thStyle}>Concession</th>
-                  <th style={thStyle}>Fine</th>
-                  <th style={{ ...thStyle, background: '#e8f5e9' }}>Paid</th>
-                  <th style={thStyle}>Balance</th>
+                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' }}>
+                    Particulars
+                  </th>
+                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' }}>
+                    Amount
+                  </th>
+                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: '11px', background: '#e8f5e9' }}>
+                    Paid
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -195,67 +172,69 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                   const compAmount = Number(c.amount);
                   return (
                     <tr key={c.id}>
-                      <td style={tdStyle}>{idx + 1}</td>
-                      <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 500 }}>{c.fee_type}</td>
-                      <td style={tdStyle}>{installmentLabel}</td>
-                      <td style={tdRight}>{compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td style={tdRight}>0.00</td>
-                      <td style={tdRight}>0.00</td>
-                      <td style={{ ...tdRight, fontWeight: 700 }}>
+                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', fontWeight: 500 }}>{c.fee_type}</td>
+                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
+                        {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
                         {idx === 0 ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'}
                       </td>
-                      <td style={tdRight}>0.00</td>
                     </tr>
                   );
                 })}
-                {/* If no components, show a single row */}
                 {(!invoice.components || invoice.components.length === 0) && (
                   <tr>
-                    <td style={tdStyle}>1</td>
-                    <td style={{ ...tdStyle, textAlign: 'left' }}>Fee Payment</td>
-                    <td style={tdStyle}>{installmentLabel}</td>
-                    <td style={tdRight}>{Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style={tdRight}>{totalDiscounts.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style={tdRight}>0.00</td>
-                    <td style={{ ...tdRight, fontWeight: 700 }}>{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style={tdRight}>{Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px' }}>Fee Payment</td>
+                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
+                      {Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
+                      {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
                   </tr>
                 )}
                 {/* Total Row */}
                 <tr style={{ background: '#f5f5f5' }}>
-                  <td colSpan={5} />
-                  <td style={{ ...tdStyle, fontWeight: 700, textAlign: 'right' }}>Total</td>
-                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '13px' }}>
-                    {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 700, fontSize: '11px' }}>Total</td>
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 800, fontSize: '12px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
+                    {Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '13px' }}>
-                    {Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 800, fontSize: '12px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
+                    {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tbody>
             </table>
 
+            {/* Balance */}
+            {Number(invoice.balance) > 0 && (
+              <div style={{ fontSize: '12px', marginBottom: '6px', padding: '6px 10px', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffc107' }}>
+                <span style={labelStyle}>Balance Due: </span>
+                <span style={{ ...valueStyle, fontWeight: 700, color: '#dc2626' }}>₹{Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+
             {/* Amount in Words */}
-            <div style={{ fontSize: '12px', marginBottom: '6px' }}>
+            <div style={{ fontSize: '11px', marginBottom: '6px' }}>
               <span style={labelStyle}>Amount In Words: </span>
               <span style={valueStyle}>{numberToWords(totalPaid)}</span>
             </div>
 
             {/* Payment Mode */}
-            <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', marginBottom: '4px' }}>
               <span style={labelStyle}>Payment Mode: </span>
               <span style={{ ...valueStyle, textTransform: 'capitalize' }}>{payment.payment_method}</span>
             </div>
 
             {/* Transaction / Cheque Info */}
             {payment.transaction_id && (
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span style={labelStyle}>Transaction No: </span>
                 <span style={valueStyle}>{payment.transaction_id}</span>
               </div>
             )}
             {payment.cheque_number && (
-              <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span style={labelStyle}>Cheque No: </span>
                 <span style={valueStyle}>{payment.cheque_number}</span>
                 {payment.bank_name && <> | <span style={labelStyle}>Bank: </span><span style={valueStyle}>{payment.bank_name}</span></>}
@@ -263,16 +242,16 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
             )}
 
             {/* Disclaimer */}
-            <div style={{ fontSize: '11px', color: '#333', marginTop: '20px', lineHeight: 1.7 }}>
+            <div style={{ fontSize: '10px', color: '#333', marginTop: '16px', lineHeight: 1.6 }}>
               <strong style={{ color: '#dc2626' }}>Note: </strong>
-              Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred. Cheques subject to realization.
+              Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred.
             </div>
 
             {/* Divider */}
-            <hr style={{ border: 'none', borderTop: '1px solid #999', margin: '14px 0 10px' }} />
+            <hr style={{ border: 'none', borderTop: '1px solid #999', margin: '10px 0 8px' }} />
 
             {/* System Note */}
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#555', fontStyle: 'italic' }}>
+            <div style={{ textAlign: 'center', fontSize: '10px', color: '#555', fontStyle: 'italic' }}>
               This is a system-generated Fee Receipt and does not require any stamp or signature.
             </div>
           </div>
