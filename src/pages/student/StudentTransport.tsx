@@ -1,4 +1,4 @@
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bus, MapPin, Phone, Loader2 } from 'lucide-react';
@@ -9,7 +9,7 @@ export default function StudentTransportPage() {
   const { data: transport = [], isLoading } = useStudentTransport();
 
   return (
-    <DashboardLayout>
+    <MobileLayout title="My Transport" showBack>
       <div className="space-y-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground">My Transport</h1>
@@ -45,6 +45,6 @@ export default function StudentTransportPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </MobileLayout>
   );
 }
