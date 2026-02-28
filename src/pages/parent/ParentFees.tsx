@@ -114,65 +114,61 @@ export default function ParentFees() {
 
   return (
     <MobileLayout title="Fees" showBack>
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-5">
         {/* Summary Card */}
-        <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-0">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-primary-foreground/70 text-sm">Pending Fees</p>
-                <p className="text-3xl font-bold mt-1">₹{totalPending.toLocaleString()}</p>
-              </div>
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
-                <CreditCard className="w-7 h-7" />
-              </div>
+        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-5 shadow-lg">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-primary-foreground/70">Pending Fees</p>
+              <p className="text-3xl font-extrabold tracking-tight">₹{totalPending.toLocaleString('en-IN')}</p>
             </div>
-            {grandTotal > 0 && (
-              <div className="space-y-1.5">
-                <Progress value={paidPercentage} className="h-2 bg-white/20" />
-                <p className="text-xs text-primary-foreground/70">{paidPercentage}% paid · ₹{totalPaid.toLocaleString()} of ₹{grandTotal.toLocaleString()}</p>
-              </div>
-            )}
-            {totalPending > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-white/10 text-sm mt-3">
-                <Building2 className="w-4 h-4 flex-shrink-0" />
-                <span>Pay via UPI and submit proof, or visit school office</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+              <CreditCard className="w-6 h-6" />
+            </div>
+          </div>
+          {grandTotal > 0 && (
+            <div className="mt-4 space-y-2">
+              <Progress value={paidPercentage} className="h-2 bg-white/20" />
+              <p className="text-xs text-primary-foreground/70">
+                {paidPercentage}% paid · ₹{totalPaid.toLocaleString('en-IN')} of ₹{grandTotal.toLocaleString('en-IN')}
+              </p>
+            </div>
+          )}
+          {totalPending > 0 && (
+            <div className="flex items-center gap-2.5 mt-4 p-3 rounded-xl bg-white/10 backdrop-blur-sm text-sm">
+              <Building2 className="w-4 h-4 flex-shrink-0 opacity-80" />
+              <span className="text-primary-foreground/90">Pay via UPI and submit proof, or visit school office</span>
+            </div>
+          )}
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-5 h-5 text-success" />
-              </div>
-              <p className="text-xl font-bold text-foreground">
-                ₹{totalPaid >= 1000 ? `${(totalPaid / 1000).toFixed(0)}K` : totalPaid}
-              </p>
-              <p className="text-sm text-muted-foreground">Paid This Year</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-              </div>
-              <p className="text-xl font-bold text-foreground">{paidPercentage}%</p>
-              <p className="text-sm text-muted-foreground">Payment Progress</p>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
+            <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center">
+              <CheckCircle className="w-4.5 h-4.5 text-success" />
+            </div>
+            <p className="text-lg font-bold text-foreground">
+              ₹{totalPaid >= 100000 ? `${(totalPaid / 100000).toFixed(1)}L` : totalPaid >= 1000 ? `${(totalPaid / 1000).toFixed(0)}K` : totalPaid.toLocaleString('en-IN')}
+            </p>
+            <p className="text-xs text-muted-foreground">Paid This Year</p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-primary" />
+            </div>
+            <p className="text-lg font-bold text-foreground">{paidPercentage}%</p>
+            <p className="text-xs text-muted-foreground">Payment Progress</p>
+          </div>
         </div>
 
         {/* Invoice-Based Fees */}
         {invoices.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Fee Invoices
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {invoices.map((inv) => {
                 const isOverdue = inv.status === 'pending' && inv.due_date < today;
                 const payPct = Number(inv.total_amount) > 0
@@ -189,56 +185,63 @@ export default function ParentFees() {
                     open={expandedInvoice === inv.id}
                     onOpenChange={(open) => setExpandedInvoice(open ? inv.id : null)}
                   >
-                     <Card className={isOverdue ? 'border-warning/50' : ''}>
+                    <div className={`rounded-xl border bg-card overflow-hidden ${isOverdue ? 'border-warning/60' : 'border-border/60'}`}>
                       <CollapsibleTrigger className="w-full text-left">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               {expandedInvoice === inv.id
                                 ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                 : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                              <span className="font-medium">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                              <span className="text-sm font-medium text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {hasPending && (
-                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">
-                                  <Clock className="w-3 h-3 mr-0.5" /> Verifying
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-[10px] px-1.5 py-0.5">
+                                  <Clock className="w-2.5 h-2.5 mr-0.5" /> Verifying
                                 </Badge>
                               )}
                               {getStatusBadge(inv.status, inv.due_date)}
                             </div>
                           </div>
-                          <div className="flex items-center justify-end">
-                            <span className="text-xl font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                          <div className="flex items-baseline justify-between">
+                            <div className="flex items-center gap-1.5">
+                              {(inv.components || []).length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {(inv.components || []).length} item{(inv.components || []).length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-2xl font-bold text-foreground">₹{Number(inv.total_amount).toLocaleString('en-IN')}</span>
                           </div>
                           {Number(inv.total_amount) > 0 && (
-                            <div className="mt-2 space-y-1">
+                            <div className="mt-3 space-y-1.5">
                               <Progress value={payPct} className="h-1.5" />
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Paid: ₹{Number(inv.paid_amount).toLocaleString()}</span>
-                                <span>Balance: ₹{Number(inv.balance).toLocaleString()}</span>
+                              <div className="flex justify-between text-[11px] text-muted-foreground">
+                                <span>Paid: ₹{Number(inv.paid_amount).toLocaleString('en-IN')}</span>
+                                <span>Balance: ₹{Number(inv.balance).toLocaleString('en-IN')}</span>
                               </div>
                             </div>
                           )}
-                        </CardContent>
+                        </div>
                       </CollapsibleTrigger>
 
                       <CollapsibleContent>
-                        <CardContent className="pt-0 px-4 pb-4 space-y-3">
+                        <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
                           {/* Submit Payment Button */}
                           {canSubmit && (
                             <Button
-                              className="w-full"
+                              className="w-full rounded-lg"
                               onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
                             >
                               <Send className="w-4 h-4 mr-2" />
-                              Submit Payment Proof (₹{Number(inv.balance).toLocaleString()} due)
+                              Submit Payment Proof (₹{Number(inv.balance).toLocaleString('en-IN')} due)
                             </Button>
                           )}
 
                           {/* Pending verification notice */}
                           {hasPending && (
-                            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm">
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm">
                               <Clock className="w-4 h-4 flex-shrink-0" />
                               <span>Payment proof submitted — awaiting admin verification</span>
                             </div>
@@ -246,36 +249,36 @@ export default function ParentFees() {
 
                           {/* Rejected submissions */}
                           {rejectedSubmissions.map(rs => (
-                            <div key={rs.id} className="flex items-start gap-2 p-3 rounded-lg bg-destructive/5 text-destructive text-sm">
+                            <div key={rs.id} className="flex items-start gap-2.5 p-3 rounded-lg bg-destructive/5 text-destructive text-sm">
                               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                               <div>
                                 <p className="font-medium">Payment rejected</p>
                                 <p className="text-xs mt-0.5">{rs.rejection_reason || 'No reason provided'}</p>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  ₹{Number(rs.amount).toLocaleString()} · UTR: {rs.transaction_id}
+                                  ₹{Number(rs.amount).toLocaleString('en-IN')} · UTR: {rs.transaction_id}
                                 </p>
                               </div>
                             </div>
                           ))}
 
-                          {/* Components - Clear fee breakdown with amounts + Pay option */}
+                          {/* Components */}
                           {(inv.components || []).length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-muted-foreground mb-2">Fee Breakdown</p>
-                              <div className="space-y-2">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fee Breakdown</p>
+                              <div className="space-y-1.5">
                                 {(inv.components || []).map(c => (
-                                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-1.5 h-7 rounded-full bg-primary/30" />
-                                      <span className="text-sm font-medium">{c.fee_type}</span>
+                                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-1 h-6 rounded-full bg-primary/40" />
+                                      <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-base font-bold">₹{Number(c.amount).toLocaleString()}</span>
+                                      <span className="text-sm font-bold text-foreground">₹{Number(c.amount).toLocaleString('en-IN')}</span>
                                       {canSubmit && (
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="h-7 text-xs px-2"
+                                          className="h-7 text-xs px-2.5 rounded-md"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             openSubmitPayment(inv, Number(c.amount), c.fee_type);
@@ -294,14 +297,14 @@ export default function ParentFees() {
                           {/* Discounts */}
                           {(inv.discounts || []).length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
                                 <Percent className="w-3 h-3" /> Discounts Applied
                               </p>
                               <div className="space-y-1">
                                 {(inv.discounts || []).map(d => (
-                                  <div key={d.id} className="flex justify-between text-sm py-1 px-2 bg-success/5 rounded text-success">
+                                  <div key={d.id} className="flex justify-between text-sm py-1.5 px-3 bg-success/5 rounded-lg text-success">
                                     <span>{d.reason}</span>
-                                    <span className="font-medium">-₹{Number(d.discount_amount).toLocaleString()}</span>
+                                    <span className="font-medium">-₹{Number(d.discount_amount).toLocaleString('en-IN')}</span>
                                   </div>
                                 ))}
                               </div>
@@ -311,14 +314,14 @@ export default function ParentFees() {
                           {/* Payments */}
                           {(inv.payments || []).length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-muted-foreground mb-1.5">Payment History</p>
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Payment History</p>
                               <div className="space-y-2">
                                 {(inv.payments || []).map(p => (
                                   <div key={p.id} className="bg-muted/30 rounded-lg p-3 space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                      <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {new Date(p.payment_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                      <span className="font-semibold text-sm text-foreground">₹{Number(p.amount).toLocaleString('en-IN')}</span>
+                                      <span className="text-[11px] text-muted-foreground">
+                                        {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                       </span>
                                     </div>
                                     <div className="flex items-center justify-between">
@@ -337,9 +340,9 @@ export default function ParentFees() {
                               </div>
                             </div>
                           )}
-                        </CardContent>
+                        </div>
                       </CollapsibleContent>
-                    </Card>
+                    </div>
                   </Collapsible>
                 );
               })}
@@ -350,43 +353,42 @@ export default function ParentFees() {
         {/* Legacy Pending Fees */}
         {pendingLegacy.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Pending & Upcoming
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {pendingLegacy.map((fee) => {
                 const isOverdue = fee.due_date < today;
                 return (
-                  <Card key={fee.id} className={isOverdue ? 'border-warning/50' : ''}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {isOverdue ? (
-                            <AlertCircle className="w-5 h-5 text-warning" />
-                          ) : (
-                            <Clock className="w-5 h-5 text-muted-foreground" />
-                          )}
-                          <span className="font-medium">{fee.fee_type}</span>
-                        </div>
-                        <Badge variant={isOverdue ? 'default' : 'secondary'}>
-                          {isOverdue ? 'overdue' : 'pending'}
-                        </Badge>
+                  <div key={fee.id} className={`rounded-xl border bg-card p-4 ${isOverdue ? 'border-warning/60' : 'border-border/60'}`}>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2.5">
+                        {isOverdue ? (
+                          <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                            <AlertCircle className="w-4 h-4 text-warning" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="font-medium text-foreground">{fee.fee_type}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center text-lg font-bold">
-                          <IndianRupee className="w-4 h-4" />
-                          {Number(fee.amount).toLocaleString()}
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        Pay at school office · Cash / UPI / Bank Transfer / Cheque
-                      </p>
-                    </CardContent>
-                  </Card>
+                      <Badge variant={isOverdue ? 'default' : 'secondary'} className="text-[10px]">
+                        {isOverdue ? 'overdue' : 'pending'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl font-bold text-foreground">₹{Number(fee.amount).toLocaleString('en-IN')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Due: {new Date(fee.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
+                      <Building2 className="w-3 h-3" />
+                      Pay at school office · Cash / UPI / Bank Transfer
+                    </p>
+                  </div>
                 );
               })}
             </div>
@@ -396,54 +398,45 @@ export default function ParentFees() {
         {/* Legacy Payment History */}
         {paidLegacy.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Payment History
             </h3>
-            <Card>
-              <CardContent className="p-0 divide-y divide-border">
-                {paidLegacy.map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                        <CheckCircle className="w-5 h-5 text-success" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{payment.fee_type}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {payment.paid_date
-                            ? new Date(payment.paid_date).toLocaleDateString('en-IN')
-                            : 'Paid'}
-                        </p>
-                      </div>
+            <div className="rounded-xl border border-border/60 bg-card overflow-hidden divide-y divide-border/50">
+              {paidLegacy.map((payment) => (
+                <div key={payment.id} className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-success" />
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">₹{Number(payment.amount).toLocaleString()}</p>
-                      {(payment as any).receipt_number && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                          <Receipt className="w-3 h-3" />
-                          {(payment as any).receipt_number}
-                        </p>
-                      )}
-                      {(payment as any).payment_method && (
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {(payment as any).payment_method}
-                        </p>
-                      )}
+                    <div>
+                      <p className="font-medium text-sm text-foreground">{payment.fee_type}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {payment.paid_date
+                          ? new Date(payment.paid_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'Paid'}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                  <div className="text-right">
+                    <p className="font-bold text-sm text-foreground">₹{Number(payment.amount).toLocaleString('en-IN')}</p>
+                    {(payment as any).receipt_number && (
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 justify-end">
+                        <Receipt className="w-3 h-3" />
+                        {(payment as any).receipt_number}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {invoices.length === 0 && fees.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <CreditCard className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No fee records found</p>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-border/60 bg-card p-10 text-center">
+            <CreditCard className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No fee records found</p>
+          </div>
         )}
       </div>
 
