@@ -275,12 +275,31 @@ export default function FeesPage() {
                     <tbody>
                       {(inv.components || []).map(c => {
                         const componentAmount = Number(c.amount);
-                        const canPayComponent = inv.status !== 'paid' && Number(inv.balance) > 0;
-                        const payableAmount = Math.min(componentAmount, Number(inv.balance));
+                        // Calculate how much has been paid toward this specific component
+                        const paidForComponent = (inv.payments || []).reduce((sum, p) => {
+                          const notesLower = (p.notes || '').toLowerCase();
+                          const feeTypeLower = c.fee_type.toLowerCase();
+                          if (notesLower.includes(feeTypeLower)) {
+                            return sum + Number(p.amount);
+                          }
+                          return sum;
+                        }, 0);
+                        const remainingAmount = Math.max(0, componentAmount - paidForComponent);
+                        const canPayComponent = inv.status !== 'paid' && remainingAmount > 0;
+                        const payableAmount = Math.min(remainingAmount, Number(inv.balance));
+                        const isFullyPaid = remainingAmount === 0;
                         return (
                           <tr key={c.id} className="border-b border-border/40 last:border-0">
                             <td className="py-1.5 font-medium">{c.fee_type}</td>
-                            <td className="py-1.5 text-right font-bold tabular-nums w-28">₹{componentAmount.toLocaleString()}</td>
+                            <td className={`py-1.5 text-right font-bold tabular-nums w-28 ${isFullyPaid ? 'text-success line-through' : ''}`}>
+                              ₹{remainingAmount.toLocaleString()}
+                              {paidForComponent > 0 && !isFullyPaid && (
+                                <span className="text-xs text-muted-foreground font-normal ml-1">(of ₹{componentAmount.toLocaleString()})</span>
+                              )}
+                              {isFullyPaid && (
+                                <span className="text-xs text-success font-normal ml-1 no-underline" style={{ textDecoration: 'none' }}> ✓ Paid</span>
+                              )}
+                            </td>
                             <td className="py-1.5 text-right w-16">
                               {canPayComponent && (
                                 <Button
