@@ -15,14 +15,16 @@ export function TopBar({ title = 'Dashboard', onMenuClick }: TopBarProps) {
     <header className="sticky top-0 z-30 bg-surface border-b border-border px-4 md:px-6 py-3">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            className="md:hidden"
-            onClick={onMenuClick}
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
+          {onMenuClick && (
+            <Button 
+              variant="ghost" 
+              size="icon-sm" 
+              className="md:hidden"
+              onClick={onMenuClick}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+          )}
           {isSubdomain && tenant?.logo && (
             <img src={tenant.logo} alt={tenant.name} className="w-8 h-8 rounded-lg object-contain hidden md:block" loading="eager" fetchPriority="high" decoding="sync" />
           )}
