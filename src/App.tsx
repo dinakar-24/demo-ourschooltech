@@ -84,6 +84,7 @@ import ParentGallery from "./pages/parent/ParentGallery";
 import ParentFeedback from "./pages/parent/ParentFeedback";
 import ParentQueries from "./pages/parent/ParentQueries";
 import ParentSettings from "./pages/parent/ParentSettings";
+import ParentMorePage from "./pages/parent/ParentMorePage";
 
 // Student Pages
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -263,6 +264,7 @@ function AppRoutes() {
         <Route path="/parent/feedback" element={<ProtectedRoute allowedRoles={['parent']}><ParentFeedback /></ProtectedRoute>} />
         <Route path="/parent/queries" element={<ProtectedRoute allowedRoles={['parent']}><ParentQueries /></ProtectedRoute>} />
         <Route path="/parent/settings" element={<ProtectedRoute allowedRoles={['parent']}><ParentSettings /></ProtectedRoute>} />
+        <Route path="/parent/more" element={<ProtectedRoute allowedRoles={['parent']}><ParentMorePage /></ProtectedRoute>} />
         <Route path="/parent/*" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
         
         {/* Student Routes */}
