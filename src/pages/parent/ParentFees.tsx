@@ -114,7 +114,7 @@ export default function ParentFees() {
 
   return (
     <MobileLayout title="Fees" showBack>
-      <div className="p-4 space-y-5">
+      <div className="p-4 space-y-3">
         {/* Summary Card */}
         <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-5 shadow-lg">
           <div className="flex items-start justify-between">
@@ -128,14 +128,19 @@ export default function ParentFees() {
           </div>
           {grandTotal > 0 && (
             <div className="mt-4 space-y-2">
-              <Progress value={paidPercentage} className="h-2 bg-white/20" />
+              <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-white/70 transition-all"
+                  style={{ width: `${paidPercentage}%` }}
+                />
+              </div>
               <p className="text-xs text-primary-foreground/70">
                 {paidPercentage}% paid · ₹{totalPaid.toLocaleString('en-IN')} of ₹{grandTotal.toLocaleString('en-IN')}
               </p>
             </div>
           )}
           {totalPending > 0 && (
-            <div className="flex items-center gap-2.5 mt-4 p-3 rounded-xl bg-white/10 backdrop-blur-sm text-sm">
+            <div className="flex items-center gap-2.5 mt-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm text-sm">
               <Building2 className="w-4 h-4 flex-shrink-0 opacity-80" />
               <span className="text-primary-foreground/90">Pay via UPI and submit proof, or visit school office</span>
             </div>
@@ -143,19 +148,19 @@ export default function ParentFees() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
-            <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center">
-              <CheckCircle className="w-4.5 h-4.5 text-success" />
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1.5">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-success" />
             </div>
             <p className="text-lg font-bold text-foreground">
               ₹{totalPaid >= 100000 ? `${(totalPaid / 100000).toFixed(1)}L` : totalPaid >= 1000 ? `${(totalPaid / 1000).toFixed(0)}K` : totalPaid.toLocaleString('en-IN')}
             </p>
             <p className="text-xs text-muted-foreground">Paid This Year</p>
           </div>
-          <div className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5 text-primary" />
+          <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-primary" />
             </div>
             <p className="text-lg font-bold text-foreground">{paidPercentage}%</p>
             <p className="text-xs text-muted-foreground">Payment Progress</p>
