@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
@@ -27,7 +26,6 @@ export default function ParentFeedback() {
   const [selectedFb, setSelectedFb] = useState<Feedback | null>(null);
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
-  
 
   const { data: responses } = useFeedbackResponses(selectedFb?.id);
 
