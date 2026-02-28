@@ -44,7 +44,7 @@ const navConfigKeys: Record<UserRole, Array<{ labelKey: string; href: string; ic
     { labelKey: 'nav.home', href: '/parent/dashboard', icon: LayoutDashboard },
     { labelKey: 'nav.attendance', href: '/parent/attendance', icon: ClipboardList },
     { labelKey: 'nav.homework', href: '/parent/homework', icon: BookOpen },
-    { labelKey: 'nav.results', href: '/parent/results', icon: Award },
+    { labelKey: 'nav.fees', href: '/parent/fees', icon: CreditCard },
     { labelKey: 'nav.more', href: '/parent/more', icon: MoreHorizontal },
   ],
   student: [
