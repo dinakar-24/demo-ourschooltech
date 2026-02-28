@@ -37,6 +37,7 @@ export default function ParentFeedback() {
     setIsOpen(false);
     setRating(0);
     setMessage('');
+  };
 
   const renderStars = (value: number, interactive = false) => (
     <div className="flex gap-1.5">
