@@ -47,19 +47,51 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- sessionStorage cache helpers ---
+const AUTH_CACHE_KEY = 'ost_auth_cache';
+
+function cacheAuthData(user: User, school: School | null) {
+  try {
+    sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ user, school, ts: Date.now() }));
+  } catch { /* quota exceeded is non-critical */ }
+}
+
+function getCachedAuth(): { user: User; school: School | null } | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Expire after 30 minutes
+    if (Date.now() - parsed.ts > 30 * 60 * 1000) {
+      sessionStorage.removeItem(AUTH_CACHE_KEY);
+      return null;
+    }
+    return { user: parsed.user, school: parsed.school };
+  } catch {
+    return null;
+  }
+}
+
+function clearAuthCache() {
+  try { sessionStorage.removeItem(AUTH_CACHE_KEY); } catch {}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [school, setSchool] = useState<School | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Restore from cache for instant UI on reopen
+  const cached = getCachedAuth();
+  const [user, setUser] = useState<User | null>(cached?.user ?? null);
+  const [school, setSchool] = useState<School | null>(cached?.school ?? null);
+  const [isLoading, setIsLoading] = useState(!cached); // skip loading if cached
   const { tenant, isSubdomain } = useTenant();
 
-  // Cross-tenant validation: sign out if user's school doesn't match subdomain
+  // Cross-tenant validation
   const validateTenant = useCallback(async (userData: User) => {
     if (isSubdomain && tenant) {
       if (userData.schoolId !== tenant.schoolId) {
         await supabase.auth.signOut();
         setUser(null);
         setSchool(null);
+        clearAuthCache();
         toast.error('Your account does not belong to this school. Please use the correct school portal.');
         return false;
       }
@@ -123,11 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlock
           setTimeout(async () => {
             const data = await fetchUserData(session.user);
             if (data) {
@@ -135,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (isValid) {
                 setUser(data.user);
                 setSchool(data.school);
+                cacheAuthData(data.user, data.school);
               }
             }
             setIsLoading(false);
@@ -142,12 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUser(null);
           setSchool(null);
+          clearAuthCache();
           setIsLoading(false);
         }
       }
     );
 
-    // THEN check for existing session
+    // Check existing session & silently refresh cached data
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const data = await fetchUserData(session.user);
@@ -156,8 +188,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (isValid) {
             setUser(data.user);
             setSchool(data.school);
+            cacheAuthData(data.user, data.school);
           }
         }
+      } else if (!session) {
+        // No session -- clear any stale cache
+        setUser(null);
+        setSchool(null);
+        clearAuthCache();
       }
       setIsLoading(false);
     });
@@ -183,9 +221,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       throw new Error(error.message);
     }
-
-    // Post-login cross-tenant validation will happen in the auth state listener
-    // after user data is fetched
   };
 
   const signup = async (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => {
@@ -208,7 +243,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.user) {
-      // Update profile with school_id
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -221,7 +255,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error updating profile:', profileError);
       }
 
-      // Insert user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({ 
@@ -241,9 +274,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSchool(null);
+    clearAuthCache();
   }, []);
 
-  // Session timeout enforcement
   const handleSessionTimeout = useCallback(() => {
     toast.info('You have been logged out due to inactivity.');
     logout();
