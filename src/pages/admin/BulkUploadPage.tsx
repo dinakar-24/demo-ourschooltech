@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -200,9 +200,9 @@ export default function BulkUploadPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadErrors = () => {
+  const handleDownloadErrors = async () => {
     if (!parseResult) return;
-    const blob = generateErrorReport(parseResult.rows, uploadType);
+    const blob = await generateErrorReport(parseResult.rows, uploadType);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -211,14 +211,14 @@ export default function BulkUploadPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadServerErrors = () => {
+  const handleDownloadServerErrors = async () => {
     if (!uploadResult?.errors.length) return;
-    const ws_data = uploadResult.errors.map(e => ({ Row: e.row, Error: e.error }));
-    const ws = XLSX.utils.json_to_sheet(ws_data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Errors');
-    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Errors');
+    ws.addRow(['Row', 'Error']);
+    uploadResult.errors.forEach(e => ws.addRow([e.row, e.error]));
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
