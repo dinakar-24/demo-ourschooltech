@@ -59,6 +59,18 @@ export default function LoginPage() {
 
   const handleSplashComplete = useCallback(() => setStep('email'), []);
 
+  // Pre-warm backend connection on mount (DNS + TLS handshake)
+  const warmedRef = useRef(false);
+  useEffect(() => {
+    if (warmedRef.current) return;
+    warmedRef.current = true;
+    // Fire a lightweight HEAD request to establish the connection pool early
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+      method: 'HEAD',
+      headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+    }).catch(() => {});
+  }, []);
+
 
   useEffect(() => {
     if (isAuthenticated && user) {
