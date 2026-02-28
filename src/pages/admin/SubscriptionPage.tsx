@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  CreditCard,
   Calendar,
   Users,
   IndianRupee,
@@ -13,40 +12,13 @@ import {
   AlertTriangle,
   Clock,
   XCircle,
-  Loader2,
   Download,
   FileText,
-  ArrowUpRight,
-  TrendingUp,
   Shield,
-  Zap,
 } from 'lucide-react';
 import { useSubscription, useSubscriptionPayments, SubscriptionPayment } from '@/hooks/useSubscription';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRazorpay } from '@/hooks/useRazorpay';
-import { useSubscriptionPricing } from '@/hooks/useSubscriptionPricing';
-import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, differenceInDays } from 'date-fns';
-
-function useStudentCount() {
-  const schoolId = useEffectiveSchoolId();
-  return useQuery({
-    queryKey: ['student-count', schoolId],
-    queryFn: async () => {
-      if (!schoolId) return 0;
-      const { count, error } = await supabase
-        .from('students')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'active');
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: !!schoolId,
-  });
-}
 
 function numberToIndianWords(num: number): string {
   if (num === 0) return 'Zero';
@@ -116,8 +88,6 @@ async function downloadSubscriptionReceipt(
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'Inter',system-ui,sans-serif;color:#111827;background:#fff;font-size:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5;}
   .page{max-width:760px;margin:20px auto;background:#fff;}
-
-  /* HEADER */
   .hdr{padding:30px 40px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e5e7eb;}
   .hdr-left{display:flex;align-items:center;gap:14px;}
   .hdr-left img{height:46px;width:auto;}
@@ -126,27 +96,19 @@ async function downloadSubscriptionReceipt(
   .hdr-right{text-align:right;}
   .hdr-title{font-size:26px;font-weight:700;color:#0F766E;letter-spacing:-0.3px;}
   .hdr-id{font-size:13px;color:#4B5563;margin-top:3px;font-weight:600;}
-
   .body{padding:30px 40px;}
-
-  /* META ROW */
   .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:18px 0;margin-bottom:30px;}
   .meta-c{padding:0 22px;border-right:1px solid #E5E7EB;}
   .meta-c:last-child{border-right:none;}
   .meta-c .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;}
   .meta-c .val{font-size:14px;font-weight:600;color:#111827;margin-top:5px;}
   .badge-paid{display:inline-flex;align-items:center;gap:4px;background:#D1FAE5;color:#047857;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;}
-
-  /* BILLING INFO */
   .billing-row{display:flex;justify-content:space-between;margin-bottom:28px;}
   .bill-block{}
   .bill-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:6px;}
   .bill-name{font-size:18px;font-weight:700;color:#111827;}
   .bill-desc{font-size:13px;color:#4B5563;margin-top:4px;font-weight:500;}
-
   .divider{height:1px;background:#E5E7EB;margin:0 0 28px;}
-
-  /* TABLE */
   table{width:100%;border-collapse:collapse;margin-bottom:24px;}
   thead th{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#4B5563;font-weight:700;padding:12px 14px;text-align:left;border-bottom:2px solid #E5E7EB;background:#F9FAFB;}
   thead th.cen{text-align:center;}
@@ -156,25 +118,17 @@ async function downloadSubscriptionReceipt(
   tbody td.rt{text-align:right;color:#1F2937;}
   .svc-name{font-weight:600;color:#111827;font-size:14px;}
   .svc-sub{font-size:12px;color:#6B7280;margin-top:3px;font-weight:400;}
-
-  /* TOTALS */
   .totals{display:flex;justify-content:flex-end;margin-bottom:24px;}
   .totals-box{width:280px;}
   .trow{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#6B7280;}
   .trow .tv{color:#1F2937;font-weight:600;}
   .trow-total{display:flex;justify-content:space-between;padding:12px 0;font-size:15px;font-weight:700;color:#111827;border-top:2px solid #0F766E;margin-top:6px;}
   .trow-total .tv{color:#0F766E;font-size:18px;font-weight:700;}
-
-  /* AMOUNT WORDS */
   .words{padding:12px 16px;background:#F9FAFB;border-radius:6px;border:1px solid #E5E7EB;font-size:13px;color:#4B5563;margin-bottom:28px;}
   .words strong{color:#111827;font-weight:700;}
-
-  /* PAYMENT METHOD */
   .pay-method{margin-bottom:28px;}
   .pay-method .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:5px;}
   .pay-method .val{font-size:14px;color:#1F2937;font-weight:600;}
-
-  /* INFO GRID */
   .info{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:0;padding-top:24px;border-top:1px solid #E5E7EB;}
   .info-cell{}
   .info-cell .sec-lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;margin-bottom:10px;}
@@ -182,8 +136,6 @@ async function downloadSubscriptionReceipt(
   .info-cell .row .k{color:#6B7280;width:85px;flex-shrink:0;font-weight:500;}
   .info-cell .row .v{color:#1F2937;font-weight:600;}
   .info-cell .terms{font-size:11px;color:#6B7280;line-height:1.8;}
-
-  /* FOOTER */
   .ftr{padding:20px 40px;border-top:2px solid #E5E7EB;display:flex;justify-content:space-between;align-items:flex-end;background:#F9FAFB;}
   .ftr-l .fn{font-size:13px;font-weight:700;color:#1F2937;}
   .ftr-l .fd{font-size:11px;color:#6B7280;line-height:1.7;margin-top:3px;font-weight:500;}
@@ -191,13 +143,10 @@ async function downloadSubscriptionReceipt(
   .ftr-r .fl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6B7280;font-weight:600;}
   .ftr-r .fsig{font-size:14px;font-weight:700;color:#111827;margin-top:5px;}
   .ftr-r .frole{font-size:11px;color:#4B5563;margin-top:2px;font-weight:500;}
-
   .ref{padding:10px 40px;display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;font-family:'SF Mono','Fira Code',monospace;letter-spacing:0.3px;border-top:1px solid #E5E7EB;}
-
   @media print{body{margin:0;}.page{margin:0;max-width:100%;}}
 </style></head><body>
 <div class="page">
-
   <div class="hdr">
     <div class="hdr-left">
       ${logoBase64 ? `<img src="${logoBase64}" alt="Logo"/>` : ''}
@@ -211,7 +160,6 @@ async function downloadSubscriptionReceipt(
       <div class="hdr-id">${billNo}</div>
     </div>
   </div>
-
   <div class="body">
     <div class="meta">
       <div class="meta-c">
@@ -231,7 +179,6 @@ async function downloadSubscriptionReceipt(
         <div class="val">${studentCount}</div>
       </div>
     </div>
-
     <div class="billing-row">
       <div class="bill-block">
         <div class="bill-label">Billed To</div>
@@ -244,9 +191,7 @@ async function downloadSubscriptionReceipt(
         <div class="bill-desc">support@ourschooltech.com</div>
       </div>
     </div>
-
     <div class="divider"></div>
-
     <table>
       <thead><tr>
         <th style="width:32px">#</th>
@@ -266,7 +211,6 @@ async function downloadSubscriptionReceipt(
         <td class="rt" style="font-weight:700;">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
       </tr></tbody>
     </table>
-
     <div class="totals">
       <div class="totals-box">
         <div class="trow"><span>Subtotal</span><span class="tv">₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
@@ -274,16 +218,13 @@ async function downloadSubscriptionReceipt(
         <div class="trow-total"><span>Total</span><span class="tv">₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
       </div>
     </div>
-
     <div class="words">
       <strong>Amount in words:</strong> INR ${amountWords}
     </div>
-
     <div class="pay-method">
       <div class="lbl">Payment Method</div>
       <div class="val">${payment.razorpay_payment_id ? 'Online Payment (Razorpay)' : 'Online Payment'}</div>
     </div>
-
     <div class="info">
       <div class="info-cell">
         <div class="sec-lbl">Company Details</div>
@@ -302,7 +243,6 @@ async function downloadSubscriptionReceipt(
       </div>
     </div>
   </div>
-
   <div class="ftr">
     <div class="ftr-l">
       <div class="fn">Our School Tech</div>
@@ -314,13 +254,11 @@ async function downloadSubscriptionReceipt(
       <div class="frole">CEO & Founder</div>
     </div>
   </div>
-
   ${payment.razorpay_payment_id ? `
   <div class="ref">
     <span>Payment ID: ${payment.razorpay_payment_id}</span>
     <span>Order ID: ${payment.razorpay_order_id || '—'}</span>
   </div>` : ''}
-
 </div>
 </body></html>`;
 
@@ -337,65 +275,22 @@ async function downloadSubscriptionReceipt(
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
-  const { data: dbStudentCount = 0, isLoading: studentsLoading } = useStudentCount();
-  const { initiatePayment, isLoading: paymentLoading, isProcessing } = useRazorpay();
-  const { pricePerStudent } = useSubscriptionPricing();
+
   const paidStudentCount = subscription?.student_count || 0;
-  const totalAmount = dbStudentCount * pricePerStudent;
+  const pricePerStudent = subscription?.price_per_student || 0;
+  const totalAmount = subscription?.total_amount || 0;
 
   const isActive = subscription?.status === 'active';
   const isTrial = subscription?.status === 'trial';
   const isExpired = subscription?.status === 'expired';
 
-  const newStudents = isActive ? Math.max(0, dbStudentCount - paidStudentCount) : 0;
-  const topUpAmount = newStudents * pricePerStudent;
-
   const daysRemaining = subscription?.end_date
     ? differenceInDays(new Date(subscription.end_date), new Date())
     : 0;
 
-  const handlePayment = async () => {
-    if (totalAmount <= 0) return;
-    initiatePayment({
-      subscriptionId: subscription?.id,
-      amount: totalAmount,
-      schoolName: user?.schoolName || 'School',
-      userEmail: user?.email,
-      userName: user?.name,
-      schoolId: user?.schoolId || '',
-      studentCount: dbStudentCount,
-      paymentType: 'renewal',
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['subscription'] });
-        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
-        queryClient.invalidateQueries({ queryKey: ['student-count'] });
-      },
-    });
-  };
-
-  const handleTopUp = async () => {
-    if (topUpAmount <= 0) return;
-    initiatePayment({
-      subscriptionId: subscription?.id,
-      amount: topUpAmount,
-      schoolName: user?.schoolName || 'School',
-      userEmail: user?.email,
-      userName: user?.name,
-      schoolId: user?.schoolId || '',
-      studentCount: dbStudentCount,
-      paymentType: 'topup',
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['subscription'] });
-        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
-        queryClient.invalidateQueries({ queryKey: ['student-count'] });
-      },
-    });
-  };
-
-  if (subLoading || studentsLoading) {
+  if (subLoading) {
     return (
       <AdminLayout title="Subscription">
         <div className="max-w-2xl mx-auto space-y-4">
@@ -406,6 +301,24 @@ export default function SubscriptionPage() {
             <Skeleton className="h-20 rounded-lg" />
           </div>
           <Skeleton className="h-32 w-full rounded-lg" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!subscription) {
+    return (
+      <AdminLayout title="Subscription">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Shield className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold text-foreground mb-1">No Subscription</h3>
+              <p className="text-sm text-muted-foreground">
+                Your subscription is managed by the platform administrator. Please contact support for activation.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </AdminLayout>
     );
@@ -431,7 +344,7 @@ export default function SubscriptionPage() {
             <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
             <div>
               <p className="font-semibold text-destructive text-sm">Subscription Expired</p>
-              <p className="text-xs text-muted-foreground">Renew now to continue using all features.</p>
+              <p className="text-xs text-muted-foreground">Please contact the platform administrator to renew.</p>
             </div>
           </div>
         )}
@@ -441,7 +354,7 @@ export default function SubscriptionPage() {
             <Clock className="w-4 h-4 text-amber-600 shrink-0" />
             <div>
               <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Expiring in {daysRemaining} days</p>
-              <p className="text-xs text-muted-foreground">Renew to avoid service interruption.</p>
+              <p className="text-xs text-muted-foreground">Contact administrator for renewal.</p>
             </div>
           </div>
         )}
@@ -462,13 +375,23 @@ export default function SubscriptionPage() {
                 </Badge>
               </div>
 
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-3xl font-extrabold tracking-tight text-foreground">₹{totalAmount.toLocaleString('en-IN')}</span>
-                <span className="text-sm text-muted-foreground">/year</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {dbStudentCount} student{dbStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
-              </p>
+              {!isTrial && (
+                <>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-extrabold tracking-tight text-foreground">₹{totalAmount.toLocaleString('en-IN')}</span>
+                    <span className="text-sm text-muted-foreground">/year</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
+                  </p>
+                </>
+              )}
+
+              {isTrial && (
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-3xl font-extrabold tracking-tight text-foreground">Trial</span>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -477,7 +400,7 @@ export default function SubscriptionPage() {
             <div className="grid grid-cols-3 divide-x divide-border">
               <div className="p-4 text-center">
                 <Users className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
-                <p className="text-xl font-bold text-foreground">{dbStudentCount}</p>
+                <p className="text-xl font-bold text-foreground">{paidStudentCount}</p>
                 <p className="text-[10px] text-muted-foreground">Students</p>
               </div>
               <div className="p-4 text-center">
@@ -496,25 +419,6 @@ export default function SubscriptionPage() {
                 <p className="text-[10px] text-muted-foreground">Per Student</p>
               </div>
             </div>
-
-            <Separator />
-
-            {/* Action */}
-            <div className="p-4">
-              <Button
-                className="w-full h-11 font-semibold rounded-lg"
-                onClick={handlePayment}
-                disabled={paymentLoading || isProcessing || totalAmount <= 0}
-              >
-                {(paymentLoading || isProcessing) ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
-                ) : isActive ? (
-                  <><CreditCard className="w-4 h-4 mr-2" /> Renew Subscription</>
-                ) : (
-                  <><Zap className="w-4 h-4 mr-2" /> Subscribe — ₹{totalAmount.toLocaleString('en-IN')}</>
-                )}
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -528,7 +432,6 @@ export default function SubscriptionPage() {
                 ...(subscription?.start_date ? [{ label: 'Started', value: format(new Date(subscription.start_date), 'dd MMM yyyy') }] : []),
                 ...(subscription?.end_date ? [{ label: 'Expires', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
                 { label: 'Paid Students', value: String(paidStudentCount) },
-                { label: 'Active Students', value: String(dbStudentCount) },
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">{item.label}</span>
@@ -538,46 +441,6 @@ export default function SubscriptionPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Top-Up */}
-        {newStudents > 0 && (
-          <Card className="border-amber-200 dark:border-amber-800 shadow-sm overflow-hidden">
-            <div className="bg-amber-50 dark:bg-amber-950/20 px-4 py-3 flex items-center gap-3">
-              <TrendingUp className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
-                {newStudents} New Student{newStudents > 1 ? 's' : ''} — Top-Up Required
-              </p>
-            </div>
-            <CardContent className="p-4 space-y-3">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Paid for</span>
-                  <span className="font-medium">{paidStudentCount} students</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current active</span>
-                  <span className="font-medium">{dbStudentCount} students</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-semibold">
-                  <span>Top-up ({newStudents} × ₹{pricePerStudent})</span>
-                  <span className="text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-              <Button
-                className="w-full h-10 font-semibold rounded-lg"
-                onClick={handleTopUp}
-                disabled={paymentLoading || isProcessing}
-              >
-                {(paymentLoading || isProcessing) ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
-                ) : (
-                  <><ArrowUpRight className="w-4 h-4 mr-2" /> Pay ₹{topUpAmount.toLocaleString('en-IN')} Top-Up</>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Payment History */}
         <Card className="shadow-sm">
@@ -645,7 +508,7 @@ export default function SubscriptionPage() {
                             onClick={() => downloadSubscriptionReceipt(
                               payment,
                               user?.schoolName || 'School',
-                              payment.student_count || dbStudentCount,
+                              payment.student_count || paidStudentCount,
                               pricePerStudent
                             )}
                           >
