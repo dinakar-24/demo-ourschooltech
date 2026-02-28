@@ -145,7 +145,7 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
             </div>
             <div className="space-y-2">
               <Label>Roll Number</Label>
-              <Input type="number" value={form.roll_number} onChange={e => setForm(f => ({ ...f, roll_number: e.target.value }))} />
+              <Input type="number" min="0" value={form.roll_number} onChange={e => setForm(f => ({ ...f, roll_number: e.target.value }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
             </div>
             <div className="space-y-2">
               <Label>Gender</Label>
