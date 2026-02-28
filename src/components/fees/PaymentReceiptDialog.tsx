@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, Share2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeePayment, FeeInvoice } from '@/hooks/useFeeInvoices';
 
@@ -60,6 +60,20 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
     printWindow.document.close();
   };
 
+  const handleShare = async () => {
+    if (!receiptRef.current) return;
+    const text = `Fee Receipt - ${payment.receipt_number}\nStudent: ${invoice.student?.full_name || 'N/A'}\nAmount Paid: ₹${Number(payment.amount).toLocaleString('en-IN')}\nDate: ${new Date(payment.payment_date).toLocaleDateString('en-IN')}\nPayment Mode: ${payment.payment_method}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Receipt ${payment.receipt_number}`, text });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(text);
+      const { toast } = await import('@/hooks/use-toast');
+      toast({ title: 'Copied to clipboard', description: 'Receipt details copied successfully' });
+    }
+  };
+
   const totalPaid = Number(payment.amount);
   const paymentDate = new Date(payment.payment_date);
   const createdAt = new Date(payment.created_at);
@@ -79,10 +93,13 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
         {/* Action buttons below header */}
         <div className="flex gap-2 -mt-2 mb-1">
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
-            <Printer className="w-3.5 h-3.5 mr-1.5" /> Print Receipt
+            <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
           </Button>
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
-            <Download className="w-3.5 h-3.5 mr-1.5" /> Download PDF
+            <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
+            <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share
           </Button>
         </div>
 
