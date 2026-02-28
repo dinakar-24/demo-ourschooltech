@@ -129,7 +129,13 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice, prefillAmount
             <span className="text-muted-foreground">Already Paid</span>
             <span className="text-success">₹{Number(invoice.paid_amount).toLocaleString()}</span>
           </div>
-          <div className="flex justify-between font-semibold text-base border-t pt-2 mt-1">
+          {prefillLabel && prefillAmount && (
+            <div className="flex justify-between border-t pt-2 mt-1">
+              <span className="text-muted-foreground">{prefillLabel} Remaining</span>
+              <span className="font-semibold text-primary">₹{Number(prefillAmount).toLocaleString()}</span>
+            </div>
+          )}
+          <div className={`flex justify-between font-semibold text-base ${!prefillLabel ? 'border-t pt-2 mt-1' : ''}`}>
             <span>Balance Due</span>
             <span className="text-destructive">₹{Number(invoice.balance).toLocaleString()}</span>
           </div>
@@ -141,13 +147,16 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice, prefillAmount
             <Label>Amount Paying (₹) <span className="text-destructive">*</span></Label>
             <Input
               type="number"
-              placeholder={`Max ₹${Number(invoice.balance).toLocaleString()}`}
+              placeholder={`Max ₹${prefillLabel && prefillAmount ? Number(prefillAmount).toLocaleString() : Number(invoice.balance).toLocaleString()}`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              max={invoice.balance}
+              max={prefillAmount || invoice.balance}
             />
-            {Number(amount) > invoice.balance && (
+            {Number(amount) > Number(invoice.balance) && (
               <p className="text-xs text-destructive">Amount exceeds balance of ₹{Number(invoice.balance).toLocaleString()}</p>
+            )}
+            {prefillAmount && Number(amount) > Number(prefillAmount) && Number(amount) <= Number(invoice.balance) && (
+              <p className="text-xs text-warning">Amount exceeds {prefillLabel} remaining of ₹{Number(prefillAmount).toLocaleString()}</p>
             )}
           </div>
 
