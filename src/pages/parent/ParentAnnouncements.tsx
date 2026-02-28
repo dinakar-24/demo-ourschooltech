@@ -22,7 +22,7 @@ export default function ParentAnnouncements() {
         .eq('school_id', user.schoolId)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(25);
+        .limit(50);
       if (error) throw error;
       return data?.filter(a =>
         !a.target_roles || a.target_roles.length === 0 || a.target_roles.includes('parent')
@@ -32,6 +32,7 @@ export default function ParentAnnouncements() {
     },
     enabled: !!user?.schoolId,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   return (

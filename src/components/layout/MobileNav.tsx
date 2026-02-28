@@ -52,7 +52,7 @@ const navConfig = {
     { label: 'Attendance', path: '/attendance', icon: ClipboardList },
     { label: 'Fees', path: '/fees', icon: CreditCard },
     { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'More', path: '/announcements', icon: MoreHorizontal },
+    { label: 'More', path: '/more', icon: MoreHorizontal },
   ],
   student: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },

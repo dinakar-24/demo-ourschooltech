@@ -57,6 +57,8 @@ export function useParentChild() {
       return student as ChildInfo | null;
     },
     enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -88,6 +90,8 @@ export function useChildAttendanceStats(studentId?: string) {
       return { present, absent, late, total, percentage };
     },
     enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -112,6 +116,8 @@ export function useChildFeeStats(studentId?: string) {
       return { pending, paid, overdue };
     },
     enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -142,7 +148,7 @@ export function useChildHomework(studentId?: string, className?: string, section
         .gte('due_date', new Date().toISOString().split('T')[0])
         .order('due_date', { ascending: true });
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
       
@@ -150,6 +156,8 @@ export function useChildHomework(studentId?: string, className?: string, section
       return data?.filter(hw => !hw.section_id || hw.section?.name === section) || [];
     },
     enabled: !!className,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -171,6 +179,8 @@ export function useChildAnnouncements(schoolId?: string) {
       return data || [];
     },
     enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -191,12 +201,15 @@ export function useParentData() {
         .from('fees')
         .select('*')
         .eq('student_id', childProfile.id)
-        .order('due_date', { ascending: false });
+        .order('due_date', { ascending: false })
+        .limit(50);
       
       if (error) throw error;
       return data || [];
     },
     enabled: !!childProfile?.id,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   return {

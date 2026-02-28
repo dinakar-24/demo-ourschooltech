@@ -47,11 +47,13 @@ export function useOnlineClasses(filters?: { status?: string; class_name?: strin
         query = query.eq('class_name', filters.class_name);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
       if (error) throw error;
       return (data || []) as OnlineClass[];
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -84,6 +86,8 @@ export function useTeacherOnlineClasses(teacherUserId?: string) {
       return (data || []) as OnlineClass[];
     },
     enabled: !!schoolId && !!teacherUserId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

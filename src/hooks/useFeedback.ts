@@ -44,11 +44,13 @@ export function useFeedbackList(isAdmin = false) {
       }
       // Non-admin users will only see their own via RLS
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(30);
       if (error) throw error;
       return data as Feedback[];
     },
     enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
