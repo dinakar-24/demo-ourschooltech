@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, KeyRound, Lock, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2, X, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -239,15 +240,23 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
 
                   {/* OTP */}
                   <FieldGroup label="Verification Code">
-                    <div className="relative">
-                      <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                      <Input
-                        type="text" inputMode="numeric" maxLength={6}
-                        placeholder="Enter 6-digit OTP" value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                        className={`${inputClasses} tracking-[0.3em] text-center font-mono`}
+                    <div className="flex justify-center">
+                      <InputOTP
+                        maxLength={6}
+                        value={otp}
+                        onChange={(value) => setOtp(value)}
                         autoFocus
-                      />
+                      >
+                        <InputOTPGroup>
+                          {[0, 1, 2, 3, 4, 5].map((index) => (
+                            <InputOTPSlot
+                              key={index}
+                              index={index}
+                              className="w-11 h-12 text-base font-mono text-white bg-white/[0.06] border-white/[0.08] first:rounded-l-xl last:rounded-r-xl"
+                            />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
                     </div>
                   </FieldGroup>
 
