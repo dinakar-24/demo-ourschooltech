@@ -350,10 +350,32 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
       {/* DOB */}
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">Date of Birth</Label>
-        <div className="relative">
-          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input type="date" value={formData.date_of_birth} onChange={(e) => onInputChange('date_of_birth', e.target.value)} className="pl-10 h-11" />
-        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full h-11 justify-start text-left font-normal",
+                !formData.date_of_birth && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {formData.date_of_birth
+                ? format(parse(formData.date_of_birth, 'yyyy-MM-dd', new Date()), 'dd-MM-yyyy')
+                : <span>dd-mm-yyyy</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={formData.date_of_birth ? parse(formData.date_of_birth, 'yyyy-MM-dd', new Date()) : undefined}
+              onSelect={(date) => onInputChange('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
+              disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
 
