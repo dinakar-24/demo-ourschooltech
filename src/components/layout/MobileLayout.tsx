@@ -18,6 +18,7 @@ import {
   LogOut,
   ChevronLeft,
   Settings,
+  MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -42,9 +43,9 @@ const navConfigKeys: Record<UserRole, Array<{ labelKey: string; href: string; ic
   parent: [
     { labelKey: 'nav.home', href: '/parent/dashboard', icon: LayoutDashboard },
     { labelKey: 'nav.attendance', href: '/parent/attendance', icon: ClipboardList },
-    { labelKey: 'nav.homework', href: '/parent/fees', icon: CreditCard },
+    { labelKey: 'nav.homework', href: '/parent/homework', icon: BookOpen },
     { labelKey: 'nav.results', href: '/parent/results', icon: Award },
-    { labelKey: 'nav.profile', href: '/parent/profile', icon: User },
+    { labelKey: 'nav.more', href: '/parent/more', icon: MoreHorizontal },
   ],
   student: [
     { labelKey: 'nav.home', href: '/student/dashboard', icon: LayoutDashboard },

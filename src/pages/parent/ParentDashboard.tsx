@@ -9,6 +9,13 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
+  BookOpen,
+  Image,
+  Bus,
+  MessageCircle,
+  Video,
+  MessageSquare,
+  HelpCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useParentChild, useChildAttendanceStats, useChildFeeStats } from '@/hooks/useParentData';
@@ -22,7 +29,6 @@ export default function ParentDashboard() {
 
   const isLoading = childLoading || attendanceLoading || feeLoading;
 
-  // Fallback data if no child is linked yet
   const childInfo = child ? {
     name: child.full_name,
     class: child.class_name,
@@ -38,10 +44,18 @@ export default function ParentDashboard() {
   const attendance = attendanceStats?.percentage || 0;
   const pendingFees = feeStats?.pending || 0;
 
-  const recentUpdates = [
-    { type: 'result', title: 'Math Test Result', detail: 'Scored 85/100', time: '2 hours ago', icon: Award },
-    { type: 'homework', title: 'Science Homework', detail: 'Due tomorrow', time: '5 hours ago', icon: ClipboardList },
-    { type: 'announcement', title: 'PTM Notice', detail: 'Scheduled for 25th Jan', time: '1 day ago', icon: Bell },
+  const quickActions = [
+    { label: 'Attendance', icon: ClipboardList, href: '/parent/attendance', color: 'text-primary' },
+    { label: 'Fees', icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
+    { label: 'Results', icon: Award, href: '/parent/results', color: 'text-success' },
+    { label: 'Notices', icon: Bell, href: '/parent/announcements', color: 'text-info' },
+    { label: 'Homework', icon: BookOpen, href: '/parent/homework', color: 'text-warning' },
+    { label: 'Gallery', icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
+    { label: 'Transport', icon: Bus, href: '/parent/transport', color: 'text-success' },
+    { label: 'Classes', icon: Video, href: '/parent/online-classes', color: 'text-primary' },
+    { label: 'Messages', icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
+    { label: 'Feedback', icon: MessageSquare, href: '/parent/feedback', color: 'text-warning' },
+    { label: 'Queries', icon: HelpCircle, href: '/parent/queries', color: 'text-destructive' },
   ];
 
   return (
@@ -133,23 +147,23 @@ export default function ParentDashboard() {
           </Link>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'Attendance', icon: ClipboardList, href: '/parent/attendance', color: 'text-primary' },
-            { label: 'Fees', icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
-            { label: 'Results', icon: Award, href: '/parent/results', color: 'text-success' },
-            { label: 'Notices', icon: Bell, href: '/parent/announcements', color: 'text-info' },
-          ].map((action) => (
-            <Link key={action.label} to={action.href}>
-              <div className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors">
-                <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center ${action.color}`}>
-                  <action.icon className="w-5 h-5" />
+        {/* Quick Actions - Full grid */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-4 gap-2">
+            {quickActions.map((action) => (
+              <Link key={action.label} to={action.href}>
+                <div className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors">
+                  <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center ${action.color}`}>
+                    <action.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">{action.label}</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">{action.label}</span>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* Fee Alert */}
@@ -171,31 +185,6 @@ export default function ParentDashboard() {
             </CardContent>
           </Card>
         )}
-
-        {/* Recent Updates */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Recent Updates
-          </h3>
-          <Card>
-            <CardContent className="divide-y divide-border p-0">
-              {recentUpdates.map((update, i) => (
-                <div key={i} className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                      <update.icon className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{update.title}</p>
-                      <p className="text-sm text-muted-foreground">{update.detail}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{update.time}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Attendance Calendar Preview */}
         <div>
