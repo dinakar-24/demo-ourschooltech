@@ -241,8 +241,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
                         {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
-                        {idx === 0 ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'}
+                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace", color: '#999' }}>
+                        —
                       </td>
                     </tr>
                   );
