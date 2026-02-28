@@ -65,18 +65,27 @@ Deno.serve(async (req) => {
     const studentIds = students.map(s => s.id);
     const userIds = [...new Set(students.map(s => s.user_id).filter(Boolean))] as string[];
 
-    // Delete related data first (fees, attendance, results)
+    // Get all invoice IDs for these students
+    const { data: invoices } = await supabaseAdmin
+      .from("fee_invoices")
+      .select("id")
+      .in("student_id", studentIds);
+    const invoiceIds = invoices?.map(i => i.id) || [];
+
+    // Delete related data in correct order (respecting FK constraints)
+    if (invoiceIds.length > 0) {
+      await supabaseAdmin.from("fee_discounts").delete().in("invoice_id", invoiceIds);
+      await supabaseAdmin.from("fee_payments").delete().in("invoice_id", invoiceIds);
+      await supabaseAdmin.from("fee_invoice_components").delete().in("invoice_id", invoiceIds);
+      await supabaseAdmin.from("payment_submissions").delete().in("invoice_id", invoiceIds);
+    }
+    await supabaseAdmin.from("fee_invoices").delete().in("student_id", studentIds);
     await supabaseAdmin.from("fees").delete().in("student_id", studentIds);
     await supabaseAdmin.from("attendance").delete().in("student_id", studentIds);
-    
-    // Delete results via exam linkage
     await supabaseAdmin.from("results").delete().in("student_id", studentIds);
-    
-    // Delete student fee overrides
     await supabaseAdmin.from("student_fee_overrides").delete().in("student_id", studentIds);
-    
-    // Delete student promotions
     await supabaseAdmin.from("student_promotions").delete().in("student_id", studentIds);
+    await supabaseAdmin.from("student_transport").delete().in("student_id", studentIds);
 
     // Delete students
     const { error: deleteErr } = await supabaseAdmin
