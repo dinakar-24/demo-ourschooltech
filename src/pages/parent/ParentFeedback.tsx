@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from '@/components/ui/dialog';
-import { MessageSquare, Star, Plus, Loader2, EyeOff, User } from 'lucide-react';
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
+} from '@/components/ui/drawer';
+import { MessageSquare, Star, Plus, Loader2 } from 'lucide-react';
 import { useFeedbackList, useFeedbackResponses, useSubmitFeedback, Feedback } from '@/hooks/useFeedback';
 import { format } from 'date-fns';
 
@@ -41,46 +41,90 @@ export default function ParentFeedback() {
   };
 
   const renderStars = (value: number, interactive = false) => (
-    <div className="flex gap-1">
+    <div className="flex gap-1.5">
       {[1, 2, 3, 4, 5].map(i => (
         <Star
           key={i}
-          className={`w-5 h-5 cursor-pointer transition-colors ${i <= value ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`}
+          className={`w-7 h-7 cursor-pointer transition-colors ${i <= value ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`}
           onClick={interactive ? () => setRating(i) : undefined}
         />
       ))}
     </div>
   );
 
+  const submitForm = (
+    <div className="space-y-5 px-4 pb-6">
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Rating</Label>
+        {renderStars(rating, true)}
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Your Feedback</Label>
+        <Textarea
+          placeholder="Share your thoughts..."
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          className="min-h-[120px] text-base"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+        <Label className="text-sm">Submit anonymously</Label>
+      </div>
+      <Button
+        className="w-full h-12 text-base"
+        onClick={handleSubmit}
+        disabled={submitFeedback.isPending || !rating || !message.trim()}
+      >
+        {submitFeedback.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        Submit
+      </Button>
+    </div>
+  );
+
+  const detailContent = selectedFb && (
+    <div className="space-y-4 px-4 pb-6">
+      <div className="flex items-center gap-3">
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map(i => (
+            <Star key={i} className={`w-5 h-5 ${i <= selectedFb.rating ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
+          ))}
+        </div>
+        <Badge className={`text-xs ${statusColors[selectedFb.status]}`}>{selectedFb.status}</Badge>
+      </div>
+      <p className="text-sm leading-relaxed">{selectedFb.message}</p>
+      <p className="text-xs text-muted-foreground">{format(new Date(selectedFb.created_at), 'dd MMM yyyy, hh:mm a')}</p>
+
+      {responses && responses.length > 0 && (
+        <div className="border-t pt-4 space-y-3">
+          <p className="text-sm font-semibold">Admin Response</p>
+          {responses.map(r => (
+            <div key={r.id} className="bg-muted/50 rounded-xl p-4">
+              <p className="text-sm">{r.response}</p>
+              <p className="text-xs text-muted-foreground mt-2">{format(new Date(r.created_at), 'dd MMM yyyy')}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <MobileLayout title="Feedback" showBack>
       <div className="p-4 space-y-3">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full"><Plus className="w-4 h-4 mr-2" /> Submit Feedback</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Submit Feedback</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Rating</Label>
-                {renderStars(rating, true)}
-              </div>
-              <div className="space-y-2">
-                <Label>Your Feedback</Label>
-                <Textarea placeholder="Share your thoughts..." value={message} onChange={e => setMessage(e.target.value)} className="min-h-[100px]" />
-              </div>
-              <div className="flex items-center gap-3">
-                <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
-                <Label className="text-sm">Submit anonymously</Label>
-              </div>
-              <Button className="w-full" onClick={handleSubmit} disabled={submitFeedback.isPending || !rating || !message.trim()}>
-                {submitFeedback.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Submit
-              </Button>
+        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+          <DrawerTrigger asChild>
+            <Button className="w-full h-11"><Plus className="w-4 h-4 mr-2" /> Submit Feedback</Button>
+          </DrawerTrigger>
+          <DrawerContent className="max-h-[85dvh]">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle>Submit Feedback</DrawerTitle>
+            </DrawerHeader>
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {submitForm}
             </div>
-          </DialogContent>
-        </Dialog>
+          </DrawerContent>
+        </Drawer>
 
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)
@@ -91,7 +135,7 @@ export default function ParentFeedback() {
           </div>
         ) : (
           feedbacks?.map(fb => (
-            <Card key={fb.id} className="cursor-pointer" onClick={() => setSelectedFb(fb)}>
+            <Card key={fb.id} className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => setSelectedFb(fb)}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex gap-0.5">
@@ -109,38 +153,17 @@ export default function ParentFeedback() {
         )}
       </div>
 
-      {/* Detail view */}
-      <Dialog open={!!selectedFb} onOpenChange={() => setSelectedFb(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Feedback Details</DialogTitle></DialogHeader>
-          {selectedFb && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <Star key={i} className={`w-4 h-4 ${i <= selectedFb.rating ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
-                  ))}
-                </div>
-                <Badge className={`text-[10px] ${statusColors[selectedFb.status]}`}>{selectedFb.status}</Badge>
-              </div>
-              <p className="text-sm">{selectedFb.message}</p>
-              <p className="text-xs text-muted-foreground">{format(new Date(selectedFb.created_at), 'dd MMM yyyy, hh:mm a')}</p>
-
-              {responses && responses.length > 0 && (
-                <div className="border-t pt-3 space-y-2">
-                  <p className="text-sm font-medium">Admin Response</p>
-                  {responses.map(r => (
-                    <div key={r.id} className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-sm">{r.response}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{format(new Date(r.created_at), 'dd MMM yyyy')}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Detail Drawer */}
+      <Drawer open={!!selectedFb} onOpenChange={() => setSelectedFb(null)}>
+        <DrawerContent className="max-h-[85dvh]">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle>Feedback Details</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {detailContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </MobileLayout>
   );
 }
