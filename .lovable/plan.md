@@ -1,59 +1,45 @@
 
 
-# Top-Up Payment Without Extending Subscription
+## Fix: Instant School Logo Loading on Login
 
-## Problem
-Currently, both full subscription payments and top-up payments for new students reset the subscription dates (start = today, end = today + 1 year). When a school admin pays for new students mid-subscription, the expiry date should remain unchanged -- only the `student_count` should update.
+### Problem
+The school logo loads late because it requires **two sequential network calls**:
+1. `lookup_user_by_email` -- returns school info but only a boolean `has_logo` (not the actual URL)
+2. `get_school_logo_by_id` -- a second call to fetch the logo URL
 
-## Solution
+For 100+ schools and 200K+ users, this extra round-trip adds noticeable delay.
 
-### 1. Track payment type in the flow
-Pass a `payment_type` field ("renewal" or "topup") from the frontend through the entire payment pipeline so the verification function knows whether to update dates.
+### Solution
+Include the logo URL directly in the first `lookup_user_by_email` response, eliminating the second network call entirely. The logo image will start loading immediately when the password step renders.
 
-### 2. Frontend changes (`SubscriptionPage.tsx`)
-- `handlePayment` (full/renewal): pass `paymentType: 'renewal'`
-- `handleTopUp` (new students only): pass `paymentType: 'topup'`
+### Changes
 
-### 3. Hook changes (`useRazorpay.ts`)
-- Add `paymentType` to the `initiatePayment` params and forward it to the `create-razorpay-order` edge function body.
+**1. Update the `lookup_user_by_email` database function**
+- Add `logo_url` field (the actual URL) to the JSON response alongside the existing `has_logo` boolean
+- This is a zero-cost change since the query already joins the `schools` table
 
-### 4. Edge function: `create-razorpay-order`
-- Accept `paymentType` from the request body
-- Store it in the Razorpay order `notes` so it flows through to verification
-- Also store it in the `subscription_payments` table (requires a new column or use of an existing field)
+**2. Update `LoginPage.tsx` -- PasswordStep component**
+- Use `schoolInfo.logo_url` directly instead of making a second RPC call
+- Remove the `useEffect` that calls `get_school_logo_by_id`
+- Preload the logo image during the email lookup phase (while user types password) using an `Image()` prefetch
+- The logo will already be in the browser cache by the time the password step renders
 
-### 5. Database migration
-- Add a `payment_type` text column to `subscription_payments` table (default: `'renewal'`)
+### Technical Details
 
-### 6. Edge function: `verify-razorpay-payment`
-- Read the `payment_type` from the payment record
-- If `payment_type = 'topup'`: only update `student_count` on the subscription, do NOT change `start_date`, `end_date`, or `status`
-- If `payment_type = 'renewal'`: current behavior (set dates to now + 1 year, activate)
-
-## Technical Details
-
-**New column:**
+Database migration (SQL):
 ```sql
-ALTER TABLE subscription_payments ADD COLUMN payment_type text NOT NULL DEFAULT 'renewal';
+-- Add logo_url directly to lookup response
+-- Change: 'has_logo', (s.logo IS NOT NULL AND s.logo <> '')
+-- To also include: 'logo_url', s.logo
 ```
 
-**verify-razorpay-payment logic change (both webhook and direct paths):**
-```
-if payment_type === 'topup':
-  -- Only update student_count on subscriptions table
-  UPDATE subscriptions SET student_count = <new_count> WHERE id = ...
-else:
-  -- Full renewal: set dates, activate (existing behavior)
-  UPDATE subscriptions SET status='active', start_date=now, end_date=now+1y, student_count=...
-```
+Frontend changes in `src/pages/LoginPage.tsx`:
+- Remove the lazy-load `useEffect` with `get_school_logo_by_id` RPC call
+- Set `logoUrl` directly from `schoolInfo.logo_url`
+- Add image prefetch in `handleEmailSubmit` so the browser downloads the logo while the user is transitioning to the password step
 
-**create-razorpay-order change:**
-- Store `paymentType` and `studentCount` in the `subscription_payments` record
-- Forward to Razorpay order notes for traceability
+### Result
+- One network call instead of two
+- Logo appears instantly when password step opens
+- No visible loading/fade-in delay for the school logo
 
-## Files to modify
-1. `src/pages/admin/SubscriptionPage.tsx` -- pass `paymentType` in both handlers
-2. `src/hooks/useRazorpay.ts` -- accept and forward `paymentType`
-3. `supabase/functions/create-razorpay-order/index.ts` -- store `payment_type` in payment record
-4. `supabase/functions/verify-razorpay-payment/index.ts` -- conditional logic based on `payment_type`
-5. Database migration -- add `payment_type` column to `subscription_payments`
