@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
@@ -492,18 +492,21 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
 }
 
 /* ── Error Message ── */
-function ErrorMessage({ error }: { error: string }) {
-  return (
-    <AnimatePresence>
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-          className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-xs flex items-center gap-2 overflow-hidden"
-        >
-          <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-[10px] font-bold">!</div>
-          <span className="text-red-300/80">{error}</span>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
+const ErrorMessage = React.forwardRef<HTMLDivElement, { error: string }>(
+  function ErrorMessage({ error }, ref) {
+    return (
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            ref={ref}
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-xs flex items-center gap-2 overflow-hidden"
+          >
+            <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-[10px] font-bold">!</div>
+            <span className="text-red-300/80">{error}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+);
