@@ -185,7 +185,7 @@ export default function ParentFees() {
                     open={expandedInvoice === inv.id}
                     onOpenChange={(open) => setExpandedInvoice(open ? inv.id : null)}
                   >
-                    <Card className={isOverdue ? 'border-warning/50' : ''}>
+                     <Card className={isOverdue ? 'border-warning/50' : ''}>
                       <CollapsibleTrigger className="w-full text-left">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
@@ -204,10 +204,7 @@ export default function ParentFees() {
                               {getStatusBadge(inv.status, inv.due_date)}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}
-                            </span>
+                          <div className="flex items-center justify-end">
                             <span className="text-xl font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
                           </div>
                           {Number(inv.total_amount) > 0 && (
