@@ -237,16 +237,6 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                   const compAmount = Number(c.amount);
                   const feeTypeLower = c.fee_type.toLowerCase();
                   
-                  // Calculate total paid for this component from ALL payments
-                  const totalPaidForComponent = (invoice.payments || []).reduce((sum, p) => {
-                    const pNotes = (p.notes || '').toLowerCase();
-                    if (pNotes.includes(feeTypeLower)) {
-                      return sum + Number(p.amount);
-                    }
-                    return sum;
-                  }, 0);
-                  const remainingAmount = Math.max(0, compAmount - totalPaidForComponent);
-                  
                   // Check if THIS specific payment is for this component
                   const notesLower = (payment.notes || '').toLowerCase();
                   const isTargetComponent = notesLower.includes(feeTypeLower);
@@ -259,12 +249,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                     <tr key={c.id}>
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', fontWeight: 500 }}>{c.fee_type}</td>
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
-                        {remainingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        {totalPaidForComponent > 0 && (
-                          <span style={{ fontSize: '9px', color: '#888', display: 'block' }}>
-                            (of {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })})
-                          </span>
-                        )}
+                        {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: showPaid ? 700 : 400, color: showPaid ? '#1a1a1a' : '#999' }}>
                         {showPaid ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '—'}
