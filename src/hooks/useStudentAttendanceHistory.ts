@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface AttendanceRecord {
   date: string;
-  status: 'present' | 'absent' | 'late';
+  status: 'present' | 'absent' | 'late' | 'half_day';
 }
 
 export function useStudentAttendanceHistory(studentId?: string) {
@@ -22,13 +22,15 @@ export function useStudentAttendanceHistory(studentId?: string) {
 
       const records: AttendanceRecord[] = (data || []).map(r => ({
         date: r.date,
-        status: r.status as 'present' | 'absent' | 'late',
+        status: r.status as AttendanceRecord['status'],
       }));
 
       const total = records.length;
       const present = records.filter(r => r.status === 'present').length;
       const late = records.filter(r => r.status === 'late').length;
-      const percentage = total > 0 ? Math.round(((present + late) / total) * 100 * 10) / 10 : 0;
+      const halfDay = records.filter(r => r.status === 'half_day').length;
+      // Half day counts as 0.5 attendance
+      const percentage = total > 0 ? Math.round(((present + late + halfDay * 0.5) / total) * 100 * 10) / 10 : 0;
 
       return { records, percentage };
     },

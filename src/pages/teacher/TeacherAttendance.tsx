@@ -30,7 +30,7 @@ export default function TeacherAttendance() {
   const [date, setDate] = useState<Date>(new Date());
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
-  const [localAttendance, setLocalAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+  const [localAttendance, setLocalAttendance] = useState<Record<string, 'present' | 'absent' | 'late' | 'half_day'>>({});
 
   const { data: classes } = useClasses();
   const { data: classData, isLoading } = useClassAttendance(date, selectedClass, selectedSection);
@@ -42,20 +42,20 @@ export default function TeacherAttendance() {
   const existingAttendance = classData?.attendance || new Map();
   const isAlreadyMarked = classData?.isMarked || false;
 
-  const getAttendanceStatus = (studentId: string): 'present' | 'absent' | 'late' => {
+  const getAttendanceStatus = (studentId: string): 'present' | 'absent' | 'late' | 'half_day' => {
     if (localAttendance[studentId]) return localAttendance[studentId];
     const existing = existingAttendance.get(studentId);
-    if (existing) return existing.status as 'present' | 'absent' | 'late';
+    if (existing) return existing.status as 'present' | 'absent' | 'late' | 'half_day';
     return 'present';
   };
 
   const markAll = (status: 'present' | 'absent') => {
-    const newAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
+    const newAttendance: Record<string, 'present' | 'absent' | 'late' | 'half_day'> = {};
     students.forEach(s => { newAttendance[s.id] = status; });
     setLocalAttendance(newAttendance);
   };
 
-  const setStatus = (id: string, status: 'present' | 'absent' | 'late') => {
+  const setStatus = (id: string, status: 'present' | 'absent' | 'late' | 'half_day') => {
     setLocalAttendance(prev => ({ ...prev, [id]: status }));
   };
 
@@ -71,6 +71,7 @@ export default function TeacherAttendance() {
   const presentCount = students.filter(s => getAttendanceStatus(s.id) === 'present').length;
   const absentCount = students.filter(s => getAttendanceStatus(s.id) === 'absent').length;
   const lateCount = students.filter(s => getAttendanceStatus(s.id) === 'late').length;
+  const halfDayCount = students.filter(s => getAttendanceStatus(s.id) === 'half_day').length;
   const attendancePercentage = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
   const classOptions = classes?.map(c => c.name) || [];
 
@@ -167,6 +168,10 @@ export default function TeacherAttendance() {
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-xs font-bold">{lateCount}</span>
                 </div>
+                <div className="flex items-center gap-1.5 bg-info/10 text-info rounded-lg px-2.5 py-1.5">
+                  <div className="w-2 h-2 rounded-full bg-info" />
+                  <span className="text-xs font-bold">{halfDayCount}</span>
+                </div>
               </div>
             </div>
 
@@ -180,6 +185,7 @@ export default function TeacherAttendance() {
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
                       status === 'present' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
                       status === 'absent' ? 'bg-destructive/10 text-destructive' :
+                      status === 'half_day' ? 'bg-info/10 text-info' :
                       'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                     }`}>
                       {student.roll_number || '-'}
@@ -191,13 +197,14 @@ export default function TeacherAttendance() {
                     </div>
                     {/* Status Buttons */}
                     <div className="flex items-center gap-1 shrink-0">
-                      {(['present', 'absent', 'late'] as const).map((s) => {
+                      {(['present', 'absent', 'late', 'half_day'] as const).map((s) => {
                         const isActive = status === s;
-                        const labels = { present: 'P', absent: 'A', late: 'L' };
+                        const labels = { present: 'P', absent: 'A', late: 'L', half_day: 'HD' };
                         const activeStyles = {
                           present: 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30',
                           absent: 'bg-destructive text-white shadow-sm shadow-destructive/30',
                           late: 'bg-amber-500 text-white shadow-sm shadow-amber-500/30',
+                          half_day: 'bg-info text-white shadow-sm shadow-info/30',
                         };
                         return (
                           <button

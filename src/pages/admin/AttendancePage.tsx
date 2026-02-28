@@ -216,6 +216,7 @@ export default function AttendancePage() {
                       <span><span className="text-muted-foreground">P:</span> <span className="font-medium text-success">{row.present}</span></span>
                       <span><span className="text-muted-foreground">A:</span> <span className="font-medium text-destructive">{row.absent}</span></span>
                       <span><span className="text-muted-foreground">L:</span> <span className="font-medium text-warning">{row.late}</span></span>
+                      <span><span className="text-muted-foreground">HD:</span> <span className="font-medium text-info">{row.half_day || 0}</span></span>
                       <span><span className="text-muted-foreground">T:</span> <span className="font-medium">{row.total}</span></span>
                     </div>
                   </div>
@@ -230,6 +231,7 @@ export default function AttendancePage() {
                     <TableHead className="text-center">Present</TableHead>
                     <TableHead className="text-center">Absent</TableHead>
                     <TableHead className="text-center">Late</TableHead>
+                    <TableHead className="text-center">Half Day</TableHead>
                     <TableHead className="text-center">Total</TableHead>
                     <TableHead className="text-center">Percentage</TableHead>
                     <TableHead>Status</TableHead>
@@ -242,6 +244,7 @@ export default function AttendancePage() {
                       <TableCell className="text-center text-success font-medium">{row.present}</TableCell>
                       <TableCell className="text-center text-destructive font-medium">{row.absent}</TableCell>
                       <TableCell className="text-center text-warning font-medium">{row.late}</TableCell>
+                      <TableCell className="text-center text-info font-medium">{row.half_day || 0}</TableCell>
                       <TableCell className="text-center">{row.total}</TableCell>
                       <TableCell className="text-center">
                         <span className={
