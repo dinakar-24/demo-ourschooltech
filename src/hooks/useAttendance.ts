@@ -139,6 +139,7 @@ export function useClassAttendance(date: Date, className: string, section: strin
       };
     },
     enabled: !!schoolId && !!className && !!section,
+    staleTime: 1 * 60 * 1000,
   });
 }
 
@@ -258,5 +259,6 @@ export function useStudentAttendance(studentId: string, startDate?: Date, endDat
       return data as AttendanceRecord[];
     },
     enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
   });
 }
