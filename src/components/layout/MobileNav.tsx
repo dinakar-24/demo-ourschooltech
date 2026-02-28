@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Users,
@@ -25,46 +26,47 @@ const rolePrefix = {
   student: '/student',
 };
 
-// Mobile nav items with relative paths
+// Mobile nav items with relative paths and i18n keys
 const navConfig = {
   super_admin: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Schools', path: '/schools', icon: School },
-    { label: 'Users', path: '/users', icon: Users },
-    { label: 'Settings', path: '/settings', icon: MoreHorizontal },
+    { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
+    { i18nKey: 'sidebar.schools', path: '/schools', icon: School },
+    { i18nKey: 'sidebar.allUsers', path: '/users', icon: Users },
+    { i18nKey: 'sidebar.settings', path: '/settings', icon: MoreHorizontal },
   ],
   school_admin: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Students', path: '/students', icon: Users },
-    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
-    { label: 'Fees', path: '/fees', icon: CreditCard },
-    { label: 'More', path: '/settings', icon: MoreHorizontal },
+    { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
+    { i18nKey: 'sidebar.students', path: '/students', icon: Users },
+    { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
+    { i18nKey: 'nav.fees', path: '/fees', icon: CreditCard },
+    { i18nKey: 'nav.more', path: '/settings', icon: MoreHorizontal },
   ],
   teacher: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
-    { label: 'Homework', path: '/homework', icon: FileText },
-    { label: 'Marks', path: '/marks', icon: BarChart3 },
-    { label: 'More', path: '/announcements', icon: MoreHorizontal },
+    { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
+    { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
+    { i18nKey: 'nav.homework', path: '/homework', icon: FileText },
+    { i18nKey: 'nav.marks', path: '/marks', icon: BarChart3 },
+    { i18nKey: 'nav.more', path: '/announcements', icon: MoreHorizontal },
   ],
   parent: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
-    { label: 'Fees', path: '/fees', icon: CreditCard },
-    { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'More', path: '/more', icon: MoreHorizontal },
+    { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
+    { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
+    { i18nKey: 'nav.fees', path: '/fees', icon: CreditCard },
+    { i18nKey: 'nav.results', path: '/results', icon: BarChart3 },
+    { i18nKey: 'nav.more', path: '/more', icon: MoreHorizontal },
   ],
   student: [
-    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', path: '/attendance', icon: ClipboardList },
-    { label: 'Homework', path: '/homework', icon: FileText },
-    { label: 'Results', path: '/results', icon: BarChart3 },
-    { label: 'More', path: '/announcements', icon: MoreHorizontal },
+    { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
+    { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
+    { i18nKey: 'nav.homework', path: '/homework', icon: FileText },
+    { i18nKey: 'nav.results', path: '/results', icon: BarChart3 },
+    { i18nKey: 'nav.more', path: '/announcements', icon: MoreHorizontal },
   ],
 };
 
 export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
   const location = useLocation();
+  const { t } = useTranslation();
   const navItems = navConfig[userRole];
   const prefix = rolePrefix[userRole];
 
@@ -87,7 +89,7 @@ export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
           )}
         >
           <item.icon className="w-5 h-5" />
-          <span className="text-xs font-medium">{item.label}</span>
+          <span className="text-xs font-medium">{t(item.i18nKey)}</span>
         </Link>
       ))}
     </nav>

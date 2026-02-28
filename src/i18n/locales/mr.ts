@@ -6,6 +6,11 @@ const mr = {
     results: 'निकाल',
     profile: 'प्रोफाइल',
     more: 'अधिक',
+    marks: 'गुण',
+    students: 'विद्यार्थी',
+    timetable: 'वेळापत्रक',
+    announcements: 'सूचना',
+    fees: 'शुल्क',
   },
   sidebar: {
     dashboard: 'डॅशबोर्ड',

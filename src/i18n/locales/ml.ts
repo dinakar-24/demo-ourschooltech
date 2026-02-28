@@ -6,6 +6,11 @@ const ml = {
     results: 'ഫലങ്ങൾ',
     profile: 'പ്രൊഫൈൽ',
     more: 'കൂടുതൽ',
+    marks: 'മാർക്കുകൾ',
+    students: 'വിദ്യാർത്ഥികൾ',
+    timetable: 'ടൈംടേബിൾ',
+    announcements: 'അറിയിപ്പുകൾ',
+    fees: 'ഫീസ്',
   },
   sidebar: {
     dashboard: 'ഡാഷ്‌ബോർഡ്',

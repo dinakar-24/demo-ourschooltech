@@ -6,6 +6,11 @@ const te = {
     results: 'ఫలితాలు',
     profile: 'ప్రొఫైల్',
     more: 'మరిన్ని',
+    marks: 'మార్కులు',
+    students: 'విద్యార్థులు',
+    timetable: 'టైమ్‌టేబుల్',
+    announcements: 'ప్రకటనలు',
+    fees: 'ఫీజులు',
   },
   sidebar: {
     dashboard: 'డాష్‌బోర్డ్',
