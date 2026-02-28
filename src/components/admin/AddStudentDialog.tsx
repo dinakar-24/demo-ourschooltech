@@ -300,7 +300,7 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Roll Number</Label>
-          <Input type="number" value={formData.roll_number} onChange={(e) => onInputChange('roll_number', e.target.value)} placeholder="Enter roll number" className="h-11" />
+          <Input type="number" min="0" value={formData.roll_number} onChange={(e) => onInputChange('roll_number', e.target.value)} placeholder="Enter roll number" className="h-11 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
         </div>
         <ChipSelector label="Gender" options={GENDERS} value={formData.gender} onChange={(v) => onInputChange('gender', v)} />
       </div>
