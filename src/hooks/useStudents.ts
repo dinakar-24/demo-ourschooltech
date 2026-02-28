@@ -18,6 +18,7 @@ export interface Student {
   parent_phone: string | null;
   parent_email: string | null;
   address: string | null;
+  avatar_url: string | null;
   status: string;
   school_id: string;
   user_id: string | null;

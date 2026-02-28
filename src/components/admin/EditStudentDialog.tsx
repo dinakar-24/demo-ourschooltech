@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AvatarUpload } from '@/components/ui/avatar-upload';
 import {
   Select,
   SelectContent,
@@ -42,6 +43,7 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
     parent_email: '',
     address: '',
     status: 'active',
+    avatar_url: '' as string | null,
   });
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
         parent_email: student.parent_email || '',
         address: student.address || '',
         status: student.status || 'active',
+        avatar_url: (student as any).avatar_url || null,
       });
     }
   }, [student]);
@@ -81,7 +84,18 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
       parent_email: form.parent_email || null,
       address: form.address || null,
       status: form.status,
-    });
+      avatar_url: form.avatar_url,
+    } as any);
+
+    // Sync avatar to profile if student has a user_id
+    if (form.avatar_url !== (student as any).avatar_url && (student as any).user_id) {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        await supabase.from('profiles').update({ avatar_url: form.avatar_url }).eq('id', (student as any).user_id);
+      } catch (e) {
+        console.error('Failed to sync avatar to profile:', e);
+      }
+    }
 
     onOpenChange(false);
   };
@@ -97,6 +111,15 @@ export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDi
           <DialogTitle>Edit Student</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="flex justify-center mb-2">
+            <AvatarUpload
+              value={form.avatar_url}
+              onChange={(url) => setForm(f => ({ ...f, avatar_url: url }))}
+              fallback={form.full_name}
+              size="lg"
+              folder="students"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
               <Label>Full Name *</Label>
