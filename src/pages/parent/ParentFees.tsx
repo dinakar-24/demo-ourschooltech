@@ -29,6 +29,8 @@ export default function ParentFees() {
   const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitInvoice, setSubmitInvoice] = useState<ParentInvoice | null>(null);
+  const [submitPrefillAmount, setSubmitPrefillAmount] = useState<number | undefined>();
+  const [submitPrefillLabel, setSubmitPrefillLabel] = useState<string | undefined>();
 
   const childName = childProfile?.full_name || user?.childName || 'Your Child';
 
@@ -82,8 +84,10 @@ export default function ParentFees() {
     setReceiptOpen(true);
   };
 
-  const openSubmitPayment = (inv: ParentInvoice) => {
+  const openSubmitPayment = (inv: ParentInvoice, prefillAmt?: number, prefillLbl?: string) => {
     setSubmitInvoice(inv);
+    setSubmitPrefillAmount(prefillAmt);
+    setSubmitPrefillLabel(prefillLbl);
     setSubmitDialogOpen(true);
   };
 
@@ -274,8 +278,7 @@ export default function ParentFees() {
                                           className="h-7 text-xs px-2"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            setSubmitInvoice(inv);
-                                            setSubmitDialogOpen(true);
+                                            openSubmitPayment(inv, Number(c.amount), c.fee_type);
                                           }}
                                         >
                                           Pay
@@ -462,6 +465,8 @@ export default function ParentFees() {
           schoolId={user?.schoolId || ''}
           maxAmount={Number(submitInvoice.balance)}
           termName={`Due ${new Date(submitInvoice.due_date).toLocaleDateString('en-IN')}`}
+          prefillAmount={submitPrefillAmount}
+          prefillLabel={submitPrefillLabel}
         />
       )}
     </MobileLayout>
