@@ -11,6 +11,9 @@ interface DashboardLayoutProps {
   title?: string;
 }
 
+// Roles that get the full desktop sidebar
+const SIDEBAR_ROLES = ['super_admin', 'school_admin'];
+
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, school } = useAuth();
@@ -19,6 +22,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const userRole = user?.role || 'school_admin';
   const schoolName = school?.name || 'Our School Tech';
   const userName = user?.name || 'User';
+  const showSidebar = SIDEBAR_ROLES.includes(userRole);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -27,15 +31,17 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      {/* Sidebar - Desktop only */}
-      <Sidebar 
-        userRole={userRole} 
-        schoolName={schoolName}
-        userName={userName}
-      />
+      {/* Sidebar - Desktop only, admin roles only */}
+      {showSidebar && (
+        <Sidebar 
+          userRole={userRole} 
+          schoolName={schoolName}
+          userName={userName}
+        />
+      )}
 
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
+      {/* Mobile Menu Overlay - admin roles only */}
+      {showSidebar && mobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-50 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
@@ -57,7 +63,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar title={title} onMenuClick={() => setMobileMenuOpen(true)} />
+        <TopBar title={title} onMenuClick={showSidebar ? () => setMobileMenuOpen(true) : undefined} />
         
         <main className={cn(
           "flex-1 p-4 md:p-6 overflow-auto",
