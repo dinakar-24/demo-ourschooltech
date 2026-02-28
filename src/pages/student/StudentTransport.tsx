@@ -10,11 +10,7 @@ export default function StudentTransportPage() {
 
   return (
     <MobileLayout title="My Transport" showBack>
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">My Transport</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Your bus route and pickup details</p>
-        </div>
+      <div className="p-4 space-y-4">
 
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
