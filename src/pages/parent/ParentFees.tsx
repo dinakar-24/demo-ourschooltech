@@ -116,32 +116,32 @@ export default function ParentFees() {
     <MobileLayout title="Fees" showBack>
       <div className="p-4 space-y-3">
         {/* Summary Card */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-5 shadow-lg">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-primary-foreground/70">Pending Fees</p>
-              <p className="text-3xl font-extrabold tracking-tight">₹{totalPending.toLocaleString('en-IN')}</p>
+        <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-primary-foreground/70">Pending Fees</p>
+              <p className="text-2xl font-extrabold tracking-tight mt-0.5">₹{totalPending.toLocaleString('en-IN')}</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
-              <CreditCard className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center">
+              <CreditCard className="w-5 h-5" />
             </div>
           </div>
           {grandTotal > 0 && (
-            <div className="mt-4 space-y-2">
-              <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+            <div className="mt-2.5 space-y-1">
+              <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-white/70 transition-all"
                   style={{ width: `${paidPercentage}%` }}
                 />
               </div>
-              <p className="text-xs text-primary-foreground/70">
+              <p className="text-[11px] text-primary-foreground/70">
                 {paidPercentage}% paid · ₹{totalPaid.toLocaleString('en-IN')} of ₹{grandTotal.toLocaleString('en-IN')}
               </p>
             </div>
           )}
           {totalPending > 0 && (
-            <div className="flex items-center gap-2.5 mt-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm text-sm">
-              <Building2 className="w-4 h-4 flex-shrink-0 opacity-80" />
+            <div className="flex items-center gap-2 mt-2.5 p-2.5 rounded-lg bg-white/10 text-xs">
+              <Building2 className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
               <span className="text-primary-foreground/90">Pay via UPI and submit proof, or visit school office</span>
             </div>
           )}
