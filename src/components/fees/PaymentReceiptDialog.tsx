@@ -233,16 +233,25 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                 </tr>
               </thead>
               <tbody>
-                {(invoice.components || []).map((c, idx) => {
+                {(invoice.components || []).map((c) => {
                   const compAmount = Number(c.amount);
+                  // Check if this payment was specifically for this component via notes
+                  const notesLower = (payment.notes || '').toLowerCase();
+                  const feeTypeLower = c.fee_type.toLowerCase();
+                  const isTargetComponent = notesLower.includes(feeTypeLower) || notesLower.includes(`payment for ${feeTypeLower}`);
+                  // If no specific component in notes (e.g. "Pay All"), show paid in total row only
+                  const hasSpecificComponent = (invoice.components || []).some(comp => 
+                    notesLower.includes(comp.fee_type.toLowerCase())
+                  );
+                  const showPaid = hasSpecificComponent && isTargetComponent;
                   return (
                     <tr key={c.id}>
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', fontWeight: 500 }}>{c.fee_type}</td>
                       <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
                         {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace", color: '#999' }}>
-                        —
+                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: showPaid ? 700 : 400, color: showPaid ? '#1a1a1a' : '#999' }}>
+                        {showPaid ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '—'}
                       </td>
                     </tr>
                   );
