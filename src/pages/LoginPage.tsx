@@ -46,7 +46,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
 
-  const [step, setStep] = useState<LoginStep>('email');
+  const [step, setStep] = useState<LoginStep>('splash');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +56,8 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  
+  const handleSplashComplete = useCallback(() => setStep('email'), []);
+
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -151,6 +152,10 @@ export default function LoginPage() {
     }
   };
 
+  // Splash
+  if (step === 'splash') {
+    return <LoginSplash onComplete={handleSplashComplete} />;
+  }
 
 
   // Super admin
