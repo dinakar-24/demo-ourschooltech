@@ -13,6 +13,7 @@ import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { lazy, Suspense } from "react";
+import { AppLoader } from "@/components/ui/AppLoader";
 
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
@@ -127,11 +128,7 @@ const queryClient = new QueryClient({
 
 // Suspense fallback spinner
 function RouteLoadingFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    </div>
-  );
+  return <AppLoader />;
 }
 
 // Smart redirect based on auth state
