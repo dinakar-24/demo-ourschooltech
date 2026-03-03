@@ -155,20 +155,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    let initialSessionHandled = false;
+
+    // First, restore the session from storage
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      initialSessionHandled = true;
+
+      if (session?.user) {
+        const data = await fetchUserData(session.user);
+        if (!isMounted) return;
+        if (data) {
+          const isValid = await validateTenant(data.user);
+          if (isValid && isMounted) {
+            setUser(data.user);
+            setSchool(data.school);
+            cacheAuthData(data.user, data.school);
+          }
+        }
+      } else {
+        setUser(null);
+        setSchool(null);
+        clearAuthCache();
+      }
+      if (isMounted) setIsLoading(false);
+    }).catch(() => {
+      if (isMounted) {
+        setUser(null);
+        setSchool(null);
+        clearAuthCache();
+        setIsLoading(false);
+      }
+    });
+
+    // Then listen for subsequent auth changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!isMounted) return;
+        // Skip the initial session event since getSession handles it
+        if (event === 'INITIAL_SESSION') return;
+
         if (session?.user) {
+          // Use setTimeout to avoid deadlocks with Supabase internals
           setTimeout(async () => {
+            if (!isMounted) return;
             const data = await fetchUserData(session.user);
+            if (!isMounted) return;
             if (data) {
               const isValid = await validateTenant(data.user);
-              if (isValid) {
+              if (isValid && isMounted) {
                 setUser(data.user);
                 setSchool(data.school);
                 cacheAuthData(data.user, data.school);
               }
             }
-            setIsLoading(false);
+            if (isMounted) setIsLoading(false);
           }, 0);
         } else {
           setUser(null);
@@ -179,28 +221,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Check existing session & silently refresh cached data
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const data = await fetchUserData(session.user);
-        if (data) {
-          const isValid = await validateTenant(data.user);
-          if (isValid) {
-            setUser(data.user);
-            setSchool(data.school);
-            cacheAuthData(data.user, data.school);
-          }
-        }
-      } else if (!session) {
-        // No session -- clear any stale cache
-        setUser(null);
-        setSchool(null);
-        clearAuthCache();
+    // Safety timeout — if nothing resolves in 8 seconds, stop loading
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && !initialSessionHandled) {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    }, 8000);
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [validateTenant]);
