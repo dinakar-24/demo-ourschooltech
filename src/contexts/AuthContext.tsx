@@ -106,73 +106,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }, [isSubdomain, tenant]);
 
-  // Fetch user profile, role, and school in a single optimized query
-  const fetchUserData = async (supabaseUser: SupabaseUser) => {
-    try {
-      // Direct fetch to bypass Supabase client lock contention
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_user_auth_data`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ _user_id: supabaseUser.id }),
-          signal: controller.signal,
-        }
-      );
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        console.error('Error fetching user data:', res.status);
-        return null;
-      }
-
-      const result = await res.json() as { profile: any; role: string | null; school: any | null } | null;
-
-      if (!result?.profile) {
-        console.log('No profile found for user');
-        return null;
-      }
-
-      const { profile, role, school } = result;
-
-      const schoolData: School | null = school
-        ? {
-            id: school.id,
-            name: school.name,
-            code: school.code,
-            logo: school.logo || undefined,
-            address: school.address,
-            city: school.city,
-            phone: school.phone || undefined,
-            email: school.email || undefined,
+  // Fetch user profile, role, and school in a single optimized query (with retry)
+  const fetchUserData = async (supabaseUser: SupabaseUser, retries = 2): Promise<{ user: User; school: School | null } | null> => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_user_auth_data`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ _user_id: supabaseUser.id }),
+            signal: controller.signal,
           }
-        : null;
+        );
+        clearTimeout(timeout);
 
-      const userData: User = {
-        id: supabaseUser.id,
-        name: profile.full_name,
-        email: profile.email,
-        role: (role as UserRole) || 'student',
-        avatar: profile.avatar_url || undefined,
-        schoolId: profile.school_id || '',
-        schoolName: schoolData?.name || '',
-        className: profile.class_name || undefined,
-        section: profile.section || undefined,
-        employeeId: profile.employee_id || undefined,
-        subjects: profile.subjects || undefined,
-      };
+        if (!res.ok) {
+          console.error('Error fetching user data:', res.status);
+          if (attempt < retries) { await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); continue; }
+          return null;
+        }
 
-      return { user: userData, school: schoolData };
-    } catch (error) {
-      console.error('Error in fetchUserData:', error);
-      return null;
+        const result = await res.json() as { profile: any; role: string | null; school: any | null } | null;
+
+        if (!result?.profile) {
+          console.log('No profile found for user');
+          return null;
+        }
+
+        const { profile, role, school } = result;
+
+        const schoolData: School | null = school
+          ? {
+              id: school.id,
+              name: school.name,
+              code: school.code,
+              logo: school.logo || undefined,
+              address: school.address,
+              city: school.city,
+              phone: school.phone || undefined,
+              email: school.email || undefined,
+            }
+          : null;
+
+        const userData: User = {
+          id: supabaseUser.id,
+          name: profile.full_name,
+          email: profile.email,
+          role: (role as UserRole) || 'student',
+          avatar: profile.avatar_url || undefined,
+          schoolId: profile.school_id || '',
+          schoolName: schoolData?.name || '',
+          className: profile.class_name || undefined,
+          section: profile.section || undefined,
+          employeeId: profile.employee_id || undefined,
+          subjects: profile.subjects || undefined,
+        };
+
+        return { user: userData, school: schoolData };
+      } catch (error) {
+        console.warn(`fetchUserData attempt ${attempt + 1} failed:`, error);
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); continue; }
+        return null;
+      }
     }
+    return null;
   };
 
   useEffect(() => {
