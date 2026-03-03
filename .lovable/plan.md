@@ -1,27 +1,54 @@
 
 
-# Fix: Production Stuck on Old Cached Version
+## Problem Analysis
 
-## What's Happening
+The "Finding account..." hang is **not** a code bug in the lookup logic. The network logs reveal the root cause:
 
-The **preview works perfectly** — I just verified it loads the dashboard instantly with no loading spinner. The problem is your **published production URL** (`demo-ourschooltech.lovable.app`) is still serving an old cached version of the app.
+**A stale refresh token** (`jhubcdf4vpan`) is stuck in localStorage. The Supabase auth client endlessly retries refreshing this expired token (~every 7-10 seconds), generating 20+ failing requests that saturate the browser's network connection pool. This blocks the `lookup_user_by_email` call from completing (it gets aborted with "signal is aborted without reason").
 
-Your `index.html` has a cache-busting mechanism that compares `APP_VERSION` in code vs localStorage. But it only triggers a reload when the version **changes**. If a user already has the old version cached and the publish didn't update the HTML file, they stay stuck on the old code.
+## Solution
 
-## Fix
+**Clear stale auth sessions on the login page.** When the user is on the login page and is NOT authenticated, proactively sign out to purge the dead refresh token from localStorage. This stops the retry storm and frees the network for the email lookup.
 
-Bump the `APP_VERSION` in `index.html` to force all production users to get the latest code on their next visit. This will:
+### Changes
 
-1. Clear all browser caches (Cache Storage API)
-2. Unregister any old service workers  
-3. Force a hard reload with the latest code
+**1. `src/pages/LoginPage.tsx`** — Add a one-time cleanup effect at the top of the component:
 
-### `index.html` (line 36)
-Change `APP_VERSION` from `'2026030301'` to `'2026030302'`.
+```tsx
+// Clear any stale/expired auth session that causes retry storms
+useEffect(() => {
+  if (!isAuthenticated && !authLoading) {
+    const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
+    const hasStaleSession = !!localStorage.getItem(storageKey);
+    if (hasStaleSession) {
+      // Sign out to clear the dead refresh token
+      supabase.auth.signOut().catch(() => {});
+    }
+  }
+}, [isAuthenticated, authLoading]);
+```
 
-After this change, **publish the app again**. Every user visiting the production URL will automatically get the fresh version.
+This adds the `supabase` import and a single `useEffect` that runs once when the login page loads. If the user isn't authenticated but there's a leftover session token, it clears it immediately, stopping the endless retry loop.
 
-## Why This Keeps Happening
+**2. `src/contexts/AuthContext.tsx`** — In the `INITIAL_SESSION` handler, when there's no valid session, explicitly clear localStorage to prevent the Supabase client from retrying with a dead token:
 
-Every time you publish frontend changes, you should bump this version number. Without the bump, browsers may serve the old `index.html` from CDN/browser cache, and the new JavaScript never loads.
+```tsx
+if (!session?.user) {
+  // Clear stale tokens that cause infinite retry loops
+  const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
+  localStorage.removeItem(storageKey);
+  setUser(null);
+  setSchool(null);
+  clearAuthCache();
+  setIsLoading(false);
+}
+```
+
+### Why this works
+
+- The Supabase JS client stores the refresh token in localStorage and retries it aggressively on failure
+- When the token is truly expired/invalid, these retries never succeed but never stop either
+- Each retry consumes one of the browser's limited concurrent connections (6 per domain)
+- The email lookup fetch gets queued behind these retries and times out
+- Clearing the dead token on the login page stops the storm immediately
 
