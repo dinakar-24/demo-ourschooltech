@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input';
 
 // Lazy-load components used by <1% of login attempts
 const SuperAdminOTPLogin = lazy(() => import('@/components/auth/SuperAdminOTPLogin').then(m => ({ default: m.SuperAdminOTPLogin })));
-const LoginSplash = lazy(() => import('@/components/login/LoginSplash').then(m => ({ default: m.LoginSplash })));
+
 const ForgotPasswordDialog = lazy(() => import('@/components/auth/ForgotPasswordDialog').then(m => ({ default: m.ForgotPasswordDialog })));
 
-type LoginStep = 'splash' | 'email' | 'password' | 'superadmin';
+type LoginStep = 'email' | 'password' | 'superadmin';
 
 interface SchoolInfo {
   school_name: string;
@@ -49,9 +49,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
 
-  // Skip splash for returning users
-  const isReturningUser = typeof window !== 'undefined' && localStorage.getItem('ost_visited') === '1';
-  const [step, setStep] = useState<LoginStep>(isReturningUser ? 'email' : 'splash');
+  const [step, setStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,10 +59,6 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const handleSplashComplete = useCallback(() => {
-    localStorage.setItem('ost_visited', '1');
-    setStep('email');
-  }, []);
 
   // Pre-warm backend connection on mount (DNS + TLS + connection pool)
   const warmedRef = useRef(false);
@@ -234,15 +228,9 @@ export default function LoginPage() {
       setPassword('');
       setError('');
       setSchoolInfo(null);
-    } else {
-      setStep('splash');
     }
   };
 
-  // Splash
-  if (step === 'splash') {
-    return <Suspense fallback={<div className="min-h-[100dvh] bg-[#0B1120]" />}><LoginSplash onComplete={handleSplashComplete} /></Suspense>;
-  }
 
 
   // Super admin
