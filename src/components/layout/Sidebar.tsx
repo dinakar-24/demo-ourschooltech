@@ -157,6 +157,7 @@ const schoolAdminGrouped: MenuGroup[] = [
       { label: 'Reports', path: '/reports', icon: BarChart3 },
       { label: 'Gallery', path: '/gallery', icon: Image },
       { label: 'Transport', path: '/transport', icon: Bus },
+      { label: 'Holiday Calendar', path: '/holiday-calendar', icon: Calendar },
       { label: 'Bulk Upload', path: '/bulk-upload', icon: Upload },
       { label: 'Subscription', path: '/subscription', icon: CreditCard },
       { label: 'Settings', path: '/settings', icon: Settings },

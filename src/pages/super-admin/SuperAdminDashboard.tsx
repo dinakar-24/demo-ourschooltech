@@ -9,9 +9,11 @@ import { Building2, Users, GraduationCap, CreditCard, School } from 'lucide-reac
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: stats, isLoading: loading, isError, refetch } = useQuery({
     queryKey: ['super-admin-dashboard-stats'],
@@ -32,9 +34,9 @@ export default function SuperAdminDashboard() {
 
   const greeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return t('greetings.morning');
+    if (hour < 17) return t('greetings.afternoon');
+    return t('greetings.evening');
   };
 
   return (
@@ -69,22 +71,22 @@ export default function SuperAdminDashboard() {
           ) : (
             <>
               <AdminStatCard
-                title="Schools"
+                title={t('sidebar.schools')}
                 value={(stats?.totalSchools ?? 0).toString()}
                 icon={<Building2 className="w-4 h-4" />}
               />
               <AdminStatCard
-                title="Students"
+                title={t('sidebar.students')}
                 value={(stats?.totalStudents ?? 0).toLocaleString()}
                 icon={<Users className="w-4 h-4" />}
               />
               <AdminStatCard
-                title="Teachers"
+                title={t('sidebar.teachers')}
                 value={(stats?.totalTeachers ?? 0).toLocaleString()}
                 icon={<GraduationCap className="w-4 h-4" />}
               />
               <AdminStatCard
-                title="Active Subs"
+                title={t('sidebar.subscriptions')}
                 value={(stats?.activeSubscriptions ?? 0).toString()}
                 icon={<CreditCard className="w-4 h-4" />}
               />
@@ -94,7 +96,7 @@ export default function SuperAdminDashboard() {
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t('admin.dashboard.quickActions')}</h3>
           <SuperAdminQuickActions />
         </div>
 
@@ -103,7 +105,7 @@ export default function SuperAdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <School className="w-4 h-4 text-primary" />
-              Recent Schools
+              {t('sidebar.schools')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -116,7 +118,7 @@ export default function SuperAdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-primary" />
-              Subscription Overview
+              {t('sidebar.subscriptions')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
