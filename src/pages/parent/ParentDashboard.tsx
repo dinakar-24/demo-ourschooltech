@@ -1,5 +1,6 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   ClipboardList, 
@@ -23,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ParentDashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { data: child, isLoading: childLoading } = useParentChild();
   const { data: attendanceStats, isLoading: attendanceLoading } = useChildAttendanceStats(child?.id);
   const { data: feeStats, isLoading: feeLoading } = useChildFeeStats(child?.id);
@@ -35,7 +37,7 @@ export default function ParentDashboard() {
     section: child.section,
     rollNo: child.roll_number || '-',
   } : {
-    name: user?.name || 'No child linked',
+    name: user?.name || t('parent.dashboard.noChildLinked'),
     class: 'N/A',
     section: 'N/A',
     rollNo: '-',
@@ -45,17 +47,17 @@ export default function ParentDashboard() {
   const pendingFees = feeStats?.pending || 0;
 
   const quickActions = [
-    { label: 'Attendance', icon: ClipboardList, href: '/parent/attendance', color: 'text-primary' },
-    { label: 'Fees', icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
-    { label: 'Results', icon: Award, href: '/parent/results', color: 'text-success' },
-    { label: 'Notices', icon: Bell, href: '/parent/announcements', color: 'text-info' },
-    { label: 'Homework', icon: BookOpen, href: '/parent/homework', color: 'text-warning' },
-    { label: 'Gallery', icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
-    { label: 'Transport', icon: Bus, href: '/parent/transport', color: 'text-success' },
-    { label: 'Classes', icon: Video, href: '/parent/online-classes', color: 'text-primary' },
-    { label: 'Messages', icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
-    { label: 'Feedback', icon: MessageSquare, href: '/parent/feedback', color: 'text-warning' },
-    { label: 'Queries', icon: HelpCircle, href: '/parent/queries', color: 'text-destructive' },
+    { label: t('parent.dashboard.attendance'), icon: ClipboardList, href: '/parent/attendance', color: 'text-primary' },
+    { label: t('nav.fees'), icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
+    { label: t('parent.dashboard.results'), icon: Award, href: '/parent/results', color: 'text-success' },
+    { label: t('parent.dashboard.notices'), icon: Bell, href: '/parent/announcements', color: 'text-info' },
+    { label: t('nav.homework'), icon: BookOpen, href: '/parent/homework', color: 'text-warning' },
+    { label: t('sidebar.gallery'), icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
+    { label: t('sidebar.transport'), icon: Bus, href: '/parent/transport', color: 'text-success' },
+    { label: t('sidebar.onlineClasses'), icon: Video, href: '/parent/online-classes', color: 'text-primary' },
+    { label: t('sidebar.messages'), icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
+    { label: t('sidebar.feedback'), icon: MessageSquare, href: '/parent/feedback', color: 'text-warning' },
+    { label: t('sidebar.queries'), icon: HelpCircle, href: '/parent/queries', color: 'text-destructive' },
   ];
 
   return (
@@ -84,7 +86,7 @@ export default function ParentDashboard() {
                 <div>
                   <h2 className="text-xl font-bold">{childInfo.name}</h2>
                   <p className="text-primary-foreground/80">
-                    {childInfo.class} - {childInfo.section} | Roll No. {childInfo.rollNo}
+                    {childInfo.class} - {childInfo.section} | {t('common.rollNo')} {childInfo.rollNo}
                   </p>
                 </div>
               </div>
@@ -97,10 +99,8 @@ export default function ParentDashboard() {
             <CardContent className="p-4 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-warning" />
               <div>
-                <p className="font-medium text-foreground">No Child Linked</p>
-                <p className="text-sm text-muted-foreground">
-                  Contact your school admin to link your child's account.
-                </p>
+                <p className="font-medium text-foreground">{t('parent.dashboard.noChildLinked')}</p>
+                <p className="text-sm text-muted-foreground">{t('parent.dashboard.contactAdmin')}</p>
               </div>
             </CardContent>
           </Card>
@@ -121,7 +121,7 @@ export default function ParentDashboard() {
                 ) : (
                   <p className="text-2xl font-bold text-foreground">{attendance}%</p>
                 )}
-                <p className="text-sm text-muted-foreground">Attendance</p>
+                <p className="text-sm text-muted-foreground">{t('parent.dashboard.attendance')}</p>
               </CardContent>
             </Card>
           </Link>
@@ -141,16 +141,16 @@ export default function ParentDashboard() {
                     ₹{pendingFees > 1000 ? `${(pendingFees / 1000).toFixed(1)}K` : pendingFees}
                   </p>
                 )}
-                <p className="text-sm text-muted-foreground">Pending Fees</p>
+                <p className="text-sm text-muted-foreground">{t('parent.dashboard.pendingFees')}</p>
               </CardContent>
             </Card>
           </Link>
         </div>
 
-        {/* Quick Actions - Full grid */}
+        {/* Quick Actions */}
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Quick Actions
+            {t('teacher.dashboard.quickActions')}
           </h3>
           <div className="grid grid-cols-4 gap-2">
             {quickActions.map((action) => (
@@ -173,13 +173,13 @@ export default function ParentDashboard() {
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-warning" />
                 <div>
-                  <p className="font-medium text-foreground">Fee Payment Due</p>
-                  <p className="text-sm text-muted-foreground">₹{pendingFees.toLocaleString()} pending</p>
+                  <p className="font-medium text-foreground">{t('parent.dashboard.feePaymentDue')}</p>
+                  <p className="text-sm text-muted-foreground">{t('parent.dashboard.pendingAmount', { amount: pendingFees.toLocaleString() })}</p>
                 </div>
               </div>
               <Link to="/parent/fees">
                 <button className="px-4 py-2 bg-warning text-warning-foreground rounded-lg text-sm font-medium">
-                  View
+                  {t('common.view')}
                 </button>
               </Link>
             </CardContent>
@@ -190,10 +190,10 @@ export default function ParentDashboard() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              This Month
+              {t('parent.dashboard.thisMonth')}
             </h3>
             <Link to="/parent/attendance" className="text-sm text-primary font-medium">
-              View Details
+              {t('parent.dashboard.viewDetails')}
             </Link>
           </div>
           <Card>
@@ -210,15 +210,15 @@ export default function ParentDashboard() {
                     <>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-success">{attendanceStats?.present || 0}</p>
-                        <p className="text-xs text-muted-foreground">Present</p>
+                        <p className="text-xs text-muted-foreground">{t('common.present')}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-destructive">{attendanceStats?.absent || 0}</p>
-                        <p className="text-xs text-muted-foreground">Absent</p>
+                        <p className="text-xs text-muted-foreground">{t('common.absent')}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-warning">{attendanceStats?.late || 0}</p>
-                        <p className="text-xs text-muted-foreground">Late</p>
+                        <p className="text-xs text-muted-foreground">{t('common.late')}</p>
                       </div>
                     </>
                   )}

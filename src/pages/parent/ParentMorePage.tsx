@@ -1,6 +1,7 @@
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
   CreditCard,
   Bell,
@@ -16,42 +17,43 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const menuSections = [
-  {
-    title: 'Academics',
-    items: [
-      { label: 'Fees', icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
-      { label: 'Online Classes', icon: Video, href: '/parent/online-classes', color: 'text-primary' },
-    ],
-  },
-  {
-    title: 'School Life',
-    items: [
-      { label: 'Announcements', icon: Bell, href: '/parent/announcements', color: 'text-info' },
-      { label: 'Gallery', icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
-      { label: 'Transport', icon: Bus, href: '/parent/transport', color: 'text-success' },
-      { label: 'Messages', icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
-    ],
-  },
-  {
-    title: 'Support',
-    items: [
-      { label: 'Feedback', icon: MessageSquare, href: '/parent/feedback', color: 'text-warning' },
-      { label: 'Help & Queries', icon: HelpCircle, href: '/parent/queries', color: 'text-destructive' },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { label: 'Profile', icon: User, href: '/parent/profile', color: 'text-foreground' },
-      { label: 'Settings', icon: Settings, href: '/parent/settings', color: 'text-muted-foreground' },
-    ],
-  },
-];
-
 export default function ParentMorePage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const menuSections = [
+    {
+      title: t('parent.more.academics'),
+      items: [
+        { label: t('nav.fees'), icon: CreditCard, href: '/parent/fees', color: 'text-warning' },
+        { label: t('sidebar.onlineClasses'), icon: Video, href: '/parent/online-classes', color: 'text-primary' },
+      ],
+    },
+    {
+      title: t('parent.more.schoolLife'),
+      items: [
+        { label: t('nav.announcements'), icon: Bell, href: '/parent/announcements', color: 'text-info' },
+        { label: t('sidebar.gallery'), icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
+        { label: t('sidebar.transport'), icon: Bus, href: '/parent/transport', color: 'text-success' },
+        { label: t('sidebar.messages'), icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
+      ],
+    },
+    {
+      title: t('parent.more.support'),
+      items: [
+        { label: t('sidebar.feedback'), icon: MessageSquare, href: '/parent/feedback', color: 'text-warning' },
+        { label: t('parent.profile.helpSupport'), icon: HelpCircle, href: '/parent/queries', color: 'text-destructive' },
+      ],
+    },
+    {
+      title: t('parent.more.account'),
+      items: [
+        { label: t('sidebar.profile'), icon: User, href: '/parent/profile', color: 'text-foreground' },
+        { label: t('sidebar.settings'), icon: Settings, href: '/parent/settings', color: 'text-muted-foreground' },
+      ],
+    },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -59,7 +61,7 @@ export default function ParentMorePage() {
   };
 
   return (
-    <MobileLayout title="More">
+    <MobileLayout title={t('nav.more')}>
       <div className="p-4 space-y-5 pb-8">
         {menuSections.map((section) => (
           <div key={section.title}>
@@ -83,7 +85,6 @@ export default function ParentMorePage() {
           </div>
         ))}
 
-        {/* Logout */}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3.5 bg-card rounded-xl border border-border hover:bg-destructive/5 transition-colors"
@@ -91,7 +92,7 @@ export default function ParentMorePage() {
           <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive">
             <LogOut className="w-4.5 h-4.5" />
           </div>
-          <span className="text-sm font-medium text-destructive">Logout</span>
+          <span className="text-sm font-medium text-destructive">{t('common.signOut')}</span>
         </button>
       </div>
     </MobileLayout>

@@ -204,6 +204,7 @@ const en = {
       reviewSubmissions: 'Review {{count}} homework submissions',
       enterMarks: 'Enter marks for {{className}} exam',
       classes: 'Classes',
+      postFirstHomework: 'Post your first homework',
     },
     attendance: {
       title: 'Mark Attendance',
@@ -337,6 +338,12 @@ const en = {
       documents: 'Documents',
       helpSupport: 'Help & Support',
       appSettings: 'App Settings',
+    },
+    more: {
+      academics: 'Academics',
+      schoolLife: 'School Life',
+      support: 'Support',
+      account: 'Account',
     },
   },
 
