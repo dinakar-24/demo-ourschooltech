@@ -178,62 +178,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Check if there's a session token in localStorage before calling getSession
-    // This avoids the Supabase client lock contention for unauthenticated users
     const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
     const hasStoredSession = !!localStorage.getItem(storageKey);
 
-    const initSession = async () => {
-      if (!hasStoredSession) {
-        // No stored session — skip getSession() entirely to avoid lock hang
-        if (isMounted) {
-          setUser(null);
-          setSchool(null);
-          clearAuthCache();
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Helper: fire-and-forget user data fetch
+    const fetchAndSetUser = (supabaseUser: SupabaseUser) => {
+      fetchUserData(supabaseUser).then(async (data) => {
         if (!isMounted) return;
-
-        if (session?.user) {
-          const data = await fetchUserData(session.user);
-          if (!isMounted) return;
-          if (data) {
-            const isValid = await validateTenant(data.user);
-            if (isValid && isMounted) {
-              setUser(data.user);
-              setSchool(data.school);
-              cacheAuthData(data.user, data.school);
-            }
+        if (data) {
+          const isValid = await validateTenant(data.user);
+          if (isValid && isMounted) {
+            setUser(data.user);
+            setSchool(data.school);
+            cacheAuthData(data.user, data.school);
           }
-        } else {
-          setUser(null);
-          setSchool(null);
-          clearAuthCache();
         }
-      } catch {
-        if (isMounted) {
-          setUser(null);
-          setSchool(null);
-          clearAuthCache();
-        }
-      }
-      if (isMounted) setIsLoading(false);
+        if (isMounted) setIsLoading(false);
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
     };
 
-    initSession();
-
-    // Then listen for subsequent auth changes (sign-in, sign-out, token refresh)
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    // 1. Set up subscription FIRST (before getSession) to avoid lock races
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {  // ← synchronous callback, no deadlock
         if (!isMounted) return;
-        // Skip the initial session event since getSession handles it
-        if (event === 'INITIAL_SESSION') return;
+
+        if (event === 'INITIAL_SESSION') {
+          // For users without a stored session, resolve immediately
+          if (!hasStoredSession) {
+            setUser(null);
+            setSchool(null);
+            clearAuthCache();
+            setIsLoading(false);
+            return;
+          }
+          // For users with a session, fetch user data (fire and forget)
+          if (session?.user) {
+            fetchAndSetUser(session.user);
+          } else {
+            setUser(null);
+            setSchool(null);
+            clearAuthCache();
+            setIsLoading(false);
+          }
+          return;
+        }
 
         // Skip fetchUserData on TOKEN_REFRESHED when we already have cached data
         if (event === 'TOKEN_REFRESHED' && user) {
@@ -241,22 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session?.user) {
-          // Debounce rapid auth events (50ms) to prevent RPC storms
-          if (debounceTimer) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(async () => {
-            if (!isMounted) return;
-            const data = await fetchUserData(session.user);
-            if (!isMounted) return;
-            if (data) {
-              const isValid = await validateTenant(data.user);
-              if (isValid && isMounted) {
-                setUser(data.user);
-                setSchool(data.school);
-                cacheAuthData(data.user, data.school);
-              }
-            }
-            if (isMounted) setIsLoading(false);
-          }, 50);
+          fetchAndSetUser(session.user);
         } else {
           setUser(null);
           setSchool(null);
@@ -276,7 +251,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
       clearTimeout(safetyTimeout);
-      if (debounceTimer) clearTimeout(debounceTimer);
       subscription.unsubscribe();
     };
   }, [validateTenant]);
