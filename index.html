@@ -31,6 +31,21 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Clear expired Supabase auth tokens BEFORE the SDK loads
+      // Prevents infinite refresh-token retry storms that block network
+      try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
+            var v = JSON.parse(localStorage.getItem(k));
+            if (v && v.expires_at && v.expires_at * 1000 < Date.now()) {
+              localStorage.removeItem(k);
+            }
+          }
+        }
+      } catch(e) {}
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
