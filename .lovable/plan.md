@@ -1,40 +1,34 @@
 
 
-## Problem: "Finding account..." hangs forever
+## Problem: "Finding account..." hangs — Real Root Cause
 
-The network logs confirm the **same stale refresh token** (`jhubcdf4vpan`) is still being retried endlessly, blocking the email lookup. The previous fix (useEffect in LoginPage) runs **too late** — the Supabase SDK reads the token from localStorage and starts retrying the moment its module is imported, which happens before any React component mounts.
+The stale token fix is working (no token refresh requests in network logs). The actual problem is different:
 
-## Root Cause
-
-The Supabase client is created with `autoRefreshToken: true` at module import time. It finds the expired token in localStorage and immediately begins retry loops. By the time the React useEffect runs to clear it, the browser's connection pool (6 connections per domain) is already saturated. The email lookup fetch gets queued and aborted.
+1. **Pre-warm HEAD requests compete with the lookup request** — they fire simultaneously at page load and on click, consuming browser connections
+2. **The 10-second AbortController timeout per retry** means the user waits up to 23 seconds (3 retries × timeout + delays) before seeing any error
+3. **The Supabase project may be cold/paused**, and the pre-warm doesn't help because it fails too
+4. I confirmed the `lookup_user_by_email` RPC works correctly on the server — this is a client-side network timing issue
 
 ## Solution
 
-Clear expired auth tokens from localStorage **before** the Supabase SDK loads, using an inline `<script>` in `index.html`. This runs synchronously before any ES module, so the SDK finds no token and never starts retrying.
+### 1. Remove pre-warm HEAD requests (`LoginPage.tsx`, lines 81-91)
+These provide zero value when they fail (which they do). They consume browser connections that the actual lookup needs. Delete the entire `useEffect` block and `warmedRef`.
 
-### Changes
+### 2. Simplify and speed up the lookup (`LoginPage.tsx`, lines 163-226)
+- Reduce timeout from **10 seconds → 5 seconds** per attempt
+- Reduce retries from **3 → 2** (max wait ~12s instead of ~33s)
+- Use the **Supabase SDK** (`supabase.rpc()`) instead of raw `fetch()` — the SDK handles connection pooling and retries more efficiently, and avoids potential CORS or connection-sharing issues with manual fetch
 
-**1. `index.html`** — Add inline script before the module script:
+### 3. Clean up stale token useEffect (`LoginPage.tsx`, lines 63-79)
+Keep but simplify — the `index.html` script already handles this, so make this a lightweight safety net only.
 
-```html
-<script>
-  // Clear expired Supabase auth tokens BEFORE the SDK loads
-  // Prevents infinite refresh-token retry storms that block network
-  try {
-    for (var i = localStorage.length - 1; i >= 0; i--) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
-        var v = JSON.parse(localStorage.getItem(k));
-        if (v && v.expires_at && v.expires_at * 1000 < Date.now()) {
-          localStorage.removeItem(k);
-        }
-      }
-    }
-  } catch(e) {}
-</script>
-```
+### Changes Summary
 
-**2. `src/pages/LoginPage.tsx`** — Keep the existing useEffect cleanup as a safety net (it already works correctly), no changes needed.
+**`src/pages/LoginPage.tsx`**:
+- Delete pre-warm HEAD useEffect (lines 81-91)
+- Replace raw `fetch()` lookup with `supabase.rpc('lookup_user_by_email', { _email })` — simpler, uses the SDK's built-in connection management
+- Reduce timeout to 5 seconds, retries to 2
+- If the first attempt gets a network error, retry once after 1 second, then show error immediately
 
-This is a one-line addition to index.html that prevents the SDK from ever seeing expired tokens, completely eliminating the retry storm before it starts.
+The key insight: using `supabase.rpc()` instead of raw `fetch()` leverages the SDK's connection pool which is already established, rather than competing for new connections.
 
