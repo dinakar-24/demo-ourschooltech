@@ -61,12 +61,19 @@ export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Clear stale auth sessions that cause retry storms
+  // Must remove from localStorage FIRST (synchronous) before signOut (async/network)
+  // because signOut itself will fail if the network pool is already saturated
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
       const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
       const hasStaleSession = !!localStorage.getItem(storageKey);
       if (hasStaleSession) {
-        supabase.auth.signOut().catch(() => {});
+        // Immediately nuke the token from localStorage to stop the retry storm
+        localStorage.removeItem(storageKey);
+        // Also clear sessionStorage auth cache
+        try { sessionStorage.removeItem('ost_auth_cache'); } catch {}
+        // Then tell the SDK to clean up its in-memory state
+        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       }
     }
   }, [isAuthenticated, authLoading]);
