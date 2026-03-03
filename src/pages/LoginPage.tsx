@@ -177,20 +177,25 @@ export default function LoginPage() {
           return;
         } catch (retryErr: any) {
           lastError = retryErr;
-          // Only retry on network errors, not on server errors
           const isNetworkError = retryErr?.message?.includes('Failed to fetch') || retryErr?.message?.includes('NetworkError') || retryErr?.name === 'TypeError';
+          const isLockError = retryErr?.name === 'AbortError' || retryErr?.message?.includes('Lock broken') || retryErr?.message?.includes('steal');
+          if (isLockError && attempt < 2) {
+            // Lock errors resolve in milliseconds — short retry
+            await new Promise(r => setTimeout(r, 100));
+            continue;
+          }
           if (!isNetworkError || attempt === 2) break;
-          // Wait before retry: 500ms, 1500ms
           await new Promise(r => setTimeout(r, (attempt + 1) * 500));
         }
       }
       throw lastError;
     } catch (err: any) {
       const isNetworkError = err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError';
+      const isLockError = err?.name === 'AbortError' || err?.message?.includes('Lock broken') || err?.message?.includes('steal');
       const message = isNetworkError
         ? 'Unable to connect. Please check your internet connection and try again.'
-        : err?.name === 'AbortError' 
-          ? 'Request timed out. Please check your internet connection and try again.'
+        : isLockError
+          ? 'Something went wrong. Please try again.'
           : (err.message || 'Failed to look up account. Please try again.');
       setError(message);
       setLookupLoading(false);
