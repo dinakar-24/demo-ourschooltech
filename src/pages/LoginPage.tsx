@@ -6,7 +6,7 @@ import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+
 
 // Lazy-load components used by <1% of login attempts
 const SuperAdminOTPLogin = lazy(() => import('@/components/auth/SuperAdminOTPLogin').then(m => ({ default: m.SuperAdminOTPLogin })));
@@ -148,68 +148,53 @@ export default function LoginPage() {
         return;
       }
 
-      // Retry up to 2 times on network/lock failures
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          console.log(`[Login] lookup attempt ${attempt + 1} for ${trimmedEmail}`);
-          
-          // Add timeout to prevent indefinite hanging
-          const rpcPromise = supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000)
-          );
-          
-          const { data, error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]) as any;
-          
-          if (rpcError) {
-            console.error('[Login] RPC error:', rpcError);
-            throw rpcError;
-          }
-          const result = data as any;
-          console.log('[Login] lookup result:', result?.found);
-          
-          // Cache the result
-          cacheLookup(trimmedEmail, result);
-          
-          if (!result?.found) {
-            setError('No account found with this email address');
-            setLookupLoading(false);
-            return;
-          }
-          if (result.role === 'super_admin') {
-            setLookupLoading(false);
-            setStep('superadmin');
-            return;
-          }
-          if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
-          setSchoolInfo(result);
-          setLookupLoading(false);
-          setStep('password');
-          return;
-        } catch (retryErr: any) {
-          console.error(`[Login] attempt ${attempt + 1} failed:`, retryErr?.name, retryErr?.message);
-          lastError = retryErr;
-          const isNetworkError = retryErr?.message?.includes('Failed to fetch') || retryErr?.message?.includes('NetworkError') || retryErr?.name === 'TypeError';
-          const isLockError = retryErr?.name === 'AbortError' || retryErr?.message?.includes('Lock broken') || retryErr?.message?.includes('steal');
-          const isTimeout = retryErr?.message?.includes('timed out');
-          if ((isLockError || isTimeout) && attempt < 2) {
-            await new Promise(r => setTimeout(r, isLockError ? 100 : 1000));
-            continue;
-          }
-          if (!isNetworkError || attempt === 2) break;
-          await new Promise(r => setTimeout(r, (attempt + 1) * 500));
+      // Direct fetch to bypass Supabase client lock contention
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/lookup_user_by_email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ _email: trimmedEmail }),
+          signal: controller.signal,
         }
+      );
+      clearTimeout(timeout);
+      
+      if (!res.ok) {
+        throw new Error(`Server error (${res.status})`);
       }
-      throw lastError;
+      
+      const result = await res.json();
+      console.log('[Login] lookup result:', result?.found);
+      
+      // Cache the result
+      cacheLookup(trimmedEmail, result);
+      
+      if (!result?.found) {
+        setError('No account found with this email address');
+        setLookupLoading(false);
+        return;
+      }
+      if (result.role === 'super_admin') {
+        setLookupLoading(false);
+        setStep('superadmin');
+        return;
+      }
+      if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
+      setSchoolInfo(result);
+      setLookupLoading(false);
+      setStep('password');
     } catch (err: any) {
-      const isNetworkError = err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError';
-      const isLockError = err?.name === 'AbortError' || err?.message?.includes('Lock broken') || err?.message?.includes('steal');
+      const isNetworkError = err?.message?.includes('Failed to fetch') || err?.name === 'TypeError' || err?.name === 'AbortError';
       const message = isNetworkError
         ? 'Unable to connect. Please check your internet connection and try again.'
-        : isLockError
-          ? 'Something went wrong. Please try again.'
-          : (err.message || 'Failed to look up account. Please try again.');
+        : (err.message || 'Failed to look up account. Please try again.');
       setError(message);
       setLookupLoading(false);
     }
