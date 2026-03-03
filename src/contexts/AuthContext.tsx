@@ -197,15 +197,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Then listen for subsequent auth changes (sign-in, sign-out, token refresh)
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
         // Skip the initial session event since getSession handles it
         if (event === 'INITIAL_SESSION') return;
 
+        // Skip fetchUserData on TOKEN_REFRESHED when we already have cached data
+        if (event === 'TOKEN_REFRESHED' && user) {
+          return;
+        }
+
         if (session?.user) {
-          // Use setTimeout to avoid deadlocks with Supabase internals
-          setTimeout(async () => {
+          // Debounce rapid auth events (50ms) to prevent RPC storms
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
             if (!isMounted) return;
             const data = await fetchUserData(session.user);
             if (!isMounted) return;
@@ -218,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
             if (isMounted) setIsLoading(false);
-          }, 0);
+          }, 50);
         } else {
           setUser(null);
           setSchool(null);
@@ -238,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
       clearTimeout(safetyTimeout);
+      if (debounceTimer) clearTimeout(debounceTimer);
       subscription.unsubscribe();
     };
   }, [validateTenant]);
@@ -312,6 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSchool(null);
     clearAuthCache();
+    try { sessionStorage.removeItem('ost_email_lookup_cache'); } catch {}
   }, []);
 
   const handleSessionTimeout = useCallback(() => {

@@ -79,12 +79,10 @@ function applyTheme(primary: string, accent: string) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Only fire DB queries after auth is resolved to avoid unnecessary calls on login page
+  // Only fire DB queries after auth is resolved — listen to onAuthStateChange only
+  // (AuthContext already calls getSession, so we avoid a duplicate network call)
   const [hasAuth, setHasAuth] = useState(false);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setHasAuth(true);
-    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setHasAuth(!!session?.user);
     });
