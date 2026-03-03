@@ -1,36 +1,50 @@
 
 
-# Fix: "AbortError: Lock broken by another request with the 'steal' option"
+# Fix: Login "Finding account..." Hangs Indefinitely
 
-## Root Cause
+## Root Cause (confirmed)
 
-The error `AbortError: Lock broken by another request with the 'steal' option` comes from Supabase Auth's internal use of `navigator.locks`. When AuthContext's `getSession()` and `onAuthStateChange` both fire simultaneously on page load, they compete for the browser lock. The Supabase client also checks auth state internally when making RPC calls (to attach the JWT token). If the lock is contended at that moment, the RPC call in `handleEmailSubmit` throws this AbortError — which the current code displays to the user instead of retrying silently.
+The `lookup_user_by_email` RPC works perfectly at the database level (returns instantly). The problem is the **Supabase JS client internally waits for the auth session lock** (`navigator.locks`) before sending ANY request — including unauthenticated RPCs. When the AuthContext is simultaneously running `getSession()` or `onAuthStateChange`, the lock is held and the RPC call queues behind it indefinitely.
 
-The old blue-background version (image 336/337) is the published production version that hasn't been redeployed yet. That's separate from this code issue.
+The `Promise.race` timeout (15s) then fires, showing "Request timed out." On slower devices or cold starts, the lock may not resolve at all before timeout.
 
-## Fix
+## Solution: Bypass Supabase Client for Login Lookup
 
-### 1. Suppress Auth Lock Errors in Login (`LoginPage.tsx`)
-- Add the `AbortError: Lock broken` message to the retry-eligible error list in `handleEmailSubmit`
-- This error is transient — the lock resolves within milliseconds, so a retry always succeeds
-- Also suppress it from being shown to users as a final error (show a generic "Please try again" instead)
+Since `lookup_user_by_email` is a `SECURITY DEFINER` function that doesn't need authentication, we should call it via a **direct `fetch()`** to the PostgREST endpoint instead of `supabase.rpc()`. This completely avoids the auth lock contention.
 
-### 2. Add `lockAcquireTimeout` to Supabase Client Config
-- Wait — we cannot edit `client.ts` (auto-generated). So we handle this purely on the consumer side.
+## Changes
 
-### 3. Harden AuthContext Against Lock Errors
-- Wrap `getSession()` in a try-catch that specifically handles AbortError, retrying once after a short delay
-- This prevents the auth initialization from failing due to lock contention
+### `src/pages/LoginPage.tsx`
+Replace the `supabase.rpc('lookup_user_by_email', ...)` call with a direct fetch:
 
-## Files to Change
+```typescript
+const res = await fetch(
+  `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/lookup_user_by_email`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    },
+    body: JSON.stringify({ _email: trimmedEmail }),
+  }
+);
+const result = await res.json();
+```
 
-| File | Change |
-|------|--------|
-| `src/pages/LoginPage.tsx` | Treat AbortError/lock-steal as retryable network error; never show raw lock error to user |
-| `src/contexts/AuthContext.tsx` | Add try-catch with retry around `getSession()` for lock contention resilience |
+This approach:
+- Completely eliminates auth lock contention (no `navigator.locks` involvement)
+- Uses the same anon key that `supabase.rpc()` would use
+- The RPC is `SECURITY DEFINER` so it doesn't need an auth token
+- Removes the need for the `Promise.race` timeout hack
+- Removes the retry loop for lock errors (they can't happen anymore)
+- Keeps the network error retry for genuine connectivity issues
+
+The retry loop can be simplified to only handle actual network errors (`Failed to fetch`), and the 15-second timeout can be replaced with `AbortController` for a cleaner implementation.
 
 ## Expected Result
-- The "Lock broken by another request" error will never be shown to users
-- Login will silently retry and succeed within ~100ms
-- No more wasted credits on this issue
+- "Finding account..." resolves in <1 second consistently
+- No more "Request timed out" errors
+- No more "Lock broken" errors
+- The login flow works reliably on first attempt
 
