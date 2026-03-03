@@ -1,50 +1,63 @@
 
 
-# Fix: Login "Finding account..." Hangs Indefinitely
+# Fix: AuthContext `isLoading` Stuck True — Deadlock in `onAuthStateChange`
 
-## Root Cause (confirmed)
+## Root Cause
 
-The `lookup_user_by_email` RPC works perfectly at the database level (returns instantly). The problem is the **Supabase JS client internally waits for the auth session lock** (`navigator.locks`) before sending ANY request — including unauthenticated RPCs. When the AuthContext is simultaneously running `getSession()` or `onAuthStateChange`, the lock is held and the RPC call queues behind it indefinitely.
+The `onAuthStateChange` callback in `AuthContext.tsx` is declared `async` (line 233). According to the Supabase client internals and the known deadlock pattern:
 
-The `Promise.race` timeout (15s) then fires, showing "Request timed out." On slower devices or cold starts, the lock may not resolve at all before timeout.
+1. `supabase.auth.onAuthStateChange(async (event, session) => {...})` is registered
+2. Supabase immediately fires `INITIAL_SESSION` through this callback
+3. Because the callback is `async`, it returns a Promise. The Supabase client **awaits** this Promise before releasing its internal lock
+4. When `getSession()` is then called (or is already waiting), it tries to acquire the same lock → **deadlock**
 
-## Solution: Bypass Supabase Client for Login Lookup
+Even though the `INITIAL_SESSION` event returns early (line 236), the fact that the callback is `async` means it returns `Promise<undefined>` instead of `undefined`. The client waits for the promise, and if there's any lock contention, it hangs.
 
-Since `lookup_user_by_email` is a `SECURITY DEFINER` function that doesn't need authentication, we should call it via a **direct `fetch()`** to the PostgREST endpoint instead of `supabase.rpc()`. This completely avoids the auth lock contention.
+For users WITH a stale localStorage token, `getSession()` is called AND `onAuthStateChange` is active → deadlock. The 4-second safety timeout eventually fires, but by then the UX is broken.
 
-## Changes
+For users WITHOUT a localStorage token, `getSession()` is skipped, but `onAuthStateChange` still fires `INITIAL_SESSION` which can cause lock contention with other Supabase client operations.
 
-### `src/pages/LoginPage.tsx`
-Replace the `supabase.rpc('lookup_user_by_email', ...)` call with a direct fetch:
+## Fix
 
+### `src/contexts/AuthContext.tsx`
+
+1. **Make `onAuthStateChange` callback synchronous** — Remove `async` from the callback. Use fire-and-forget pattern for side effects (wrap async work in a non-awaited function call)
+2. **Set up subscription BEFORE calling `getSession()`** — This is the Supabase-recommended order to avoid missing events and lock races
+3. **Remove the debounce setTimeout with async callback** — Replace with synchronous state update from session, defer data fetching to a non-blocking helper
+
+The key change pattern:
 ```typescript
-const res = await fetch(
-  `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/lookup_user_by_email`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    },
-    body: JSON.stringify({ _email: trimmedEmail }),
+// BEFORE (deadlock-prone):
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  async (event, session) => {  // ← async causes deadlock
+    const data = await fetchUserData(session.user);  // ← awaited inside callback
   }
 );
-const result = await res.json();
+
+// AFTER (deadlock-free):
+const { data: { subscription } } = supabase.auth.onAuthStateChange(
+  (_event, session) => {  // ← synchronous, no deadlock
+    if (_event === 'INITIAL_SESSION') return;
+    if (session?.user) {
+      // Fire and forget — do NOT await
+      fetchAndSetUser(session.user);
+    } else {
+      setUser(null);
+      setSchool(null);
+      setIsLoading(false);
+    }
+  }
+);
 ```
 
-This approach:
-- Completely eliminates auth lock contention (no `navigator.locks` involvement)
-- Uses the same anon key that `supabase.rpc()` would use
-- The RPC is `SECURITY DEFINER` so it doesn't need an auth token
-- Removes the need for the `Promise.race` timeout hack
-- Removes the retry loop for lock errors (they can't happen anymore)
-- Keeps the network error retry for genuine connectivity issues
+## Files to Change
 
-The retry loop can be simplified to only handle actual network errors (`Failed to fetch`), and the 15-second timeout can be replaced with `AbortController` for a cleaner implementation.
+| File | Change |
+|------|--------|
+| `src/contexts/AuthContext.tsx` | Make `onAuthStateChange` callback synchronous; reorder subscription before `getSession()`; fire-and-forget async side effects |
 
 ## Expected Result
-- "Finding account..." resolves in <1 second consistently
-- No more "Request timed out" errors
-- No more "Lock broken" errors
-- The login flow works reliably on first attempt
+- No more deadlock — `isLoading` resolves in <100ms for unauthenticated users
+- Authenticated users with stale tokens resolve within 1-2 seconds (no 4-second safety timeout needed)
+- The loading spinner on `/` disappears immediately, redirecting to `/login`
 
