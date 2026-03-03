@@ -13,7 +13,7 @@ import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { lazy, Suspense } from "react";
-import { AppLoader } from "@/components/ui/AppLoader";
+
 
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
@@ -126,9 +126,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Suspense fallback spinner
+// Minimal fallback — no splash/loader
 function RouteLoadingFallback() {
-  return <AppLoader />;
+  return <div className="min-h-screen" />;
 }
 
 // Smart redirect based on auth state
