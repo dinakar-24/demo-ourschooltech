@@ -79,9 +79,16 @@ function clearAuthCache() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Restore from cache for instant UI on reopen
   const cached = getCachedAuth();
+  const isFreshCache = cached && (() => {
+    try {
+      const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+      if (!raw) return false;
+      return Date.now() - JSON.parse(raw).ts < 5 * 60 * 1000; // fresh if < 5 min
+    } catch { return false; }
+  })();
   const [user, setUser] = useState<User | null>(cached?.user ?? null);
   const [school, setSchool] = useState<School | null>(cached?.school ?? null);
-  const [isLoading, setIsLoading] = useState(!cached); // skip loading if cached
+  const [isLoading, setIsLoading] = useState(!isFreshCache); // instant render if fresh cache
   const { tenant, isSubdomain } = useTenant();
 
   // Cross-tenant validation

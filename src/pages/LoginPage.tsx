@@ -47,7 +47,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
 
-  const [step, setStep] = useState<LoginStep>('splash');
+  // Skip splash for returning users
+  const isReturningUser = typeof window !== 'undefined' && localStorage.getItem('ost_visited') === '1';
+  const [step, setStep] = useState<LoginStep>(isReturningUser ? 'email' : 'splash');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -57,7 +59,10 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const handleSplashComplete = useCallback(() => setStep('email'), []);
+  const handleSplashComplete = useCallback(() => {
+    localStorage.setItem('ost_visited', '1');
+    setStep('email');
+  }, []);
 
   // Pre-warm backend connection on mount (DNS + TLS handshake)
   const warmedRef = useRef(false);
@@ -85,14 +90,7 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // While auth is loading, show a centered loader instead of the login form
-  if (authLoading) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
-        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
-      </div>
-    );
-  }
+  // Don't gate login UI on auth loading — redirect effect handles authenticated users
 
   // If already authenticated, don't render login form (redirect will happen via useEffect)
   if (isAuthenticated && user) {
