@@ -120,7 +120,7 @@ export default function LoginPage() {
     try { sessionStorage.setItem(EMAIL_LOOKUP_CACHE_KEY, JSON.stringify({ email: emailKey, data, ts: Date.now() })); } catch {}
   };
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+    const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) { setError('Please enter your email'); return; }
     setLookupLoading(true);
@@ -148,36 +148,50 @@ export default function LoginPage() {
         return;
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
-      clearTimeout(timeoutId);
-      
-      if (rpcError) throw rpcError;
-      const result = data as any;
-      
-      // Cache the result
-      cacheLookup(trimmedEmail, result);
-      
-      if (!result?.found) {
-        setError('No account found with this email address');
-        setLookupLoading(false);
-        return;
+      // Retry up to 2 times on network failures
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
+          
+          if (rpcError) throw rpcError;
+          const result = data as any;
+          
+          // Cache the result
+          cacheLookup(trimmedEmail, result);
+          
+          if (!result?.found) {
+            setError('No account found with this email address');
+            setLookupLoading(false);
+            return;
+          }
+          if (result.role === 'super_admin') {
+            setLookupLoading(false);
+            setStep('superadmin');
+            return;
+          }
+          if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
+          setSchoolInfo(result);
+          setLookupLoading(false);
+          setStep('password');
+          return;
+        } catch (retryErr: any) {
+          lastError = retryErr;
+          // Only retry on network errors, not on server errors
+          const isNetworkError = retryErr?.message?.includes('Failed to fetch') || retryErr?.message?.includes('NetworkError') || retryErr?.name === 'TypeError';
+          if (!isNetworkError || attempt === 2) break;
+          // Wait before retry: 500ms, 1500ms
+          await new Promise(r => setTimeout(r, (attempt + 1) * 500));
+        }
       }
-      if (result.role === 'super_admin') {
-        setLookupLoading(false);
-        setStep('superadmin');
-        return;
-      }
-      if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
-      setSchoolInfo(result);
-      setLookupLoading(false);
-      setStep('password');
+      throw lastError;
     } catch (err: any) {
-      const message = err?.name === 'AbortError' 
-        ? 'Request timed out. Please check your internet connection and try again.'
-        : (err.message || 'Failed to look up account. Please try again.');
+      const isNetworkError = err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError';
+      const message = isNetworkError
+        ? 'Unable to connect. Please check your internet connection and try again.'
+        : err?.name === 'AbortError' 
+          ? 'Request timed out. Please check your internet connection and try again.'
+          : (err.message || 'Failed to look up account. Please try again.');
       setError(message);
       setLookupLoading(false);
     }
