@@ -221,6 +221,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user) {
             fetchAndSetUser(session.user);
           } else {
+            // Clear stale tokens that cause infinite retry loops
+            const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
+            localStorage.removeItem(storageKey);
             setUser(null);
             setSchool(null);
             clearAuthCache();
