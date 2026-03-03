@@ -148,14 +148,26 @@ export default function LoginPage() {
         return;
       }
 
-      // Retry up to 2 times on network failures
+      // Retry up to 2 times on network/lock failures
       let lastError: any = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
+          console.log(`[Login] lookup attempt ${attempt + 1} for ${trimmedEmail}`);
           
-          if (rpcError) throw rpcError;
+          // Add timeout to prevent indefinite hanging
+          const rpcPromise = supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000)
+          );
+          
+          const { data, error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+          
+          if (rpcError) {
+            console.error('[Login] RPC error:', rpcError);
+            throw rpcError;
+          }
           const result = data as any;
+          console.log('[Login] lookup result:', result?.found);
           
           // Cache the result
           cacheLookup(trimmedEmail, result);
@@ -176,12 +188,13 @@ export default function LoginPage() {
           setStep('password');
           return;
         } catch (retryErr: any) {
+          console.error(`[Login] attempt ${attempt + 1} failed:`, retryErr?.name, retryErr?.message);
           lastError = retryErr;
           const isNetworkError = retryErr?.message?.includes('Failed to fetch') || retryErr?.message?.includes('NetworkError') || retryErr?.name === 'TypeError';
           const isLockError = retryErr?.name === 'AbortError' || retryErr?.message?.includes('Lock broken') || retryErr?.message?.includes('steal');
-          if (isLockError && attempt < 2) {
-            // Lock errors resolve in milliseconds — short retry
-            await new Promise(r => setTimeout(r, 100));
+          const isTimeout = retryErr?.message?.includes('timed out');
+          if ((isLockError || isTimeout) && attempt < 2) {
+            await new Promise(r => setTimeout(r, isLockError ? 100 : 1000));
             continue;
           }
           if (!isNetworkError || attempt === 2) break;
