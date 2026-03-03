@@ -68,27 +68,14 @@ export default function LoginPage() {
 
   // Pre-warm backend connection on mount (DNS + TLS + connection pool)
   const warmedRef = useRef(false);
-  const [backendReady, setBackendReady] = useState(false);
   useEffect(() => {
     if (warmedRef.current) return;
     warmedRef.current = true;
-    // Fire multiple warm-up requests to ensure connection pool is hot
     const warmUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`;
     const warmHeaders = { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY };
-    // First request wakes up the project, second ensures pool is ready
     fetch(warmUrl, { method: 'HEAD', headers: warmHeaders })
-      .then(() => {
-        setBackendReady(true);
-        // Second request to fully warm connection pool
-        fetch(warmUrl, { method: 'HEAD', headers: warmHeaders }).catch(() => {});
-      })
-      .catch(() => {
-        // Even on failure, allow user to proceed
-        setBackendReady(true);
-      });
-    // Safety: mark ready after 5s regardless
-    const t = setTimeout(() => setBackendReady(true), 5000);
-    return () => clearTimeout(t);
+      .then(() => fetch(warmUrl, { method: 'HEAD', headers: warmHeaders }).catch(() => {}))
+      .catch(() => {});
   }, []);
 
 
@@ -287,7 +274,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center px-5 py-4 relative z-10 overflow-auto">
         <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
           <AnimatePresence mode="wait">
-            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} backendReady={backendReady} />}
+            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
             {step === 'password' && schoolInfo && (
               <PasswordStep
                 key="password"
@@ -343,13 +330,12 @@ function LoginBackground() {
 }
 
 /* ── Email Step ── */
-function EmailStep({ email, setEmail, error, loading, onSubmit, backendReady }: {
+function EmailStep({ email, setEmail, error, loading, onSubmit }: {
   email: string;
   setEmail: (v: string) => void;
   error: string;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  backendReady: boolean;
 }) {
   return (
     <motion.div
@@ -390,13 +376,11 @@ function EmailStep({ email, setEmail, error, loading, onSubmit, backendReady }: 
           />
         </div>
         <motion.button
-          type="submit" disabled={loading || !backendReady}
+          type="submit" disabled={loading}
           className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 transition-colors"
           whileTap={{ scale: 0.98 }}
         >
-          {!backendReady ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Connecting...</>
-          ) : loading ? (
+          {loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Finding account...</>
           ) : (
             <>Continue <ArrowRight className="w-4 h-4" /></>
