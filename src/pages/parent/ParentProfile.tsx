@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParentChild } from '@/hooks/useParentData';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,10 +24,10 @@ import {
 export default function ParentProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: child, isLoading: childLoading } = useParentChild();
 
-  // Fetch parent profile for phone
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['parent-profile', user?.id],
     queryFn: async () => {
@@ -47,18 +48,16 @@ export default function ParentProfile() {
   };
 
   const menuItems = [
-    { label: 'Feedback', icon: MessageSquare, href: '/parent/feedback' },
-    { label: 'Help & Queries', icon: HelpCircle, href: '/parent/queries' },
-    { label: 'Settings', icon: Settings, href: '/parent/settings' },
+    { label: t('sidebar.feedback'), icon: MessageSquare, href: '/parent/feedback' },
+    { label: t('parent.profile.helpSupport'), icon: HelpCircle, href: '/parent/queries' },
+    { label: t('sidebar.settings'), icon: Settings, href: '/parent/settings' },
   ];
 
   const avatarUrl = user?.avatar || profile?.avatar_url;
-  const isLoading = profileLoading;
 
   return (
-    <MobileLayout title="Profile">
+    <MobileLayout title={t('parent.profile.title')}>
       <div className="p-4 space-y-4">
-        {/* Parent Profile Card */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-4 mb-4">
@@ -76,7 +75,7 @@ export default function ParentProfile() {
               />
               <div>
                 <h2 className="text-lg font-bold">{user?.name}</h2>
-                <Badge variant="secondary" className="mt-1">Parent</Badge>
+                <Badge variant="secondary" className="mt-1">{t('common.parent')}</Badge>
               </div>
             </div>
 
@@ -87,20 +86,19 @@ export default function ParentProfile() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                {isLoading ? (
+                {profileLoading ? (
                   <Skeleton className="h-4 w-28" />
                 ) : (
-                  <span>{profile?.phone || 'Not provided'}</span>
+                  <span>{profile?.phone || t('common.noData')}</span>
                 )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Child Info */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-3">WARD DETAILS</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-3">{t('parent.profile.wardDetails')}</h3>
             {childLoading ? (
               <div className="flex items-center gap-4">
                 <Skeleton className="w-12 h-12 rounded-full" />
@@ -118,17 +116,16 @@ export default function ParentProfile() {
                   <p className="font-bold">{child.full_name}</p>
                   <p className="text-sm text-muted-foreground">
                     {child.class_name} - {child.section}
-                    {child.roll_number ? ` | Roll No. ${child.roll_number}` : ''}
+                    {child.roll_number ? ` | ${t('common.rollNo')} ${child.roll_number}` : ''}
                   </p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No child linked to your account.</p>
+              <p className="text-sm text-muted-foreground">{t('parent.dashboard.contactAdmin')}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Menu Items */}
         <Card>
           <CardContent className="p-0 divide-y divide-border">
             {menuItems.map((item) => (
@@ -147,14 +144,13 @@ export default function ParentProfile() {
           </CardContent>
         </Card>
 
-        {/* Logout */}
         <Button
           variant="outline"
           className="w-full text-destructive hover:text-destructive"
           onClick={handleLogout}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
+          {t('common.signOut')}
         </Button>
       </div>
     </MobileLayout>
