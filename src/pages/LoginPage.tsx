@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, Gradua
 import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 
 
@@ -59,6 +60,16 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  // Clear stale auth sessions that cause retry storms
+  useEffect(() => {
+    if (!isAuthenticated && !authLoading) {
+      const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
+      const hasStaleSession = !!localStorage.getItem(storageKey);
+      if (hasStaleSession) {
+        supabase.auth.signOut().catch(() => {});
+      }
+    }
+  }, [isAuthenticated, authLoading]);
 
   // Pre-warm backend connection on mount (DNS + TLS + connection pool)
   const warmedRef = useRef(false);
