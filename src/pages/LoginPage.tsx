@@ -2,7 +2,6 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
-import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,35 +59,12 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  // Clear stale auth sessions that cause retry storms
-  // Must remove from localStorage FIRST (synchronous) before signOut (async/network)
-  // because signOut itself will fail if the network pool is already saturated
+  // Safety net: clear stale sessions (index.html handles most cases)
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
-      const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
-      const hasStaleSession = !!localStorage.getItem(storageKey);
-      if (hasStaleSession) {
-        // Immediately nuke the token from localStorage to stop the retry storm
-        localStorage.removeItem(storageKey);
-        // Also clear sessionStorage auth cache
-        try { sessionStorage.removeItem('ost_auth_cache'); } catch {}
-        // Then tell the SDK to clean up its in-memory state
-        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-      }
+      try { sessionStorage.removeItem('ost_auth_cache'); } catch {}
     }
   }, [isAuthenticated, authLoading]);
-
-  // Pre-warm backend connection on mount (DNS + TLS + connection pool)
-  const warmedRef = useRef(false);
-  useEffect(() => {
-    if (warmedRef.current) return;
-    warmedRef.current = true;
-    const warmUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`;
-    const warmHeaders = { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY };
-    fetch(warmUrl, { method: 'HEAD', headers: warmHeaders })
-      .then(() => fetch(warmUrl, { method: 'HEAD', headers: warmHeaders }).catch(() => {}))
-      .catch(() => {});
-  }, []);
 
 
   useEffect(() => {
@@ -160,32 +136,17 @@ export default function LoginPage() {
         return;
       }
 
-      // Retry logic — up to 3 attempts with progressive delay
+      // Use Supabase SDK instead of raw fetch — better connection management
       let lastError: any = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 10000);
+          const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
+          const result = data as any;
           
-          const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/lookup_user_by_email`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              },
-              body: JSON.stringify({ _email: trimmedEmail }),
-              signal: controller.signal,
-            }
-          );
-          clearTimeout(timeout);
-          
-          if (!res.ok) {
-            throw new Error(`Server error (${res.status})`);
+          if (rpcError) {
+            throw new Error(rpcError.message || 'Server error');
           }
           
-          const result = await res.json();
           console.log('[Login] lookup result:', result?.found);
           
           // Cache the result
@@ -208,18 +169,18 @@ export default function LoginPage() {
           return;
         } catch (err) {
           lastError = err;
-          if (attempt < 2) {
-            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          if (attempt < 1) {
+            await new Promise(r => setTimeout(r, 1500));
           }
         }
       }
 
-      // All retries failed — show friendly error
+      // All retries failed
       throw lastError;
     } catch (err: any) {
       const isNetworkError = err?.message?.includes('Failed to fetch') || err?.name === 'TypeError' || err?.name === 'AbortError';
       const message = isNetworkError
-        ? 'Something went wrong. Please tap Continue to try again.'
+        ? 'Connection issue. Please tap Continue to try again.'
         : (err.message || 'Failed to look up account. Please try again.');
       setError(message);
       setLookupLoading(false);
