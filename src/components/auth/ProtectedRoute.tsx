@@ -3,7 +3,7 @@ import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { ReactNode } from 'react';
-import { AppLoader } from '@/components/ui/AppLoader';
+
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -19,7 +19,7 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   const location = useLocation();
 
   if (isLoading) {
-    return <AppLoader message="Authenticating..." />;
+    return <div className="min-h-screen" />;
   }
 
   if (!isAuthenticated) {
