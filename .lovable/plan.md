@@ -1,87 +1,121 @@
 
 
-# Ultra-Fast App Experience Optimization
+# Overall Missing Updates Across All Portals
 
-## Current State Analysis
-
-The app currently has three major performance bottlenecks:
-1. **Monolithic bundle** -- All 50+ page components are eagerly imported in App.tsx, forcing every user to download the entire app regardless of role
-2. **Aggressive re-fetching** -- React Query is configured with `staleTime: 0` and `refetchOnMount: 'always'`, causing redundant network requests on every navigation
-3. **No data persistence** -- When users reopen the app, everything is fetched from scratch; there is no local cache
+After a thorough audit of the entire codebase, here are the gaps and missing updates organized by portal.
 
 ---
 
-## Changes Overview
+## 1. Student Portal -- Missing Pages & Features
 
-### 1. Lazy Loading All Page Routes (App.tsx)
+| Gap | Detail |
+|-----|--------|
+| **No Messages page** | Students have no `StudentMessages.tsx` -- they cannot message teachers or admin |
+| **No Fees page** | Students cannot view their own fee invoices or payment status |
+| **No Feedback page** | Students cannot submit feedback (parents can) |
+| **No Queries page** | Students cannot raise help queries (parents can) |
+| **No "More" page** | Unlike Parent portal, student has no overflow menu page -- the bottom nav "More" tab links to `/student/announcements` instead of a proper More page |
+| **Missing i18n on bottom nav** | Student "More" tab goes to announcements, not a dedicated More page like parent |
 
-Replace all 50+ static page imports with `React.lazy()` and wrap routes in `Suspense`. This alone will cut the initial JS bundle by ~60-70%.
-
-- Keep eagerly loaded: LoginPage, SubdomainLanding, TenantErrorPage, NotFound (small, needed immediately)
-- Lazy load: All admin, teacher, parent, student, and super-admin pages
-- Add a minimal full-screen spinner as the Suspense fallback
-
-### 2. Intelligent React Query Caching (App.tsx)
-
-Update the QueryClient defaults to avoid redundant fetching:
-
-```text
-staleTime: 0          -->  5 * 60 * 1000  (5 minutes)
-refetchOnMount: 'always' -->  true (only refetch if stale)
-refetchOnWindowFocus: true -->  false
-gcTime (new): 30 * 60 * 1000  (keep unused cache for 30 min)
-```
-
-This means previously visited pages show cached data instantly and refresh silently when stale.
-
-### 3. Session & Auth Data Caching (AuthContext.tsx)
-
-Cache the authenticated user's profile data in `sessionStorage` so that on app reopen:
-- The cached user/school data renders instantly (no blank screen)
-- A background refresh updates the data silently
-- If the refresh returns different data, the state updates seamlessly
-
-### 4. Predictive Preloading Hook (new file)
-
-Create a `usePrefetchRoutes` hook that, after login, preloads the lazy chunks for the user's role-specific pages in the background using `requestIdleCallback`. For example, a parent login would silently load ParentDashboard, ParentAttendance, ParentFees, etc.
-
-### 5. Stale-While-Revalidate Pattern for Key Data
-
-For high-frequency hooks (useStudents, useAttendance, useFees, useHomework, useAnnouncements), add per-hook `staleTime` overrides:
-- Dashboard stats: 2 minutes stale, background refresh
-- Student lists: 5 minutes stale
-- Announcements/notifications: 1 minute stale
-- This ensures users see data instantly while fresh data loads silently
-
-### 6. Optimized Initial HTML Shell (index.html)
-
-Add an inline CSS loading skeleton directly in `index.html` inside the `#root` div. This renders a branded header + content placeholder before any JS executes, eliminating the white flash.
+**Fix**: Create `StudentMessages.tsx`, `StudentFees.tsx`, `StudentFeedback.tsx`, `StudentQueries.tsx`, `StudentMorePage.tsx` and add routes + sidebar/nav entries.
 
 ---
 
-## Files to Modify
+## 2. Teacher Portal -- Hardcoded Data & Missing Features
 
-| File | Change |
-|------|--------|
-| `src/App.tsx` | Lazy imports, Suspense wrapper, updated QueryClient config |
-| `src/contexts/AuthContext.tsx` | sessionStorage caching for instant reopen |
-| `index.html` | Inline loading skeleton in #root |
-| `src/hooks/usePrefetchRoutes.ts` | **New** -- predictive module preloading by role |
+| Gap | Detail |
+|-----|--------|
+| **Hardcoded phone number** | `TeacherProfile.tsx` line 72: shows `+91 98765 43210` instead of fetching actual phone from `profiles` table |
+| **Hardcoded stats** | `TeacherProfile.tsx` lines 85-99: Students=156, Classes=4, Subjects=2 are all hardcoded -- not fetched from DB |
+| **Hardcoded schedule** | `TeacherDashboard.tsx` lines 70-75: `todayClasses` array is static dummy data, not from timetable_entries |
+| **Hardcoded pending tasks** | `TeacherDashboard.tsx` lines 77-81: Static dummy pending tasks |
+| **Menu items not navigating** | `TeacherProfile.tsx` menu buttons have no `onClick={() => navigate(item.href)}` -- they are dead buttons |
+| **Invalid routes** | Teacher profile links to `/teacher/notifications`, `/teacher/schedule`, `/teacher/subjects` -- none of these routes exist |
+| **No "More" page** | Teacher bottom nav "More" goes to `/teacher/announcements`, not a proper overflow menu |
 
-## What This Does NOT Include
+**Fix**: Fetch real data from DB, wire up navigation, create missing routes or fix links to existing pages (e.g., `/teacher/timetable` instead of `/teacher/schedule`).
 
-- Offline-first with service workers (PWA was intentionally removed; adding it back requires a separate decision)
-- IndexedDB data persistence (significant complexity; the sessionStorage + React Query gcTime approach covers 90% of the benefit)
-- Action queuing for offline mode (requires backend changes)
+---
 
-These can be added as a Phase 2 if needed.
+## 3. Parent Portal -- Missing i18n
 
-## Expected Impact
+| Gap | Detail |
+|-----|--------|
+| **No i18n translations** | `ParentDashboard.tsx` has all labels hardcoded in English ("Attendance", "Pending Fees", "Quick Actions", etc.) unlike Student dashboard which uses `t()` |
+| **ParentProfile.tsx** | All labels hardcoded ("Profile", "Parent", "WARD DETAILS", "Feedback", "Settings", etc.) |
+| **ParentMorePage.tsx** | All section titles and labels hardcoded in English |
+| **No Homework section on dashboard** | Parent dashboard shows fees + attendance stats but no homework summary like student dashboard has |
 
-- **First paint**: Near-instant (inline skeleton in HTML)
-- **Initial JS bundle**: Reduced ~60-70% via code splitting
-- **Page transitions**: Instant for cached data, preloaded chunks
-- **App reopen**: Cached auth + cached queries = no loading screen
-- **Server pressure**: Dramatically reduced via 5-min stale windows and no window-focus refetching
-- **Navigation**: No full reloads, layouts persist, data stays in cache
+**Fix**: Wrap all strings in `t()` calls matching the pattern used in Student portal.
+
+---
+
+## 4. Admin Portal -- Minor Gaps
+
+| Gap | Detail |
+|-----|--------|
+| **Dashboard labels not translated** | `AdminDashboard.tsx` uses hardcoded "Good morning", "Students", "Teachers", "Quick Actions" instead of `t()` |
+| **Holiday Calendar not in sidebar** | Holiday Calendar and Employee Attendance are in AdminLayout submenu but missing from `Sidebar.tsx` grouped nav |
+
+**Fix**: Add i18n, add missing sidebar entries.
+
+---
+
+## 5. Super Admin Portal -- Minor Gaps
+
+| Gap | Detail |
+|-----|--------|
+| **Dashboard not translated** | All labels hardcoded in English |
+| **No Reports link in sidebar** | `SuperAdminReportsPage` exists but "Reports" is not in sidebar `menuConfig.super_admin` |
+
+**Fix**: Add i18n, add Reports to sidebar.
+
+---
+
+## 6. Cross-Portal Issues
+
+| Gap | Detail |
+|-----|--------|
+| **Bottom nav "More" inconsistency** | Parent has a proper `ParentMorePage`; Student and Teacher "More" tabs link to announcements |
+| **Settings pages identical** | All 3 settings pages (Student, Parent, Teacher) are copy-paste identical -- could be a shared component |
+| **No password change** | None of the profile pages allow users to change their password |
+| **No dark mode toggle in Settings** | Theme provider exists but no UI toggle in any settings page |
+
+---
+
+## Implementation Plan
+
+### Phase 1: Fix Critical Gaps (Student missing pages)
+1. Create `StudentMorePage.tsx` with proper overflow menu (mirrors ParentMorePage)
+2. Create `StudentFees.tsx` -- view invoices and payment status for the logged-in student
+3. Create `StudentMessages.tsx` -- messaging page for students
+4. Create `StudentFeedback.tsx` and `StudentQueries.tsx`
+5. Add all new routes in `App.tsx`
+6. Update student sidebar and bottom nav to include new pages
+
+### Phase 2: Fix Teacher Hardcoded Data
+7. Fetch real phone, stats (student count, class count, subject count) from DB in `TeacherProfile.tsx`
+8. Replace hardcoded `todayClasses` with real timetable data in `TeacherDashboard.tsx`
+9. Fix dead menu buttons in TeacherProfile -- wire `onClick` navigation, fix invalid routes
+10. Create `TeacherMorePage.tsx`
+
+### Phase 3: Add i18n to Parent & Admin
+11. Add `t()` wrappers to `ParentDashboard.tsx`, `ParentProfile.tsx`, `ParentMorePage.tsx`
+12. Add `t()` wrappers to `AdminDashboard.tsx`, `SuperAdminDashboard.tsx`
+
+### Phase 4: Cross-Portal Improvements
+13. Add "Reports" to super admin sidebar
+14. Add Holiday Calendar / Employee Attendance to admin sidebar
+15. Add dark mode toggle to all Settings pages
+16. Add password change option to profile pages
+
+---
+
+## Technical Notes
+
+- New student pages will follow existing patterns (e.g., `useStudentProfile` hook, `MobileLayout` wrapper)
+- Student fees page will reuse `useParentInvoices` hook adapted for student's own ID
+- Teacher real data will come from existing `timetable_entries` table and `get_teacher_dashboard_stats` RPC
+- i18n keys will be added to `src/i18n/locales/en.ts` and other locale files
+- No database migrations needed -- all data tables already exist
 
