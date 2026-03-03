@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
 import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
-import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
-import { LoginSplash } from '@/components/login/LoginSplash';
 import { Input } from '@/components/ui/input';
-import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 import { supabase } from '@/integrations/supabase/client';
+
+// Lazy-load components used by <1% of login attempts
+const SuperAdminOTPLogin = lazy(() => import('@/components/auth/SuperAdminOTPLogin').then(m => ({ default: m.SuperAdminOTPLogin })));
+const LoginSplash = lazy(() => import('@/components/login/LoginSplash').then(m => ({ default: m.LoginSplash })));
+const ForgotPasswordDialog = lazy(() => import('@/components/auth/ForgotPasswordDialog').then(m => ({ default: m.ForgotPasswordDialog })));
 
 type LoginStep = 'splash' | 'email' | 'password' | 'superadmin';
 
@@ -101,21 +103,63 @@ export default function LoginPage() {
     );
   }
 
+  // SessionStorage cache for email lookup results
+  const EMAIL_LOOKUP_CACHE_KEY = 'ost_email_lookup_cache';
+
+  const getCachedLookup = (emailKey: string): any | null => {
+    try {
+      const raw = sessionStorage.getItem(EMAIL_LOOKUP_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed.email === emailKey && Date.now() - parsed.ts < 10 * 60 * 1000) return parsed.data;
+      return null;
+    } catch { return null; }
+  };
+
+  const cacheLookup = (emailKey: string, data: any) => {
+    try { sessionStorage.setItem(EMAIL_LOOKUP_CACHE_KEY, JSON.stringify({ email: emailKey, data, ts: Date.now() })); } catch {}
+  };
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) { setError('Please enter your email'); return; }
     setLookupLoading(true);
     setError('');
     try {
-      // Add timeout to prevent infinite loading
+      const trimmedEmail = email.trim();
+      
+      // Check sessionStorage cache first
+      const cached = getCachedLookup(trimmedEmail);
+      if (cached) {
+        if (!cached.found) {
+          setError('No account found with this email address');
+          setLookupLoading(false);
+          return;
+        }
+        if (cached.role === 'super_admin') {
+          setLookupLoading(false);
+          setStep('superadmin');
+          return;
+        }
+        if (cached.logo_url) { const img = new Image(); img.src = cached.logo_url; }
+        setSchoolInfo(cached);
+        setLookupLoading(false);
+        setStep('password');
+        return;
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: email.trim() });
+      const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
       clearTimeout(timeoutId);
       
       if (rpcError) throw rpcError;
       const result = data as any;
+      
+      // Cache the result
+      cacheLookup(trimmedEmail, result);
+      
       if (!result?.found) {
         setError('No account found with this email address');
         setLookupLoading(false);
@@ -126,11 +170,7 @@ export default function LoginPage() {
         setStep('superadmin');
         return;
       }
-      // Prefetch logo so it's cached before password step renders
-      if (result.logo_url) {
-        const img = new Image();
-        img.src = result.logo_url;
-      }
+      if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
       setSchoolInfo(result);
       setLookupLoading(false);
       setStep('password');
@@ -170,7 +210,7 @@ export default function LoginPage() {
 
   // Splash
   if (step === 'splash') {
-    return <LoginSplash onComplete={handleSplashComplete} />;
+    return <Suspense fallback={<div className="min-h-[100dvh] bg-[#0B1120]" />}><LoginSplash onComplete={handleSplashComplete} /></Suspense>;
   }
 
 
@@ -192,7 +232,9 @@ export default function LoginPage() {
               <p className="text-white/40 text-sm mt-1">System administrator access</p>
             </div>
             <div className="bg-white/[0.06] backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-2xl">
-              <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
+              <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin text-white/50 mx-auto" />}>
+                <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
+              </Suspense>
             </div>
           </motion.div>
         </div>
@@ -246,7 +288,7 @@ export default function LoginPage() {
         </p>
       </footer>
 
-      <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
+      <Suspense fallback={null}><ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} /></Suspense>
     </div>
   );
 }
