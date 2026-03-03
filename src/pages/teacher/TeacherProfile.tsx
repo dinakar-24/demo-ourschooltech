@@ -13,15 +13,14 @@ import {
   Mail,
   Phone,
   BookOpen,
-  Calendar,
   Settings,
   LogOut,
   ChevronRight,
-  Bell,
   Clock,
   Users,
   MessageCircle,
 } from 'lucide-react';
+import { ChangePasswordSection } from '@/components/profile/ChangePasswordSection';
 
 export default function TeacherProfile() {
   const { user, logout } = useAuth();
@@ -74,7 +73,6 @@ export default function TeacherProfile() {
   const classes = teacherData?.classes || [];
 
   const menuItems = [
-    { label: 'Notifications', icon: Bell, href: '/teacher/notifications' },
     { label: 'My Timetable', icon: Clock, href: '/teacher/timetable' },
     { label: 'My Students', icon: Users, href: '/teacher/students' },
     { label: 'Messages', icon: MessageCircle, href: '/teacher/messages' },
@@ -169,6 +167,9 @@ export default function TeacherProfile() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Change Password */}
+        <ChangePasswordSection />
 
         {/* Logout */}
         <Button 

@@ -20,6 +20,7 @@ import {
   MessageSquare,
   HelpCircle,
 } from 'lucide-react';
+import { ChangePasswordSection } from '@/components/profile/ChangePasswordSection';
 
 export default function ParentProfile() {
   const { user, logout } = useAuth();
@@ -143,6 +144,9 @@ export default function ParentProfile() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Change Password */}
+        <ChangePasswordSection />
 
         <Button
           variant="outline"
