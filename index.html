@@ -33,7 +33,7 @@
     <script>
       // Force reload on new deploy + kill old service workers
       (function(){
-        var APP_VERSION = '2026030302';
+        var APP_VERSION = '2026030303';
         var stored = localStorage.getItem('app_version');
         if(stored && stored !== APP_VERSION){
           localStorage.setItem('app_version', APP_VERSION);
@@ -64,9 +64,17 @@
       })();
     </script>
     <div id="root">
-      <div id="app-shell" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B1120">
-        <div style="width:28px;height:28px;border:2.5px solid rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.5);border-radius:50%;animation:shell-spin 0.7s linear infinite"></div>
-        <style>@keyframes shell-spin{to{transform:rotate(360deg)}}</style>
+      <div id="app-shell" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0B1120;gap:24px">
+        <div style="width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+          <img src="/favicon.png" alt="" width="40" height="40" style="object-fit:contain" />
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);animation:shell-bounce 0.8s ease-in-out infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);animation:shell-bounce 0.8s ease-in-out 0.15s infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.4);animation:shell-bounce 0.8s ease-in-out 0.3s infinite"></div>
+        </div>
+        <p style="color:rgba(255,255,255,0.25);font-size:11px;font-family:system-ui,sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-weight:500">Loading...</p>
+        <style>@keyframes shell-bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-8px);opacity:1}}</style>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
