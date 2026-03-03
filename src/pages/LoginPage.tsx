@@ -255,33 +255,19 @@ export default function LoginPage() {
 function LoginBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Gradient orbs */}
-      <motion.div
+      {/* Static gradient orbs — no framer-motion animations */}
+      <div
         className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full"
         style={{ background: 'radial-gradient(circle, hsl(230 60% 40% / 0.3), transparent 70%)' }}
-        animate={{ scale: [1, 1.1, 1], x: [0, 15, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <motion.div
+      <div
         className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full"
         style={{ background: 'radial-gradient(circle, hsl(200 50% 35% / 0.2), transparent 70%)' }}
-        animate={{ scale: [1, 1.08, 1], y: [0, -20, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-      />
-      <motion.div
-        className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full"
-        style={{ background: 'radial-gradient(circle, hsl(260 50% 40% / 0.15), transparent 70%)' }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
       />
       {/* Grid pattern */}
       <div className="absolute inset-0 opacity-[0.015]" style={{
         backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
         backgroundSize: '32px 32px',
-      }} />
-      {/* Subtle noise texture overlay */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
       }} />
     </div>
   );
