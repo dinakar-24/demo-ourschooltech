@@ -165,8 +165,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     let initialSessionHandled = false;
 
-    // First, restore the session from storage
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // First, restore the session from storage (with lock error resilience)
+    const getSessionWithRetry = async (): Promise<{ data: { session: Session | null } }> => {
+      try {
+        return await supabase.auth.getSession();
+      } catch (err: any) {
+        const isLockError = err?.name === 'AbortError' || err?.message?.includes('Lock broken') || err?.message?.includes('steal');
+        if (isLockError) {
+          await new Promise(r => setTimeout(r, 100));
+          return await supabase.auth.getSession();
+        }
+        throw err;
+      }
+    };
+
+    getSessionWithRetry().then(async ({ data: { session } }) => {
       if (!isMounted) return;
       initialSessionHandled = true;
 
