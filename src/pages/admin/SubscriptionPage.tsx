@@ -3,6 +3,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -290,6 +291,7 @@ export default function SubscriptionPage() {
   // Live active student count
   const [liveStudentCount, setLiveStudentCount] = useState<number | null>(null);
   const [countLoading, setCountLoading] = useState(false);
+  const [customPayAmount, setCustomPayAmount] = useState<string>('');
 
   useEffect(() => {
     if (!user?.schoolId) return;
@@ -308,6 +310,7 @@ export default function SubscriptionPage() {
   const paidStudentCount = subscription?.student_count || 0;
   const pricePerStudent = subscription?.price_per_student || 0;
   const totalAmount = subscription?.total_amount || 0;
+  const totalPaidAmount = (subscription as any)?.total_paid_amount || 0;
 
   // Dynamic calculation based on live count
   const currentStudentCount = liveStudentCount ?? paidStudentCount;
@@ -329,14 +332,29 @@ export default function SubscriptionPage() {
   const topUpAmount = extraStudents * pricePerStudent;
   const needsTopUp = extraStudents > 0;
 
-  // needsTopUp is used for upgrade logic
+  // Partial payment: remaining balance for renewal/activation
+  const renewalRemaining = Math.max(0, dynamicTotal - totalPaidAmount);
+  const hasPartialPayment = totalPaidAmount > 0 && renewalRemaining > 0 && !isActive;
 
-  const handlePayPlan = () => {
+  // For top-ups, calculate remaining top-up amount (total needed - total paid)
+  const totalNeededWithTopUp = needsTopUp ? currentStudentCount * pricePerStudent : totalAmount;
+  const topUpRemaining = Math.max(0, totalNeededWithTopUp - totalPaidAmount);
+
+  // Determine the max payable amount
+  const maxPayableAmount = needsTopUp ? topUpRemaining : renewalRemaining;
+  const parsedCustomAmount = parseInt(customPayAmount) || 0;
+  const payAmount = parsedCustomAmount > 0 && parsedCustomAmount <= maxPayableAmount
+    ? parsedCustomAmount
+    : maxPayableAmount;
+
+  const handlePayPlan = (amount?: number) => {
     if (!user?.schoolId || !subscription) return;
+    const paymentAmount = amount || payAmount;
+    if (paymentAmount <= 0) return;
 
     initiatePayment({
       subscriptionId: subscription.id,
-      amount: dynamicTotal,
+      amount: paymentAmount,
       schoolName: user.schoolName || 'School',
       userEmail: user.email,
       userName: user.name,
@@ -344,18 +362,21 @@ export default function SubscriptionPage() {
       studentCount: currentStudentCount,
       paymentType: 'renewal',
       onSuccess: () => {
+        setCustomPayAmount('');
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
       },
     });
   };
 
-  const handleTopUp = () => {
+  const handleTopUp = (amount?: number) => {
     if (!user?.schoolId || !subscription) return;
+    const paymentAmount = amount || payAmount;
+    if (paymentAmount <= 0) return;
 
     initiatePayment({
       subscriptionId: subscription.id,
-      amount: topUpAmount,
+      amount: paymentAmount,
       schoolName: user.schoolName || 'School',
       userEmail: user.email,
       userName: user.name,
@@ -363,6 +384,7 @@ export default function SubscriptionPage() {
       studentCount: currentStudentCount,
       paymentType: 'topup',
       onSuccess: () => {
+        setCustomPayAmount('');
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
       },
@@ -544,50 +566,70 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              {/* Upgrade Button in main card */}
-              {needsTopUp && (
-                <Button
-                  className="w-full mt-4 h-[52px] text-sm font-bold rounded-2xl shadow-lg whitespace-normal leading-tight"
-                  size="lg"
-                  onClick={handleTopUp}
-                  disabled={payLoading || isProcessing}
-                >
-                  {payLoading || isProcessing ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Users className="w-4 h-4 mr-2 shrink-0" />
-                  )}
-                  <span className="truncate">
-                    {isProcessing
-                      ? 'Processing Payment...'
-                      : payLoading
-                      ? 'Preparing...'
-                      : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')}`}
-                  </span>
-                </Button>
-              )}
+              {/* Partial Payment Input & Billing Summary */}
+              {(needsTopUp || ((isExpired || isPending || isTrial) && pricePerStudent > 0)) && maxPayableAmount > 0 && (
+                <div className="mt-4 space-y-3">
+                  {/* Billing Summary */}
+                  <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Plan Cost</span>
+                      <span className="font-semibold text-foreground">₹{(needsTopUp ? totalNeededWithTopUp : dynamicTotal).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Paid</span>
+                      <span className="font-semibold text-foreground">₹{totalPaidAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm">
+                      <span className="font-bold text-primary">Remaining Amount</span>
+                      <span className="font-extrabold text-primary">₹{maxPayableAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
 
-              {/* Activate Button */}
-              {(isExpired || isPending || isTrial) && pricePerStudent > 0 && (
-                <Button
-                  className="w-full mt-4 h-[52px] text-sm font-bold rounded-2xl shadow-lg"
-                  size="lg"
-                  onClick={handlePayPlan}
-                  disabled={payLoading || isProcessing || currentStudentCount <= 0}
-                >
-                  {payLoading || isProcessing ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <CreditCard className="w-4 h-4 mr-2.5" />
+                  {/* Custom Amount Input */}
+                  {maxPayableAmount > 1000 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        Pay in parts (UPI limit ~₹1,00,000). Enter amount or pay full remaining.
+                      </p>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          placeholder={`Max ₹${maxPayableAmount.toLocaleString('en-IN')}`}
+                          value={customPayAmount}
+                          onChange={(e) => setCustomPayAmount(e.target.value)}
+                          className="pl-7 h-11 rounded-xl"
+                          min={1}
+                          max={maxPayableAmount}
+                        />
+                      </div>
+                    </div>
                   )}
-                  {isProcessing
-                    ? 'Processing Payment...'
-                    : payLoading
-                    ? 'Preparing...'
-                    : isTrial
-                    ? `Activate — Pay ₹${dynamicTotal.toLocaleString('en-IN')}`
-                    : `Activate Plan — ₹${dynamicTotal.toLocaleString('en-IN')}`}
-                </Button>
+
+                  {/* Pay Button */}
+                  <Button
+                    className="w-full h-[52px] text-sm font-bold rounded-2xl shadow-lg whitespace-normal leading-tight"
+                    size="lg"
+                    onClick={() => needsTopUp ? handleTopUp(payAmount) : handlePayPlan(payAmount)}
+                    disabled={payLoading || isProcessing || payAmount <= 0 || (parsedCustomAmount > 0 && parsedCustomAmount > maxPayableAmount)}
+                  >
+                    {payLoading || isProcessing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CreditCard className="w-4 h-4 mr-2 shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {isProcessing
+                        ? 'Processing Payment...'
+                        : payLoading
+                        ? 'Preparing...'
+                        : needsTopUp
+                        ? `Upgrade Plan — Pay ₹${payAmount.toLocaleString('en-IN')}`
+                        : `${hasPartialPayment ? 'Continue Payment' : 'Activate Plan'} — ₹${payAmount.toLocaleString('en-IN')}`}
+                    </span>
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -639,11 +681,13 @@ export default function SubscriptionPage() {
                 { label: 'Paid Students', value: String(paidStudentCount) },
                 { label: 'Active Students', value: countLoading ? '...' : String(currentStudentCount) },
                 { label: 'Price Per Student', value: `₹${pricePerStudent}` },
-                { label: 'Amount Paid', value: `₹${totalAmount.toLocaleString('en-IN')}` },
-              ].map((item, i) => (
+                { label: 'Total Plan Cost', value: `₹${(needsTopUp ? totalNeededWithTopUp : totalAmount).toLocaleString('en-IN')}` },
+                { label: 'Total Paid', value: `₹${totalPaidAmount.toLocaleString('en-IN')}`, highlight: false },
+                { label: 'Remaining', value: `₹${maxPayableAmount.toLocaleString('en-IN')}`, highlight: maxPayableAmount > 0 },
+              ].map((item: any, i) => (
                 <div key={i} className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">{item.label}</span>
-                  <span className="text-sm font-semibold text-foreground capitalize">{item.value}</span>
+                  <span className={`text-sm ${item.highlight ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>{item.label}</span>
+                  <span className={`text-sm font-semibold ${item.highlight ? 'text-primary' : 'text-foreground'} capitalize`}>{item.value}</span>
                 </div>
               ))}
             </div>

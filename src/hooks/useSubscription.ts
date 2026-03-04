@@ -11,6 +11,7 @@ export interface Subscription {
   student_count: number;
   price_per_student: number;
   total_amount: number;
+  total_paid_amount: number;
   status: 'active' | 'expired' | 'pending' | 'trial';
   start_date: string | null;
   end_date: string | null;
