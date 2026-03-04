@@ -54,19 +54,19 @@ export default function FeedbackPage() {
 
   return (
     <AdminLayout title="Feedback">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-4 animate-fade-up">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-2.5 md:gap-3">
           {[
-            { label: 'Total', value: feedbacks?.length || 0 },
-            { label: 'Pending', value: feedbacks?.filter(f => f.status === 'pending').length || 0 },
-            { label: 'Reviewed', value: feedbacks?.filter(f => f.status === 'reviewed').length || 0 },
-            { label: 'Avg Rating', value: feedbacks?.length ? (feedbacks.reduce((s, f) => s + f.rating, 0) / feedbacks.length).toFixed(1) : '0' },
+            { label: 'Total', value: feedbacks?.length || 0, color: 'text-blue-600 bg-blue-100' },
+            { label: 'Pending', value: feedbacks?.filter(f => f.status === 'pending').length || 0, color: 'text-amber-600 bg-amber-100' },
+            { label: 'Reviewed', value: feedbacks?.filter(f => f.status === 'reviewed').length || 0, color: 'text-teal-600 bg-teal-100' },
+            { label: 'Avg Rating', value: feedbacks?.length ? (feedbacks.reduce((s, f) => s + f.rating, 0) / feedbacks.length).toFixed(1) : '0', color: 'text-purple-600 bg-purple-100' },
           ].map(s => (
-            <Card key={s.label}>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-12 inline-block" /> : s.value}</p>
+            <Card key={s.label} className="border-border/50 shadow-sm">
+              <CardContent className="p-3 md:p-4">
+                <p className="text-[11px] md:text-xs font-medium text-muted-foreground">{s.label}</p>
+                <p className="text-xl md:text-2xl font-bold text-foreground mt-1">{isLoading ? <Skeleton className="h-7 w-10 inline-block" /> : s.value}</p>
               </CardContent>
             </Card>
           ))}
