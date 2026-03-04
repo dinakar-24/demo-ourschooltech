@@ -159,8 +159,8 @@ export default function AdminDashboard() {
           <AdminQuickActions />
         </div>
 
-        <PendingTasks />
         <TodaysSummary />
+        <PendingTasks />
       </div>
     </AdminLayout>
   );
