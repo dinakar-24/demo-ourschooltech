@@ -18,13 +18,15 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center gap-[18px] bg-background">
-        {[0, 1].map((i) => (
-          <svg key={i} width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="34" fill="hsl(var(--background))" stroke="#6366f1" strokeWidth="2.5" />
-            <circle cx="40" cy="40" r="7" fill="hsl(var(--foreground))" />
-          </svg>
-        ))}
+      <div className="fixed inset-0 z-[200] flex items-center justify-center gap-4 bg-background">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" strokeWidth="3" />
+          <circle cx="32" cy="14" r="6" fill="#000" style={{ animation: 'eyeOrbit 1.4s linear infinite' }} />
+        </svg>
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" strokeWidth="3" />
+          <circle cx="32" cy="14" r="6" fill="#000" style={{ animation: 'eyeOrbit 1.4s linear 0.2s infinite' }} />
+        </svg>
       </div>
     );
   }
