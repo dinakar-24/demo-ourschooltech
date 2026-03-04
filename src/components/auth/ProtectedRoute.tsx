@@ -2,26 +2,11 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { ReactNode, useRef } from 'react';
-import { EyesRefreshAnimation } from '@/components/ui/eyes-refresh-animation';
-
-/** Detect if the current page load is a refresh (not initial visit or navigation) */
-function isPageRefresh(): boolean {
-  try {
-    const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-    if (entries.length > 0) {
-      return entries[0].type === 'reload';
-    }
-  } catch {
-    // fallback
-  }
-  return false;
-}
+import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
-  /** When true and user is super_admin, requires active impersonation to access */
   requireImpersonation?: boolean;
 }
 
@@ -30,14 +15,9 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   const { isImpersonating } = useImpersonation();
   const { isSubdomain } = useTenant();
   const location = useLocation();
-  const isRefresh = useRef(isPageRefresh());
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <EyesRefreshAnimation visible={isRefresh.current} message="Refreshing..." />
-      </div>
-    );
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!isAuthenticated) {
