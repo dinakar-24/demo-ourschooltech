@@ -1,19 +1,17 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
+import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
+import { LoginSplash } from '@/components/login/LoginSplash';
 import { Input } from '@/components/ui/input';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { supabase } from '@/integrations/supabase/client';
 
-
-// Lazy-load components used by <1% of login attempts
-const SuperAdminOTPLogin = lazy(() => import('@/components/auth/SuperAdminOTPLogin').then(m => ({ default: m.SuperAdminOTPLogin })));
-
-const ForgotPasswordDialog = lazy(() => import('@/components/auth/ForgotPasswordDialog').then(m => ({ default: m.ForgotPasswordDialog })));
-
-type LoginStep = 'email' | 'password' | 'superadmin';
+type LoginStep = 'splash' | 'email' | 'password' | 'superadmin';
 
 interface SchoolInfo {
   school_name: string;
@@ -49,7 +47,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
 
-  const [step, setStep] = useState<LoginStep>('email');
+  const [step, setStep] = useState<LoginStep>('splash');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -59,12 +57,7 @@ export default function LoginPage() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  // Safety net: clear stale sessions (index.html handles most cases)
-  useEffect(() => {
-    if (!isAuthenticated && !authLoading) {
-      try { sessionStorage.removeItem('ost_auth_cache'); } catch {}
-    }
-  }, [isAuthenticated, authLoading]);
+  const handleSplashComplete = useCallback(() => setStep('email'), []);
 
 
   useEffect(() => {
@@ -80,7 +73,14 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Don't gate login UI on auth loading — redirect effect handles authenticated users
+  // While auth is loading, show a centered loader instead of the login form
+  if (authLoading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
+  }
 
   // If already authenticated, don't render login form (redirect will happen via useEffect)
   if (isAuthenticated && user) {
@@ -91,96 +91,42 @@ export default function LoginPage() {
     );
   }
 
-  // SessionStorage cache for email lookup results
-  const EMAIL_LOOKUP_CACHE_KEY = 'ost_email_lookup_cache';
-
-  const getCachedLookup = (emailKey: string): any | null => {
-    try {
-      const raw = sessionStorage.getItem(EMAIL_LOOKUP_CACHE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed.email === emailKey && Date.now() - parsed.ts < 10 * 60 * 1000) return parsed.data;
-      return null;
-    } catch { return null; }
-  };
-
-  const cacheLookup = (emailKey: string, data: any) => {
-    try { sessionStorage.setItem(EMAIL_LOOKUP_CACHE_KEY, JSON.stringify({ email: emailKey, data, ts: Date.now() })); } catch {}
-  };
-
-    const handleEmailSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) { setError('Please enter your email'); return; }
     setLookupLoading(true);
     setError('');
     try {
-      const trimmedEmail = email.trim();
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      // Check sessionStorage cache first
-      const cached = getCachedLookup(trimmedEmail);
-      if (cached) {
-        if (!cached.found) {
-          setError('No account found with this email address');
-          setLookupLoading(false);
-          return;
-        }
-        if (cached.role === 'super_admin') {
-          setLookupLoading(false);
-          setStep('superadmin');
-          return;
-        }
-        if (cached.logo_url) { const img = new Image(); img.src = cached.logo_url; }
-        setSchoolInfo(cached);
+      const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: email.trim() });
+      clearTimeout(timeoutId);
+      
+      if (rpcError) throw rpcError;
+      const result = data as any;
+      if (!result?.found) {
+        setError('No account found with this email address');
         setLookupLoading(false);
-        setStep('password');
         return;
       }
-
-      // Use Supabase SDK instead of raw fetch — better connection management
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: trimmedEmail });
-          const result = data as any;
-          
-          if (rpcError) {
-            throw new Error(rpcError.message || 'Server error');
-          }
-          
-          console.log('[Login] lookup result:', result?.found);
-          
-          // Cache the result
-          cacheLookup(trimmedEmail, result);
-          
-          if (!result?.found) {
-            setError('No account found with this email address');
-            setLookupLoading(false);
-            return;
-          }
-          if (result.role === 'super_admin') {
-            setLookupLoading(false);
-            setStep('superadmin');
-            return;
-          }
-          if (result.logo_url) { const img = new Image(); img.src = result.logo_url; }
-          setSchoolInfo(result);
-          setLookupLoading(false);
-          setStep('password');
-          return;
-        } catch (err) {
-          lastError = err;
-          if (attempt < 1) {
-            await new Promise(r => setTimeout(r, 1500));
-          }
-        }
+      if (result.role === 'super_admin') {
+        setLookupLoading(false);
+        setStep('superadmin');
+        return;
       }
-
-      // All retries failed
-      throw lastError;
+      // Prefetch logo so it's cached before password step renders
+      if (result.logo_url) {
+        const img = new Image();
+        img.src = result.logo_url;
+      }
+      setSchoolInfo(result);
+      setLookupLoading(false);
+      setStep('password');
     } catch (err: any) {
-      const isNetworkError = err?.message?.includes('Failed to fetch') || err?.name === 'TypeError' || err?.name === 'AbortError';
-      const message = isNetworkError
-        ? 'Connection issue. Please tap Continue to try again.'
+      const message = err?.name === 'AbortError' 
+        ? 'Request timed out. Please check your internet connection and try again.'
         : (err.message || 'Failed to look up account. Please try again.');
       setError(message);
       setLookupLoading(false);
@@ -207,9 +153,15 @@ export default function LoginPage() {
       setPassword('');
       setError('');
       setSchoolInfo(null);
+    } else {
+      setStep('splash');
     }
   };
 
+  // Splash
+  if (step === 'splash') {
+    return <LoginSplash onComplete={handleSplashComplete} />;
+  }
 
 
   // Super admin
@@ -230,9 +182,7 @@ export default function LoginPage() {
               <p className="text-white/40 text-sm mt-1">System administrator access</p>
             </div>
             <div className="bg-white/[0.06] backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-2xl">
-              <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin text-white/50 mx-auto" />}>
-                <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
-              </Suspense>
+              <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
             </div>
           </motion.div>
         </div>
@@ -286,7 +236,7 @@ export default function LoginPage() {
         </p>
       </footer>
 
-      <Suspense fallback={null}><ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} /></Suspense>
+      <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
     </div>
   );
 }
@@ -295,19 +245,33 @@ export default function LoginPage() {
 function LoginBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Static gradient orbs — no framer-motion animations */}
-      <div
+      {/* Gradient orbs */}
+      <motion.div
         className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full"
         style={{ background: 'radial-gradient(circle, hsl(230 60% 40% / 0.3), transparent 70%)' }}
+        animate={{ scale: [1, 1.1, 1], x: [0, 15, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <div
+      <motion.div
         className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full"
         style={{ background: 'radial-gradient(circle, hsl(200 50% 35% / 0.2), transparent 70%)' }}
+        animate={{ scale: [1, 1.08, 1], y: [0, -20, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+      />
+      <motion.div
+        className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full"
+        style={{ background: 'radial-gradient(circle, hsl(260 50% 40% / 0.15), transparent 70%)' }}
+        animate={{ scale: [1, 1.15, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
       />
       {/* Grid pattern */}
       <div className="absolute inset-0 opacity-[0.015]" style={{
         backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
         backgroundSize: '32px 32px',
+      }} />
+      {/* Subtle noise texture overlay */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
       }} />
     </div>
   );

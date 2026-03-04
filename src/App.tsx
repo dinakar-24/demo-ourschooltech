@@ -14,7 +14,6 @@ import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { lazy, Suspense } from "react";
 
-
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -102,14 +101,6 @@ const StudentSettings = lazy(() => import("./pages/student/StudentSettings"));
 const StudentOnlineClasses = lazy(() => import("./pages/student/StudentOnlineClasses"));
 const StudentTransport = lazy(() => import("./pages/student/StudentTransport"));
 const StudentGallery = lazy(() => import("./pages/student/StudentGallery"));
-const StudentMorePage = lazy(() => import("./pages/student/StudentMorePage"));
-const StudentFees = lazy(() => import("./pages/student/StudentFees"));
-const StudentMessages = lazy(() => import("./pages/student/StudentMessages"));
-const StudentFeedback = lazy(() => import("./pages/student/StudentFeedback"));
-const StudentQueries = lazy(() => import("./pages/student/StudentQueries"));
-
-// Lazy loaded pages -- Teacher (additional)
-const TeacherMorePage = lazy(() => import("./pages/teacher/TeacherMorePage"));
 
 // Shared Pages
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
@@ -126,9 +117,13 @@ const queryClient = new QueryClient({
   },
 });
 
-// Minimal fallback — no splash/loader
+// Suspense fallback spinner
 function RouteLoadingFallback() {
-  return <div className="min-h-screen" />;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
 }
 
 // Smart redirect based on auth state
@@ -261,7 +256,6 @@ function AppRoutes() {
           <Route path="/teacher/feedback" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherFeedback /></ProtectedRoute>} />
           <Route path="/teacher/queries" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherQueries /></ProtectedRoute>} />
           <Route path="/teacher/settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettings /></ProtectedRoute>} />
-          <Route path="/teacher/more" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMorePage /></ProtectedRoute>} />
           <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
           
           {/* Parent Routes */}
@@ -297,11 +291,6 @@ function AppRoutes() {
           <Route path="/student/online-classes" element={<ProtectedRoute allowedRoles={['student']}><StudentOnlineClasses /></ProtectedRoute>} />
           <Route path="/student/transport" element={<ProtectedRoute allowedRoles={['student']}><StudentTransport /></ProtectedRoute>} />
           <Route path="/student/gallery" element={<ProtectedRoute allowedRoles={['student']}><StudentGallery /></ProtectedRoute>} />
-          <Route path="/student/fees" element={<ProtectedRoute allowedRoles={['student']}><StudentFees /></ProtectedRoute>} />
-          <Route path="/student/messages" element={<ProtectedRoute allowedRoles={['student']}><StudentMessages /></ProtectedRoute>} />
-          <Route path="/student/feedback" element={<ProtectedRoute allowedRoles={['student']}><StudentFeedback /></ProtectedRoute>} />
-          <Route path="/student/queries" element={<ProtectedRoute allowedRoles={['student']}><StudentQueries /></ProtectedRoute>} />
-          <Route path="/student/more" element={<ProtectedRoute allowedRoles={['student']}><StudentMorePage /></ProtectedRoute>} />
           <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
           
           {/* Legacy routes */}

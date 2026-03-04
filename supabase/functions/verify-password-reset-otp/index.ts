@@ -37,53 +37,52 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Verify OTP and find user in parallel
-    const [otpResult, profileResult] = await Promise.all([
-      supabaseAdmin
-        .from("password_reset_otp")
-        .select("*")
-        .eq("email", email.toLowerCase())
-        .eq("otp_code", otp)
-        .eq("used", false)
-        .gte("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .eq("email", email.toLowerCase())
-        .maybeSingle(),
-    ]);
+    // Verify OTP
+    const { data: otpData, error: otpError } = await supabaseAdmin
+      .from("password_reset_otp")
+      .select("*")
+      .eq("email", email.toLowerCase())
+      .eq("otp_code", otp)
+      .eq("used", false)
+      .gte("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (otpResult.error || !otpResult.data) {
+    if (otpError || !otpData) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired OTP. Please request a new one." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!profileResult.data) {
+    // Mark OTP as used
+    await supabaseAdmin
+      .from("password_reset_otp")
+      .update({ used: true })
+      .eq("id", otpData.id);
+
+    // Find user
+    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+    const user = userData?.users?.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase()
+    );
+
+    if (!user) {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Mark OTP as used and update password in parallel
-    const [, updateResult] = await Promise.all([
-      supabaseAdmin
-        .from("password_reset_otp")
-        .update({ used: true })
-        .eq("id", otpResult.data.id),
-      supabaseAdmin.auth.admin.updateUserById(
-        profileResult.data.id,
-        { password: newPassword }
-      ),
-    ]);
+    // Update password
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      { password: newPassword }
+    );
 
-    if (updateResult.error) {
-      console.error("Error updating password:", updateResult.error);
+    if (updateError) {
+      console.error("Error updating password:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to update password. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

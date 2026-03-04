@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png">
-    <title>Our School Tech</title> <!-- v2 -->
+    <title>Our School Tech</title>
     <meta name="description" content="Smart School Management for Modern Education">
     <meta name="author" content="Our School Tech" />
     <meta name="theme-color" content="#0F766E" />
@@ -12,7 +12,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <link rel="apple-touch-icon" href="/favicon.png" />
-    <!-- Logo preloaded only when needed by components -->
+    <link rel="preload" as="image" href="/src/assets/logo.png" />
 
     <!-- TODO: Update og:title to match your application name -->
     
@@ -30,22 +30,51 @@
 </head>
 
   <body>
-    <div id="root"></div>
     <script>
-      // Clear expired Supabase auth tokens BEFORE the SDK loads
-      // Prevents infinite refresh-token retry storms that block network
-      try {
-        for (var i = localStorage.length - 1; i >= 0; i--) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) {
-            var v = JSON.parse(localStorage.getItem(k));
-            if (v && v.expires_at && v.expires_at * 1000 < Date.now()) {
-              localStorage.removeItem(k);
-            }
+      // Force reload on new deploy + kill old service workers
+      (function(){
+        var APP_VERSION = '2026022804';
+        var stored = localStorage.getItem('app_version');
+        if(stored && stored !== APP_VERSION){
+          localStorage.setItem('app_version', APP_VERSION);
+          // Clear all caches then hard reload
+          if('caches' in window){
+            caches.keys().then(function(keys){
+              var p=[];
+              for(var j=0;j<keys.length;j++) p.push(caches.delete(keys[j]));
+              Promise.all(p).then(function(){ location.reload(true); });
+            });
+          } else {
+            location.reload(true);
           }
+          return;
         }
-      } catch(e) {}
+        if(!stored) localStorage.setItem('app_version', APP_VERSION);
+        // Kill old service workers
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(function(regs){
+            for(var i=0;i<regs.length;i++) regs[i].unregister();
+          });
+        }
+        if('caches' in window){
+          caches.keys().then(function(keys){
+            for(var j=0;j<keys.length;j++) caches.delete(keys[j]);
+          });
+        }
+      })();
     </script>
+    <div id="root">
+      <div id="app-shell" style="min-height:100vh;display:flex;flex-direction:column;background:#f8fafc">
+        <div style="height:56px;background:#0F766E;display:flex;align-items:center;padding:0 16px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.2)"></div>
+          <div style="margin-left:12px;width:120px;height:16px;border-radius:4px;background:rgba(255,255,255,0.3)"></div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">
+          <div style="width:32px;height:32px;border:3px solid #0F766E;border-top-color:transparent;border-radius:50%;animation:shell-spin 0.8s linear infinite"></div>
+        </div>
+        <style>@keyframes shell-spin{to{transform:rotate(360deg)}}</style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

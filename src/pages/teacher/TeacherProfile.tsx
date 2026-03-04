@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,76 +7,32 @@ import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
-import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
+  User,
   Mail,
   Phone,
   BookOpen,
+  Calendar,
   Settings,
   LogOut,
   ChevronRight,
-  Clock,
-  Users,
-  MessageCircle,
+  Award,
+  Bell,
 } from 'lucide-react';
-import { ChangePasswordSection } from '@/components/profile/ChangePasswordSection';
 
 export default function TeacherProfile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const schoolId = useEffectiveSchoolId();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Fetch teacher record from DB for real phone + stats
-  const { data: teacherData, isLoading } = useQuery({
-    queryKey: ['teacher-profile-data', user?.id, schoolId],
-    queryFn: async () => {
-      if (!user?.id || !schoolId) return null;
-      const { data, error } = await supabase
-        .from('teachers')
-        .select('phone, subjects, classes')
-        .eq('user_id', user.id)
-        .eq('school_id', schoolId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    },
-    enabled: !!user?.id && !!schoolId,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  // Count students in teacher's classes
-  const { data: studentCount } = useQuery({
-    queryKey: ['teacher-student-count', teacherData?.classes, schoolId],
-    queryFn: async () => {
-      if (!teacherData?.classes?.length || !schoolId) return 0;
-      const { count, error } = await supabase
-        .from('students')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('status', 'active')
-        .in('class_name', teacherData.classes);
-      if (error) return 0;
-      return count || 0;
-    },
-    enabled: !!teacherData?.classes?.length && !!schoolId,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const phone = teacherData?.phone;
-  const subjects = teacherData?.subjects || user?.subjects || [];
-  const classes = teacherData?.classes || [];
-
   const menuItems = [
-    { label: 'My Timetable', icon: Clock, href: '/teacher/timetable' },
-    { label: 'My Students', icon: Users, href: '/teacher/students' },
-    { label: 'Messages', icon: MessageCircle, href: '/teacher/messages' },
+    { label: 'Notification Settings', icon: Bell, href: '/teacher/notifications' },
+    { label: 'My Schedule', icon: Calendar, href: '/teacher/schedule' },
+    { label: 'My Subjects', icon: BookOpen, href: '/teacher/subjects' },
     { label: 'App Settings', icon: Settings, href: '/teacher/settings' },
   ];
 
@@ -111,11 +68,11 @@ export default function TeacherProfile() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                <span>{phone || 'Not set'}</span>
+                <span>+91 98765 43210</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <BookOpen className="w-4 h-4 text-muted-foreground" />
-                <span>{subjects.length > 0 ? subjects.join(', ') : 'No subjects assigned'}</span>
+                <span>{user?.subjects?.join(', ')}</span>
               </div>
             </div>
           </CardContent>
@@ -125,25 +82,19 @@ export default function TeacherProfile() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="p-3 text-center">
-              {isLoading ? <Skeleton className="h-8 w-12 mx-auto" /> : (
-                <p className="text-2xl font-bold text-primary">{studentCount ?? 0}</p>
-              )}
+              <p className="text-2xl font-bold text-primary">156</p>
               <p className="text-xs text-muted-foreground">Students</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              {isLoading ? <Skeleton className="h-8 w-8 mx-auto" /> : (
-                <p className="text-2xl font-bold text-success">{classes.length}</p>
-              )}
+              <p className="text-2xl font-bold text-success">4</p>
               <p className="text-xs text-muted-foreground">Classes</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              {isLoading ? <Skeleton className="h-8 w-8 mx-auto" /> : (
-                <p className="text-2xl font-bold text-warning">{subjects.length}</p>
-              )}
+              <p className="text-2xl font-bold text-warning">2</p>
               <p className="text-xs text-muted-foreground">Subjects</p>
             </CardContent>
           </Card>
@@ -155,7 +106,6 @@ export default function TeacherProfile() {
             {menuItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => navigate(item.href)}
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -167,9 +117,6 @@ export default function TeacherProfile() {
             ))}
           </CardContent>
         </Card>
-
-        {/* Change Password */}
-        <ChangePasswordSection />
 
         {/* Logout */}
         <Button 

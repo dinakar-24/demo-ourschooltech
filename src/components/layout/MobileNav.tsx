@@ -46,7 +46,7 @@ const navConfig = {
     { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
     { i18nKey: 'nav.homework', path: '/homework', icon: FileText },
     { i18nKey: 'nav.marks', path: '/marks', icon: BarChart3 },
-    { i18nKey: 'nav.more', path: '/more', icon: MoreHorizontal },
+    { i18nKey: 'nav.more', path: '/announcements', icon: MoreHorizontal },
   ],
   parent: [
     { i18nKey: 'nav.home', path: '/dashboard', icon: LayoutDashboard },
@@ -60,7 +60,7 @@ const navConfig = {
     { i18nKey: 'nav.attendance', path: '/attendance', icon: ClipboardList },
     { i18nKey: 'nav.homework', path: '/homework', icon: FileText },
     { i18nKey: 'nav.results', path: '/results', icon: BarChart3 },
-    { i18nKey: 'nav.more', path: '/more', icon: MoreHorizontal },
+    { i18nKey: 'nav.more', path: '/announcements', icon: MoreHorizontal },
   ],
 };
 

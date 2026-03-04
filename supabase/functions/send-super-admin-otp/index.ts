@@ -32,7 +32,7 @@ serve(async (req) => {
       },
     });
 
-    // Check if this email is associated with a super_admin role via profiles (fast indexed lookup)
+    // Check if this email is associated with a super_admin role
     const { data: profileData } = await supabaseAdmin
       .from("profiles")
       .select("id, email")
@@ -41,9 +41,9 @@ serve(async (req) => {
 
     let isSuperAdmin = false;
     let needsPasswordSetup = true;
+    let existingUser = null;
 
     if (profileData) {
-      // Check role via user_roles table
       const { data: roleData } = await supabaseAdmin
         .from("user_roles")
         .select("role")
@@ -53,15 +53,29 @@ serve(async (req) => {
 
       if (roleData) {
         isSuperAdmin = true;
-        // Check if user has signed in before using getUserById (fast, single user lookup)
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(profileData.id);
-        if (userData?.user?.last_sign_in_at) {
+        const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+        existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (existingUser?.last_sign_in_at) {
           needsPasswordSetup = false;
         }
       }
     } else {
-      // Fallback: check by email in auth using admin API filter
-      // Use getUserByEmail-like approach via profiles - if no profile, check initial setup email
+      const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+      existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (existingUser) {
+        const { data: roleData } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", existingUser.id)
+          .eq("role", "super_admin")
+          .maybeSingle();
+
+        if (roleData) {
+          isSuperAdmin = true;
+          needsPasswordSetup = !existingUser.last_sign_in_at;
+        }
+      }
     }
 
     // Allow initial super admin setup

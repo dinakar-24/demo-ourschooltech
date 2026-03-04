@@ -79,16 +79,9 @@ function clearAuthCache() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Restore from cache for instant UI on reopen
   const cached = getCachedAuth();
-  const isFreshCache = cached && (() => {
-    try {
-      const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
-      if (!raw) return false;
-      return Date.now() - JSON.parse(raw).ts < 5 * 60 * 1000; // fresh if < 5 min
-    } catch { return false; }
-  })();
   const [user, setUser] = useState<User | null>(cached?.user ?? null);
   const [school, setSchool] = useState<School | null>(cached?.school ?? null);
-  const [isLoading, setIsLoading] = useState(!isFreshCache); // instant render if fresh cache
+  const [isLoading, setIsLoading] = useState(!cached); // skip loading if cached
   const { tenant, isSubdomain } = useTenant();
 
   // Cross-tenant validation
@@ -106,139 +99,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }, [isSubdomain, tenant]);
 
-  // Fetch user profile, role, and school in a single optimized query (with retry)
-  const fetchUserData = async (supabaseUser: SupabaseUser, retries = 2): Promise<{ user: User; school: School | null } | null> => {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_user_auth_data`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
-            body: JSON.stringify({ _user_id: supabaseUser.id }),
-            signal: controller.signal,
-          }
-        );
-        clearTimeout(timeout);
+  // Fetch user profile, role, and school in a single optimized query
+  const fetchUserData = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_auth_data', {
+        _user_id: supabaseUser.id,
+      });
 
-        if (!res.ok) {
-          console.error('Error fetching user data:', res.status);
-          if (attempt < retries) { await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); continue; }
-          return null;
-        }
-
-        const result = await res.json() as { profile: any; role: string | null; school: any | null } | null;
-
-        if (!result?.profile) {
-          console.log('No profile found for user');
-          return null;
-        }
-
-        const { profile, role, school } = result;
-
-        const schoolData: School | null = school
-          ? {
-              id: school.id,
-              name: school.name,
-              code: school.code,
-              logo: school.logo || undefined,
-              address: school.address,
-              city: school.city,
-              phone: school.phone || undefined,
-              email: school.email || undefined,
-            }
-          : null;
-
-        const userData: User = {
-          id: supabaseUser.id,
-          name: profile.full_name,
-          email: profile.email,
-          role: (role as UserRole) || 'student',
-          avatar: profile.avatar_url || undefined,
-          schoolId: profile.school_id || '',
-          schoolName: schoolData?.name || '',
-          className: profile.class_name || undefined,
-          section: profile.section || undefined,
-          employeeId: profile.employee_id || undefined,
-          subjects: profile.subjects || undefined,
-        };
-
-        return { user: userData, school: schoolData };
-      } catch (error) {
-        console.warn(`fetchUserData attempt ${attempt + 1} failed:`, error);
-        if (attempt < retries) { await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); continue; }
+      if (error) {
+        console.error('Error fetching user data:', error);
         return null;
       }
+
+      const result = data as unknown as { profile: any; role: string | null; school: any | null } | null;
+
+      if (!result?.profile) {
+        console.log('No profile found for user');
+        return null;
+      }
+
+      const { profile, role, school } = result;
+
+      const schoolData: School | null = school
+        ? {
+            id: school.id,
+            name: school.name,
+            code: school.code,
+            logo: school.logo || undefined,
+            address: school.address,
+            city: school.city,
+            phone: school.phone || undefined,
+            email: school.email || undefined,
+          }
+        : null;
+
+      const userData: User = {
+        id: supabaseUser.id,
+        name: profile.full_name,
+        email: profile.email,
+        role: (role as UserRole) || 'student',
+        avatar: profile.avatar_url || undefined,
+        schoolId: profile.school_id || '',
+        schoolName: schoolData?.name || '',
+        className: profile.class_name || undefined,
+        section: profile.section || undefined,
+        employeeId: profile.employee_id || undefined,
+        subjects: profile.subjects || undefined,
+      };
+
+      return { user: userData, school: schoolData };
+    } catch (error) {
+      console.error('Error in fetchUserData:', error);
+      return null;
     }
-    return null;
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
-    const hasStoredSession = !!localStorage.getItem(storageKey);
-
-    // Helper: fire-and-forget user data fetch
-    const fetchAndSetUser = (supabaseUser: SupabaseUser) => {
-      fetchUserData(supabaseUser).then(async (data) => {
-        if (!isMounted) return;
-        if (data) {
-          const isValid = await validateTenant(data.user);
-          if (isValid && isMounted) {
-            setUser(data.user);
-            setSchool(data.school);
-            cacheAuthData(data.user, data.school);
-          }
-        }
-        if (isMounted) setIsLoading(false);
-      }).catch(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    };
-
-    // 1. Set up subscription FIRST (before getSession) to avoid lock races
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {  // ← synchronous callback, no deadlock
-        if (!isMounted) return;
-
-        if (event === 'INITIAL_SESSION') {
-          // For users without a stored session, resolve immediately
-          if (!hasStoredSession) {
-            setUser(null);
-            setSchool(null);
-            clearAuthCache();
-            setIsLoading(false);
-            return;
-          }
-          // For users with a session, fetch user data (fire and forget)
-          if (session?.user) {
-            fetchAndSetUser(session.user);
-          } else {
-            // Clear stale tokens that cause infinite retry loops
-            const storageKey = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
-            localStorage.removeItem(storageKey);
-            setUser(null);
-            setSchool(null);
-            clearAuthCache();
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        // Skip fetchUserData on TOKEN_REFRESHED when we already have cached data
-        if (event === 'TOKEN_REFRESHED' && user) {
-          return;
-        }
-
+      async (event, session) => {
         if (session?.user) {
-          fetchAndSetUser(session.user);
+          setTimeout(async () => {
+            const data = await fetchUserData(session.user);
+            if (data) {
+              const isValid = await validateTenant(data.user);
+              if (isValid) {
+                setUser(data.user);
+                setSchool(data.school);
+                cacheAuthData(data.user, data.school);
+              }
+            }
+            setIsLoading(false);
+          }, 0);
         } else {
           setUser(null);
           setSchool(null);
@@ -248,16 +179,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Safety timeout — if nothing resolves in 4 seconds, stop loading
-    const safetyTimeout = setTimeout(() => {
-      if (isMounted) {
-        setIsLoading(false);
+    // Check existing session & silently refresh cached data
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const data = await fetchUserData(session.user);
+        if (data) {
+          const isValid = await validateTenant(data.user);
+          if (isValid) {
+            setUser(data.user);
+            setSchool(data.school);
+            cacheAuthData(data.user, data.school);
+          }
+        }
+      } else if (!session) {
+        // No session -- clear any stale cache
+        setUser(null);
+        setSchool(null);
+        clearAuthCache();
       }
-    }, 4000);
+      setIsLoading(false);
+    });
 
     return () => {
-      isMounted = false;
-      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [validateTenant]);
@@ -332,7 +275,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSchool(null);
     clearAuthCache();
-    try { sessionStorage.removeItem('ost_email_lookup_cache'); } catch {}
   }, []);
 
   const handleSessionTimeout = useCallback(() => {

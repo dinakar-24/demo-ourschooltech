@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -79,16 +79,6 @@ function applyTheme(primary: string, accent: string) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Only fire DB queries after auth is resolved — listen to onAuthStateChange only
-  // (AuthContext already calls getSession, so we avoid a duplicate network call)
-  const [hasAuth, setHasAuth] = useState(false);
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHasAuth(!!session?.user);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   // Fetch platform-level theme (fallback for super admin / no school)
   const { data: platformTheme } = useQuery({
     queryKey: ['system-settings', 'theme-colors'],
@@ -102,7 +92,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return (data as any)?.value as ThemeColors | null;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: hasAuth,
   });
 
   // Fetch the current user's school colors
@@ -112,6 +101,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
+      // Get user's school_id from profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('school_id')
@@ -133,7 +123,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
     },
     staleTime: 5 * 60 * 1000,
-    enabled: hasAuth,
   });
 
   // School colors take priority over platform colors

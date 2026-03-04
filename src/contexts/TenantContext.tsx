@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
+import { supabase } from '@/integrations/supabase/client';
 
 const BASE_DOMAIN = 'ourschooltech.com';
 
@@ -148,39 +148,17 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     const resolveTenant = async () => {
       try {
-        // Direct fetch to bypass Supabase client lock contention
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_school_by_code`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
-            body: JSON.stringify({ _code: subdomain }),
-            signal: controller.signal,
-          }
-        );
-        clearTimeout(timeout);
+        const { data, error } = await supabase.rpc('get_school_by_code', {
+          _code: subdomain,
+        });
 
-        if (!res.ok) {
+        if (error || !data) {
           setTenantError(`School "${subdomain}" not found or inactive.`);
           setIsLoading(false);
           return;
         }
 
-        const data = await res.json();
-
-        if (!data) {
-          setTenantError(`School "${subdomain}" not found or inactive.`);
-          setIsLoading(false);
-          return;
-        }
-
-        const school = data as {
+        const school = data as unknown as {
           id: string;
           name: string;
           code: string;

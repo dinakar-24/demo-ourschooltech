@@ -29,14 +29,13 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check if user exists via profiles table (fast indexed lookup instead of listUsers)
-    const { data: profileData } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("email", email.toLowerCase())
-      .maybeSingle();
+    // Check if user exists in auth
+    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = userData?.users?.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase()
+    );
 
-    if (!profileData) {
+    if (!existingUser) {
       return new Response(
         JSON.stringify({ error: "No account found with this email address" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -47,7 +46,7 @@ serve(async (req) => {
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", profileData.id)
+      .eq("user_id", existingUser.id)
       .eq("role", "super_admin")
       .maybeSingle();
 
@@ -77,24 +76,29 @@ serve(async (req) => {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    // Invalidate existing unused OTPs & store new OTP in parallel
-    await Promise.all([
-      supabaseAdmin
-        .from("password_reset_otp")
-        .update({ used: true })
-        .eq("email", email.toLowerCase())
-        .eq("used", false),
-      supabaseAdmin
-        .from("password_reset_otp")
-        .insert({
-          email: email.toLowerCase(),
-          otp_code: otpCode,
-          expires_at: expiresAt,
-        })
-        .then(({ error: insertError }) => {
-          if (insertError) throw new Error("Failed to generate OTP");
-        }),
-    ]);
+    // Invalidate existing unused OTPs
+    await supabaseAdmin
+      .from("password_reset_otp")
+      .update({ used: true })
+      .eq("email", email.toLowerCase())
+      .eq("used", false);
+
+    // Store new OTP
+    const { error: insertError } = await supabaseAdmin
+      .from("password_reset_otp")
+      .insert({
+        email: email.toLowerCase(),
+        otp_code: otpCode,
+        expires_at: expiresAt,
+      });
+
+    if (insertError) {
+      console.error("Error storing OTP:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to generate OTP" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Send OTP via SMTP
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");

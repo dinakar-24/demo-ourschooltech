@@ -4,7 +4,6 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { ReactNode } from 'react';
 
-
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
@@ -19,7 +18,11 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="min-h-screen" />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

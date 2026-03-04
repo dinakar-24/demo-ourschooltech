@@ -24,7 +24,6 @@ import {
   Hash,
   Users,
 } from 'lucide-react';
-import { ChangePasswordSection } from '@/components/profile/ChangePasswordSection';
 
 export default function StudentProfile() {
   const { t } = useTranslation();
@@ -166,9 +165,6 @@ export default function StudentProfile() {
             ))}
           </CardContent>
         </Card>
-
-        {/* Change Password */}
-        <ChangePasswordSection />
 
         {/* Logout */}
         <Button 
