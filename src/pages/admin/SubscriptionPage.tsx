@@ -514,9 +514,15 @@ export default function SubscriptionPage() {
                     ))}
                   </div>
                   <Separator />
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-primary">Additional payment required</span>
-                    <span className="text-lg font-extrabold text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Previously paid</span>
+                      <span className="text-sm font-semibold text-foreground">₹{totalAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-primary">Additional payment due</span>
+                      <span className="text-lg font-extrabold text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -674,7 +680,7 @@ export default function SubscriptionPage() {
                             ₹{payment.amount.toLocaleString('en-IN')}
                             {(payment as any).payment_type === 'topup' && (
                               <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-semibold border-primary/30 text-primary bg-primary/5">
-                                Top-Up
+                                Additional Students
                               </Badge>
                             )}
                           </p>
@@ -682,7 +688,9 @@ export default function SubscriptionPage() {
                             {payment.paid_at
                               ? format(new Date(payment.paid_at), 'dd MMM yyyy, hh:mm a')
                               : format(new Date(payment.created_at), 'dd MMM yyyy')}
-                            {payment.student_count ? ` · ${payment.student_count} students` : ''}
+                            {payment.student_count
+                              ? ` · ${(payment as any).payment_type === 'topup' ? 'Upgrade to' : 'For'} ${payment.student_count} students`
+                              : ''}
                           </p>
                         </div>
                       </div>
