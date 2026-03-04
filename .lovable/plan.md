@@ -1,57 +1,28 @@
 
 
-## Plan: Redesign Subscription Billing Interface for Clarity
+## Problem
 
-### Problem
-The main plan card shows `₹{dynamicTotal}/year` (recalculated from all active students), which confuses schools that already paid for some students. The price appears to jump when new students are added.
+The current refresh/loading experience shows either a white blank screen or a floating card with eyes + text. The user wants it to match the "eskoolynow" style: **just two large bare circles with tiny black pupils centered on the page** — no card, no text, no container, no shadows.
 
-### Changes (single file: `src/pages/admin/SubscriptionPage.tsx`)
+## Plan
 
-**1. Replace the large price display in the main plan card**
+### 1. Update `index.html` pre-React loader
+Remove the card container, backdrop blur, shadow, text, and padding. Replace with just two SVG circles centered on the page with animated pupils. The eyes should be larger (~80px each), with a purple/indigo stroke, white fill, and small black pupils that animate left-right.
 
-Currently shows `₹{dynamicTotal}/year` (e.g., ₹450 for 3 students). Replace with:
-- When active & no upgrade needed: Show the **already paid amount** (`₹{totalAmount}/year`) as the headline, with "for {paidStudentCount} students" subtitle.
-- When upgrade needed: Show a **breakdown layout** instead of a single big number:
+### 2. Update `EyesRefreshAnimation` component
+Simplify the React version to match — remove the card wrapper, text, and styling. Just render two large SVG eyes centered on a full-screen white background overlay with the same look as the HTML version.
 
-```text
-┌─────────────────────────────────┐
-│  Annual Plan            Active  │
-│                                 │
-│  Price per student   ₹150/year  │
-│  Paid students              2   │
-│  Active students            3   │
-│  Additional students        1   │
-│  ─────────────────────────────  │
-│  Additional payment    ₹150     │
-│                                 │
-│  [ Upgrade Plan — Pay ₹150 ]   │
-└─────────────────────────────────┘
-```
+### 3. Update `RouteLoadingFallback` in `App.tsx`
+Instead of an empty div, render the same centered eyes animation so there's never a blank white screen during Suspense loading or tenant resolution.
 
-- When expired/trial/pending: Show `₹{dynamicTotal}/year` as before (since it's a fresh activation).
+### 4. Update `ProtectedRoute.tsx`
+Same — show the eyes during auth loading instead of empty div.
 
-**2. Remove the duplicate "Upgrade Required" block** (lines 607-653)
-
-Since the main card now contains all upgrade info clearly, the separate upgrade block becomes redundant. Remove it entirely.
-
-**3. Update the Plan Details card** (lines 584-605)
-
-Remove `Total Plan Amount` row (was showing the confusing recalculated total). Replace with:
-- Amount Paid: `₹{totalAmount}` (what they've already paid)
-- Keep: Plan type, Start, Expiry, Paid Students, Active Students, Price Per Student
-
-**4. Simplify the Stats Row** (lines 556-580)
-
-Change the 3-column stats to:
-- **Paid Students** (instead of "Active Students" — shows paidStudentCount)
-- **Expiry** (unchanged)
-- **Per Student** (unchanged)
-
-**5. Clean up the upgrade alert banner** (lines 421-435)
-
-Keep it but simplify the text to: "Upgrade required — {extraStudents} new student{s}. Pay ₹{topUpAmount} to upgrade."
-
-**6. Additional improvements**
-- Add a "Top-Up" badge label next to payment amounts in the history that were top-up payments (using `payment.payment_type`)
-- Show "Paid for X students" in the main card when no upgrade is needed as a reassuring confirmation
+### Visual spec (from reference images)
+- Two circles, ~70-80px diameter each
+- Purple/indigo stroke (~#6366f1), ~2.5px width
+- White fill
+- Small black dot pupil (~6-8px) that animates left-right
+- Centered horizontally and vertically on white background
+- No card, no text, no shadow, no blur
 
