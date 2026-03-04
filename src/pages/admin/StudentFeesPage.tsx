@@ -14,8 +14,9 @@ import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
-  ArrowLeft, FileText, CreditCard, Receipt, Percent, CheckCircle, AlertCircle, User,
+  ArrowLeft, FileText, CreditCard, Receipt, Percent, CheckCircle, AlertCircle, User, Phone, Users,
 } from 'lucide-react';
 
 function PaymentsList({ payments, openReceipt }: {
@@ -110,7 +111,7 @@ export default function StudentFeesPage() {
     return { totalAmount, totalPaid, totalBalance };
   }, [invoices, legacyFees]);
 
-  const student = invoices[0]?.student || legacyFees[0]?.student;
+  const student: any = invoices[0]?.student || legacyFees[0]?.student;
 
   const openPayment = (inv: FeeInvoice, componentAmount?: number, componentLabel?: string) => {
     setPaymentInvoice(inv);
@@ -157,14 +158,39 @@ export default function StudentFeesPage() {
             {/* Student Header */}
             <Card>
               <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg md:text-xl font-bold">{student.full_name}</h2>
-                    <p className="text-xs md:text-sm text-muted-foreground">
-                      {student.admission_number} · {student.class_name}-{student.section}
-                    </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Avatar + Info */}
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <Avatar className="h-12 w-12 md:h-14 md:w-14 shrink-0">
+                      {student.avatar_url && <AvatarImage src={student.avatar_url} alt={student.full_name} />}
+                      <AvatarFallback className="text-sm md:text-base font-semibold bg-primary/10 text-primary">
+                        {student.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <h2 className="text-lg md:text-xl font-bold truncate">{student.full_name}</h2>
+                      <p className="text-xs md:text-sm text-muted-foreground">
+                        {student.admission_number} · {student.class_name}-{student.section}
+                        {student.roll_number && <> · Roll #{student.roll_number}</>}
+                      </p>
+                      {(student.parent_name || student.parent_phone) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                          {student.parent_name && (
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="w-3 h-3" /> {student.parent_name}
+                            </span>
+                          )}
+                          {student.parent_phone && (
+                            <a href={`tel:${student.parent_phone}`} className="inline-flex items-center gap-1 hover:text-primary">
+                              <Phone className="w-3 h-3" /> {student.parent_phone}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
+                  {/* Fee Totals */}
+                  <div className="grid grid-cols-3 gap-2 text-sm shrink-0">
                     <div className="text-center sm:text-right">
                       <p className="text-muted-foreground text-[11px] md:text-xs">Total Due</p>
                       <p className="font-bold text-base md:text-lg">₹{totals.totalAmount.toLocaleString()}</p>

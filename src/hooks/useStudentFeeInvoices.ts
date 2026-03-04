@@ -15,7 +15,7 @@ export function useStudentFeeInvoices(studentId: string | undefined) {
         .from('fee_invoices')
         .select(`
           *,
-          student:students!inner(id, full_name, class_name, section, admission_number, parent_name, parent_email, roll_number),
+          student:students!inner(id, full_name, class_name, section, admission_number, parent_name, parent_email, roll_number, parent_phone, avatar_url),
           components:fee_invoice_components(id, fee_type, amount),
           payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, cheque_date, bank_name, payment_date, received_by, receipt_number, notes, created_at, student_id, school_id)
         `)
