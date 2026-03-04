@@ -1,7 +1,7 @@
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Share2 } from 'lucide-react';
+import { Download, Printer, Share2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeePayment, FeeInvoice } from '@/hooks/useFeeInvoices';
 import html2canvas from 'html2canvas';
@@ -51,8 +51,9 @@ const printStyles = `
 export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, copyLabel = 'OFFICE COPY' }: PaymentReceiptDialogProps) {
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  const generatePdfBlob = useCallback(async (_receiptNumber: string): Promise<Blob | null> => {
+  const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
     if (!receiptRef.current) return null;
 
     // Clone receipt into offscreen container with fixed print-width
@@ -62,12 +63,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
-    // Wait for images/QR to render
-    await new Promise(r => setTimeout(r, 100));
+    // Yield to UI thread so loading state renders, then let images/QR settle
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 150)));
 
     try {
       const canvas = await html2canvas(clone, {
-        scale: 3,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
@@ -76,16 +77,16 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
         windowWidth: 680,
       });
 
+      // Yield again before heavy PNG encoding
+      await new Promise(r => requestAnimationFrame(() => r(undefined)));
+
       const imgData = canvas.toDataURL('image/png', 1.0);
 
-      // A4 dimensions
       const A4_W = 210;
       const A4_H = 297;
       const MARGIN = 10;
       const contentW = A4_W - MARGIN * 2;
       const contentH = (canvas.height * contentW) / canvas.width;
-
-      // Use exact content height + margins, capped to A4 max
       const pageH = Math.min(contentH + MARGIN * 2, A4_H);
 
       const pdf = new jsPDF({
@@ -131,8 +132,9 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   };
 
   const handleSavePdf = async () => {
+    setPdfLoading(true);
     try {
-      const blob = await generatePdfBlob(payment.receipt_number);
+      const blob = await generatePdfBlob();
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -147,13 +149,15 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
     } catch {
       const { toast } = await import('@/hooks/use-toast');
       toast({ title: 'Error', description: 'Could not generate PDF', variant: 'destructive' });
+    } finally {
+      setPdfLoading(false);
     }
   };
 
   const handleShare = async () => {
     try {
       // Try sharing as PDF file first (mobile devices)
-      const blob = await generatePdfBlob(payment.receipt_number);
+      const blob = await generatePdfBlob();
       if (blob && navigator.share && navigator.canShare) {
         const file = new File([blob], `${receiptFileName}.pdf`, { type: 'application/pdf' });
         if (navigator.canShare({ files: [file] })) {
@@ -294,8 +298,9 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
             <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleSavePdf}>
-            <Download className="w-3.5 h-3.5 mr-1.5" /> Save
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleSavePdf} disabled={pdfLoading}>
+            {pdfLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+            {pdfLoading ? 'Generating...' : 'Save'}
           </Button>
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
             <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share
