@@ -18,7 +18,7 @@ export interface ParseResult {
 // Student required/optional fields
 export const STUDENT_FIELDS = {
   required: ['full_name', 'admission_number', 'class_name', 'section'],
-  optional: ['roll_number', 'gender', 'blood_group', 'parent_name', 'parent_phone', 'alternate_phone', 'parent_email', 'date_of_birth'],
+  optional: ['roll_number', 'gender', 'blood_group', 'parent_name', 'parent_phone', 'alternate_phone', 'parent_email', 'student_email', 'date_of_birth', 'address'],
 };
 
 export const TEACHER_FIELDS = {
@@ -80,6 +80,11 @@ const HEADER_ALIASES: Record<string, string> = {
   'alt_phone': 'alternate_phone',
   'alternate_contact': 'alternate_phone',
   'sex': 'gender',
+  'student email': 'student_email',
+  'student_mail': 'student_email',
+  'student email id': 'student_email',
+  'addr': 'address',
+  'residential address': 'address',
   'fee type': 'fee_type',
   'type': 'fee_type',
   'amt': 'amount',
@@ -169,6 +174,9 @@ export function validateRows(
       if (row.parent_email && row.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.parent_email)) {
         errors.push('Invalid parent_email');
       }
+      if (row.student_email && row.student_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.student_email)) {
+        errors.push('Invalid student_email');
+      }
       if (row.gender && !['male', 'female', 'other'].includes(row.gender.toLowerCase())) {
         errors.push('gender must be male/female/other');
       }
@@ -249,7 +257,9 @@ export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): 
     sampleRow['parent_phone'] = '9876543210';
     sampleRow['alternate_phone'] = '9876543211';
     sampleRow['parent_email'] = 'suresh@email.com';
+    sampleRow['student_email'] = 'rahul@school.com';
     sampleRow['date_of_birth'] = '2010-05-15';
+    sampleRow['address'] = '123 Main Street, City';
   } else if (type === 'teachers') {
     sampleRow['full_name'] = 'Priya Nair';
     sampleRow['employee_id'] = 'EMP001';
