@@ -329,7 +329,7 @@ export default function SubscriptionPage() {
   const topUpAmount = extraStudents * pricePerStudent;
   const needsTopUp = extraStudents > 0;
 
-  const canPay = (isExpired || isPending || isTrial || isActive) && pricePerStudent > 0;
+  // needsTopUp is used for upgrade logic
 
   const handlePayPlan = () => {
     if (!user?.schoolId || !subscription) return;
@@ -433,10 +433,10 @@ export default function SubscriptionPage() {
             <Users className="w-4 h-4 text-blue-600 shrink-0" />
             <div className="flex-1">
               <p className="font-semibold text-blue-700 dark:text-blue-400 text-sm">
-                {extraStudents} new student{extraStudents !== 1 ? 's' : ''} added
+                Upgrade required — {extraStudents} additional student{extraStudents !== 1 ? 's' : ''} detected
               </p>
               <p className="text-xs text-muted-foreground">
-                Additional payment of ₹{topUpAmount.toLocaleString('en-IN')} required ({extraStudents} × ₹{pricePerStudent}). Plan expiry remains unchanged.
+                Pay ₹{topUpAmount.toLocaleString('en-IN')} ({extraStudents} × ₹{pricePerStudent}) to upgrade. Plan expiry remains unchanged.
               </p>
             </div>
           </div>
@@ -496,7 +496,7 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              {/* Top-Up Button for extra students */}
+              {/* Upgrade Button - only when active students > paid students on active plan */}
               {needsTopUp && (
                 <Button
                   className="w-full mt-4"
@@ -513,12 +513,12 @@ export default function SubscriptionPage() {
                     ? 'Processing Payment...'
                     : payLoading
                     ? 'Preparing...'
-                    : `Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} New Student${extraStudents !== 1 ? 's' : ''}`}
+                    : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
                 </Button>
               )}
 
-              {/* Pay / Renew Button */}
-              {canPay && !needsTopUp && (
+              {/* Activate Button - only when expired, pending, or trial */}
+              {(isExpired || isPending || isTrial) && pricePerStudent > 0 && (
                 <Button
                   className="w-full mt-4"
                   size="lg"
@@ -534,11 +534,9 @@ export default function SubscriptionPage() {
                     ? 'Processing Payment...'
                     : payLoading
                     ? 'Preparing...'
-                    : isExpired || isPending
-                    ? `Pay ₹${dynamicTotal.toLocaleString('en-IN')} — Activate Plan`
                     : isTrial
-                    ? `Upgrade — Pay ₹${dynamicTotal.toLocaleString('en-IN')}`
-                    : `Renew — ₹${dynamicTotal.toLocaleString('en-IN')}`}
+                    ? `Activate — Pay ₹${dynamicTotal.toLocaleString('en-IN')}`
+                    : `Activate Plan — ₹${dynamicTotal.toLocaleString('en-IN')}`}
                 </Button>
               )}
             </div>
