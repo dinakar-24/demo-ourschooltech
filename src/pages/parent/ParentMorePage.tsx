@@ -6,7 +6,7 @@ import {
   Bell,
   Image,
   Bus,
-  MessageCircle,
+  
   Video,
   MessageSquare,
   HelpCircle,
@@ -30,7 +30,6 @@ const menuSections = [
       { label: 'Announcements', icon: Bell, href: '/parent/announcements', color: 'text-info' },
       { label: 'Gallery', icon: Image, href: '/parent/gallery', color: 'text-accent-foreground' },
       { label: 'Transport', icon: Bus, href: '/parent/transport', color: 'text-success' },
-      { label: 'Messages', icon: MessageCircle, href: '/parent/messages', color: 'text-primary' },
     ],
   },
   {

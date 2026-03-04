@@ -262,94 +262,6 @@ export type Database = {
           },
         ]
       }
-      conversation_participants: {
-        Row: {
-          conversation_id: string
-          id: string
-          is_muted: boolean | null
-          joined_at: string
-          last_read_at: string | null
-          role: string
-          user_id: string
-        }
-        Insert: {
-          conversation_id: string
-          id?: string
-          is_muted?: boolean | null
-          joined_at?: string
-          last_read_at?: string | null
-          role?: string
-          user_id: string
-        }
-        Update: {
-          conversation_id?: string
-          id?: string
-          is_muted?: boolean | null
-          joined_at?: string
-          last_read_at?: string | null
-          role?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_participants_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      conversations: {
-        Row: {
-          class_name: string | null
-          created_at: string
-          created_by: string
-          id: string
-          last_message_at: string | null
-          last_message_preview: string | null
-          name: string | null
-          school_id: string
-          section: string | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          class_name?: string | null
-          created_at?: string
-          created_by: string
-          id?: string
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          name?: string | null
-          school_id: string
-          section?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Update: {
-          class_name?: string | null
-          created_at?: string
-          created_by?: string
-          id?: string
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          name?: string | null
-          school_id?: string
-          section?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exams: {
         Row: {
           class_name: string
@@ -1030,50 +942,6 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      messages: {
-        Row: {
-          attachment_url: string | null
-          content: string
-          conversation_id: string
-          created_at: string
-          id: string
-          is_deleted: boolean | null
-          message_type: string
-          sender_id: string
-          updated_at: string
-        }
-        Insert: {
-          attachment_url?: string | null
-          content: string
-          conversation_id: string
-          created_at?: string
-          id?: string
-          is_deleted?: boolean | null
-          message_type?: string
-          sender_id: string
-          updated_at?: string
-        }
-        Update: {
-          attachment_url?: string | null
-          content?: string
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          is_deleted?: boolean | null
-          message_type?: string
-          sender_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -2619,10 +2487,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      is_conversation_participant: {
-        Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
       lookup_user_by_email: { Args: { _email: string }; Returns: Json }
