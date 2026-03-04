@@ -154,6 +154,7 @@ Deno.serve(async (req) => {
             blood_group: r.blood_group?.trim() || null,
             address: r.address?.trim() || null,
             alternate_phone: r.alternate_phone?.toString().trim() || null,
+            student_email: r.student_email?.trim() || null,
             school_id,
             status: "active",
           });
