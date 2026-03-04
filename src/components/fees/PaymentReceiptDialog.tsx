@@ -388,11 +388,11 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
                   <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
                   <td style={tdRight}>{formatINR(c.amount)}</td>
                   {hasComponentAllocation && (
-                    <td style={{ ...tdRight, color: c.prevPaid > 0 ? '#1a1a1a' : '#999' }}>
+                    <td style={{ ...tdRight, color: '#1a1a1a' }}>
                       {c.prevPaid > 0 ? formatINR(c.prevPaid) : '—'}
                     </td>
                   )}
-                  <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: c.currentPaid > 0 ? '#1a1a1a' : '#999' }}>
+                  <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: '#1a1a1a' }}>
                     {c.currentPaid > 0 ? formatINR(c.currentPaid) : '—'}
                   </td>
                   {hasComponentAllocation && (
