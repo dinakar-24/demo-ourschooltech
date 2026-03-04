@@ -13,6 +13,9 @@
     <meta http-equiv="Expires" content="0" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preload" as="image" href="/src/assets/logo.png" />
+    <style>
+      @keyframes eyeOrbit{0%{transform:translate(0,0)}25%{transform:translate(18px,18px)}50%{transform:translate(0,36px)}75%{transform:translate(-18px,18px)}100%{transform:translate(0,0)}}
+    </style>
 
     <!-- TODO: Update og:title to match your application name -->
     
@@ -67,17 +70,11 @@
       <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;background:#fff;z-index:200;">
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
-          <circle r="6" fill="#000">
-            <animate attributeName="cx" values="32;50;32;14;32" dur="1.4s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
-            <animate attributeName="cy" values="14;32;50;32;14" dur="1.4s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
-          </circle>
+          <circle cx="32" cy="14" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear infinite"/>
         </svg>
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
-          <circle r="6" fill="#000">
-            <animate attributeName="cx" values="32;50;32;14;32" dur="1.4s" begin="0.2s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
-            <animate attributeName="cy" values="14;32;50;32;14" dur="1.4s" begin="0.2s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
-          </circle>
+          <circle cx="32" cy="14" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear 0.2s infinite"/>
         </svg>
       </div>
     </div>
