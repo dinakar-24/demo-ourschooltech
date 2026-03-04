@@ -134,22 +134,30 @@ export default function AdminDashboard() {
             title="Students"
             value={loading ? '...' : (stats?.totalStudents ?? 0).toLocaleString()}
             icon={<Users className="w-4 h-4" />}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-100"
           />
           <AdminStatCard
             title="Teachers"
             value={loading ? '...' : (stats?.totalTeachers ?? 0).toLocaleString()}
             icon={<GraduationCap className="w-4 h-4" />}
+            iconColor="text-teal-600"
+            iconBg="bg-teal-100"
           />
           <AdminStatCard
             title="Fee Collected"
             value={loading ? '...' : formatCurrency(stats?.feeCollected ?? 0)}
             icon={<CreditCard className="w-4 h-4" />}
+            iconColor="text-purple-600"
+            iconBg="bg-purple-100"
           />
           <AdminStatCard
             title="Attendance"
             value={loading ? '...' : `${stats?.attendanceRate ?? 0}%`}
             subtitle="today"
             icon={<ClipboardList className="w-4 h-4" />}
+            iconColor="text-amber-600"
+            iconBg="bg-amber-100"
           />
         </div>
 
