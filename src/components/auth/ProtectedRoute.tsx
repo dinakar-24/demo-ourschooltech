@@ -17,7 +17,16 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center gap-[18px] bg-background">
+        {[0, 1].map((i) => (
+          <svg key={i} width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="hsl(var(--background))" stroke="#6366f1" strokeWidth="2.5" />
+            <circle cx="40" cy="40" r="7" fill="hsl(var(--foreground))" />
+          </svg>
+        ))}
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
