@@ -52,16 +52,18 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const generatePdfBlob = useCallback(async (receiptNumber: string): Promise<Blob | null> => {
+  const generatePdfBlob = useCallback(async (_receiptNumber: string): Promise<Blob | null> => {
     if (!receiptRef.current) return null;
 
-    // Clone the receipt into an offscreen container with fixed width
-    // so html2canvas captures styles identically to print
+    // Clone receipt into offscreen container with fixed print-width
     const clone = receiptRef.current.cloneNode(true) as HTMLElement;
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:680px;background:#fff;z-index:-1;';
+    wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:680px;background:#fff;z-index:-1;padding:0;margin:0;';
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
+
+    // Wait for images/QR to render
+    await new Promise(r => setTimeout(r, 100));
 
     try {
       const canvas = await html2canvas(clone, {
@@ -69,24 +71,31 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 680,
+        width: clone.scrollWidth,
+        height: clone.scrollHeight,
         windowWidth: 680,
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdfWidth = 210; // A4 mm
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      // A4 dimensions
+      const A4_W = 210;
+      const A4_H = 297;
+      const MARGIN = 10;
+      const contentW = A4_W - MARGIN * 2;
+      const contentH = (canvas.height * contentW) / canvas.width;
+
+      // Use exact content height + margins, capped to A4 max
+      const pageH = Math.min(contentH + MARGIN * 2, A4_H);
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [pdfWidth, Math.max(pdfHeight, 297)],
+        format: [A4_W, pageH],
         compress: true,
       });
 
-      // Center vertically if shorter than A4
-      const yOffset = pdfHeight < 297 ? (297 - pdfHeight) / 2 * 0.3 : 0;
-      pdf.addImage(imgData, 'PNG', 0, yOffset, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentW, contentH, undefined, 'FAST');
       return pdf.output('blob');
     } finally {
       document.body.removeChild(wrapper);
