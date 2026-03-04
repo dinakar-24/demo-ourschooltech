@@ -92,7 +92,9 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
       components ? `📋 *Fee Breakdown*\n${components}\n` : '',
       `💰 *Payment Summary*`,
       `Total Fee: ₹${formatINR(totalFees)}`,
+      `Previously Paid: ₹${formatINR(previouslyPaid)}`,
       `Current Payment: ₹${formatINR(currentPayment)}`,
+      `Total Paid Till Date: ₹${formatINR(totalPaidTillDate)}`,
       `Remaining Balance: ₹${formatINR(remainingBalance)}`,
       ``,
       `Payment Mode: ${payment.payment_method?.charAt(0).toUpperCase() + payment.payment_method?.slice(1)}`,
@@ -274,49 +276,94 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
               </div>
             </div>
 
-            {/* Fee Particulars Table */}
+            {/* Fee Component Table with cumulative tracking */}
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '11px' }}>
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: '30px' }}>S.No</th>
                   <th style={thStyle}>Particulars</th>
                   <th style={thRight}>Amount</th>
+                  {hasComponentAllocation && <th style={thRight}>Prev. Paid</th>}
+                  <th style={{ ...thRight, background: '#e8f5e9' }}>Current Paid</th>
+                  {hasComponentAllocation && <th style={thRight}>Balance</th>}
                 </tr>
               </thead>
               <tbody>
-                {(invoice.components || []).length > 0 ? (invoice.components || []).map((c, idx) => (
+                {componentAllocations.length > 0 ? componentAllocations.map((c) => (
                   <tr key={c.fee_type}>
-                    <td style={tdStyle}>{idx + 1}</td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
-                    <td style={tdRight}>{formatINR(Number(c.amount))}</td>
+                    <td style={tdRight}>{formatINR(c.amount)}</td>
+                    {hasComponentAllocation && (
+                      <td style={{ ...tdRight, color: c.prevPaid > 0 ? '#1a1a1a' : '#999' }}>
+                        {c.prevPaid > 0 ? formatINR(c.prevPaid) : '—'}
+                      </td>
+                    )}
+                    <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: c.currentPaid > 0 ? '#1a1a1a' : '#999' }}>
+                      {c.currentPaid > 0 ? formatINR(c.currentPaid) : '—'}
+                    </td>
+                    {hasComponentAllocation && (
+                      <td style={{ ...tdRight, color: c.balance > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                        {formatINR(c.balance)}
+                      </td>
+                    )}
                   </tr>
                 )) : (
                   <tr>
-                    <td style={tdStyle}>1</td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>Fee Payment</td>
                     <td style={tdRight}>{formatINR(totalFees)}</td>
+                    {hasComponentAllocation && <td style={tdRight}>—</td>}
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(currentPayment)}</td>
+                    {hasComponentAllocation && <td style={tdRight}>{formatINR(remainingBalance)}</td>}
                   </tr>
                 )}
+                {/* Total Row */}
                 <tr style={{ background: '#f5f5f5' }}>
-                  <td colSpan={2} style={{ ...tdStyle, fontWeight: 700 }}>Total</td>
-                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>₹{formatINR(totalFees)}</td>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>Total</td>
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(totalFees)}</td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(previouslyPaid)}</td>
+                  )}
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(currentPayment)}</td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(remainingBalance)}</td>
+                  )}
                 </tr>
               </tbody>
             </table>
 
-            {/* Payment Summary */}
+            {/* Cumulative Payment Summary */}
             <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
+              <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+                Payment Summary
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px' }}>
                 <span>Total Fees</span>
                 <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 600 }}>₹{formatINR(totalFees)}</span>
 
+                {previouslyPaid > 0 && (
+                  <>
+                    <span>Previously Paid</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace" }}>₹{formatINR(previouslyPaid)}</span>
+                  </>
+                )}
+
                 <span style={{ fontWeight: 700, color: '#16a34a' }}>Current Payment</span>
                 <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹{formatINR(currentPayment)}</span>
 
-                <span style={{ fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px', color: remainingBalance > 0 ? '#dc2626' : '#16a34a' }}>Remaining Balance</span>
-                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px', color: remainingBalance > 0 ? '#dc2626' : '#16a34a' }}>
-                  ₹{formatINR(remainingBalance)}{remainingBalance <= 0 ? ' (Fully Paid)' : ''}
-                </span>
+                <span style={{ fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>Total Paid Till Date</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>₹{formatINR(totalPaidTillDate)}</span>
+
+                {remainingBalance > 0 && (
+                  <>
+                    <span style={{ fontWeight: 700, color: '#dc2626' }}>Remaining Balance</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#dc2626' }}>₹{formatINR(remainingBalance)}</span>
+                  </>
+                )}
+                {remainingBalance <= 0 && (
+                  <>
+                    <span style={{ fontWeight: 700, color: '#16a34a' }}>Remaining Balance</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹0.00 (Fully Paid)</span>
+                  </>
+                )}
               </div>
             </div>
 
