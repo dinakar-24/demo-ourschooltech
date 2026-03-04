@@ -2037,6 +2037,7 @@ export type Database = {
           status: string
           student_count: number
           total_amount: number
+          total_paid_amount: number
           updated_at: string
         }
         Insert: {
@@ -2051,6 +2052,7 @@ export type Database = {
           status?: string
           student_count?: number
           total_amount?: number
+          total_paid_amount?: number
           updated_at?: string
         }
         Update: {
@@ -2065,6 +2067,7 @@ export type Database = {
           status?: string
           student_count?: number
           total_amount?: number
+          total_paid_amount?: number
           updated_at?: string
         }
         Relationships: [
