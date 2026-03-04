@@ -392,12 +392,16 @@ input::-webkit-textfield-decoration-container {
   .animate-login-role-in { animation: loginRoleIn 0.4s ease-out both; }
   .animate-login-card-slide { animation: loginCardSlide 0.6s ease-out 0.2s both; }
 
-  /* Eyes orbit animation — pure CSS, compositor-thread only */
+  /* Eyes orbit animation — 8-point circular path, compositor-thread only */
   @keyframes eyeOrbit {
-    0%   { transform: translate(0px, 0px); }
-    25%  { transform: translate(18px, 18px); }
-    50%  { transform: translate(0px, 36px); }
-    75%  { transform: translate(-18px, 18px); }
-    100% { transform: translate(0px, 0px); }
+    0%      { transform: translate(-12.73px, -12.73px); } /* top-left */
+    12.5%   { transform: translate(0px, -18px); }         /* top */
+    25%     { transform: translate(12.73px, -12.73px); }  /* top-right */
+    37.5%   { transform: translate(18px, 0px); }          /* right */
+    50%     { transform: translate(12.73px, 12.73px); }   /* bottom-right */
+    62.5%   { transform: translate(0px, 18px); }          /* bottom */
+    75%     { transform: translate(-12.73px, 12.73px); }  /* bottom-left */
+    87.5%   { transform: translate(-18px, 0px); }         /* left */
+    100%    { transform: translate(-12.73px, -12.73px); } /* top-left */
   }
 }
