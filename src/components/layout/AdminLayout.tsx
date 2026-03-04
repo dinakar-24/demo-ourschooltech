@@ -162,6 +162,7 @@ function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [open, setOpen] = useState(false);
 
   const rolePrefix = user?.role === 'teacher' ? '/teacher'
     : user?.role === 'parent' ? '/parent'
@@ -169,79 +170,100 @@ function NotificationDropdown() {
     : user?.role === 'school_admin' ? '/admin'
     : '/super-admin';
 
-  const recent = notifications.slice(0, 8);
+  const recent = notifications.slice(0, 6);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon-sm" className="relative">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 animate-in zoom-in-50">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 md:w-96 p-0" sideOffset={8}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold">
-            Notifications {unreadCount > 0 && <span className="text-muted-foreground font-normal">({unreadCount})</span>}
-          </h3>
+      <PopoverContent align="end" className="w-[340px] md:w-[400px] p-0 rounded-xl shadow-xl border-border/60" sideOffset={8}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-muted/30 rounded-t-xl">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-primary/10">
+              <Bell className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="text-sm font-bold">
+              Notifications
+              {unreadCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
+                  {unreadCount}
+                </span>
+              )}
+            </h3>
+          </div>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => markAllRead()} className="text-xs h-7 gap-1">
+            <Button variant="ghost" size="sm" onClick={() => markAllRead()} className="text-xs h-7 gap-1 text-primary hover:text-primary">
               <CheckCheck className="w-3.5 h-3.5" /> Mark all read
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-[360px]">
+
+        {/* Notification list */}
+        <ScrollArea className="max-h-[380px]">
           {recent.length === 0 ? (
-            <div className="py-10 text-center">
-              <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No notifications</p>
+            <div className="py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted mx-auto mb-3 flex items-center justify-center">
+                <Bell className="w-6 h-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">All caught up!</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">No notifications yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-border/50">
-              {recent.map(n => {
+            <div className="py-1">
+              {recent.map((n, i) => {
                 const Icon = notifTypeIcons[n.type] || Bell;
                 const colorClass = notifTypeColors[n.type] || notifTypeColors.general;
                 return (
                   <div
                     key={n.id}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                      !n.is_read && "bg-primary/5"
+                      "flex items-start gap-3 px-4 py-3 cursor-pointer transition-all duration-150 hover:bg-muted/60 mx-1 rounded-lg my-0.5",
+                      !n.is_read && "bg-primary/[0.04]"
                     )}
                     onClick={() => !n.is_read && markAsRead(n.id)}
                   >
-                    <div className={cn("p-1.5 rounded-lg shrink-0 mt-0.5", colorClass)}>
-                      <Icon className="w-3.5 h-3.5" />
+                    <div className={cn("p-2 rounded-xl shrink-0", colorClass)}>
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm line-clamp-1", !n.is_read ? "font-semibold" : "text-muted-foreground")}>
+                      <p className={cn("text-[13px] leading-tight", !n.is_read ? "font-semibold text-foreground" : "font-medium text-muted-foreground")}>
                         {n.title}
                       </p>
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.body}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                      <p className="text-xs text-muted-foreground/80 line-clamp-2 mt-0.5 leading-relaxed">{n.body}</p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-1.5 font-medium">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </p>
                     </div>
-                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
+                    {!n.is_read && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0 mt-1.5 ring-2 ring-primary/20" />
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
         </ScrollArea>
+
+        {/* Footer */}
         {notifications.length > 0 && (
-          <div className="border-t border-border px-4 py-2">
+          <div className="border-t border-border/60 p-2 bg-muted/20 rounded-b-xl">
             <Button
               variant="ghost"
               size="sm"
-              className="w-full text-xs h-8 text-primary"
-              onClick={() => navigate(`${rolePrefix}/notifications`)}
+              className="w-full text-xs h-9 font-semibold text-primary hover:text-primary hover:bg-primary/10 rounded-lg"
+              onClick={() => { setOpen(false); navigate(`${rolePrefix}/notifications`); }}
             >
               View all notifications
+              <ChevronRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
         )}
