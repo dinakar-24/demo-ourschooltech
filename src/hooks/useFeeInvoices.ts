@@ -90,7 +90,7 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
           *,
           student:students!inner(id, full_name, class_name, section, admission_number, parent_name, parent_email, roll_number),
           components:fee_invoice_components(id, fee_type, amount),
-          payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, bank_name, payment_date, received_by, receipt_number, notes, created_at)
+          payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, cheque_date, bank_name, payment_date, received_by, receipt_number, notes, created_at, student_id, school_id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('due_date', { ascending: false });

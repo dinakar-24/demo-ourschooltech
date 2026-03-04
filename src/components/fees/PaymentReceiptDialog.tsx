@@ -34,6 +34,10 @@ function numberToWords(num: number): string {
   return result + ' Only';
 }
 
+function formatINR(n: number) {
+  return n.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
 const printStyles = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 24px; color: #1a1a1a; font-size: 13px; background: #fff; }
@@ -66,21 +70,17 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
     const studentName = invoice.student?.full_name || 'N/A';
     const admNo = invoice.student?.admission_number || 'N/A';
     const className = [invoice.student?.class_name, invoice.student?.section].filter(Boolean).join(' ');
-    const paidAmount = Number(payment.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const totalAmount = Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const balanceAmount = Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const pDate = new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const schoolName = school?.name || 'School';
 
     const components = (invoice.components || [])
-      .map(c => `  • ${c.fee_type}: ₹${Number(c.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`)
+      .map(c => `  • ${c.fee_type}: ₹${formatINR(Number(c.amount))}`)
       .join('\n');
 
     const receiptText = [
       `📄 *FEE RECEIPT - ${schoolName}*`,
       `━━━━━━━━━━━━━━━━━━━━`,
       `Receipt No: ${payment.receipt_number}`,
-      `Date: ${pDate}`,
+      `Date: ${new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
       ``,
       `👤 *Student Details*`,
       `Name: ${studentName}`,
@@ -90,9 +90,11 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
       ``,
       components ? `📋 *Fee Breakdown*\n${components}\n` : '',
       `💰 *Payment Summary*`,
-      `Total Fee: ₹${totalAmount}`,
-      `Amount Paid: ₹${paidAmount}`,
-      Number(invoice.balance) > 0 ? `Balance Due: ₹${balanceAmount}` : `Balance: Nil`,
+      `Total Fee: ₹${formatINR(totalFees)}`,
+      `Previously Paid: ₹${formatINR(previouslyPaid)}`,
+      `Current Payment: ₹${formatINR(currentPayment)}`,
+      `Total Paid Till Date: ₹${formatINR(totalPaidTillDate)}`,
+      `Remaining Balance: ₹${formatINR(remainingBalance)}`,
       ``,
       `Payment Mode: ${payment.payment_method?.charAt(0).toUpperCase() + payment.payment_method?.slice(1)}`,
       payment.transaction_id ? `Transaction ID: ${payment.transaction_id}` : '',
@@ -122,7 +124,59 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
     }
   };
 
-  const totalPaid = Number(payment.amount);
+  // ── Cumulative payment calculations ──────────────────────────────
+  const allPayments = (invoice.payments || []).sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  const currentPayment = Number(payment.amount);
+  const totalFees = Number(invoice.total_amount);
+
+  // Sum of all payments made BEFORE this one (by created_at timestamp)
+  const currentPaymentTime = new Date(payment.created_at).getTime();
+  const previouslyPaid = allPayments
+    .filter(p => new Date(p.created_at).getTime() < currentPaymentTime)
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+
+  const totalPaidTillDate = previouslyPaid + currentPayment;
+  const remainingBalance = Math.max(0, totalFees - totalPaidTillDate);
+
+  // Component-wise allocation: track how much was paid against each component
+  const componentAllocations = (invoice.components || []).map(c => {
+    const compAmount = Number(c.amount);
+    const feeTypeLower = c.fee_type.toLowerCase();
+
+    // Sum payments allocated to this component (via notes) up to current payment
+    let allocatedPrev = 0;
+    let allocatedCurrent = 0;
+
+    for (const p of allPayments) {
+      const notesLower = (p.notes || '').toLowerCase();
+      const matchesComponent = notesLower.includes(feeTypeLower);
+      const hasAnyComponentMatch = (invoice.components || []).some(comp =>
+        notesLower.includes(comp.fee_type.toLowerCase())
+      );
+
+      if (hasAnyComponentMatch && matchesComponent) {
+        if (p.id === payment.id) {
+          allocatedCurrent = Number(p.amount);
+        } else if (new Date(p.created_at).getTime() < currentPaymentTime) {
+          allocatedPrev += Number(p.amount);
+        }
+      }
+    }
+
+    return {
+      fee_type: c.fee_type,
+      amount: compAmount,
+      prevPaid: allocatedPrev,
+      currentPaid: allocatedCurrent,
+      totalPaid: allocatedPrev + allocatedCurrent,
+      balance: Math.max(0, compAmount - allocatedPrev - allocatedCurrent),
+    };
+  });
+
+  const hasComponentAllocation = componentAllocations.some(c => c.currentPaid > 0 || c.prevPaid > 0);
+
   const paymentDate = new Date(payment.payment_date);
   const createdAt = new Date(payment.created_at);
   const formattedDate = paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -130,6 +184,10 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
 
   const labelStyle: React.CSSProperties = { fontWeight: 700, fontSize: '12px', color: '#1a1a1a' };
   const valueStyle: React.CSSProperties = { fontSize: '12px', color: '#1a1a1a' };
+  const thStyle: React.CSSProperties = { border: '1.5px solid #222', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' };
+  const thRight: React.CSSProperties = { ...thStyle, textAlign: 'right' };
+  const tdStyle: React.CSSProperties = { border: '1px solid #999', padding: '6px 8px', fontSize: '11px' };
+  const tdRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -217,82 +275,101 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
               </div>
             </div>
 
-            {/* Simplified Fee Table - 3 columns for mobile */}
+            {/* Fee Component Table with cumulative tracking */}
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '11px' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' }}>
-                    Particulars
-                  </th>
-                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' }}>
-                    Amount
-                  </th>
-                  <th style={{ border: '1.5px solid #222', padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: '11px', background: '#e8f5e9' }}>
-                    Paid
-                  </th>
+                  <th style={thStyle}>Particulars</th>
+                  <th style={thRight}>Amount</th>
+                  {hasComponentAllocation && <th style={thRight}>Prev. Paid</th>}
+                  <th style={{ ...thRight, background: '#e8f5e9' }}>Current Paid</th>
+                  {hasComponentAllocation && <th style={thRight}>Balance</th>}
                 </tr>
               </thead>
               <tbody>
-                {(invoice.components || []).map((c) => {
-                  const compAmount = Number(c.amount);
-                  const feeTypeLower = c.fee_type.toLowerCase();
-                  
-                  // Check if THIS specific payment is for this component
-                  const notesLower = (payment.notes || '').toLowerCase();
-                  const isTargetComponent = notesLower.includes(feeTypeLower);
-                  const hasSpecificComponent = (invoice.components || []).some(comp => 
-                    notesLower.includes(comp.fee_type.toLowerCase())
-                  );
-                  const showPaid = hasSpecificComponent && isTargetComponent;
-                  
-                  return (
-                    <tr key={c.id}>
-                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', fontWeight: 500 }}>{c.fee_type}</td>
-                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
-                        {compAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                {componentAllocations.length > 0 ? componentAllocations.map((c) => (
+                  <tr key={c.fee_type}>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
+                    <td style={tdRight}>{formatINR(c.amount)}</td>
+                    {hasComponentAllocation && (
+                      <td style={{ ...tdRight, color: c.prevPaid > 0 ? '#1a1a1a' : '#999' }}>
+                        {c.prevPaid > 0 ? formatINR(c.prevPaid) : '—'}
                       </td>
-                      <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: showPaid ? 700 : 400, color: showPaid ? '#1a1a1a' : '#999' }}>
-                        {showPaid ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '—'}
+                    )}
+                    <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: c.currentPaid > 0 ? '#1a1a1a' : '#999' }}>
+                      {c.currentPaid > 0 ? formatINR(c.currentPaid) : '—'}
+                    </td>
+                    {hasComponentAllocation && (
+                      <td style={{ ...tdRight, color: c.balance > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                        {formatINR(c.balance)}
                       </td>
-                    </tr>
-                  );
-                })}
-                {(!invoice.components || invoice.components.length === 0) && (
+                    )}
+                  </tr>
+                )) : (
                   <tr>
-                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px' }}>Fee Payment</td>
-                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
-                      {Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ border: '1px solid #999', padding: '6px 8px', fontSize: '11px', textAlign: 'right', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
-                      {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>Fee Payment</td>
+                    <td style={tdRight}>{formatINR(totalFees)}</td>
+                    {hasComponentAllocation && <td style={tdRight}>—</td>}
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(currentPayment)}</td>
+                    {hasComponentAllocation && <td style={tdRight}>{formatINR(remainingBalance)}</td>}
                   </tr>
                 )}
                 {/* Total Row */}
                 <tr style={{ background: '#f5f5f5' }}>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 700, fontSize: '11px' }}>Total</td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 800, fontSize: '12px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
-                    {Number(invoice.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td style={{ border: '1px solid #999', padding: '6px 8px', fontWeight: 800, fontSize: '12px', textAlign: 'right', fontFamily: "'Courier New', monospace" }}>
-                    {totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>Total</td>
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(totalFees)}</td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(previouslyPaid)}</td>
+                  )}
+                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(currentPayment)}</td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(remainingBalance)}</td>
+                  )}
                 </tr>
               </tbody>
             </table>
 
-            {/* Balance */}
-            {Number(invoice.balance) > 0 && (
-              <div style={{ fontSize: '12px', marginBottom: '6px', padding: '6px 10px', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffc107' }}>
-                <span style={labelStyle}>Balance Due: </span>
-                <span style={{ ...valueStyle, fontWeight: 700, color: '#dc2626' }}>₹{Number(invoice.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            {/* Cumulative Payment Summary */}
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
+              <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+                Payment Summary
               </div>
-            )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px' }}>
+                <span>Total Fees</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 600 }}>₹{formatINR(totalFees)}</span>
+
+                {previouslyPaid > 0 && (
+                  <>
+                    <span>Previously Paid</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace" }}>₹{formatINR(previouslyPaid)}</span>
+                  </>
+                )}
+
+                <span style={{ fontWeight: 700, color: '#16a34a' }}>Current Payment</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹{formatINR(currentPayment)}</span>
+
+                <span style={{ fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>Total Paid Till Date</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>₹{formatINR(totalPaidTillDate)}</span>
+
+                {remainingBalance > 0 && (
+                  <>
+                    <span style={{ fontWeight: 700, color: '#dc2626' }}>Remaining Balance</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#dc2626' }}>₹{formatINR(remainingBalance)}</span>
+                  </>
+                )}
+                {remainingBalance <= 0 && (
+                  <>
+                    <span style={{ fontWeight: 700, color: '#16a34a' }}>Remaining Balance</span>
+                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹0.00 (Fully Paid)</span>
+                  </>
+                )}
+              </div>
+            </div>
 
             {/* Amount in Words */}
             <div style={{ fontSize: '11px', marginBottom: '6px' }}>
               <span style={labelStyle}>Amount In Words: </span>
-              <span style={valueStyle}>{numberToWords(totalPaid)}</span>
+              <span style={valueStyle}>{numberToWords(currentPayment)}</span>
             </div>
 
             {/* Payment Mode */}
@@ -313,6 +390,40 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
                 <span style={labelStyle}>Cheque No: </span>
                 <span style={valueStyle}>{payment.cheque_number}</span>
                 {payment.bank_name && <> | <span style={labelStyle}>Bank: </span><span style={valueStyle}>{payment.bank_name}</span></>}
+              </div>
+            )}
+
+            {/* Previous Payments Ledger */}
+            {allPayments.length > 1 && (
+              <div style={{ marginTop: '10px', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>Payment History</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...thStyle, fontSize: '10px', padding: '4px 6px' }}>Date</th>
+                      <th style={{ ...thStyle, fontSize: '10px', padding: '4px 6px' }}>Receipt #</th>
+                      <th style={{ ...thStyle, fontSize: '10px', padding: '4px 6px' }}>Mode</th>
+                      <th style={{ ...thRight, fontSize: '10px', padding: '4px 6px' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allPayments.map((p) => {
+                      const isCurrent = p.id === payment.id;
+                      return (
+                        <tr key={p.id} style={{ background: isCurrent ? '#e8f5e9' : 'transparent' }}>
+                          <td style={{ ...tdStyle, padding: '4px 6px', fontSize: '10px' }}>
+                            {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </td>
+                          <td style={{ ...tdStyle, padding: '4px 6px', fontSize: '10px' }}>{p.receipt_number}</td>
+                          <td style={{ ...tdStyle, padding: '4px 6px', fontSize: '10px', textTransform: 'capitalize' }}>{p.payment_method}</td>
+                          <td style={{ ...tdRight, padding: '4px 6px', fontSize: '10px', fontWeight: isCurrent ? 700 : 400 }}>
+                            ₹{formatINR(Number(p.amount))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
 
