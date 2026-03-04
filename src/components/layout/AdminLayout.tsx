@@ -29,7 +29,6 @@ import {
   X,
   Video,
   Bus,
-  MessageCircle,
   Image,
   MessageSquare,
   HelpCircle,
@@ -103,7 +102,6 @@ const menuGroups: MenuGroup[] = [
   {
     group: 'Communication',
     items: [
-      { label: 'Messages', href: '/admin/messages', icon: MessageCircle },
       { label: 'Announcements', href: '/admin/announcements', icon: Megaphone },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
@@ -128,7 +126,7 @@ const labelToKey: Record<string, string> = {
   'Dashboard': 'sidebar.dashboard', 'Students': 'sidebar.students', 'Teachers': 'sidebar.teachers',
   'Classes': 'sidebar.classes', 'Attendance': 'sidebar.attendance', 'Fees': 'sidebar.fees',
   'Exams': 'sidebar.exams', 'Online Classes': 'sidebar.onlineClasses', 'Transport': 'sidebar.transport',
-  'Messages': 'sidebar.messages', 'Academic Years': 'sidebar.academicYears', 'Timetable': 'sidebar.timetable',
+  'Academic Years': 'sidebar.academicYears', 'Timetable': 'sidebar.timetable',
   'Announcements': 'sidebar.announcements', 'Bulk Upload': 'sidebar.bulkUpload', 'Gallery': 'sidebar.gallery',
   'Feedback': 'sidebar.feedback', 'Queries': 'sidebar.queries', 'Reports': 'sidebar.reports',
   'Subscription': 'sidebar.subscription', 'Settings': 'sidebar.settings',
