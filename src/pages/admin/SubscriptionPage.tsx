@@ -322,6 +322,13 @@ export default function SubscriptionPage() {
     ? differenceInDays(new Date(subscription.end_date), new Date())
     : 0;
 
+  // Top-up logic: extra students added after initial payment
+  const extraStudents = isActive && liveStudentCount !== null && liveStudentCount > paidStudentCount
+    ? liveStudentCount - paidStudentCount
+    : 0;
+  const topUpAmount = extraStudents * pricePerStudent;
+  const needsTopUp = extraStudents > 0;
+
   const canPay = (isExpired || isPending || isTrial || isActive) && pricePerStudent > 0;
 
   const handlePayPlan = () => {
@@ -336,6 +343,25 @@ export default function SubscriptionPage() {
       schoolId: user.schoolId,
       studentCount: currentStudentCount,
       paymentType: 'renewal',
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
+      },
+    });
+  };
+
+  const handleTopUp = () => {
+    if (!user?.schoolId || !subscription) return;
+
+    initiatePayment({
+      subscriptionId: subscription.id,
+      amount: topUpAmount,
+      schoolName: user.schoolName || 'School',
+      userEmail: user.email,
+      userName: user.name,
+      schoolId: user.schoolId,
+      studentCount: currentStudentCount,
+      paymentType: 'topup',
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['subscription'] });
         queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
@@ -402,6 +428,20 @@ export default function SubscriptionPage() {
           </div>
         )}
 
+        {needsTopUp && (
+          <div className="flex items-center gap-3 p-3.5 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+            <Users className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-blue-700 dark:text-blue-400 text-sm">
+                {extraStudents} new student{extraStudents !== 1 ? 's' : ''} added
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Additional payment of ₹{topUpAmount.toLocaleString('en-IN')} required ({extraStudents} × ₹{pricePerStudent}). Plan expiry remains unchanged.
+              </p>
+            </div>
+          </div>
+        )}
+
         {daysRemaining > 0 && daysRemaining <= 30 && !isExpired && (
           <div className="flex items-center gap-3 p-3.5 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
             <Clock className="w-4 h-4 text-amber-600 shrink-0" />
@@ -437,7 +477,12 @@ export default function SubscriptionPage() {
                   <p className="text-xs text-muted-foreground">
                     {currentStudentCount} student{currentStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
                   </p>
-                  {liveStudentCount !== null && liveStudentCount !== paidStudentCount && isActive && (
+                  {needsTopUp && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                      {extraStudents} new student{extraStudents !== 1 ? 's' : ''} added · Additional ₹{topUpAmount.toLocaleString('en-IN')} due
+                    </p>
+                  )}
+                  {liveStudentCount !== null && liveStudentCount !== paidStudentCount && !needsTopUp && isActive && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                       Student count changed: {paidStudentCount} → {liveStudentCount} (active)
                     </p>
@@ -451,8 +496,29 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
+              {/* Top-Up Button for extra students */}
+              {needsTopUp && (
+                <Button
+                  className="w-full mt-4"
+                  size="lg"
+                  onClick={handleTopUp}
+                  disabled={payLoading || isProcessing}
+                >
+                  {payLoading || isProcessing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Users className="w-4 h-4 mr-2" />
+                  )}
+                  {isProcessing
+                    ? 'Processing Payment...'
+                    : payLoading
+                    ? 'Preparing...'
+                    : `Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} New Student${extraStudents !== 1 ? 's' : ''}`}
+                </Button>
+              )}
+
               {/* Pay / Renew Button */}
-              {canPay && (
+              {canPay && !needsTopUp && (
                 <Button
                   className="w-full mt-4"
                   size="lg"
@@ -518,12 +584,14 @@ export default function SubscriptionPage() {
                 ...(subscription?.end_date ? [{ label: 'Expires', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
                 { label: 'Paid Students', value: String(paidStudentCount) },
                 { label: 'Current Active Students', value: countLoading ? '...' : String(currentStudentCount) },
+                ...(needsTopUp ? [{ label: 'New Students (Unpaid)', value: String(extraStudents), highlight: true }] : []),
                 { label: 'Price Per Student', value: `₹${pricePerStudent}` },
-                { label: 'Total Amount', value: `₹${dynamicTotal.toLocaleString('en-IN')}` },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">{item.label}</span>
-                  <span className="font-medium text-foreground capitalize">{item.value}</span>
+                ...(needsTopUp ? [{ label: 'Additional Amount Due', value: `₹${topUpAmount.toLocaleString('en-IN')}`, highlight: true }] : []),
+                { label: 'Total Plan Amount', value: `₹${dynamicTotal.toLocaleString('en-IN')}` },
+              ].map((item: any, i) => (
+              <div key={i} className="flex justify-between items-center text-sm">
+                  <span className={item.highlight ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-muted-foreground'}>{item.label}</span>
+                  <span className={`font-medium capitalize ${item.highlight ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>{item.value}</span>
                 </div>
               ))}
             </div>
@@ -566,11 +634,17 @@ export default function SubscriptionPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-foreground text-sm">₹{payment.amount.toLocaleString('en-IN')}</p>
+                          <p className="font-bold text-foreground text-sm">
+                            ₹{payment.amount.toLocaleString('en-IN')}
+                            {payment.payment_type === 'topup' && (
+                              <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 ml-1.5">Top-Up</span>
+                            )}
+                          </p>
                           <p className="text-[11px] text-muted-foreground">
                             {payment.paid_at
                               ? format(new Date(payment.paid_at), 'dd MMM yyyy, hh:mm a')
                               : format(new Date(payment.created_at), 'dd MMM yyyy')}
+                            {payment.student_count ? ` · ${payment.student_count} students` : ''}
                           </p>
                         </div>
                       </div>
