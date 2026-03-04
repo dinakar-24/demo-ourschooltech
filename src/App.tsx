@@ -12,6 +12,8 @@ import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
+import { useRefreshDetection } from "@/hooks/useRefreshDetection";
+import { EyesRefreshAnimation } from "@/components/ui/eyes-refresh-animation";
 import { lazy, Suspense } from "react";
 
 // Eagerly loaded pages (small, needed immediately)
@@ -168,6 +170,8 @@ function PrefetchHandler() {
 
 function AppRoutes() {
   const { isSubdomain, isLoading: tenantLoading, tenantError } = useTenant();
+  const { isLoading: authLoading } = useAuth();
+  const showRefreshEyes = useRefreshDetection(authLoading || tenantLoading);
 
   if (tenantLoading) {
     return <RouteLoadingFallback />;
@@ -179,6 +183,7 @@ function AppRoutes() {
 
   return (
     <>
+      <EyesRefreshAnimation visible={showRefreshEyes} message="Refreshing..." />
       <DynamicManifestHandler />
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
