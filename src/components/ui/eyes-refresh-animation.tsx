@@ -3,27 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface EyesRefreshAnimationProps {
   visible: boolean;
-  message?: string;
 }
 
-export function EyesRefreshAnimation({ visible, message = "Checking for updates..." }: EyesRefreshAnimationProps) {
+export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
   const [pupilX, setPupilX] = useState(0);
   
   useEffect(() => {
     if (!visible) return;
-    
-    // Animate pupils looking left-right
     let frame: number;
     let t = 0;
-    
     const animate = () => {
       t += 0.06;
-      // Smooth left-right-center pattern
-      const x = Math.sin(t * 1.8) * 5;
-      setPupilX(x);
+      setPupilX(Math.sin(t * 1.8) * 7);
       frame = requestAnimationFrame(animate);
     };
-    
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [visible]);
@@ -32,69 +25,18 @@ export function EyesRefreshAnimation({ visible, message = "Checking for updates.
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center gap-[18px] bg-background"
         >
-          <div className="flex flex-col items-center gap-2 bg-card/95 backdrop-blur-md border border-border rounded-2xl px-6 py-4 shadow-lg">
-            {/* Eyes container */}
-            <div className="flex items-center gap-3">
-              {/* Left eye */}
-              <svg width="36" height="36" viewBox="0 0 36 36">
-                <ellipse
-                  cx="18" cy="18" rx="14" ry="14"
-                  fill="hsl(var(--background))"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2.5"
-                />
-                {/* Pupil */}
-                <circle
-                  cx={18 + pupilX}
-                  cy={18 + Math.sin(pupilX * 0.5) * 2}
-                  r="4.5"
-                  fill="hsl(var(--foreground))"
-                />
-                {/* Glint */}
-                <circle
-                  cx={20 + pupilX}
-                  cy={16 + Math.sin(pupilX * 0.5) * 2}
-                  r="1.5"
-                  fill="hsl(var(--background))"
-                />
-              </svg>
-
-              {/* Right eye */}
-              <svg width="36" height="36" viewBox="0 0 36 36">
-                <ellipse
-                  cx="18" cy="18" rx="14" ry="14"
-                  fill="hsl(var(--background))"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2.5"
-                />
-                {/* Pupil */}
-                <circle
-                  cx={18 + pupilX}
-                  cy={18 + Math.sin(pupilX * 0.5) * 2}
-                  r="4.5"
-                  fill="hsl(var(--foreground))"
-                />
-                {/* Glint */}
-                <circle
-                  cx={20 + pupilX}
-                  cy={16 + Math.sin(pupilX * 0.5) * 2}
-                  r="1.5"
-                  fill="hsl(var(--background))"
-                />
-              </svg>
-            </div>
-
-            {/* Message */}
-            <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              {message}
-            </p>
-          </div>
+          {[0, 1].map((i) => (
+            <svg key={i} width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="hsl(var(--background))" stroke="#6366f1" strokeWidth="2.5" />
+              <circle cx={40 + pupilX} cy={40} r="7" fill="hsl(var(--foreground))" />
+            </svg>
+          ))}
         </motion.div>
       )}
     </AnimatePresence>

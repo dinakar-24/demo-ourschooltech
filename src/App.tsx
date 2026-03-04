@@ -122,9 +122,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Suspense fallback – minimal shell (eyes overlay handles visual feedback)
 function RouteLoadingFallback() {
-  return <div className="min-h-screen bg-background" />;
+  return <EyesRefreshAnimation visible={true} />;
 }
 
 // Smart redirect based on auth state
