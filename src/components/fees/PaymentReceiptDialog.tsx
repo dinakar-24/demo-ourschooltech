@@ -304,8 +304,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   );
 
   const receiptContent = (
-    <div ref={receiptRef}>
-      <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '16px' }}>
+    <div ref={receiptRef} style={isMobile ? { transform: 'scale(0.88)', transformOrigin: 'top left', width: '113.6%' } : undefined}>
+      <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: isMobile ? '12px' : '16px' }}>
 
         {/* OFFICE COPY - top right */}
         <div style={{ textAlign: 'right', marginBottom: '4px' }}>
