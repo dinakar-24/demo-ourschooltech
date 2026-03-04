@@ -584,19 +584,59 @@ export default function SubscriptionPage() {
                 ...(subscription?.end_date ? [{ label: 'Expires', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
                 { label: 'Paid Students', value: String(paidStudentCount) },
                 { label: 'Current Active Students', value: countLoading ? '...' : String(currentStudentCount) },
-                ...(needsTopUp ? [{ label: 'New Students (Unpaid)', value: String(extraStudents), highlight: true }] : []),
                 { label: 'Price Per Student', value: `₹${pricePerStudent}` },
-                ...(needsTopUp ? [{ label: 'Additional Amount Due', value: `₹${topUpAmount.toLocaleString('en-IN')}`, highlight: true }] : []),
                 { label: 'Total Plan Amount', value: `₹${dynamicTotal.toLocaleString('en-IN')}` },
               ].map((item: any, i) => (
-              <div key={i} className="flex justify-between items-center text-sm">
-                  <span className={item.highlight ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-muted-foreground'}>{item.label}</span>
-                  <span className={`font-medium capitalize ${item.highlight ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>{item.value}</span>
+                <div key={i} className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className="font-medium capitalize text-foreground">{item.value}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+
+        {/* Upgrade Details Block - only when extra students exist */}
+        {needsTopUp && (
+          <Card className="shadow-sm rounded-2xl border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardContent className="p-5">
+              <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Upgrade Required
+              </h3>
+              <div className="space-y-2.5">
+                {[
+                  { label: 'Paid Students', value: String(paidStudentCount) },
+                  { label: 'Current Active Students', value: String(currentStudentCount) },
+                  { label: 'New Students (Unpaid)', value: String(extraStudents), highlight: true },
+                  { label: 'Price Per Student', value: `₹${pricePerStudent}` },
+                  { label: 'Additional Amount Due', value: `₹${topUpAmount.toLocaleString('en-IN')}`, highlight: true },
+                ].map((item: any, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm">
+                    <span className={item.highlight ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-muted-foreground'}>{item.label}</span>
+                    <span className={`font-medium ${item.highlight ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-foreground'}`}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                className="w-full mt-4 h-11 text-sm font-bold rounded-xl"
+                onClick={handleTopUp}
+                disabled={payLoading || isProcessing}
+              >
+                {payLoading || isProcessing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="w-4 h-4 mr-2" />
+                )}
+                {isProcessing
+                  ? 'Processing...'
+                  : payLoading
+                  ? 'Preparing...'
+                  : `Upgrade — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Payment History */}
         <Card className="shadow-sm rounded-2xl">
