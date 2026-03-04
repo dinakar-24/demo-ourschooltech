@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Share2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeePayment, FeeInvoice } from '@/hooks/useFeeInvoices';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface PaymentReceiptDialogProps {
   open: boolean;
@@ -49,7 +51,33 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
 
+  const generateCanvas = useCallback(async () => {
+    if (!receiptRef.current) return null;
+    return html2canvas(receiptRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+  }, []);
+
+  const generatePdfBlob = useCallback(async (receiptNumber: string): Promise<Blob | null> => {
+    const canvas = await generateCanvas();
+    if (!canvas) return null;
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    // A4-ish PDF sized to content
+    const pdfWidth = 210; // mm
+    const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+    const pdf = new jsPDF({ orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape', unit: 'mm', format: [pdfWidth, pdfHeight] });
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    return pdf.output('blob');
+  }, [generateCanvas]);
+
   if (!payment || !invoice) return null;
+
+  const receiptFileName = `Receipt-${payment.receipt_number || 'NA'}`;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -65,63 +93,89 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
     printWindow.document.close();
   };
 
+  const handleSavePdf = async () => {
+    try {
+      const blob = await generatePdfBlob(payment.receipt_number);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${receiptFileName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      const { toast } = await import('@/hooks/use-toast');
+      toast({ title: 'Downloaded!', description: `${receiptFileName}.pdf saved successfully` });
+    } catch {
+      const { toast } = await import('@/hooks/use-toast');
+      toast({ title: 'Error', description: 'Could not generate PDF', variant: 'destructive' });
+    }
+  };
+
   const handleShare = async () => {
-    if (!receiptRef.current || !invoice || !payment) return;
+    try {
+      // Try sharing as PDF file first (mobile devices)
+      const blob = await generatePdfBlob(payment.receipt_number);
+      if (blob && navigator.share && navigator.canShare) {
+        const file = new File([blob], `${receiptFileName}.pdf`, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `Fee Receipt - ${payment.receipt_number}`,
+            files: [file],
+          });
+          return;
+        }
+      }
 
-    const studentName = invoice.student?.full_name || 'N/A';
-    const admNo = invoice.student?.admission_number || 'N/A';
-    const className = [invoice.student?.class_name, invoice.student?.section].filter(Boolean).join(' ');
-    const schoolName = school?.name || 'School';
+      // Fallback: share as text
+      const studentName = invoice.student?.full_name || 'N/A';
+      const admNo = invoice.student?.admission_number || 'N/A';
+      const className = [invoice.student?.class_name, invoice.student?.section].filter(Boolean).join(' ');
+      const schoolName = school?.name || 'School';
+      const components = (invoice.components || [])
+        .map(c => `  • ${c.fee_type}: ₹${formatINR(Number(c.amount))}`)
+        .join('\n');
 
-    const components = (invoice.components || [])
-      .map(c => `  • ${c.fee_type}: ₹${formatINR(Number(c.amount))}`)
-      .join('\n');
+      const receiptText = [
+        `📄 *FEE RECEIPT - ${schoolName}*`,
+        `━━━━━━━━━━━━━━━━━━━━`,
+        `Receipt No: ${payment.receipt_number}`,
+        `Date: ${new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        ``,
+        `👤 *Student Details*`,
+        `Name: ${studentName}`,
+        `Adm No: ${admNo}`,
+        className ? `Class: ${className}` : '',
+        invoice.student?.parent_name ? `Father: ${invoice.student.parent_name}` : '',
+        ``,
+        components ? `📋 *Fee Breakdown*\n${components}\n` : '',
+        `💰 *Payment Summary*`,
+        `Total Fee: ₹${formatINR(totalFees)}`,
+        `Previously Paid: ₹${formatINR(previouslyPaid)}`,
+        `Current Payment: ₹${formatINR(currentPayment)}`,
+        `Total Paid Till Date: ₹${formatINR(totalPaidTillDate)}`,
+        `Remaining Balance: ₹${formatINR(remainingBalance)}`,
+        ``,
+        `Payment Mode: ${payment.payment_method?.charAt(0).toUpperCase() + payment.payment_method?.slice(1)}`,
+        payment.transaction_id ? `Transaction ID: ${payment.transaction_id}` : '',
+        payment.cheque_number ? `Cheque No: ${payment.cheque_number}` : '',
+        `━━━━━━━━━━━━━━━━━━━━`,
+        `_This is a system-generated receipt._`,
+      ].filter(Boolean).join('\n');
 
-    const receiptText = [
-      `📄 *FEE RECEIPT - ${schoolName}*`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `Receipt No: ${payment.receipt_number}`,
-      `Date: ${new Date(payment.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
-      ``,
-      `👤 *Student Details*`,
-      `Name: ${studentName}`,
-      `Adm No: ${admNo}`,
-      className ? `Class: ${className}` : '',
-      invoice.student?.parent_name ? `Father: ${invoice.student.parent_name}` : '',
-      ``,
-      components ? `📋 *Fee Breakdown*\n${components}\n` : '',
-      `💰 *Payment Summary*`,
-      `Total Fee: ₹${formatINR(totalFees)}`,
-      `Previously Paid: ₹${formatINR(previouslyPaid)}`,
-      `Current Payment: ₹${formatINR(currentPayment)}`,
-      `Total Paid Till Date: ₹${formatINR(totalPaidTillDate)}`,
-      `Remaining Balance: ₹${formatINR(remainingBalance)}`,
-      ``,
-      `Payment Mode: ${payment.payment_method?.charAt(0).toUpperCase() + payment.payment_method?.slice(1)}`,
-      payment.transaction_id ? `Transaction ID: ${payment.transaction_id}` : '',
-      payment.cheque_number ? `Cheque No: ${payment.cheque_number}` : '',
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `_This is a system-generated receipt._`,
-    ].filter(Boolean).join('\n');
-
-    if (navigator.share) {
-      try {
+      if (navigator.share) {
         await navigator.share({
           title: `Fee Receipt - ${payment.receipt_number}`,
           text: receiptText,
         });
-      } catch {
-        // user cancelled share
-      }
-    } else {
-      try {
+      } else {
         await navigator.clipboard.writeText(receiptText);
         const { toast } = await import('@/hooks/use-toast');
         toast({ title: 'Copied!', description: 'Receipt details copied to clipboard' });
-      } catch {
-        const { toast } = await import('@/hooks/use-toast');
-        toast({ title: 'Error', description: 'Could not copy to clipboard', variant: 'destructive' });
       }
+    } catch {
+      // user cancelled or error
     }
   };
 
@@ -202,7 +256,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
             <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleSavePdf}>
             <Download className="w-3.5 h-3.5 mr-1.5" /> Save
           </Button>
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
