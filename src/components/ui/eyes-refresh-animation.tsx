@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EyesRefreshAnimationProps {
@@ -6,14 +6,18 @@ interface EyesRefreshAnimationProps {
 }
 
 export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
-  const rafRef = useRef<number>(0);
-  const [p1, setP1] = useState({ cx: 32, cy: 32 });
-  const [p2, setP2] = useState({ cx: 32, cy: 32 });
+  const p1Ref = useRef<SVGCircleElement>(null);
+  const p2Ref = useRef<SVGCircleElement>(null);
 
   useEffect(() => {
     if (!visible) return;
+    const p1 = p1Ref.current;
+    const p2 = p2Ref.current;
+    if (!p1 || !p2) return;
+
+    let raf: number;
     const start = performance.now();
-    const DURATION = 1400;
+    const DUR = 1400;
     const DELAY = 200;
     const ORBIT = 18;
     const TWO_PI = Math.PI * 2;
@@ -21,19 +25,20 @@ export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
     const CY = 32;
 
     const tick = (now: number) => {
-      const t1 = ((now - start) % DURATION) / DURATION;
-      const a1 = t1 * TWO_PI - Math.PI / 2; // start from top
-      setP1({ cx: CX + Math.cos(a1) * ORBIT, cy: CY + Math.sin(a1) * ORBIT });
+      const e = now - start;
+      const a1 = ((e % DUR) / DUR) * TWO_PI - Math.PI / 2;
+      p1.setAttribute('cx', String(CX + Math.cos(a1) * ORBIT));
+      p1.setAttribute('cy', String(CY + Math.sin(a1) * ORBIT));
 
-      const t2 = (Math.max(0, now - start - DELAY) % DURATION) / DURATION;
-      const a2 = t2 * TWO_PI - Math.PI / 2;
-      setP2({ cx: CX + Math.cos(a2) * ORBIT, cy: CY + Math.sin(a2) * ORBIT });
+      const a2 = ((Math.max(0, e - DELAY) % DUR) / DUR) * TWO_PI - Math.PI / 2;
+      p2.setAttribute('cx', String(CX + Math.cos(a2) * ORBIT));
+      p2.setAttribute('cy', String(CY + Math.sin(a2) * ORBIT));
 
-      rafRef.current = requestAnimationFrame(tick);
+      raf = requestAnimationFrame(tick);
     };
 
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [visible]);
 
   return (
@@ -49,11 +54,11 @@ export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
         >
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" strokeWidth="3" />
-            <circle cx={p1.cx} cy={p1.cy} r="6" fill="#000" />
+            <circle ref={p1Ref} cx="32" cy="14" r="6" fill="#000" />
           </svg>
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" strokeWidth="3" />
-            <circle cx={p2.cx} cy={p2.cy} r="6" fill="#000" />
+            <circle ref={p2Ref} cx="32" cy="14" r="6" fill="#000" />
           </svg>
         </motion.div>
       )}
