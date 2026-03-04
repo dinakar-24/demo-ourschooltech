@@ -508,7 +508,7 @@ export default function SubscriptionPage() {
               {/* Upgrade Button in main card */}
               {needsTopUp && (
                 <Button
-                  className="w-full mt-4 h-[52px] text-[15px] font-bold rounded-2xl shadow-lg"
+                  className="w-full mt-4 h-[52px] text-sm font-bold rounded-2xl shadow-lg whitespace-normal leading-tight"
                   size="lg"
                   onClick={handleTopUp}
                   disabled={payLoading || isProcessing}
@@ -516,20 +516,22 @@ export default function SubscriptionPage() {
                   {payLoading || isProcessing ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Users className="w-4 h-4 mr-2.5" />
+                    <Users className="w-4 h-4 mr-2 shrink-0" />
                   )}
-                  {isProcessing
-                    ? 'Processing Payment...'
-                    : payLoading
-                    ? 'Preparing...'
-                    : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+                  <span className="truncate">
+                    {isProcessing
+                      ? 'Processing Payment...'
+                      : payLoading
+                      ? 'Preparing...'
+                      : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+                  </span>
                 </Button>
               )}
 
               {/* Activate Button */}
               {(isExpired || isPending || isTrial) && pricePerStudent > 0 && (
                 <Button
-                  className="w-full mt-4 h-[52px] text-[15px] font-bold rounded-2xl shadow-lg"
+                  className="w-full mt-4 h-[52px] text-sm font-bold rounded-2xl shadow-lg"
                   size="lg"
                   onClick={handlePayPlan}
                   disabled={payLoading || isProcessing || currentStudentCount <= 0}
@@ -629,20 +631,22 @@ export default function SubscriptionPage() {
                 ))}
               </div>
               <Button
-                className="w-full mt-6 h-[52px] text-[15px] font-bold rounded-2xl shadow-lg"
+                className="w-full mt-6 h-[52px] text-sm font-bold rounded-2xl shadow-lg whitespace-normal leading-tight"
                 onClick={handleTopUp}
                 disabled={payLoading || isProcessing}
               >
                 {payLoading || isProcessing ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <Users className="w-4 h-4 mr-2.5" />
+                  <Users className="w-4 h-4 mr-2 shrink-0" />
                 )}
-                {isProcessing
-                  ? 'Processing...'
-                  : payLoading
-                  ? 'Preparing...'
-                  : `Upgrade — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+                <span className="truncate">
+                  {isProcessing
+                    ? 'Processing...'
+                    : payLoading
+                    ? 'Preparing...'
+                    : `Upgrade — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+                </span>
               </Button>
             </CardContent>
           </Card>
