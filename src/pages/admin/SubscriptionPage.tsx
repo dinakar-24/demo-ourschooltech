@@ -322,7 +322,7 @@ export default function SubscriptionPage() {
     ? differenceInDays(new Date(subscription.end_date), new Date())
     : 0;
 
-  const canPay = (isExpired || isPending || isTrial || (isActive && daysRemaining <= 30)) && pricePerStudent > 0;
+  const canPay = (isExpired || isPending || isTrial || isActive) && pricePerStudent > 0;
 
   const handlePayPlan = () => {
     if (!user?.schoolId || !subscription) return;
