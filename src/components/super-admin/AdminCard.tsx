@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail } from 'lucide-react';
+import { Building2, Mail, Shield } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
+import { ManagePermissionsDialog } from '@/components/super-admin/ManagePermissionsDialog';
+import { Button } from '@/components/ui/button';
 
 interface School {
   id: string;
@@ -48,15 +50,29 @@ export function AdminCard({ admin, isDisabled, isSelf, onActionComplete }: Admin
               {isDisabled ? 'Disabled' : 'Active'}
             </Badge>
           </div>
-          <UserActionsMenu
-            userId={admin.id}
-            userName={admin.full_name}
-            userEmail={admin.email}
-            isDisabled={isDisabled}
-            isSelf={isSelf}
-            onActionComplete={onActionComplete}
-            currentFullName={admin.full_name}
-          />
+          <div className="flex items-center gap-1">
+            {admin.school_id && (
+              <ManagePermissionsDialog
+                userId={admin.id}
+                schoolId={admin.school_id}
+                adminName={admin.full_name}
+                trigger={
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Shield className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                }
+              />
+            )}
+            <UserActionsMenu
+              userId={admin.id}
+              userName={admin.full_name}
+              userEmail={admin.email}
+              isDisabled={isDisabled}
+              isSelf={isSelf}
+              onActionComplete={onActionComplete}
+              currentFullName={admin.full_name}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
