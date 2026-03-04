@@ -54,24 +54,30 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const generateCanvas = useCallback(async () => {
     if (!receiptRef.current) return null;
     return html2canvas(receiptRef.current, {
-      scale: 2,
+      scale: 4,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      windowWidth: receiptRef.current.scrollWidth,
+      windowHeight: receiptRef.current.scrollHeight,
     });
   }, []);
 
   const generatePdfBlob = useCallback(async (receiptNumber: string): Promise<Blob | null> => {
     const canvas = await generateCanvas();
     if (!canvas) return null;
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/png', 1.0);
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
-    // A4-ish PDF sized to content
-    const pdfWidth = 210; // mm
+    const pdfWidth = 210; // A4 width in mm
     const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
-    const pdf = new jsPDF({ orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape', unit: 'mm', format: [pdfWidth, pdfHeight] });
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    const pdf = new jsPDF({
+      orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+      unit: 'mm',
+      format: [pdfWidth, pdfHeight],
+      compress: true,
+    });
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     return pdf.output('blob');
   }, [generateCanvas]);
 
