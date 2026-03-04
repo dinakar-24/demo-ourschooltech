@@ -36,13 +36,17 @@ function PaymentsList({ payments, openReceipt }: {
         <Receipt className="w-3.5 h-3.5" /> Payment History ({payments.length})
       </h5>
       {visible.map(p => (
-        <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm bg-muted/30 rounded-lg px-3 py-2">
-          <span className="font-semibold">₹{Number(p.amount).toLocaleString()}</span>
-          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
-          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => openReceipt(p)}>
-            <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
-          </Button>
+        <div key={p.id} className="bg-muted/30 rounded-lg px-3 py-2 space-y-1">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-semibold">₹{Number(p.amount).toLocaleString()}</span>
+            <span className="text-muted-foreground capitalize">{p.payment_method}</span>
+            <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => openReceipt(p)}>
+              <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+            </Button>
+          </div>
         </div>
       ))}
       {hasMore && (
@@ -132,7 +136,7 @@ export default function StudentFeesPage() {
 
   return (
     <AdminLayout title="Student Fee Details">
-      <div className="space-y-6 animate-fade-up">
+      <div className="space-y-4 md:space-y-6 animate-fade-up">
         {/* Back button */}
         <Button variant="ghost" size="sm" onClick={() => navigate('/admin/fees')} className="gap-1.5">
           <ArrowLeft className="w-4 h-4" /> Back to Fees
@@ -153,25 +157,25 @@ export default function StudentFeesPage() {
             {/* Student Header */}
             <Card>
               <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold">{student.full_name}</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-lg md:text-xl font-bold">{student.full_name}</h2>
+                    <p className="text-xs md:text-sm text-muted-foreground">
                       {student.admission_number} · {student.class_name}-{student.section}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="text-muted-foreground text-xs">Total Due</p>
-                      <p className="font-bold text-lg">₹{totals.totalAmount.toLocaleString()}</p>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="text-center sm:text-right">
+                      <p className="text-muted-foreground text-[11px] md:text-xs">Total Due</p>
+                      <p className="font-bold text-base md:text-lg">₹{totals.totalAmount.toLocaleString()}</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-muted-foreground text-xs">Paid</p>
-                      <p className="font-bold text-lg text-success">₹{totals.totalPaid.toLocaleString()}</p>
+                    <div className="text-center sm:text-right">
+                      <p className="text-muted-foreground text-[11px] md:text-xs">Paid</p>
+                      <p className="font-bold text-base md:text-lg text-success">₹{totals.totalPaid.toLocaleString()}</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-muted-foreground text-xs">Balance</p>
-                      <p className="font-bold text-lg text-destructive">₹{totals.totalBalance.toLocaleString()}</p>
+                    <div className="text-center sm:text-right">
+                      <p className="text-muted-foreground text-[11px] md:text-xs">Balance</p>
+                      <p className="font-bold text-base md:text-lg text-destructive">₹{totals.totalBalance.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -192,20 +196,20 @@ export default function StudentFeesPage() {
                 </h3>
                 {invoices.map(inv => (
                   <Card key={inv.id}>
-                    <CardContent className="p-4 space-y-4">
+                    <CardContent className="p-3 md:p-4 space-y-3 md:space-y-4">
                       {/* Invoice Header */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
-                          <span className="font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                          <span className="text-xs md:text-sm text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                          <span className="font-bold text-base md:text-lg">₹{Number(inv.total_amount).toLocaleString()}</span>
                           {getStatusBadge(inv.status, inv.due_date)}
                         </div>
                         {inv.status !== 'paid' && (
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
+                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
                               <Percent className="w-3.5 h-3.5 mr-1" /> Discount
                             </Button>
-                            <Button size="sm" onClick={() => openPayment(inv)}>
+                            <Button size="sm" className="h-8 text-xs" onClick={() => openPayment(inv)}>
                               <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay All
                             </Button>
                           </div>
