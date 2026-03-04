@@ -13,11 +13,11 @@ serve(async (req) => {
   }
 
   try {
-    const { email } = await req.json();
+    const { email, password, resend } = await req.json();
 
-    if (!email) {
+    if (!email || !password) {
       return new Response(
-        JSON.stringify({ error: "Email is required" }),
+        JSON.stringify({ error: "Email and password are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -26,13 +26,10 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check if this email is associated with a super_admin role
+    // Step 1: Check if this email is a super_admin
     const { data: profileData } = await supabaseAdmin
       .from("profiles")
       .select("id, email")
@@ -62,7 +59,7 @@ serve(async (req) => {
     } else {
       const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
       existingUser = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      
+
       if (existingUser) {
         const { data: roleData } = await supabaseAdmin
           .from("user_roles")
@@ -92,7 +89,32 @@ serve(async (req) => {
       );
     }
 
-    // Generate 6-digit OTP
+    // Step 2: Verify password BEFORE sending OTP (skip for initial setup)
+    if (!needsPasswordSetup && existingUser) {
+      // Use Supabase GoTrueAdmin to verify by attempting a sign-in
+      const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const { error: signInError } = await verifyClient.auth.signInWithPassword({
+        email: email.toLowerCase(),
+        password,
+      });
+
+      if (signInError) {
+        // Sign out any session that may have been created
+        await verifyClient.auth.signOut();
+        return new Response(
+          JSON.stringify({ error: "Invalid credentials. Please check your email and password." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Sign out the temporary session immediately — we only wanted to verify
+      await verifyClient.auth.signOut();
+    }
+
+    // Step 3: Generate and send OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
@@ -153,6 +175,7 @@ serve(async (req) => {
             <p style="color: #64748b; font-size: 14px; margin: 4px 0 0;">Super Admin Verification</p>
           </div>
           <div style="background: #f8fafc; border-radius: 12px; padding: 28px; text-align: center; border: 1px solid #e2e8f0;">
+            <p style="color: #334155; font-size: 15px; margin: 0 0 8px;">Your credentials have been verified.</p>
             <p style="color: #334155; font-size: 15px; margin: 0 0 20px;">Your one-time verification code is:</p>
             <div style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #1a1a2e; font-family: 'Courier New', monospace; background: #ffffff; display: inline-block; padding: 12px 28px; border-radius: 8px; border: 2px dashed #cbd5e1;">
               ${otpCode}
@@ -174,17 +197,16 @@ serve(async (req) => {
 
     await client.close();
 
-    console.log(`OTP sent to ${email} via SMTP`);
+    console.log(`OTP sent to ${email} via SMTP (credentials verified first)`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "OTP sent to your email",
+      JSON.stringify({
+        success: true,
+        message: "Credentials verified. OTP sent to your email.",
         needsPasswordSetup,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error: unknown) {
     console.error("Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
