@@ -84,11 +84,15 @@ const corsHeaders = {
           const isTopUp = paymentRecord.payment_type === 'topup';
 
           if (isTopUp) {
-            // Top-up: only update student_count, don't touch dates
+            // Top-up: only update student_count and total_amount, don't touch dates
+            const newStudentCount = paymentRecord.student_count || paymentRecord.subscription?.student_count;
+            const pricePerStudent = paymentRecord.subscription?.price_per_student || 250;
+            const newTotalAmount = newStudentCount * pricePerStudent;
             await adminClient
               .from('subscriptions')
               .update({
-                student_count: paymentRecord.student_count || paymentRecord.subscription?.student_count,
+                student_count: newStudentCount,
+                total_amount: newTotalAmount,
               })
               .eq('id', paymentRecord.subscription_id);
           } else {
