@@ -594,18 +594,18 @@ export default function SubscriptionPage() {
             {/* Stats Row */}
             <div className="border-t border-border grid grid-cols-4">
               <div className="py-5 text-center border-r border-border">
-                <Users className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                <p className="text-2xl font-bold text-foreground leading-none">
-                  {paidStudentCount}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid</p>
-              </div>
-              <div className="py-5 text-center border-r border-border">
                 <Users className="w-4 h-4 text-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground leading-none">
                   {countLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : currentStudentCount}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Total Active</p>
+              </div>
+              <div className="py-5 text-center border-r border-border">
+                <Users className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
+                <p className="text-2xl font-bold text-foreground leading-none">
+                  {paidStudentCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid</p>
               </div>
               <div className="py-5 text-center border-r border-border">
                 <Calendar className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
