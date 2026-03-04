@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, Fragment, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
@@ -107,6 +107,41 @@ function groupByStudent(invoices: FeeInvoice[], legacyFees: FeeRecord[]): Studen
   }
 
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function PaymentsList({ payments, limit, hasMore, openReceipt }: {
+  payments: FeePayment[];
+  limit: number;
+  hasMore: boolean;
+  openReceipt: (p: FeePayment) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? payments : payments.slice(0, limit);
+
+  return (
+    <div className="space-y-1">
+      {visible.map(p => (
+        <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs bg-muted/20 rounded px-3 py-1.5">
+          <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
+          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
+          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto shrink-0" onClick={() => openReceipt(p)}>
+            <Receipt className="w-3 h-3 mr-1" /> <span className="truncate max-w-[120px]">{p.receipt_number}</span>
+          </Button>
+        </div>
+      ))}
+      {hasMore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full h-7 text-xs text-muted-foreground"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Show less' : `Show all ${payments.length} payments`}
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export default function FeesPage() {
@@ -330,20 +365,16 @@ export default function FeesPage() {
                 )}
 
                 {/* Payments */}
-                {(inv.payments || []).length > 0 && (
-                  <div className="space-y-1">
-                    {(inv.payments || []).map(p => (
-                      <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs bg-muted/20 rounded px-3 py-1.5">
-                        <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
-                        <span className="text-muted-foreground capitalize">{p.payment_method}</span>
-                        <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto shrink-0" onClick={() => openReceipt(p, inv)}>
-                          <Receipt className="w-3 h-3 mr-1" /> <span className="truncate max-w-[120px]">{p.receipt_number}</span>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {(inv.payments || []).length > 0 && (() => {
+                  const sorted = [...(inv.payments || [])].sort(
+                    (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+                  );
+                  const LIMIT = 3;
+                  const hasMore = sorted.length > LIMIT;
+                  return (
+                    <PaymentsList payments={sorted} limit={LIMIT} hasMore={hasMore} openReceipt={(p) => openReceipt(p, inv)} />
+                  );
+                })()}
               </div>
             ))}
           </div>
