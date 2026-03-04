@@ -52,35 +52,46 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const generateCanvas = useCallback(async () => {
-    if (!receiptRef.current) return null;
-    return html2canvas(receiptRef.current, {
-      scale: 4,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      windowWidth: receiptRef.current.scrollWidth,
-      windowHeight: receiptRef.current.scrollHeight,
-    });
-  }, []);
-
   const generatePdfBlob = useCallback(async (receiptNumber: string): Promise<Blob | null> => {
-    const canvas = await generateCanvas();
-    if (!canvas) return null;
-    const imgData = canvas.toDataURL('image/png', 1.0);
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const pdfWidth = 210; // A4 width in mm
-    const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
-    const pdf = new jsPDF({
-      orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
-      unit: 'mm',
-      format: [pdfWidth, pdfHeight],
-      compress: true,
-    });
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-    return pdf.output('blob');
-  }, [generateCanvas]);
+    if (!receiptRef.current) return null;
+
+    // Clone the receipt into an offscreen container with fixed width
+    // so html2canvas captures styles identically to print
+    const clone = receiptRef.current.cloneNode(true) as HTMLElement;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:680px;background:#fff;z-index:-1;';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    try {
+      const canvas = await html2canvas(clone, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: 680,
+        windowWidth: 680,
+      });
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdfWidth = 210; // A4 mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pdfWidth, Math.max(pdfHeight, 297)],
+        compress: true,
+      });
+
+      // Center vertically if shorter than A4
+      const yOffset = pdfHeight < 297 ? (297 - pdfHeight) / 2 * 0.3 : 0;
+      pdf.addImage(imgData, 'PNG', 0, yOffset, pdfWidth, pdfHeight, undefined, 'FAST');
+      return pdf.output('blob');
+    } finally {
+      document.body.removeChild(wrapper);
+    }
+  }, []);
 
   // Build verification URL using school subdomain or current origin
   const verificationUrl = useMemo(() => {
