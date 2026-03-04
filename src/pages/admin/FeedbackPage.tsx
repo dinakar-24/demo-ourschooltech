@@ -9,7 +9,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  MessageSquare, Star, Send, Loader2, User, Eye,
+  MessageSquare, Star, Send, Loader2, User, Eye, MessagesSquare, TrendingUp,
 } from 'lucide-react';
 import {
   useFeedbackList, useFeedbackResponses, useRespondToFeedback, useMarkFeedbackRead,
@@ -40,10 +40,10 @@ export default function FeedbackPage() {
     }
   };
 
-  const renderStars = (rating: number) => (
+  const renderStars = (rating: number, size = 'w-3.5 h-3.5') => (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} className={`w-3.5 h-3.5 ${i <= rating ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
+        <Star key={i} className={`${size} ${i <= rating ? 'fill-warning text-warning' : 'text-muted-foreground/20'}`} />
       ))}
     </div>
   );
@@ -55,77 +55,83 @@ export default function FeedbackPage() {
   return (
     <AdminLayout title="Feedback">
       <div className="space-y-4 animate-fade-up">
-        {/* Stats - just Total & Avg Rating */}
-        <div className="grid grid-cols-2 gap-2.5 md:gap-3">
-          <Card className="border-border/50 shadow-sm">
-            <CardContent className="p-3 md:p-4">
-              <p className="text-[11px] md:text-xs font-medium text-muted-foreground">Total Feedback</p>
-              <p className="text-xl md:text-2xl font-bold text-foreground mt-1">
-                {isLoading ? <Skeleton className="h-7 w-10 inline-block" /> : feedbacks?.length || 0}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50 shadow-sm">
-            <CardContent className="p-3 md:p-4">
-              <p className="text-[11px] md:text-xs font-medium text-muted-foreground">Avg Rating</p>
-              <p className="text-xl md:text-2xl font-bold text-foreground mt-1">
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="rounded-xl border border-border/50 p-3 md:p-4 bg-gradient-to-br from-card to-muted/30 shadow-sm">
+            <div className="flex items-start justify-between mb-1.5">
+              <span className="text-[11px] md:text-xs font-medium text-muted-foreground">Total Feedback</span>
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                <MessagesSquare className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-xl md:text-2xl font-bold text-foreground">
+              {isLoading ? <Skeleton className="h-7 w-10 inline-block" /> : feedbacks?.length || 0}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/50 p-3 md:p-4 bg-gradient-to-br from-card to-muted/30 shadow-sm">
+            <div className="flex items-start justify-between mb-1.5">
+              <span className="text-[11px] md:text-xs font-medium text-muted-foreground">Avg Rating</span>
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <p className="text-xl md:text-2xl font-bold text-foreground">
                 {isLoading ? <Skeleton className="h-7 w-10 inline-block" /> : avgRating}
               </p>
-            </CardContent>
-          </Card>
+              {!isLoading && <div className="flex gap-0.5">{renderStars(Math.round(Number(avgRating)), 'w-3 h-3')}</div>}
+            </div>
+          </div>
         </div>
 
-        {/* List */}
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-4 space-y-4">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
-              </div>
-            ) : !feedbacks?.length ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">No feedback yet</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {feedbacks.map(fb => (
-                  <div
-                    key={fb.id}
-                    className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${fb.status !== 'read' ? 'bg-primary/[0.02]' : ''}`}
-                    onClick={() => handleSelect(fb)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-medium text-sm">
-                              {fb.is_anonymous ? 'Anonymous' : fb.submitter_name || 'Unknown'}
-                            </span>
-                            {fb.submitter_role && !fb.is_anonymous && (
-                              <Badge variant="outline" className="text-[10px] capitalize">{fb.submitter_role}</Badge>
-                            )}
-                            {fb.status === 'read' && (
-                              <Eye className="w-3 h-3 text-muted-foreground" />
-                            )}
-                          </div>
-                          {renderStars(fb.rating)}
-                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{fb.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(fb.created_at), 'dd MMM yyyy, hh:mm a')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+        {/* Feedback List */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+          </div>
+        ) : !feedbacks?.length ? (
+          <div className="flex flex-col items-center py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-4">
+              <MessageSquare className="w-8 h-8 text-muted-foreground/40" />
+            </div>
+            <p className="font-semibold text-foreground">No feedback yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Feedback from parents and teachers will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {feedbacks.map(fb => (
+              <div
+                key={fb.id}
+                className={`rounded-xl border border-border/50 p-3.5 md:p-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.99] bg-card ${fb.status !== 'read' ? 'border-l-[3px] border-l-primary/60' : ''}`}
+                onClick={() => handleSelect(fb)}
+              >
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-primary" />
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-semibold text-sm text-foreground">
+                        {fb.is_anonymous ? 'Anonymous' : fb.submitter_name || 'Unknown'}
+                      </span>
+                      {fb.submitter_role && !fb.is_anonymous && (
+                        <Badge variant="outline" className="text-[10px] capitalize font-medium px-1.5 py-0">{fb.submitter_role}</Badge>
+                      )}
+                      {fb.status === 'read' && (
+                        <Eye className="w-3 h-3 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    {renderStars(fb.rating)}
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1.5 leading-relaxed">{fb.message}</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1.5">
+                      {format(new Date(fb.created_at), 'dd MMM yyyy, hh:mm a')}
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Detail Dialog */}
@@ -134,20 +140,25 @@ export default function FeedbackPage() {
           <DialogHeader><DialogTitle>Feedback Details</DialogTitle></DialogHeader>
           {selected && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {selected.is_anonymous ? 'Anonymous' : selected.submitter_name}
-                </span>
-                {renderStars(selected.rating)}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {selected.is_anonymous ? 'Anonymous' : selected.submitter_name}
+                  </p>
+                  {renderStars(selected.rating, 'w-4 h-4')}
+                </div>
               </div>
-              <p className="text-sm">{selected.message}</p>
+              <p className="text-sm leading-relaxed">{selected.message}</p>
               <p className="text-xs text-muted-foreground">
                 {format(new Date(selected.created_at), 'dd MMM yyyy, hh:mm a')}
               </p>
 
               {/* Responses */}
               <div className="border-t pt-3 space-y-3">
-                <p className="text-sm font-medium">Responses</p>
+                <p className="text-sm font-semibold">Responses</p>
                 {responsesLoading ? (
                   <Skeleton className="h-10 w-full" />
                 ) : responses?.length === 0 ? (
