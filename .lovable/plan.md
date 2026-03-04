@@ -1,16 +1,35 @@
 
 
-## Add Permissions to Mobile Admin Cards
+## Performance Fix: Add Database Indexes for Email Lookup at Scale
 
-The "Permissions" action is currently only visible in the **desktop table view** of the School Admins page. The mobile `AdminCard` component only renders the `UserActionsMenu` (Edit Profile, Reset Password, Disable, Delete) — no Permissions option.
+The uploaded reference describes a critical performance optimization: the `lookup_user_by_email` RPC searches `profiles.email` with no index, causing full table scans at 200K+ users.
 
-### Fix
+### Changes
 
-**`src/components/super-admin/AdminCard.tsx`**
-- Accept `schoolId` from the admin object
-- Import and render `ManagePermissionsDialog` inside the `UserActionsMenu` area (next to the three-dot menu) when the admin has a `school_id`
-- This matches the desktop layout where both the Permissions button and actions menu sit side-by-side
+**1 database migration (2 indexes, 0 code changes)**
 
-### Result
-Mobile admin cards will show a small "Permissions" button (shield icon) next to the three-dot menu, consistent with the desktop table view.
+Create two indexes:
+- **Unique index on `profiles.email`** — converts O(n) full scan to O(1) index lookup for login
+- **Index on `user_roles.user_id`** — ensures the JOIN during role lookup is also indexed
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_email
+ON public.profiles (email);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id
+ON public.user_roles (user_id);
+```
+
+### Why This Is Sufficient
+
+The existing `lookup_user_by_email` RPC and `LoginPage.tsx` code are already well-structured — single query with JOINs returning everything in one round-trip. The only missing piece is the index. No code changes needed.
+
+### Impact
+
+| Users | Without Index | With Index |
+|-------|--------------|------------|
+| 1,000 | ~5ms | <0.1ms |
+| 50,000 | ~50ms | <0.1ms |
+| 200,000 | ~200ms | <0.1ms |
+| 1,000,000 | ~1s+ | <0.1ms |
 
