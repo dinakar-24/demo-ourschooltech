@@ -3,7 +3,6 @@ import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -12,12 +11,6 @@ import {
 import { MessageSquare, Star, Plus, Loader2 } from 'lucide-react';
 import { useFeedbackList, useFeedbackResponses, useSubmitFeedback, Feedback } from '@/hooks/useFeedback';
 import { format } from 'date-fns';
-
-const statusColors: Record<string, string> = {
-  pending: 'bg-warning/10 text-warning',
-  reviewed: 'bg-primary/10 text-primary',
-  resolved: 'bg-success/10 text-success',
-};
 
 export default function ParentFeedback() {
   const { data: feedbacks, isLoading } = useFeedbackList(false);
@@ -83,7 +76,6 @@ export default function ParentFeedback() {
             <Star key={i} className={`w-5 h-5 ${i <= selectedFb.rating ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
           ))}
         </div>
-        <Badge className={`text-xs ${statusColors[selectedFb.status]}`}>{selectedFb.status}</Badge>
       </div>
       <p className="text-sm leading-relaxed">{selectedFb.message}</p>
       <p className="text-xs text-muted-foreground">{format(new Date(selectedFb.created_at), 'dd MMM yyyy, hh:mm a')}</p>
@@ -136,7 +128,6 @@ export default function ParentFeedback() {
                       <Star key={i} className={`w-3.5 h-3.5 ${i <= fb.rating ? 'fill-warning text-warning' : 'text-muted-foreground/30'}`} />
                     ))}
                   </div>
-                  <Badge className={`text-[10px] ${statusColors[fb.status]}`}>{fb.status}</Badge>
                 </div>
                 <p className="text-sm line-clamp-2">{fb.message}</p>
                 <p className="text-xs text-muted-foreground mt-2">{format(new Date(fb.created_at), 'dd MMM yyyy')}</p>
