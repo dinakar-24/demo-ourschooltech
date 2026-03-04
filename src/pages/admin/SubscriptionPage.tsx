@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,10 +16,16 @@ import {
   Download,
   FileText,
   Shield,
+  CreditCard,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { useSubscription, useSubscriptionPayments, SubscriptionPayment } from '@/hooks/useSubscription';
+import { useRazorpay } from '@/hooks/useRazorpay';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
 
 function numberToIndianWords(num: number): string {
   if (num === 0) return 'Zero';
@@ -277,18 +284,64 @@ export default function SubscriptionPage() {
   const { user } = useAuth();
   const { data: subscription, isLoading: subLoading } = useSubscription();
   const { data: payments, isLoading: paymentsLoading } = useSubscriptionPayments();
+  const { initiatePayment, isLoading: payLoading, isProcessing } = useRazorpay();
+  const queryClient = useQueryClient();
+
+  // Live active student count
+  const [liveStudentCount, setLiveStudentCount] = useState<number | null>(null);
+  const [countLoading, setCountLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user?.schoolId) return;
+    setCountLoading(true);
+    supabase
+      .from('students')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', user.schoolId)
+      .eq('status', 'active')
+      .then(({ count }) => {
+        setLiveStudentCount(count ?? 0);
+        setCountLoading(false);
+      });
+  }, [user?.schoolId]);
 
   const paidStudentCount = subscription?.student_count || 0;
   const pricePerStudent = subscription?.price_per_student || 0;
   const totalAmount = subscription?.total_amount || 0;
 
+  // Dynamic calculation based on live count
+  const currentStudentCount = liveStudentCount ?? paidStudentCount;
+  const dynamicTotal = currentStudentCount * pricePerStudent;
+
   const isActive = subscription?.status === 'active';
   const isTrial = subscription?.status === 'trial';
   const isExpired = subscription?.status === 'expired';
+  const isPending = subscription?.status === 'pending';
 
   const daysRemaining = subscription?.end_date
     ? differenceInDays(new Date(subscription.end_date), new Date())
     : 0;
+
+  const canPay = (isExpired || isPending || isTrial || (isActive && daysRemaining <= 30)) && pricePerStudent > 0;
+
+  const handlePayPlan = () => {
+    if (!user?.schoolId || !subscription) return;
+
+    initiatePayment({
+      subscriptionId: subscription.id,
+      amount: dynamicTotal,
+      schoolName: user.schoolName || 'School',
+      userEmail: user.email,
+      userName: user.name,
+      schoolId: user.schoolId,
+      studentCount: currentStudentCount,
+      paymentType: 'renewal',
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['subscription-payments'] });
+      },
+    });
+  };
 
   if (subLoading) {
     return (
@@ -344,7 +397,7 @@ export default function SubscriptionPage() {
             <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
             <div>
               <p className="font-semibold text-destructive text-sm">Subscription Expired</p>
-              <p className="text-xs text-muted-foreground">Please contact the platform administrator to renew.</p>
+              <p className="text-xs text-muted-foreground">Renew your plan to continue using all features.</p>
             </div>
           </div>
         )}
@@ -354,7 +407,7 @@ export default function SubscriptionPage() {
             <Clock className="w-4 h-4 text-amber-600 shrink-0" />
             <div>
               <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">Expiring in {daysRemaining} days</p>
-              <p className="text-xs text-muted-foreground">Contact administrator for renewal.</p>
+              <p className="text-xs text-muted-foreground">Renew now to avoid interruption.</p>
             </div>
           </div>
         )}
@@ -378,12 +431,17 @@ export default function SubscriptionPage() {
               {!isTrial && (
                 <>
                   <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-3xl font-extrabold tracking-tight text-foreground">₹{totalAmount.toLocaleString('en-IN')}</span>
+                    <span className="text-3xl font-extrabold tracking-tight text-foreground">₹{dynamicTotal.toLocaleString('en-IN')}</span>
                     <span className="text-sm text-muted-foreground">/year</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
+                    {currentStudentCount} student{currentStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
                   </p>
+                  {liveStudentCount !== null && liveStudentCount !== paidStudentCount && isActive && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Student count changed: {paidStudentCount} → {liveStudentCount} (active)
+                    </p>
+                  )}
                 </>
               )}
 
@@ -391,6 +449,31 @@ export default function SubscriptionPage() {
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-3xl font-extrabold tracking-tight text-foreground">Trial</span>
                 </div>
+              )}
+
+              {/* Pay / Renew Button */}
+              {canPay && (
+                <Button
+                  className="w-full mt-4"
+                  size="lg"
+                  onClick={handlePayPlan}
+                  disabled={payLoading || isProcessing || currentStudentCount <= 0}
+                >
+                  {payLoading || isProcessing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CreditCard className="w-4 h-4 mr-2" />
+                  )}
+                  {isProcessing
+                    ? 'Processing Payment...'
+                    : payLoading
+                    ? 'Preparing...'
+                    : isExpired || isPending
+                    ? `Pay ₹${dynamicTotal.toLocaleString('en-IN')} — Activate Plan`
+                    : isTrial
+                    ? `Upgrade — Pay ₹${dynamicTotal.toLocaleString('en-IN')}`
+                    : `Renew — ₹${dynamicTotal.toLocaleString('en-IN')}`}
+                </Button>
               )}
             </div>
 
@@ -400,8 +483,10 @@ export default function SubscriptionPage() {
             <div className="grid grid-cols-3 divide-x divide-border">
               <div className="p-4 text-center">
                 <Users className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
-                <p className="text-xl font-bold text-foreground">{paidStudentCount}</p>
-                <p className="text-[10px] text-muted-foreground">Students</p>
+                <p className="text-xl font-bold text-foreground">
+                  {countLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : currentStudentCount}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Active Students</p>
               </div>
               <div className="p-4 text-center">
                 <Calendar className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
@@ -432,6 +517,9 @@ export default function SubscriptionPage() {
                 ...(subscription?.start_date ? [{ label: 'Started', value: format(new Date(subscription.start_date), 'dd MMM yyyy') }] : []),
                 ...(subscription?.end_date ? [{ label: 'Expires', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
                 { label: 'Paid Students', value: String(paidStudentCount) },
+                { label: 'Current Active Students', value: countLoading ? '...' : String(currentStudentCount) },
+                { label: 'Price Per Student', value: `₹${pricePerStudent}` },
+                { label: 'Total Amount', value: `₹${dynamicTotal.toLocaleString('en-IN')}` },
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">{item.label}</span>

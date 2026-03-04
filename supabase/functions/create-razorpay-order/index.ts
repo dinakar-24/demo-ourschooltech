@@ -66,25 +66,27 @@ Deno.serve(async (req) => {
 
     // Find or create subscription
     if (!actualSubscriptionId && schoolId) {
-      const pricePerStudent = 250;
       const count = studentCount || 0;
-      const total = count * pricePerStudent;
 
       // Check if subscription already exists for this school
       const { data: existingSub } = await adminClient
         .from('subscriptions')
-        .select('id')
+        .select('id, price_per_student')
         .eq('school_id', schoolId)
         .single();
 
       if (existingSub) {
         actualSubscriptionId = existingSub.id;
-        // Update student count and total
+        const pricePerStudent = existingSub.price_per_student || 250;
+        const total = count * pricePerStudent;
+        // Update student count and total using school's configured price
         await adminClient
           .from('subscriptions')
-          .update({ student_count: count, total_amount: total, price_per_student: pricePerStudent })
+          .update({ student_count: count, total_amount: total })
           .eq('id', existingSub.id);
       } else {
+        const pricePerStudent = 250; // default for new subscriptions
+        const total = count * pricePerStudent;
         const { data: newSub, error: createError } = await adminClient
           .from('subscriptions')
           .insert({
