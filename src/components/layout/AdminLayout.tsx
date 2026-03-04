@@ -6,6 +6,8 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useMyAdminPermissions, PATH_TO_MODULE } from '@/hooks/useAdminPermissions';
 import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 import {
   LayoutDashboard,
   Users,
@@ -25,18 +27,21 @@ import {
   LogOut,
   Menu,
   X,
-  Search,
-  Moon,
-  Sun,
   Video,
   Bus,
   MessageCircle,
   Image,
   MessageSquare,
   HelpCircle,
+  CheckCheck,
+  Megaphone,
+  Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -130,6 +135,116 @@ const labelToKey: Record<string, string> = {
   'Holiday Calendar': 'sidebar.holidayCalendar', 'Employees': 'sidebar.employees',
   'My Profile': 'sidebar.myProfile',
 };
+
+const notifTypeIcons: Record<string, typeof Bell> = {
+  attendance: ClipboardList,
+  homework: BookOpen,
+  fee: CreditCard,
+  announcement: Megaphone,
+  result: Award,
+  general: Bell,
+};
+
+const notifTypeColors: Record<string, string> = {
+  attendance: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950',
+  homework: 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-950',
+  fee: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950',
+  announcement: 'text-teal-600 bg-teal-50 dark:text-teal-400 dark:bg-teal-950',
+  result: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950',
+  general: 'text-muted-foreground bg-muted',
+};
+
+function NotificationDropdown() {
+  const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const rolePrefix = user?.role === 'teacher' ? '/teacher'
+    : user?.role === 'parent' ? '/parent'
+    : user?.role === 'student' ? '/student'
+    : user?.role === 'school_admin' ? '/admin'
+    : '/super-admin';
+
+  const recent = notifications.slice(0, 8);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon-sm" className="relative">
+          <Bell className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 md:w-96 p-0" sideOffset={8}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold">
+            Notifications {unreadCount > 0 && <span className="text-muted-foreground font-normal">({unreadCount})</span>}
+          </h3>
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => markAllRead()} className="text-xs h-7 gap-1">
+              <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+            </Button>
+          )}
+        </div>
+        <ScrollArea className="max-h-[360px]">
+          {recent.length === 0 ? (
+            <div className="py-10 text-center">
+              <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No notifications</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {recent.map(n => {
+                const Icon = notifTypeIcons[n.type] || Bell;
+                const colorClass = notifTypeColors[n.type] || notifTypeColors.general;
+                return (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      "flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                      !n.is_read && "bg-primary/5"
+                    )}
+                    onClick={() => !n.is_read && markAsRead(n.id)}
+                  >
+                    <div className={cn("p-1.5 rounded-lg shrink-0 mt-0.5", colorClass)}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm line-clamp-1", !n.is_read ? "font-semibold" : "text-muted-foreground")}>
+                        {n.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{n.body}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                    {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+        {notifications.length > 0 && (
+          <div className="border-t border-border px-4 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs h-8 text-primary"
+              onClick={() => navigate(`${rolePrefix}/notifications`)}
+            >
+              View all notifications
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function AdminLayout({ children, title }: AdminLayoutProps) {
   const { user, school, logout } = useAuth();
@@ -382,18 +497,8 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
               )}
             </div>
             
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search..." 
-                  className="pl-9 w-64 bg-muted/50 border-none focus-visible:ring-1"
-                />
-              </div>
-              <Button variant="ghost" size="icon-sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+            <div className="flex items-center gap-2">
+              <NotificationDropdown />
             </div>
           </div>
         </header>
