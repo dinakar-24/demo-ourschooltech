@@ -20,6 +20,8 @@ import NotFound from "./pages/NotFound";
 import TenantErrorPage from "./pages/TenantErrorPage";
 import SubdomainLanding from "./pages/login/SubdomainLanding";
 
+const ReceiptVerificationPage = lazy(() => import("./pages/ReceiptVerificationPage"));
+
 // Lazy loaded pages -- Super Admin
 const SuperAdminDashboard = lazy(() => import("./pages/super-admin/SuperAdminDashboard"));
 const SchoolsPage = lazy(() => import("./pages/super-admin/SchoolsPage"));
@@ -185,6 +187,7 @@ function AppRoutes() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<AuthRedirect />} />
+          <Route path="/receipt/:receiptNumber" element={<ReceiptVerificationPage />} />
           <Route path="/login" element={isSubdomain ? <Navigate to="/" replace /> : <LoginPage />} />
 
           {isSubdomain && (
