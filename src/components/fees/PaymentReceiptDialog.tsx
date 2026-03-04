@@ -279,11 +279,13 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const formattedDate = paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const formattedTime = createdAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const labelStyle: React.CSSProperties = { fontWeight: 700, fontSize: '12px', color: '#1a1a1a' };
-  const valueStyle: React.CSSProperties = { fontSize: '12px', color: '#1a1a1a' };
-  const thStyle: React.CSSProperties = { border: '1.5px solid #222', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11px', background: '#f5f5f5' };
+  const cellPad = isMobile ? '4px 5px' : '6px 8px';
+  const cellFont = isMobile ? '10px' : '11px';
+  const labelStyle: React.CSSProperties = { fontWeight: 700, fontSize: isMobile ? '11px' : '12px', color: '#1a1a1a' };
+  const valueStyle: React.CSSProperties = { fontSize: isMobile ? '11px' : '12px', color: '#1a1a1a' };
+  const thStyle: React.CSSProperties = { border: '1.5px solid #222', padding: cellPad, textAlign: 'left', fontWeight: 700, fontSize: cellFont, background: '#f5f5f5' };
   const thRight: React.CSSProperties = { ...thStyle, textAlign: 'right' };
-  const tdStyle: React.CSSProperties = { border: '1px solid #999', padding: '6px 8px', fontSize: '11px' };
+  const tdStyle: React.CSSProperties = { border: '1px solid #999', padding: cellPad, fontSize: cellFont };
   const tdRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
 
   const actionButtons = (
@@ -369,8 +371,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
         </div>
 
         {/* Fee Component Table with cumulative tracking */}
-        <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', minWidth: '360px' }}>
+        <div style={{ marginBottom: '12px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: cellFont, tableLayout: 'auto' }}>
             <thead>
               <tr>
                 <th style={thStyle}>Particulars</th>
