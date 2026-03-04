@@ -634,7 +634,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Stats Row */}
-            <div className="border-t border-border grid grid-cols-4">
+            <div className="border-t border-border grid grid-cols-3">
               <div className="py-5 text-center border-r border-border">
                 <Users className="w-4 h-4 text-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground leading-none">
@@ -649,7 +649,7 @@ export default function SubscriptionPage() {
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid</p>
               </div>
-              <div className="py-5 text-center border-r border-border">
+              <div className="py-5 text-center">
                 <Calendar className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
                 <p className="text-base font-bold text-foreground leading-none">
                   {subscription?.end_date ? format(new Date(subscription.end_date), 'dd MMM yy') : '—'}
@@ -659,11 +659,6 @@ export default function SubscriptionPage() {
                 ) : (
                   <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Expiry</p>
                 )}
-              </div>
-              <div className="py-5 text-center">
-                <IndianRupee className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                <p className="text-2xl font-bold text-foreground leading-none">₹{pricePerStudent}</p>
-                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Per Student</p>
               </div>
             </div>
           </CardContent>
