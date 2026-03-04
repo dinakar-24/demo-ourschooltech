@@ -104,7 +104,8 @@ const menuGroups: MenuGroup[] = [
     group: 'Communication',
     items: [
       { label: 'Messages', href: '/admin/messages', icon: MessageCircle },
-      { label: 'Announcements', href: '/admin/announcements', icon: Bell },
+      { label: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+      { label: 'Notifications', href: '/admin/notifications', icon: Bell },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Queries', href: '/admin/queries', icon: HelpCircle },
     ],
