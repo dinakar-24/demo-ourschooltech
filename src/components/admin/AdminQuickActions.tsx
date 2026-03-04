@@ -23,17 +23,17 @@ const quickActions = [
 
 export function AdminQuickActions() {
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-4 gap-2 md:gap-3">
       {quickActions.map((action) => (
         <Link 
           key={action.href + action.label} 
           to={action.href}
-          className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all active:scale-95"
+          className="flex flex-col items-center gap-1.5 p-2.5 md:p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all active:scale-95"
         >
-          <div className={`w-11 h-11 rounded-xl ${action.color} flex items-center justify-center shadow-sm`}>
-            <action.icon className="w-5 h-5 text-white" />
+          <div className={`w-10 h-10 md:w-11 md:h-11 rounded-xl ${action.color} flex items-center justify-center shadow-sm`}>
+            <action.icon className="w-[18px] h-[18px] md:w-5 md:h-5 text-white" />
           </div>
-          <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">
+          <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground text-center leading-tight">
             {action.label}
           </span>
         </Link>
