@@ -64,19 +64,19 @@
       })();
     </script>
     <div id="root">
-      <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:20px;background:#fff;z-index:200;">
+      <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;background:#fff;z-index:200;">
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
-          <circle cx="32" cy="32" r="6" fill="#000">
-            <animate attributeName="cx" values="16;32;48;32;16" dur="1.4s" repeatCount="indefinite"/>
-            <animate attributeName="cy" values="32;16;32;48;32" dur="1.4s" repeatCount="indefinite"/>
+          <circle r="6" fill="#000">
+            <animate attributeName="cx" values="32;50;32;14;32" dur="1.4s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="14;32;50;32;14" dur="1.4s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
           </circle>
         </svg>
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
-          <circle cx="32" cy="32" r="6" fill="#000">
-            <animate attributeName="cx" values="16;32;48;32;16" dur="1.4s" begin="0.2s" repeatCount="indefinite"/>
-            <animate attributeName="cy" values="32;16;32;48;32" dur="1.4s" begin="0.2s" repeatCount="indefinite"/>
+          <circle r="6" fill="#000">
+            <animate attributeName="cx" values="32;50;32;14;32" dur="1.4s" begin="0.2s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="14;32;50;32;14" dur="1.4s" begin="0.2s" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" repeatCount="indefinite"/>
           </circle>
         </svg>
       </div>
