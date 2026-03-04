@@ -42,7 +42,6 @@ export function useFeedbackList(isAdmin = false) {
       if (isAdmin) {
         query = query.eq('school_id', schoolId);
       }
-      // Non-admin users will only see their own via RLS
 
       const { data, error } = await query.limit(30);
       if (error) throw error;
@@ -110,12 +109,6 @@ export function useRespondToFeedback() {
         response,
       });
       if (respError) throw respError;
-
-      const { error: updateError } = await supabase
-        .from('feedback')
-        .update({ status: 'reviewed' })
-        .eq('id', feedbackId);
-      if (updateError) throw updateError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback'] });
@@ -126,18 +119,16 @@ export function useRespondToFeedback() {
   });
 }
 
-export function useUpdateFeedbackStatus() {
+export function useMarkFeedbackRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('feedback').update({ status }).eq('id', id);
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('feedback').update({ status: 'read' }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feedback'] });
-      toast.success('Status updated');
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 }
