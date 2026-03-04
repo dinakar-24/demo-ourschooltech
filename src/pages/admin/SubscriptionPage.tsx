@@ -526,16 +526,16 @@ export default function SubscriptionPage() {
                   </div>
                 </div>
               ) : (
-                /* Active & no upgrade needed: show paid amount */
+                /* Active & no upgrade needed: show per-student rate prominently */
                 <div className="mb-2">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-[42px] font-extrabold tracking-tighter text-foreground leading-none">
-                      ₹{totalAmount.toLocaleString('en-IN')}
+                      ₹{pricePerStudent.toLocaleString('en-IN')}
                     </span>
-                    <span className="text-base text-muted-foreground font-medium">/year</span>
+                    <span className="text-base text-muted-foreground font-medium">/student/year</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Paid for {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''}
+                    Paid for {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''} · Total ₹{totalAmount.toLocaleString('en-IN')}
                   </p>
                 </div>
               )}
