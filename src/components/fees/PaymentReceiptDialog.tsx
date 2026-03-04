@@ -143,8 +143,8 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice }: P
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
             <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
-            <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
+          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
+            <Download className="w-3.5 h-3.5 mr-1.5" /> Save
           </Button>
           <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
             <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share

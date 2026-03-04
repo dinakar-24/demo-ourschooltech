@@ -155,9 +155,6 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice, prefillAmount
             {Number(amount) > Number(invoice.balance) && (
               <p className="text-xs text-destructive">Amount exceeds balance of ₹{Number(invoice.balance).toLocaleString()}</p>
             )}
-            {prefillAmount && Number(amount) > Number(prefillAmount) && Number(amount) <= Number(invoice.balance) && (
-              <p className="text-xs text-warning">Amount exceeds {prefillLabel} remaining of ₹{Number(prefillAmount).toLocaleString()}</p>
-            )}
           </div>
 
           {/* Payment Date */}
