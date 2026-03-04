@@ -6,33 +6,36 @@ interface EyesRefreshAnimationProps {
 }
 
 export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
-  const [angle1, setAngle1] = useState(0);
-  const [angle2, setAngle2] = useState(-0.6); // slight offset for liveliness
+  const [a1, setA1] = useState(0);
+  const [a2, setA2] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
+    const start = performance.now();
     let frame: number;
-    let t = 0;
+    const DURATION = 1400; // 1.4s per loop
+    const DELAY2 = 200; // 0.2s offset for second eye
+    const TWO_PI = Math.PI * 2;
 
-    const animate = () => {
-      t += 0.025;
-      // Smooth circular orbit: left → top → right → bottom → repeat
-      setAngle1(t * Math.PI * 2 * 0.4); // ~0.4 rev/sec
-      setAngle2(t * Math.PI * 2 * 0.4 - 0.6); // offset by ~0.6 rad
-      frame = requestAnimationFrame(animate);
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      setA1(((elapsed % DURATION) / DURATION) * TWO_PI);
+      const e2 = Math.max(0, elapsed - DELAY2);
+      setA2(((e2 % DURATION) / DURATION) * TWO_PI);
+      frame = requestAnimationFrame(tick);
     };
-
-    frame = requestAnimationFrame(animate);
+    frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [visible]);
 
-  const ORBIT_RADIUS = 10; // how far pupil travels from center
-  const EYE_R = 34;
-  const PUPIL_R = 7;
+  const ORBIT = 16;
+  const R_EYE = 29; // visible radius inside 3px stroke on 64px svg
+  const R_PUPIL = 6;
+  const CENTER = 32;
 
-  const getPupilPos = (angle: number) => ({
-    cx: 40 + Math.cos(angle) * ORBIT_RADIUS,
-    cy: 40 + Math.sin(angle) * ORBIT_RADIUS,
+  const pupil = (angle: number) => ({
+    cx: CENTER + Math.cos(angle) * ORBIT,
+    cy: CENTER + Math.sin(angle) * ORBIT,
   });
 
   return (
@@ -42,15 +45,16 @@ export function EyesRefreshAnimation({ visible }: EyesRefreshAnimationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center gap-[18px] bg-background"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-background"
+          style={{ gap: 20 }}
         >
-          {[angle1, angle2].map((angle, i) => {
-            const pos = getPupilPos(angle);
+          {[a1, a2].map((a, i) => {
+            const p = pupil(a);
             return (
-              <svg key={i} width="80" height="80" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r={EYE_R} fill="hsl(var(--background))" stroke="#6366f1" strokeWidth="2.5" />
-                <circle cx={pos.cx} cy={pos.cy} r={PUPIL_R} fill="hsl(var(--foreground))" />
+              <svg key={i} width="64" height="64" viewBox="0 0 64 64">
+                <circle cx={CENTER} cy={CENTER} r={R_EYE} fill="#fff" stroke="#5a5ce6" strokeWidth="3" />
+                <circle cx={p.cx} cy={p.cy} r={R_PUPIL} fill="#000" />
               </svg>
             );
           })}
