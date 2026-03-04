@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminLayout } from '@/components/layout/AdminLayout';
@@ -16,30 +16,23 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Search, Plus, CreditCard, TrendingUp, AlertCircle, CheckCircle,
-  ChevronDown, ChevronRight, Receipt, FileText, User,
-  Download, Bell, Percent, ShieldCheck, Upload, MoreHorizontal,
+  Search, Plus, TrendingUp, AlertCircle, CheckCircle,
+  ChevronRight, User,
+  Download, Bell, ShieldCheck, Upload, MoreHorizontal,
 } from 'lucide-react';
-import { useFeeInvoices, useInvoiceStats, FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
+import { useFeeInvoices, useInvoiceStats, FeeInvoice } from '@/hooks/useFeeInvoices';
 import { usePaymentSubmissions } from '@/hooks/usePaymentSubmissions';
 import { PaymentVerificationPanel } from '@/components/fees/PaymentVerificationPanel';
 import { useFees, FeeRecord } from '@/hooks/useFees';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
-import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
-import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { SendReminderDialog } from '@/components/fees/SendReminderDialog';
-import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
 
 interface StudentGroup {
   studentId: string;
@@ -109,41 +102,6 @@ function groupByStudent(invoices: FeeInvoice[], legacyFees: FeeRecord[]): Studen
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function PaymentsList({ payments, limit, hasMore, openReceipt }: {
-  payments: FeePayment[];
-  limit: number;
-  hasMore: boolean;
-  openReceipt: (p: FeePayment) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? payments : payments.slice(0, limit);
-
-  return (
-    <div className="space-y-1">
-      {visible.map(p => (
-        <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs bg-muted/20 rounded px-3 py-1.5">
-          <span className="font-semibold text-sm">₹{Number(p.amount).toLocaleString()}</span>
-          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
-          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto shrink-0" onClick={() => openReceipt(p)}>
-            <Receipt className="w-3 h-3 mr-1" /> <span className="truncate max-w-[120px]">{p.receipt_number}</span>
-          </Button>
-        </div>
-      ))}
-      {hasMore && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full h-7 text-xs text-muted-foreground"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? 'Show less' : `Show all ${payments.length} payments`}
-        </Button>
-      )}
-    </div>
-  );
-}
-
 export default function FeesPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -151,7 +109,6 @@ export default function FeesPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSection, setSelectedSection] = useState('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showVerifications, setShowVerifications] = useState(false);
 
   const { data: classes } = useClasses();
@@ -159,24 +116,12 @@ export default function FeesPage() {
 
   // Dialogs
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [paymentInvoice, setPaymentInvoice] = useState<FeeInvoice | null>(null);
-  const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<number | undefined>();
-  const [paymentPrefillLabel, setPaymentPrefillLabel] = useState<string | undefined>();
-  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [receiptPayment, setReceiptPayment] = useState<FeePayment | null>(null);
-  const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
-  const [legacyReceiptOpen, setLegacyReceiptOpen] = useState(false);
-  const [legacyReceiptFee, setLegacyReceiptFee] = useState<any>(null);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
-  const [discountInvoice, setDiscountInvoice] = useState<FeeInvoice | null>(null);
 
   const { generateFeeSummary, generatePendingList, generatePaymentHistory, generateAllInvoices } = useFeeReports();
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  // Fetch all data (no pagination — grouped client-side)
   const { data: invoicesResult, isLoading } = useFeeInvoices({
     status: selectedStatus,
     search: debouncedSearch,
@@ -207,11 +152,9 @@ export default function FeesPage() {
     [invoices, legacyFees]
   );
 
-  // Filter by status at group level
   const filteredGroups = useMemo(() => {
     let groups = studentGroups;
 
-    // Filter by section client-side
     if (selectedSection !== 'all') {
       groups = groups.filter(g => g.section === selectedSection);
     }
@@ -228,33 +171,6 @@ export default function FeesPage() {
       return true;
     });
   }, [studentGroups, selectedStatus, selectedSection]);
-
-  const openPayment = (inv: FeeInvoice, componentAmount?: number, componentLabel?: string) => {
-    setPaymentInvoice(inv);
-    setPaymentPrefillAmount(componentAmount);
-    setPaymentPrefillLabel(componentLabel);
-    setPaymentDialogOpen(true);
-  };
-
-  const openReceipt = (payment: FeePayment, invoice: FeeInvoice) => {
-    setReceiptPayment(payment);
-    setReceiptInvoice(invoice);
-    setReceiptDialogOpen(true);
-  };
-
-  const openLegacyReceipt = (fee: FeeRecord) => {
-    setLegacyReceiptFee({ ...fee, student: fee.student });
-    setLegacyReceiptOpen(true);
-  };
-
-  const getStatusBadge = (status: string, dueDate: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const isOverdue = status === 'pending' && dueDate < today;
-    if (status === 'paid') return <Badge className="bg-success text-success-foreground">Paid</Badge>;
-    if (isOverdue) return <Badge variant="destructive">Overdue</Badge>;
-    if (status === 'partial') return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
-    return <Badge variant="secondary">Pending</Badge>;
-  };
 
   const getGroupBadge = (g: StudentGroup) => {
     if (g.totalAmount === 0) return <Badge variant="secondary">No Fees</Badge>;
@@ -274,147 +190,9 @@ export default function FeesPage() {
 
   const collectionRate = stats && stats.totalDue > 0 ? ((stats.collected / stats.totalDue) * 100).toFixed(0) : '0';
 
-  const renderExpandedContent = (g: StudentGroup) => (
-    <div className="space-y-3">
-      {/* Invoices */}
-      {g.invoices.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Invoices ({g.invoices.length})
-          </h4>
-          <div className="space-y-3">
-            {g.invoices.map(inv => (
-              <div key={inv.id} className="rounded-lg border bg-card p-3 space-y-2.5">
-                {/* Invoice Header */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
-                    <span className="text-sm font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
-                    {getStatusBadge(inv.status, inv.due_date)}
-                  </div>
-                  {inv.status !== 'paid' && (
-                    <div className="flex items-center gap-1.5">
-                      <Button size="sm" variant="outline" className="h-8 text-xs px-3" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
-                        <Percent className="w-3.5 h-3.5 mr-1" /> Discount
-                      </Button>
-                      <Button size="sm" variant="default" className="h-8 text-xs px-3" onClick={() => openPayment(inv)}>
-                        <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay All
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Fee Components */}
-                {(inv.components || []).length > 0 && (
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {(inv.components || []).map(c => {
-                        const componentAmount = Number(c.amount);
-                        // Calculate how much has been paid toward this specific component
-                        const paidForComponent = (inv.payments || []).reduce((sum, p) => {
-                          const notesLower = (p.notes || '').toLowerCase();
-                          const feeTypeLower = c.fee_type.toLowerCase();
-                          if (notesLower.includes(feeTypeLower)) {
-                            return sum + Number(p.amount);
-                          }
-                          return sum;
-                        }, 0);
-                        const remainingAmount = Math.max(0, componentAmount - paidForComponent);
-                        const canPayComponent = inv.status !== 'paid' && remainingAmount > 0;
-                        const payableAmount = Math.min(remainingAmount, Number(inv.balance));
-                        const isFullyPaid = remainingAmount === 0;
-                        return (
-                          <tr key={c.id} className="border-b border-border/40 last:border-0">
-                            <td className="py-2 font-medium">{c.fee_type}</td>
-                            <td className="py-2 text-right tabular-nums">
-                              {isFullyPaid ? (
-                                <span className="inline-flex items-center gap-1 text-success font-semibold text-sm">
-                                  <CheckCircle className="w-3.5 h-3.5" /> Paid
-                                </span>
-                              ) : (
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span className="font-bold text-sm">₹{remainingAmount.toLocaleString()}</span>
-                                  {paidForComponent > 0 && (
-                                    <span className="text-[11px] text-muted-foreground">of ₹{componentAmount.toLocaleString()}</span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-2 text-right w-16">
-                              {canPayComponent && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs px-3 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                                  onClick={() => openPayment(inv, payableAmount, c.fee_type)}
-                                >
-                                  Pay
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {/* Totals row */}
-                      <tr className="border-t border-dashed">
-                        <td colSpan={3} className="pt-2">
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span>Total: <span className="font-bold text-sm text-foreground">₹{Number(inv.total_amount).toLocaleString()}</span></span>
-                            <span>Paid: <span className="font-bold text-sm text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
-                            <span>Balance: <span className="font-bold text-sm text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                )}
-
-                {/* Payments */}
-                {(inv.payments || []).length > 0 && (() => {
-                  const sorted = [...(inv.payments || [])].sort(
-                    (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
-                  );
-                  const LIMIT = 3;
-                  const hasMore = sorted.length > LIMIT;
-                  return (
-                    <PaymentsList payments={sorted} limit={LIMIT} hasMore={hasMore} openReceipt={(p) => openReceipt(p, inv)} />
-                  );
-                })()}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Legacy Fees */}
-      {g.legacyFees.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
-            <CreditCard className="w-3.5 h-3.5" /> Fee Records ({g.legacyFees.length})
-          </h4>
-          <div className="divide-y divide-border/50 border rounded-md overflow-hidden">
-            {g.legacyFees.map(fee => (
-              <div key={fee.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/20">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-sm">{fee.fee_type}</span>
-                  <span className="text-muted-foreground text-xs">Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm">₹{Number(fee.amount).toLocaleString()}</span>
-                  {getStatusBadge(fee.status, fee.due_date)}
-                  {fee.status === 'paid' && fee.receipt_number && (
-                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => openLegacyReceipt(fee)}>
-                      <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const goToStudent = (studentId: string) => {
+    navigate(`/admin/fees/${studentId}`);
+  };
 
   return (
     <AdminLayout title="Fees Management">
@@ -449,7 +227,6 @@ export default function FeesPage() {
               </Badge>
             </div>
             
-            {/* Desktop actions */}
             {!isMobile ? (
               <div className="flex gap-2 flex-wrap">
                 {pendingCount > 0 && (
@@ -489,7 +266,6 @@ export default function FeesPage() {
                 </Button>
               </div>
             ) : (
-              /* Mobile actions: primary + more dropdown */
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-1" /> Create
@@ -618,33 +394,32 @@ export default function FeesPage() {
               /* ── Mobile: Cards ── */
               <div className="divide-y">
                 {filteredGroups.map(g => (
-                  <Collapsible key={g.studentId} open={expandedId === g.studentId} onOpenChange={(open) => setExpandedId(open ? g.studentId : null)}>
-                    <CollapsibleTrigger className="w-full text-left p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2 min-w-0">
-                          {expandedId === g.studentId ? <ChevronDown className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />}
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{g.name}</p>
-                            <p className="text-xs text-muted-foreground">{g.admissionNumber} · {g.className}-{g.section}</p>
-                          </div>
+                  <div
+                    key={g.studentId}
+                    className="p-4 cursor-pointer hover:bg-muted/50 active:bg-muted/70 transition-colors"
+                    onClick={() => goToStudent(g.studentId)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <ChevronRight className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{g.name}</p>
+                          <p className="text-xs text-muted-foreground">{g.admissionNumber} · {g.className}-{g.section}</p>
                         </div>
-                        {getGroupBadge(g)}
                       </div>
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1.5 pl-6">
-                        <span>Total: ₹{g.totalAmount.toLocaleString()}</span>
-                        <span>Paid: ₹{g.totalPaid.toLocaleString()}</span>
-                        <span className="font-medium text-foreground">Balance: ₹{g.totalBalance.toLocaleString()}</span>
+                      {getGroupBadge(g)}
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1.5 pl-6">
+                      <span>Total: ₹{g.totalAmount.toLocaleString()}</span>
+                      <span>Paid: ₹{g.totalPaid.toLocaleString()}</span>
+                      <span className="font-medium text-foreground">Balance: ₹{g.totalBalance.toLocaleString()}</span>
+                    </div>
+                    {g.totalAmount > 0 && (
+                      <div className="pl-6 mt-1.5">
+                        <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-1.5" />
                       </div>
-                      {g.totalAmount > 0 && (
-                        <div className="pl-6 mt-1.5">
-                          <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-1.5" />
-                        </div>
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="px-4 pb-4">
-                      {renderExpandedContent(g)}
-                    </CollapsibleContent>
-                  </Collapsible>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
@@ -652,7 +427,6 @@ export default function FeesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-8"></TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>Total Due</TableHead>
@@ -660,43 +434,39 @@ export default function FeesPage() {
                     <TableHead>Balance</TableHead>
                     <TableHead className="w-24">Progress</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-8"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredGroups.map(g => (
-                    <Fragment key={g.studentId}>
-                      <TableRow className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedId(expandedId === g.studentId ? null : g.studentId)}>
-                        <TableCell>
-                          {expandedId === g.studentId ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{g.name}</p>
-                            <p className="text-xs text-muted-foreground">{g.admissionNumber}</p>
+                    <TableRow
+                      key={g.studentId}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => goToStudent(g.studentId)}
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{g.name}</p>
+                          <p className="text-xs text-muted-foreground">{g.admissionNumber}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{g.className}-{g.section}</TableCell>
+                      <TableCell className="font-medium">₹{g.totalAmount.toLocaleString()}</TableCell>
+                      <TableCell className="text-success">₹{g.totalPaid.toLocaleString()}</TableCell>
+                      <TableCell className="text-destructive font-medium">₹{g.totalBalance.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {g.totalAmount > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-2 flex-1" />
+                            <span className="text-xs text-muted-foreground w-8">{Math.round((g.totalPaid / g.totalAmount) * 100)}%</span>
                           </div>
-                        </TableCell>
-                        <TableCell>{g.className}-{g.section}</TableCell>
-                        <TableCell className="font-medium">₹{g.totalAmount.toLocaleString()}</TableCell>
-                        <TableCell className="text-success">₹{g.totalPaid.toLocaleString()}</TableCell>
-                        <TableCell className="text-destructive font-medium">₹{g.totalBalance.toLocaleString()}</TableCell>
-                        <TableCell>
-                          {g.totalAmount > 0 && (
-                            <div className="flex items-center gap-1.5">
-                              <Progress value={Math.round((g.totalPaid / g.totalAmount) * 100)} className="h-2 flex-1" />
-                              <span className="text-xs text-muted-foreground w-8">{Math.round((g.totalPaid / g.totalAmount) * 100)}%</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>{getGroupBadge(g)}</TableCell>
-                      </TableRow>
-                      {expandedId === g.studentId && (
-                        <TableRow className="bg-muted/20 hover:bg-muted/20">
-                          <TableCell colSpan={8} className="p-4">
-                            {renderExpandedContent(g)}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
+                        )}
+                      </TableCell>
+                      <TableCell>{getGroupBadge(g)}</TableCell>
+                      <TableCell>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
@@ -706,11 +476,7 @@ export default function FeesPage() {
 
         {/* Dialogs */}
         <CreateInvoiceDialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen} />
-        <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} prefillAmount={paymentPrefillAmount} prefillLabel={paymentPrefillLabel} />
-        <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
-        <FeeReceiptDialog open={legacyReceiptOpen} onOpenChange={setLegacyReceiptOpen} fee={legacyReceiptFee} />
         <SendReminderDialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen} />
-        <ApplyDiscountDialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen} invoice={discountInvoice} />
       </div>
     </AdminLayout>
   );
