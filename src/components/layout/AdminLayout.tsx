@@ -142,6 +142,8 @@ const notifTypeIcons: Record<string, typeof Bell> = {
   fee: CreditCard,
   announcement: Megaphone,
   result: Award,
+  feedback: MessageSquare,
+  query: HelpCircle,
   general: Bell,
 };
 
@@ -151,6 +153,8 @@ const notifTypeColors: Record<string, string> = {
   fee: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950',
   announcement: 'text-teal-600 bg-teal-50 dark:text-teal-400 dark:bg-teal-950',
   result: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950',
+  feedback: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950',
+  query: 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950',
   general: 'text-muted-foreground bg-muted',
 };
 
