@@ -425,10 +425,10 @@ export default function SubscriptionPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-primary text-[15px] leading-snug">
-                Upgrade required — {extraStudents} additional student{extraStudents !== 1 ? 's' : ''} detected
+                Upgrade required — {extraStudents} new student{extraStudents !== 1 ? 's' : ''}
               </p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Pay ₹{topUpAmount.toLocaleString('en-IN')} ({extraStudents} × ₹{pricePerStudent}) to upgrade. Plan expiry remains unchanged.
+                Pay ₹{topUpAmount.toLocaleString('en-IN')} to upgrade.
               </p>
             </div>
           </div>
@@ -477,7 +477,11 @@ export default function SubscriptionPage() {
               </div>
 
               {/* Price */}
-              {!isTrial ? (
+              {isTrial ? (
+                <div className="mb-2">
+                  <span className="text-[42px] font-extrabold tracking-tighter text-foreground leading-none">Trial</span>
+                </div>
+              ) : (isExpired || isPending) ? (
                 <div className="mb-2">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-[42px] font-extrabold tracking-tighter text-foreground leading-none">
@@ -488,20 +492,45 @@ export default function SubscriptionPage() {
                   <p className="text-sm text-muted-foreground mt-2">
                     {currentStudentCount} student{currentStudentCount !== 1 ? 's' : ''} × ₹{pricePerStudent}/student
                   </p>
-                  {needsTopUp && (
-                    <p className="text-sm text-primary mt-1 font-medium">
-                      {extraStudents} new student{extraStudents !== 1 ? 's' : ''} added · Additional ₹{topUpAmount.toLocaleString('en-IN')} due
-                    </p>
-                  )}
-                  {liveStudentCount !== null && liveStudentCount !== paidStudentCount && !needsTopUp && isActive && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
-                      Student count changed: {paidStudentCount} → {liveStudentCount}
-                    </p>
-                  )}
+                </div>
+              ) : needsTopUp ? (
+                /* Active + upgrade needed: show breakdown */
+                <div className="mb-2 space-y-3">
+                  <div className="space-y-2.5">
+                    {[
+                      { label: 'Price per student', value: `₹${pricePerStudent}/year` },
+                      { label: 'Paid students', value: String(paidStudentCount) },
+                      { label: 'Active students', value: String(currentStudentCount) },
+                      { label: 'Additional students', value: String(extraStudents), highlight: true },
+                    ].map((item: any, i) => (
+                      <div key={i} className="flex justify-between items-center">
+                        <span className={`text-sm ${item.highlight ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                          {item.label}
+                        </span>
+                        <span className={`text-sm font-semibold ${item.highlight ? 'text-primary' : 'text-foreground'}`}>
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-primary">Additional payment required</span>
+                    <span className="text-lg font-extrabold text-primary">₹{topUpAmount.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
               ) : (
+                /* Active & no upgrade needed: show paid amount */
                 <div className="mb-2">
-                  <span className="text-[42px] font-extrabold tracking-tighter text-foreground leading-none">Trial</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[42px] font-extrabold tracking-tighter text-foreground leading-none">
+                      ₹{totalAmount.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-base text-muted-foreground font-medium">/year</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Paid for {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''}
+                  </p>
                 </div>
               )}
 
@@ -523,7 +552,7 @@ export default function SubscriptionPage() {
                       ? 'Processing Payment...'
                       : payLoading
                       ? 'Preparing...'
-                      : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
+                      : `Upgrade Plan — Pay ₹${topUpAmount.toLocaleString('en-IN')}`}
                   </span>
                 </Button>
               )}
@@ -557,9 +586,9 @@ export default function SubscriptionPage() {
               <div className="py-5 text-center border-r border-border">
                 <Users className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground leading-none">
-                  {countLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : currentStudentCount}
+                  {paidStudentCount}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Active Students</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid Students</p>
               </div>
               <div className="py-5 text-center border-r border-border">
                 <Calendar className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
@@ -591,9 +620,9 @@ export default function SubscriptionPage() {
                 ...(subscription?.start_date ? [{ label: 'Started', value: format(new Date(subscription.start_date), 'dd MMM yyyy') }] : []),
                 ...(subscription?.end_date ? [{ label: 'Expires', value: format(new Date(subscription.end_date), 'dd MMM yyyy') }] : []),
                 { label: 'Paid Students', value: String(paidStudentCount) },
-                { label: 'Current Active Students', value: countLoading ? '...' : String(currentStudentCount) },
+                { label: 'Active Students', value: countLoading ? '...' : String(currentStudentCount) },
                 { label: 'Price Per Student', value: `₹${pricePerStudent}` },
-                { label: 'Total Plan Amount', value: `₹${dynamicTotal.toLocaleString('en-IN')}` },
+                { label: 'Amount Paid', value: `₹${totalAmount.toLocaleString('en-IN')}` },
               ].map((item, i) => (
                 <div key={i} className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">{item.label}</span>
@@ -604,53 +633,6 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        {/* ─── Upgrade Required Block ─── */}
-        {needsTopUp && (
-          <Card className="rounded-2xl border-0 shadow-md bg-primary/[0.03]">
-            <CardContent className="p-6">
-              <h3 className="text-xs font-bold text-primary uppercase tracking-widest mb-5 flex items-center gap-2">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Upgrade Required
-              </h3>
-              <div className="space-y-4">
-                {[
-                  { label: 'Paid Students', value: String(paidStudentCount) },
-                  { label: 'Current Active Students', value: String(currentStudentCount) },
-                  { label: 'New Students (Unpaid)', value: String(extraStudents), highlight: true },
-                  { label: 'Price Per Student', value: `₹${pricePerStudent}` },
-                  { label: 'Additional Amount Due', value: `₹${topUpAmount.toLocaleString('en-IN')}`, highlight: true },
-                ].map((item: any, i) => (
-                  <div key={i} className="flex justify-between items-center">
-                    <span className={`text-sm ${item.highlight ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-                      {item.label}
-                    </span>
-                    <span className={`text-sm font-semibold ${item.highlight ? 'text-primary' : 'text-foreground'}`}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <Button
-                className="w-full mt-6 h-[52px] text-sm font-bold rounded-2xl shadow-lg whitespace-normal leading-tight"
-                onClick={handleTopUp}
-                disabled={payLoading || isProcessing}
-              >
-                {payLoading || isProcessing ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Users className="w-4 h-4 mr-2 shrink-0" />
-                )}
-                <span className="truncate">
-                  {isProcessing
-                    ? 'Processing...'
-                    : payLoading
-                    ? 'Preparing...'
-                    : `Upgrade — Pay ₹${topUpAmount.toLocaleString('en-IN')} for ${extraStudents} Student${extraStudents !== 1 ? 's' : ''}`}
-                </span>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {/* ─── Payment History ─── */}
         <Card className="rounded-2xl border-0 shadow-md">
@@ -688,8 +670,13 @@ export default function SubscriptionPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-foreground text-[15px] leading-tight">
+                          <p className="font-bold text-foreground text-[15px] leading-tight flex items-center gap-1.5">
                             ₹{payment.amount.toLocaleString('en-IN')}
+                            {(payment as any).payment_type === 'topup' && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-semibold border-primary/30 text-primary bg-primary/5">
+                                Top-Up
+                              </Badge>
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {payment.paid_at
