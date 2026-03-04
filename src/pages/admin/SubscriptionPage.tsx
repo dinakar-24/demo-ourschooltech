@@ -296,15 +296,24 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!user?.schoolId) return;
     setCountLoading(true);
-    supabase
-      .from('students')
-      .select('id', { count: 'exact', head: true })
-      .eq('school_id', user.schoolId)
-      .eq('status', 'active')
-      .then(({ count }) => {
+    const fetchCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', user.schoolId)
+          .eq('status', 'active');
+        if (error) {
+          console.error('Failed to fetch student count:', error);
+        }
         setLiveStudentCount(count ?? 0);
+      } catch (err) {
+        console.error('Unexpected error fetching student count:', err);
+      } finally {
         setCountLoading(false);
-      });
+      }
+    };
+    fetchCount();
   }, [user?.schoolId]);
 
   const paidStudentCount = subscription?.student_count || 0;
