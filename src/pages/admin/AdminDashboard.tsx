@@ -6,10 +6,11 @@ import { PendingTasks } from '@/components/admin/PendingTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, GraduationCap, CreditCard, ClipboardList, CalendarDays } from 'lucide-react';
+import { Users, GraduationCap, CreditCard, ClipboardList, CalendarDays, RefreshCw } from 'lucide-react';
 import { useCurrentAcademicYear } from '@/hooks/useAcademicYears';
+import { useState, useRef, useCallback } from 'react';
 
 export default function AdminDashboard() {
   const { user, school } = useAuth();
@@ -38,6 +39,38 @@ export default function AdminDashboard() {
   const { data: currentAcademicYear } = useCurrentAcademicYear();
   const displaySchoolName = isImpersonating ? impersonatedSchool?.name : school?.name;
   const displaySchoolLogo = isImpersonating ? impersonatedSchool?.logo : school?.logo;
+  const queryClient = useQueryClient();
+
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const touchStartY = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (refreshing) return;
+    const scrollTop = scrollRef.current?.scrollTop ?? 0;
+    if (scrollTop > 0) return;
+    const diff = e.touches[0].clientY - touchStartY.current;
+    if (diff > 0) setPullY(Math.min(diff * 0.4, 60));
+  }, [refreshing]);
+
+  const handleTouchEnd = useCallback(async () => {
+    if (pullY > 40 && !refreshing) {
+      setRefreshing(true);
+      await queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+      setTimeout(() => {
+        setRefreshing(false);
+        setPullY(0);
+      }, 600);
+    } else {
+      setPullY(0);
+    }
+  }, [pullY, refreshing, queryClient]);
 
   const formatCurrency = (amount: number) => {
     if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
@@ -54,7 +87,20 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout title="Dashboard">
-      <div className="space-y-4 pb-6">
+      <div 
+        ref={scrollRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="space-y-4 pb-6"
+      >
+        {/* Pull to refresh indicator */}
+        <div 
+          className="flex items-center justify-center overflow-hidden transition-all duration-200"
+          style={{ height: pullY > 0 || refreshing ? `${Math.max(pullY, refreshing ? 36 : 0)}px` : '0px' }}
+        >
+          <RefreshCw className={`w-5 h-5 text-primary ${refreshing ? 'animate-spin' : ''}`} />
+        </div>
         {/* Welcome Banner */}
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-3.5 md:p-5 shadow-sm">
           <div className="flex items-center gap-3">
