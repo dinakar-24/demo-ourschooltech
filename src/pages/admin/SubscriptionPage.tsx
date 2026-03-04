@@ -535,7 +535,11 @@ export default function SubscriptionPage() {
                     <span className="text-base text-muted-foreground font-medium">/student/year</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Paid for {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''} · Total ₹{totalAmount.toLocaleString('en-IN')}
+                    Paid for {paidStudentCount} student{paidStudentCount !== 1 ? 's' : ''}
+                    {liveStudentCount !== null && liveStudentCount !== paidStudentCount
+                      ? ` · ${countLoading ? '...' : currentStudentCount} active`
+                      : ''}
+                    {' · '}Total ₹{totalAmount.toLocaleString('en-IN')}
                   </p>
                 </div>
               )}
@@ -588,13 +592,20 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Stats Row */}
-            <div className="border-t border-border grid grid-cols-3">
+            <div className="border-t border-border grid grid-cols-4">
               <div className="py-5 text-center border-r border-border">
                 <Users className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground leading-none">
                   {paidStudentCount}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid Students</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Paid</p>
+              </div>
+              <div className="py-5 text-center border-r border-border">
+                <Users className="w-4 h-4 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-bold text-foreground leading-none">
+                  {countLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : currentStudentCount}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">Total Active</p>
               </div>
               <div className="py-5 text-center border-r border-border">
                 <Calendar className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
