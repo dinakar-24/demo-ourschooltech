@@ -1,8 +1,10 @@
 import { useRef, useCallback, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Share2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { FeePayment, FeeInvoice } from '@/hooks/useFeeInvoices';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -52,6 +54,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const { school } = useAuth();
   const receiptRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   const generatePdfBlob = useCallback(async (): Promise<Blob | null> => {
     if (!receiptRef.current) return null;
@@ -283,240 +286,263 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   const tdStyle: React.CSSProperties = { border: '1px solid #999', padding: '6px 8px', fontSize: '11px' };
   const tdRight: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontFamily: "'Courier New', monospace" };
 
+  const actionButtons = (
+    <div className="flex gap-2 mb-1">
+      <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
+        <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
+      </Button>
+      <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleSavePdf} disabled={pdfLoading}>
+        {pdfLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+        {pdfLoading ? 'Generating...' : 'Save'}
+      </Button>
+      <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
+        <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share
+      </Button>
+    </div>
+  );
+
+  const receiptContent = (
+    <div ref={receiptRef}>
+      <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '16px' }}>
+
+        {/* OFFICE COPY - top right */}
+        <div style={{ textAlign: 'right', marginBottom: '4px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#dc2626', fontStyle: 'italic' }}>
+            {copyLabel}
+          </span>
+        </div>
+
+        {/* School Header */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
+          {school?.logo && (
+            <img src={school.logo} alt={school.name} style={{ height: '50px', width: '50px', objectFit: 'contain', flexShrink: 0 }} />
+          )}
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#1a1a1a', letterSpacing: '0.5px' }}>
+              {school?.name || 'School Name'}
+            </div>
+            <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
+              {[school?.address, school?.city].filter(Boolean).join(', ')}
+            </div>
+            {(school?.phone || school?.email) && (
+              <div style={{ fontSize: '11px', color: '#444', marginTop: '1px' }}>
+                {school?.phone && <>Tel: {school.phone}</>}
+                {school?.phone && school?.email && ', '}
+                {school?.email && <>Email: {school.email}</>}
+              </div>
+            )}
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a1a1a', marginTop: '4px' }}>
+              FEE RECEIPT
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <hr style={{ border: 'none', borderTop: '2px solid #333', margin: '0 0 12px' }} />
+
+        {/* Receipt & Student Details */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: '14px', fontSize: '11px' }}>
+          <div>
+            <span style={labelStyle}>Receipt No: </span>
+            <span style={valueStyle}>{payment.receipt_number}</span>
+          </div>
+          <div>
+            <span style={labelStyle}>Date: </span>
+            <span style={valueStyle}>{formattedDate} {formattedTime}</span>
+          </div>
+          <div>
+            <span style={labelStyle}>Student: </span>
+            <span style={valueStyle}>{invoice.student?.full_name || 'N/A'}</span>
+          </div>
+          <div>
+            <span style={labelStyle}>Adm No: </span>
+            <span style={valueStyle}>{invoice.student?.admission_number || 'N/A'}</span>
+          </div>
+          <div>
+            <span style={labelStyle}>Father: </span>
+            <span style={valueStyle}>{invoice.student?.parent_name || '--'}</span>
+          </div>
+          <div>
+            <span style={labelStyle}>Class: </span>
+            <span style={valueStyle}>{invoice.student?.class_name} {invoice.student?.section}</span>
+          </div>
+        </div>
+
+        {/* Fee Component Table with cumulative tracking */}
+        <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', minWidth: '360px' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Particulars</th>
+                <th style={thRight}>Amount</th>
+                {hasComponentAllocation && <th style={thRight}>Prev. Paid</th>}
+                <th style={{ ...thRight, background: '#e8f5e9' }}>Current Paid</th>
+                {hasComponentAllocation && <th style={thRight}>Balance</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {componentAllocations.length > 0 ? componentAllocations.map((c) => (
+                <tr key={c.fee_type}>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
+                  <td style={tdRight}>{formatINR(c.amount)}</td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, color: c.prevPaid > 0 ? '#1a1a1a' : '#999' }}>
+                      {c.prevPaid > 0 ? formatINR(c.prevPaid) : '—'}
+                    </td>
+                  )}
+                  <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: c.currentPaid > 0 ? '#1a1a1a' : '#999' }}>
+                    {c.currentPaid > 0 ? formatINR(c.currentPaid) : '—'}
+                  </td>
+                  {hasComponentAllocation && (
+                    <td style={{ ...tdRight, color: c.balance > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                      {formatINR(c.balance)}
+                    </td>
+                  )}
+                </tr>
+              )) : (
+                <tr>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>Fee Payment</td>
+                  <td style={tdRight}>{formatINR(totalFees)}</td>
+                  {hasComponentAllocation && <td style={tdRight}>—</td>}
+                  <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(currentPayment)}</td>
+                  {hasComponentAllocation && <td style={tdRight}>{formatINR(remainingBalance)}</td>}
+                </tr>
+              )}
+              {/* Total Row */}
+              <tr style={{ background: '#f5f5f5' }}>
+                <td style={{ ...tdStyle, fontWeight: 700 }}>Total</td>
+                <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(totalFees)}</td>
+                {hasComponentAllocation && (
+                  <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(previouslyPaid)}</td>
+                )}
+                <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(currentPayment)}</td>
+                {hasComponentAllocation && (
+                  <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(remainingBalance)}</td>
+                )}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Cumulative Payment Summary */}
+        <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
+          <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+            Payment Summary
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px' }}>
+            <span>Total Fees</span>
+            <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 600 }}>₹{formatINR(totalFees)}</span>
+
+            {previouslyPaid > 0 && (
+              <>
+                <span>Previously Paid</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace" }}>₹{formatINR(previouslyPaid)}</span>
+              </>
+            )}
+
+            <span style={{ fontWeight: 700, color: '#16a34a' }}>Current Payment</span>
+            <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹{formatINR(currentPayment)}</span>
+
+            <span style={{ fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>Total Paid Till Date</span>
+            <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>₹{formatINR(totalPaidTillDate)}</span>
+
+            {remainingBalance > 0 && (
+              <>
+                <span style={{ fontWeight: 700, color: '#dc2626' }}>Remaining Balance</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#dc2626' }}>₹{formatINR(remainingBalance)}</span>
+              </>
+            )}
+            {remainingBalance <= 0 && (
+              <>
+                <span style={{ fontWeight: 700, color: '#16a34a' }}>Remaining Balance</span>
+                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹0.00 (Fully Paid)</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Amount in Words */}
+        <div style={{ fontSize: '11px', marginBottom: '6px' }}>
+          <span style={labelStyle}>Amount In Words: </span>
+          <span style={valueStyle}>{numberToWords(currentPayment)}</span>
+        </div>
+
+        {/* Payment Mode */}
+        <div style={{ fontSize: '11px', marginBottom: '4px' }}>
+          <span style={labelStyle}>Payment Mode: </span>
+          <span style={{ ...valueStyle, textTransform: 'capitalize' }}>{payment.payment_method}</span>
+        </div>
+
+        {/* Transaction / Cheque Info */}
+        {payment.transaction_id && (
+          <div style={{ fontSize: '11px', marginBottom: '4px' }}>
+            <span style={labelStyle}>Transaction No: </span>
+            <span style={valueStyle}>{payment.transaction_id}</span>
+          </div>
+        )}
+        {payment.cheque_number && (
+          <div style={{ fontSize: '11px', marginBottom: '4px' }}>
+            <span style={labelStyle}>Cheque No: </span>
+            <span style={valueStyle}>{payment.cheque_number}</span>
+            {payment.bank_name && <> | <span style={labelStyle}>Bank: </span><span style={valueStyle}>{payment.bank_name}</span></>}
+          </div>
+        )}
+
+
+        {/* Disclaimer */}
+        <div style={{ fontSize: '10px', color: '#333', marginTop: '10px', lineHeight: 1.5 }}>
+          <strong style={{ color: '#dc2626' }}>Note: </strong>
+          Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred.
+        </div>
+
+        {/* Receipt Verification Section */}
+        <div style={{ marginTop: '12px', padding: '10px 12px', border: '1px dashed #999', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <QRCodeSVG value={verificationUrl} size={64} level="M" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#1a1a1a', marginBottom: '2px' }}>
+              Verify This Receipt
+            </div>
+            <div style={{ fontSize: '9px', color: '#555', lineHeight: 1.5 }}>
+              Scan the QR code or visit:
+            </div>
+            <div style={{ fontSize: '9px', color: '#0f766e', fontFamily: "'Courier New', monospace", wordBreak: 'break-all', marginTop: '2px' }}>
+              {verificationUrl}
+            </div>
+          </div>
+        </div>
+
+        {/* System Note */}
+        <div style={{ textAlign: 'center', fontSize: '10px', color: '#dc2626', fontStyle: 'italic', marginTop: '8px' }}>
+          This is a system-generated Fee Receipt and does not require any stamp or signature.
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[92dvh] bg-background">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle className="text-base font-semibold">Fee Receipt</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto flex-1 min-h-0 px-3 pb-4 space-y-2 bg-background">
+            {actionButtons}
+            {receiptContent}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">Fee Receipt</DialogTitle>
         </DialogHeader>
-
-        {/* Action buttons below header */}
-        <div className="flex gap-2 -mt-2 mb-1">
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handlePrint}>
-            <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleSavePdf} disabled={pdfLoading}>
-            {pdfLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
-            {pdfLoading ? 'Generating...' : 'Save'}
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-9 text-xs font-medium border-border" onClick={handleShare}>
-            <Share2 className="w-3.5 h-3.5 mr-1.5" /> Share
-          </Button>
-        </div>
-
-        <div ref={receiptRef}>
-          <div className="receipt-outer" style={{ margin: '0 auto', border: '2px solid #333', fontFamily: "'Segoe UI', sans-serif", fontSize: '13px', color: '#1a1a1a', background: '#fff', padding: '16px' }}>
-
-            {/* OFFICE COPY - top right */}
-            <div style={{ textAlign: 'right', marginBottom: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: '#dc2626', fontStyle: 'italic' }}>
-                {copyLabel}
-              </span>
-            </div>
-
-            {/* School Header */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
-              {school?.logo && (
-                <img src={school.logo} alt={school.name} style={{ height: '50px', width: '50px', objectFit: 'contain', flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#1a1a1a', letterSpacing: '0.5px' }}>
-                  {school?.name || 'School Name'}
-                </div>
-                <div style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>
-                  {[school?.address, school?.city].filter(Boolean).join(', ')}
-                </div>
-                {(school?.phone || school?.email) && (
-                  <div style={{ fontSize: '11px', color: '#444', marginTop: '1px' }}>
-                    {school?.phone && <>Tel: {school.phone}</>}
-                    {school?.phone && school?.email && ', '}
-                    {school?.email && <>Email: {school.email}</>}
-                  </div>
-                )}
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a1a1a', marginTop: '4px' }}>
-                  FEE RECEIPT
-                </div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <hr style={{ border: 'none', borderTop: '2px solid #333', margin: '0 0 12px' }} />
-
-            {/* Receipt & Student Details */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', marginBottom: '14px', fontSize: '11px' }}>
-              <div>
-                <span style={labelStyle}>Receipt No: </span>
-                <span style={valueStyle}>{payment.receipt_number}</span>
-              </div>
-              <div>
-                <span style={labelStyle}>Date: </span>
-                <span style={valueStyle}>{formattedDate} {formattedTime}</span>
-              </div>
-              <div>
-                <span style={labelStyle}>Student: </span>
-                <span style={valueStyle}>{invoice.student?.full_name || 'N/A'}</span>
-              </div>
-              <div>
-                <span style={labelStyle}>Adm No: </span>
-                <span style={valueStyle}>{invoice.student?.admission_number || 'N/A'}</span>
-              </div>
-              <div>
-                <span style={labelStyle}>Father: </span>
-                <span style={valueStyle}>{invoice.student?.parent_name || '--'}</span>
-              </div>
-              <div>
-                <span style={labelStyle}>Class: </span>
-                <span style={valueStyle}>{invoice.student?.class_name} {invoice.student?.section}</span>
-              </div>
-            </div>
-
-            {/* Fee Component Table with cumulative tracking */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px', fontSize: '11px' }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Particulars</th>
-                  <th style={thRight}>Amount</th>
-                  {hasComponentAllocation && <th style={thRight}>Prev. Paid</th>}
-                  <th style={{ ...thRight, background: '#e8f5e9' }}>Current Paid</th>
-                  {hasComponentAllocation && <th style={thRight}>Balance</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {componentAllocations.length > 0 ? componentAllocations.map((c) => (
-                  <tr key={c.fee_type}>
-                    <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fee_type}</td>
-                    <td style={tdRight}>{formatINR(c.amount)}</td>
-                    {hasComponentAllocation && (
-                      <td style={{ ...tdRight, color: c.prevPaid > 0 ? '#1a1a1a' : '#999' }}>
-                        {c.prevPaid > 0 ? formatINR(c.prevPaid) : '—'}
-                      </td>
-                    )}
-                    <td style={{ ...tdRight, fontWeight: c.currentPaid > 0 ? 700 : 400, color: c.currentPaid > 0 ? '#1a1a1a' : '#999' }}>
-                      {c.currentPaid > 0 ? formatINR(c.currentPaid) : '—'}
-                    </td>
-                    {hasComponentAllocation && (
-                      <td style={{ ...tdRight, color: c.balance > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
-                        {formatINR(c.balance)}
-                      </td>
-                    )}
-                  </tr>
-                )) : (
-                  <tr>
-                    <td style={{ ...tdStyle, fontWeight: 500 }}>Fee Payment</td>
-                    <td style={tdRight}>{formatINR(totalFees)}</td>
-                    {hasComponentAllocation && <td style={tdRight}>—</td>}
-                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(currentPayment)}</td>
-                    {hasComponentAllocation && <td style={tdRight}>{formatINR(remainingBalance)}</td>}
-                  </tr>
-                )}
-                {/* Total Row */}
-                <tr style={{ background: '#f5f5f5' }}>
-                  <td style={{ ...tdStyle, fontWeight: 700 }}>Total</td>
-                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(totalFees)}</td>
-                  {hasComponentAllocation && (
-                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(previouslyPaid)}</td>
-                  )}
-                  <td style={{ ...tdRight, fontWeight: 800, fontSize: '12px' }}>{formatINR(currentPayment)}</td>
-                  {hasComponentAllocation && (
-                    <td style={{ ...tdRight, fontWeight: 700 }}>{formatINR(remainingBalance)}</td>
-                  )}
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Cumulative Payment Summary */}
-            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
-              <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                Payment Summary
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '3px 12px' }}>
-                <span>Total Fees</span>
-                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 600 }}>₹{formatINR(totalFees)}</span>
-
-                {previouslyPaid > 0 && (
-                  <>
-                    <span>Previously Paid</span>
-                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace" }}>₹{formatINR(previouslyPaid)}</span>
-                  </>
-                )}
-
-                <span style={{ fontWeight: 700, color: '#16a34a' }}>Current Payment</span>
-                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹{formatINR(currentPayment)}</span>
-
-                <span style={{ fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>Total Paid Till Date</span>
-                <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>₹{formatINR(totalPaidTillDate)}</span>
-
-                {remainingBalance > 0 && (
-                  <>
-                    <span style={{ fontWeight: 700, color: '#dc2626' }}>Remaining Balance</span>
-                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#dc2626' }}>₹{formatINR(remainingBalance)}</span>
-                  </>
-                )}
-                {remainingBalance <= 0 && (
-                  <>
-                    <span style={{ fontWeight: 700, color: '#16a34a' }}>Remaining Balance</span>
-                    <span style={{ textAlign: 'right', fontFamily: "'Courier New', monospace", fontWeight: 700, color: '#16a34a' }}>₹0.00 (Fully Paid)</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Amount in Words */}
-            <div style={{ fontSize: '11px', marginBottom: '6px' }}>
-              <span style={labelStyle}>Amount In Words: </span>
-              <span style={valueStyle}>{numberToWords(currentPayment)}</span>
-            </div>
-
-            {/* Payment Mode */}
-            <div style={{ fontSize: '11px', marginBottom: '4px' }}>
-              <span style={labelStyle}>Payment Mode: </span>
-              <span style={{ ...valueStyle, textTransform: 'capitalize' }}>{payment.payment_method}</span>
-            </div>
-
-            {/* Transaction / Cheque Info */}
-            {payment.transaction_id && (
-              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
-                <span style={labelStyle}>Transaction No: </span>
-                <span style={valueStyle}>{payment.transaction_id}</span>
-              </div>
-            )}
-            {payment.cheque_number && (
-              <div style={{ fontSize: '11px', marginBottom: '4px' }}>
-                <span style={labelStyle}>Cheque No: </span>
-                <span style={valueStyle}>{payment.cheque_number}</span>
-                {payment.bank_name && <> | <span style={labelStyle}>Bank: </span><span style={valueStyle}>{payment.bank_name}</span></>}
-              </div>
-            )}
-
-
-            {/* Disclaimer */}
-            <div style={{ fontSize: '10px', color: '#333', marginTop: '10px', lineHeight: 1.5 }}>
-              <strong style={{ color: '#dc2626' }}>Note: </strong>
-              Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred.
-            </div>
-
-            {/* Receipt Verification Section */}
-            <div style={{ marginTop: '12px', padding: '10px 12px', border: '1px dashed #999', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <QRCodeSVG value={verificationUrl} size={64} level="M" />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#1a1a1a', marginBottom: '2px' }}>
-                  Verify This Receipt
-                </div>
-                <div style={{ fontSize: '9px', color: '#555', lineHeight: 1.5 }}>
-                  Scan the QR code or visit:
-                </div>
-                <div style={{ fontSize: '9px', color: '#0f766e', fontFamily: "'Courier New', monospace", wordBreak: 'break-all', marginTop: '2px' }}>
-                  {verificationUrl}
-                </div>
-              </div>
-            </div>
-
-            {/* System Note */}
-            <div style={{ textAlign: 'center', fontSize: '10px', color: '#dc2626', fontStyle: 'italic', marginTop: '8px' }}>
-              This is a system-generated Fee Receipt and does not require any stamp or signature.
-            </div>
-          </div>
-        </div>
+        {actionButtons}
+        {receiptContent}
       </DialogContent>
     </Dialog>
   );
