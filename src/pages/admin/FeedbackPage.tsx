@@ -9,6 +9,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle,
+} from '@/components/ui/drawer';
+import {
   MessageSquare, Star, Send, Loader2, User, Eye, MessagesSquare, TrendingUp,
 } from 'lucide-react';
 import {
@@ -16,8 +19,12 @@ import {
   Feedback,
 } from '@/hooks/useFeedback';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+
 
 export default function FeedbackPage() {
+  const isMobile = useIsMobile();
   const { data: feedbacks, isLoading } = useFeedbackList(true);
   const respondMutation = useRespondToFeedback();
   const markRead = useMarkFeedbackRead();
@@ -134,68 +141,114 @@ export default function FeedbackPage() {
         )}
       </div>
 
-      {/* Detail Dialog */}
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Feedback Details</DialogTitle></DialogHeader>
-          {selected && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">
-                    {selected.is_anonymous ? 'Anonymous' : selected.submitter_name}
-                  </p>
-                  {renderStars(selected.rating, 'w-4 h-4')}
-                </div>
-              </div>
-              <p className="text-sm leading-relaxed">{selected.message}</p>
-              <p className="text-xs text-muted-foreground">
-                {format(new Date(selected.created_at), 'dd MMM yyyy, hh:mm a')}
-              </p>
-
-              {/* Responses */}
-              <div className="border-t pt-3 space-y-3">
-                <p className="text-sm font-semibold">Responses</p>
-                {responsesLoading ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : responses?.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No responses yet</p>
-                ) : (
-                  responses?.map(r => (
-                    <div key={r.id} className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-sm">{r.response}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(r.created_at), 'dd MMM yyyy, hh:mm a')}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Reply */}
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder="Type your response..."
-                  value={responseText}
-                  onChange={e => setResponseText(e.target.value)}
-                  className="min-h-[60px]"
-                />
-                <Button
-                  size="icon"
-                  className="shrink-0 self-end"
-                  onClick={handleRespond}
-                  disabled={respondMutation.isPending || !responseText.trim()}
-                >
-                  {respondMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
-              </div>
+      {/* Detail - Drawer on mobile, Dialog on desktop */}
+      {isMobile ? (
+        <Drawer open={!!selected} onOpenChange={() => setSelected(null)}>
+          <DrawerContent className="max-h-[85dvh]">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle>Feedback Details</DrawerTitle>
+            </DrawerHeader>
+            <div className="overflow-y-auto flex-1 min-h-0 px-4 pb-6">
+              {selected && <FeedbackDetailContent
+                selected={selected}
+                responses={responses}
+                responsesLoading={responsesLoading}
+                responseText={responseText}
+                setResponseText={setResponseText}
+                handleRespond={handleRespond}
+                respondMutation={respondMutation}
+                renderStars={renderStars}
+              />}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle>Feedback Details</DialogTitle></DialogHeader>
+            {selected && <FeedbackDetailContent
+              selected={selected}
+              responses={responses}
+              responsesLoading={responsesLoading}
+              responseText={responseText}
+              setResponseText={setResponseText}
+              handleRespond={handleRespond}
+              respondMutation={respondMutation}
+              renderStars={renderStars}
+            />}
+          </DialogContent>
+        </Dialog>
+      )}
     </AdminLayout>
+  );
+}
+
+function FeedbackDetailContent({
+  selected, responses, responsesLoading, responseText, setResponseText, handleRespond, respondMutation, renderStars,
+}: {
+  selected: Feedback;
+  responses: any;
+  responsesLoading: boolean;
+  responseText: string;
+  setResponseText: (v: string) => void;
+  handleRespond: () => void;
+  respondMutation: any;
+  renderStars: (r: number, s?: string) => React.ReactNode;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
+          <User className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">
+            {selected.is_anonymous ? 'Anonymous' : selected.submitter_name}
+          </p>
+          {renderStars(selected.rating, 'w-4 h-4')}
+        </div>
+      </div>
+      <p className="text-sm leading-relaxed">{selected.message}</p>
+      <p className="text-xs text-muted-foreground">
+        {format(new Date(selected.created_at), 'dd MMM yyyy, hh:mm a')}
+      </p>
+
+      {/* Responses */}
+      <div className="border-t pt-3 space-y-3">
+        <p className="text-sm font-semibold">Responses</p>
+        {responsesLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : responses?.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No responses yet</p>
+        ) : (
+          responses?.map((r: any) => (
+            <div key={r.id} className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm">{r.response}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {format(new Date(r.created_at), 'dd MMM yyyy, hh:mm a')}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Reply */}
+      <div className="flex gap-2">
+        <Textarea
+          placeholder="Type your response..."
+          value={responseText}
+          onChange={e => setResponseText(e.target.value)}
+          className="min-h-[60px]"
+        />
+        <Button
+          size="icon"
+          className="shrink-0 self-end"
+          onClick={handleRespond}
+          disabled={respondMutation.isPending || !responseText.trim()}
+        >
+          {respondMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
+    </div>
   );
 }
