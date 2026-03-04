@@ -102,28 +102,28 @@ export default function AdminDashboard() {
           <RefreshCw className={`w-5 h-5 text-primary ${refreshing ? 'animate-spin' : ''}`} />
         </div>
         {/* Welcome Banner */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-3.5 md:p-5 shadow-sm">
-          <div className="flex items-center gap-3">
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 md:p-5 shadow-sm">
+          <div className="flex items-center gap-3.5">
             {displaySchoolLogo ? (
-              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-10 h-10 md:w-12 md:h-12 rounded-xl object-contain bg-muted/50 p-1 shrink-0" />
+              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-contain bg-muted/50 p-1 shrink-0" />
             ) : (
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-6 h-6 md:w-7 md:h-7 text-primary" />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm md:text-lg font-bold text-foreground leading-tight truncate">
+              <h2 className="text-base md:text-lg font-bold text-foreground leading-tight truncate">
                 {greeting()}, {user?.name?.split(' ')[0]}! 👋
               </h2>
-              <p className="text-[11px] md:text-sm text-muted-foreground truncate">
+              <p className="text-xs md:text-sm text-muted-foreground truncate mt-0.5">
                 {displaySchoolName || 'Your School'}
               </p>
             </div>
           </div>
           {currentAcademicYear && (
-            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-border/40">
-              <CalendarDays className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="text-[11px] md:text-xs font-semibold text-foreground">{currentAcademicYear.name}</span>
+            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/40">
+              <CalendarDays className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-xs md:text-sm font-semibold text-foreground">{currentAcademicYear.name}</span>
             </div>
           )}
         </div>
