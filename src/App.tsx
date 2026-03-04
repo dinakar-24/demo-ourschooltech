@@ -174,7 +174,11 @@ function AppRoutes() {
   const showRefreshEyes = useRefreshDetection(authLoading || tenantLoading);
 
   if (tenantLoading) {
-    return <RouteLoadingFallback />;
+    return (
+      <div className="min-h-screen bg-background">
+        <EyesRefreshAnimation visible={showRefreshEyes} message="Refreshing..." />
+      </div>
+    );
   }
 
   if (isSubdomain && tenantError) {
