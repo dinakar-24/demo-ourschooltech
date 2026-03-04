@@ -26,7 +26,7 @@ import {
   Upload,
   Video,
   Bus,
-  MessageCircle,
+  
   Image,
   MessageSquare,
   HelpCircle,
@@ -80,7 +80,7 @@ const labelToKey: Record<string, string> = {
   'Exams': 'sidebar.exams',
   'Online Classes': 'sidebar.onlineClasses',
   'Transport': 'sidebar.transport',
-  'Messages': 'sidebar.messages',
+  
   'Academic Years': 'sidebar.academicYears',
   'Timetable': 'sidebar.timetable',
   'Announcements': 'sidebar.announcements',
@@ -145,7 +145,6 @@ const schoolAdminGrouped: MenuGroup[] = [
   {
     group: 'Communication',
     items: [
-      { label: 'Messages', path: '/messages', icon: MessageCircle },
       { label: 'Announcements', path: '/announcements', icon: Bell },
       { label: 'Feedback', path: '/feedback', icon: MessageSquare },
       { label: 'Queries', path: '/queries', icon: HelpCircle },
@@ -185,7 +184,6 @@ const menuConfig: Record<string, MenuItem[]> = {
     { label: 'Marks', path: '/marks', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Timetable', path: '/timetable', icon: Clock },
-    { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Feedback', path: '/feedback', icon: MessageSquare },
     { label: 'Queries', path: '/queries', icon: HelpCircle },
@@ -199,7 +197,6 @@ const menuConfig: Record<string, MenuItem[]> = {
     { label: 'Results', path: '/results', icon: BarChart3 },
     { label: 'Online Classes', path: '/online-classes', icon: Video },
     { label: 'Transport', path: '/transport', icon: Bus },
-    { label: 'Messages', path: '/messages', icon: MessageCircle },
     { label: 'Announcements', path: '/announcements', icon: Bell },
     { label: 'Gallery', path: '/gallery', icon: Image },
     { label: 'Feedback', path: '/feedback', icon: MessageSquare },

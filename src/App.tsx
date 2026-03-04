@@ -54,7 +54,7 @@ const TimetablePage = lazy(() => import("./pages/admin/TimetablePage"));
 const BulkUploadPage = lazy(() => import("./pages/admin/BulkUploadPage"));
 const OnlineClassesPage = lazy(() => import("./pages/admin/OnlineClassesPage"));
 const TransportPage = lazy(() => import("./pages/admin/TransportPage"));
-const MessagesPage = lazy(() => import("./pages/admin/MessagesPage"));
+
 const GalleryPage = lazy(() => import("./pages/admin/GalleryPage"));
 const FeedbackPage = lazy(() => import("./pages/admin/FeedbackPage"));
 const QueryPage = lazy(() => import("./pages/admin/QueryPage"));
@@ -69,7 +69,7 @@ const TeacherTimetable = lazy(() => import("./pages/teacher/TeacherTimetable"));
 const TeacherAnnouncements = lazy(() => import("./pages/teacher/TeacherAnnouncements"));
 const TeacherStudents = lazy(() => import("./pages/teacher/TeacherStudents"));
 const TeacherOnlineClasses = lazy(() => import("./pages/teacher/TeacherOnlineClasses"));
-const TeacherMessages = lazy(() => import("./pages/teacher/TeacherMessages"));
+
 const TeacherFeedback = lazy(() => import("./pages/teacher/TeacherFeedback"));
 const TeacherQueries = lazy(() => import("./pages/teacher/TeacherQueries"));
 const TeacherSettings = lazy(() => import("./pages/teacher/TeacherSettings"));
@@ -84,7 +84,7 @@ const ParentAnnouncements = lazy(() => import("./pages/parent/ParentAnnouncement
 const ParentHomework = lazy(() => import("./pages/parent/ParentHomework"));
 const ParentOnlineClasses = lazy(() => import("./pages/parent/ParentOnlineClasses"));
 const ParentTransport = lazy(() => import("./pages/parent/ParentTransport"));
-const ParentMessages = lazy(() => import("./pages/parent/ParentMessages"));
+
 const ParentGallery = lazy(() => import("./pages/parent/ParentGallery"));
 const ParentFeedback = lazy(() => import("./pages/parent/ParentFeedback"));
 const ParentQueries = lazy(() => import("./pages/parent/ParentQueries"));
@@ -240,7 +240,7 @@ function AppRoutes() {
           <Route path="/admin/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><BulkUploadPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/online-classes" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><OnlineClassesPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/transport" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><TransportPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
-          <Route path="/admin/messages" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><MessagesPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
+          
           <Route path="/admin/gallery" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><GalleryPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><FeedbackPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/queries" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><QueryPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
@@ -259,7 +259,7 @@ function AppRoutes() {
           <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
           <Route path="/teacher/online-classes" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherOnlineClasses /></ProtectedRoute>} />
           <Route path="/teacher/notifications" element={<ProtectedRoute allowedRoles={['teacher']}><NotificationsPage /></ProtectedRoute>} />
-          <Route path="/teacher/messages" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMessages /></ProtectedRoute>} />
+          
           <Route path="/teacher/feedback" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherFeedback /></ProtectedRoute>} />
           <Route path="/teacher/queries" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherQueries /></ProtectedRoute>} />
           <Route path="/teacher/settings" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherSettings /></ProtectedRoute>} />
@@ -276,7 +276,7 @@ function AppRoutes() {
           <Route path="/parent/online-classes" element={<ProtectedRoute allowedRoles={['parent']}><ParentOnlineClasses /></ProtectedRoute>} />
           <Route path="/parent/transport" element={<ProtectedRoute allowedRoles={['parent']}><ParentTransport /></ProtectedRoute>} />
           <Route path="/parent/notifications" element={<ProtectedRoute allowedRoles={['parent']}><NotificationsPage /></ProtectedRoute>} />
-          <Route path="/parent/messages" element={<ProtectedRoute allowedRoles={['parent']}><ParentMessages /></ProtectedRoute>} />
+          
           <Route path="/parent/gallery" element={<ProtectedRoute allowedRoles={['parent']}><ParentGallery /></ProtectedRoute>} />
           <Route path="/parent/feedback" element={<ProtectedRoute allowedRoles={['parent']}><ParentFeedback /></ProtectedRoute>} />
           <Route path="/parent/queries" element={<ProtectedRoute allowedRoles={['parent']}><ParentQueries /></ProtectedRoute>} />
