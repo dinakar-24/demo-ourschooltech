@@ -42,6 +42,7 @@ const AttendancePage = lazy(() => import("./pages/admin/AttendancePage"));
 const HolidayCalendarPage = lazy(() => import("./pages/admin/HolidayCalendarPage"));
 const EmployeeAttendancePage = lazy(() => import("./pages/admin/EmployeeAttendancePage"));
 const FeesPage = lazy(() => import("./pages/admin/FeesPage"));
+const StudentFeesPage = lazy(() => import("./pages/admin/StudentFeesPage"));
 const ExamsPage = lazy(() => import("./pages/admin/ExamsPage"));
 const AnnouncementsPage = lazy(() => import("./pages/admin/AnnouncementsPage"));
 const AcademicYearsPage = lazy(() => import("./pages/admin/AcademicYearsPage"));
@@ -226,6 +227,7 @@ function AppRoutes() {
           <Route path="/admin/holiday-calendar" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><HolidayCalendarPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/employee-attendance" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><EmployeeAttendancePage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><FeesPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/fees/:studentId" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><StudentFeesPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><ExamsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/academic-years" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AcademicYearsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/timetable" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><TimetablePage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />

@@ -1,0 +1,340 @@
+import { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AdminLayout } from '@/components/layout/AdminLayout';
+import { useStudentFeeInvoices } from '@/hooks/useStudentFeeInvoices';
+import { useFees } from '@/hooks/useFees';
+import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
+import { FeeRecord } from '@/hooks/useFees';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { RecordPaymentDialog } from '@/components/fees/RecordPaymentDialog';
+import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
+import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
+import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
+import {
+  ArrowLeft, FileText, CreditCard, Receipt, Percent, CheckCircle, AlertCircle, User,
+} from 'lucide-react';
+
+function PaymentsList({ payments, openReceipt }: {
+  payments: FeePayment[];
+  openReceipt: (p: FeePayment) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const LIMIT = 3;
+  const sorted = [...payments].sort(
+    (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+  );
+  const visible = expanded ? sorted : sorted.slice(0, LIMIT);
+  const hasMore = sorted.length > LIMIT;
+
+  return (
+    <div className="space-y-1.5">
+      <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+        <Receipt className="w-3.5 h-3.5" /> Payment History ({payments.length})
+      </h5>
+      {visible.map(p => (
+        <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm bg-muted/30 rounded-lg px-3 py-2">
+          <span className="font-semibold">₹{Number(p.amount).toLocaleString()}</span>
+          <span className="text-muted-foreground capitalize">{p.payment_method}</span>
+          <span className="text-muted-foreground">{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" onClick={() => openReceipt(p)}>
+            <Receipt className="w-3 h-3 mr-1" /> {p.receipt_number}
+          </Button>
+        </div>
+      ))}
+      {hasMore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full h-7 text-xs text-muted-foreground"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Show less' : `Show all ${sorted.length} payments`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export default function StudentFeesPage() {
+  const { studentId } = useParams<{ studentId: string }>();
+  const navigate = useNavigate();
+
+  const { data: invoices = [], isLoading } = useStudentFeeInvoices(studentId);
+  const { data: legacyResult, isLoading: legacyLoading } = useFees({
+    search: '',
+    page: 1,
+    pageSize: 500,
+  });
+
+  // Filter legacy fees to this student
+  const legacyFees = useMemo(() => {
+    return (legacyResult?.data || []).filter(f => f.student_id === studentId);
+  }, [legacyResult, studentId]);
+
+  // Dialogs
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState<FeeInvoice | null>(null);
+  const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<number | undefined>();
+  const [paymentPrefillLabel, setPaymentPrefillLabel] = useState<string | undefined>();
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState<FeePayment | null>(null);
+  const [receiptInvoice, setReceiptInvoice] = useState<FeeInvoice | null>(null);
+  const [legacyReceiptOpen, setLegacyReceiptOpen] = useState(false);
+  const [legacyReceiptFee, setLegacyReceiptFee] = useState<any>(null);
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
+  const [discountInvoice, setDiscountInvoice] = useState<FeeInvoice | null>(null);
+
+  const loading = isLoading || legacyLoading;
+
+  // Compute totals
+  const totals = useMemo(() => {
+    let totalAmount = 0, totalPaid = 0, totalBalance = 0;
+    for (const inv of invoices) {
+      totalAmount += Number(inv.total_amount);
+      totalPaid += Number(inv.paid_amount);
+      totalBalance += Number(inv.balance);
+    }
+    for (const fee of legacyFees) {
+      totalAmount += Number(fee.amount);
+      if (fee.status === 'paid') totalPaid += Number(fee.amount);
+      else totalBalance += Number(fee.amount);
+    }
+    return { totalAmount, totalPaid, totalBalance };
+  }, [invoices, legacyFees]);
+
+  const student = invoices[0]?.student || legacyFees[0]?.student;
+
+  const openPayment = (inv: FeeInvoice, componentAmount?: number, componentLabel?: string) => {
+    setPaymentInvoice(inv);
+    setPaymentPrefillAmount(componentAmount);
+    setPaymentPrefillLabel(componentLabel);
+    setPaymentDialogOpen(true);
+  };
+
+  const openReceipt = (payment: FeePayment, invoice: FeeInvoice) => {
+    setReceiptPayment(payment);
+    setReceiptInvoice(invoice);
+    setReceiptDialogOpen(true);
+  };
+
+  const getStatusBadge = (status: string, dueDate: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const isOverdue = status === 'pending' && dueDate < today;
+    if (status === 'paid') return <Badge className="bg-success text-success-foreground">Paid</Badge>;
+    if (isOverdue) return <Badge variant="destructive">Overdue</Badge>;
+    if (status === 'partial') return <Badge className="bg-warning text-warning-foreground">Partial</Badge>;
+    return <Badge variant="secondary">Pending</Badge>;
+  };
+
+  return (
+    <AdminLayout title="Student Fee Details">
+      <div className="space-y-6 animate-fade-up">
+        {/* Back button */}
+        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/fees')} className="gap-1.5">
+          <ArrowLeft className="w-4 h-4" /> Back to Fees
+        </Button>
+
+        {loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        ) : !student ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p className="font-medium">Student not found or no fee records</p>
+          </div>
+        ) : (
+          <>
+            {/* Student Header */}
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold">{student.full_name}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {student.admission_number} · {student.class_name}-{student.section}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Total Due</p>
+                      <p className="font-bold text-lg">₹{totals.totalAmount.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Paid</p>
+                      <p className="font-bold text-lg text-success">₹{totals.totalPaid.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-xs">Balance</p>
+                      <p className="font-bold text-lg text-destructive">₹{totals.totalBalance.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+                {totals.totalAmount > 0 && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Progress value={Math.round((totals.totalPaid / totals.totalAmount) * 100)} className="h-2 flex-1" />
+                    <span className="text-xs text-muted-foreground">{Math.round((totals.totalPaid / totals.totalAmount) * 100)}%</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Invoices */}
+            {invoices.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                  <FileText className="w-4 h-4" /> Invoices ({invoices.length})
+                </h3>
+                {invoices.map(inv => (
+                  <Card key={inv.id}>
+                    <CardContent className="p-4 space-y-4">
+                      {/* Invoice Header */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-muted-foreground">Due: {new Date(inv.due_date).toLocaleDateString('en-IN')}</span>
+                          <span className="font-bold">₹{Number(inv.total_amount).toLocaleString()}</span>
+                          {getStatusBadge(inv.status, inv.due_date)}
+                        </div>
+                        {inv.status !== 'paid' && (
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => { setDiscountInvoice(inv); setDiscountDialogOpen(true); }}>
+                              <Percent className="w-3.5 h-3.5 mr-1" /> Discount
+                            </Button>
+                            <Button size="sm" onClick={() => openPayment(inv)}>
+                              <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay All
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Fee Components */}
+                      {(inv.components || []).length > 0 && (
+                        <table className="w-full text-sm">
+                          <tbody>
+                            {(inv.components || []).map(c => {
+                              const componentAmount = Number(c.amount);
+                              const paidForComponent = (inv.payments || []).reduce((sum, p) => {
+                                const notesLower = (p.notes || '').toLowerCase();
+                                const feeTypeLower = c.fee_type.toLowerCase();
+                                if (notesLower.includes(feeTypeLower)) return sum + Number(p.amount);
+                                return sum;
+                              }, 0);
+                              const remainingAmount = Math.max(0, componentAmount - paidForComponent);
+                              const canPayComponent = inv.status !== 'paid' && remainingAmount > 0;
+                              const payableAmount = Math.min(remainingAmount, Number(inv.balance));
+                              const isFullyPaid = remainingAmount === 0;
+                              return (
+                                <tr key={c.id} className="border-b border-border/40 last:border-0">
+                                  <td className="py-2.5 font-medium">{c.fee_type}</td>
+                                  <td className="py-2.5 text-right tabular-nums">
+                                    {isFullyPaid ? (
+                                      <span className="inline-flex items-center gap-1 text-success font-semibold text-sm">
+                                        <CheckCircle className="w-3.5 h-3.5" /> Paid
+                                      </span>
+                                    ) : (
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <span className="font-bold">₹{remainingAmount.toLocaleString()}</span>
+                                        {paidForComponent > 0 && (
+                                          <span className="text-[11px] text-muted-foreground">of ₹{componentAmount.toLocaleString()}</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 text-right w-20">
+                                    {canPayComponent && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs px-3 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                                        onClick={() => openPayment(inv, payableAmount, c.fee_type)}
+                                      >
+                                        Pay
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {/* Totals row */}
+                            <tr className="border-t border-dashed">
+                              <td colSpan={3} className="pt-2.5">
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                  <span>Total: <span className="font-bold text-sm text-foreground">₹{Number(inv.total_amount).toLocaleString()}</span></span>
+                                  <span>Paid: <span className="font-bold text-sm text-success">₹{Number(inv.paid_amount).toLocaleString()}</span></span>
+                                  <span>Balance: <span className="font-bold text-sm text-destructive">₹{Number(inv.balance).toLocaleString()}</span></span>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      {/* Payments */}
+                      {(inv.payments || []).length > 0 && (
+                        <PaymentsList
+                          payments={inv.payments || []}
+                          openReceipt={(p) => openReceipt(p, inv)}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Legacy Fees */}
+            {legacyFees.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4" /> Fee Records ({legacyFees.length})
+                </h3>
+                <Card>
+                  <CardContent className="p-0 divide-y divide-border/50">
+                    {legacyFees.map(fee => (
+                      <div key={fee.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium text-sm">{fee.fee_type}</span>
+                          <span className="text-muted-foreground text-xs">Due: {new Date(fee.due_date).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm">₹{Number(fee.amount).toLocaleString()}</span>
+                          {getStatusBadge(fee.status, fee.due_date)}
+                          {fee.status === 'paid' && fee.receipt_number && (
+                            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => {
+                              setLegacyReceiptFee({ ...fee, student: fee.student });
+                              setLegacyReceiptOpen(true);
+                            }}>
+                              <Receipt className="w-3 h-3 mr-1" /> {fee.receipt_number}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {invoices.length === 0 && legacyFees.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">No fee records found for this student</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Dialogs */}
+        <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={paymentInvoice} prefillAmount={paymentPrefillAmount} prefillLabel={paymentPrefillLabel} />
+        <PaymentReceiptDialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen} payment={receiptPayment} invoice={receiptInvoice} />
+        <FeeReceiptDialog open={legacyReceiptOpen} onOpenChange={setLegacyReceiptOpen} fee={legacyReceiptFee} />
+        <ApplyDiscountDialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen} invoice={discountInvoice} />
+      </div>
+    </AdminLayout>
+  );
+}
