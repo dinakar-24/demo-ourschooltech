@@ -12,7 +12,6 @@ import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
-import { useRefreshDetection } from "@/hooks/useRefreshDetection";
 import { EyesRefreshAnimation } from "@/components/ui/eyes-refresh-animation";
 import { lazy, Suspense } from "react";
 
@@ -123,9 +122,13 @@ const queryClient = new QueryClient({
   },
 });
 
-// Suspense fallback – invisible to avoid flash
+// Loading fallback with eyes animation
 function RouteLoadingFallback() {
-  return <div className="min-h-screen bg-background" />;
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-3">
+      <EyesRefreshAnimation visible={true} message="Loading..." />
+    </div>
+  );
 }
 
 // Smart redirect based on auth state
@@ -170,15 +173,9 @@ function PrefetchHandler() {
 
 function AppRoutes() {
   const { isSubdomain, isLoading: tenantLoading, tenantError } = useTenant();
-  const { isLoading: authLoading } = useAuth();
-  const showRefreshEyes = useRefreshDetection(authLoading || tenantLoading);
 
   if (tenantLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <EyesRefreshAnimation visible={showRefreshEyes} message="Refreshing..." />
-      </div>
-    );
+    return <RouteLoadingFallback />;
   }
 
   if (isSubdomain && tenantError) {
@@ -187,7 +184,6 @@ function AppRoutes() {
 
   return (
     <>
-      <EyesRefreshAnimation visible={showRefreshEyes} message="Refreshing..." />
       <DynamicManifestHandler />
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
