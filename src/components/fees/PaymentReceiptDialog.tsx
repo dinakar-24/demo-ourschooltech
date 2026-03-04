@@ -103,15 +103,12 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
     }
   }, []);
 
-  // Build verification URL using school subdomain or current origin
+  // Build verification URL using the current tenant's domain (subdomain or custom domain)
   const verificationUrl = useMemo(() => {
     if (!payment) return '';
-    const subdomain = (school as any)?.subdomain;
-    const base = subdomain
-      ? `https://${subdomain}.ourschooltech.com`
-      : window.location.origin;
-    return `${base}/receipt/${encodeURIComponent(payment.receipt_number)}`;
-  }, [school, payment]);
+    // window.location.origin already reflects the school's subdomain or custom domain
+    return `${window.location.origin}/receipt/${encodeURIComponent(payment.receipt_number)}`;
+  }, [payment]);
 
   if (!payment || !invoice) return null;
 
