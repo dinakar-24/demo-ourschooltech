@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Share2 } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FeePayment, FeeInvoice } from '@/hooks/useFeeInvoices';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface PaymentReceiptDialogProps {
   open: boolean;
@@ -80,6 +81,16 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
     return pdf.output('blob');
   }, [generateCanvas]);
+
+  // Build verification URL using school subdomain or current origin
+  const verificationUrl = useMemo(() => {
+    if (!payment) return '';
+    const subdomain = (school as any)?.subdomain;
+    const base = subdomain
+      ? `https://${subdomain}.ourschooltech.com`
+      : window.location.origin;
+    return `${base}/receipt/${encodeURIComponent(payment.receipt_number)}`;
+  }, [school, payment]);
 
   if (!payment || !invoice) return null;
 
@@ -237,6 +248,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   });
 
   const hasComponentAllocation = componentAllocations.some(c => c.currentPaid > 0 || c.prevPaid > 0);
+
 
   const paymentDate = new Date(payment.payment_date);
   const createdAt = new Date(payment.created_at);
@@ -459,6 +471,22 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
             <div style={{ fontSize: '10px', color: '#333', marginTop: '10px', lineHeight: 1.5 }}>
               <strong style={{ color: '#dc2626' }}>Note: </strong>
               Parents are requested to preserve this receipt for future clarification. Fees once paid will not be refunded or transferred.
+            </div>
+
+            {/* Receipt Verification Section */}
+            <div style={{ marginTop: '12px', padding: '10px 12px', border: '1px dashed #999', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <QRCodeSVG value={verificationUrl} size={64} level="M" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#1a1a1a', marginBottom: '2px' }}>
+                  Verify This Receipt
+                </div>
+                <div style={{ fontSize: '9px', color: '#555', lineHeight: 1.5 }}>
+                  Scan the QR code or visit:
+                </div>
+                <div style={{ fontSize: '9px', color: '#0f766e', fontFamily: "'Courier New', monospace", wordBreak: 'break-all', marginTop: '2px' }}>
+                  {verificationUrl}
+                </div>
+              </div>
             </div>
 
             {/* System Note */}
