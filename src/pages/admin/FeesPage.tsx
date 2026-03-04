@@ -325,17 +325,22 @@ export default function FeesPage() {
                         const isFullyPaid = remainingAmount === 0;
                         return (
                           <tr key={c.id} className="border-b border-border/40 last:border-0">
-                            <td className="py-1.5 font-medium">{c.fee_type}</td>
-                            <td className={`py-1.5 text-right font-bold tabular-nums w-28 ${isFullyPaid ? 'text-success line-through' : ''}`}>
-                              ₹{remainingAmount.toLocaleString()}
-                              {paidForComponent > 0 && !isFullyPaid && (
-                                <span className="text-xs text-muted-foreground font-normal ml-1">(of ₹{componentAmount.toLocaleString()})</span>
-                              )}
-                              {isFullyPaid && (
-                                <span className="text-xs text-success font-normal ml-1 no-underline" style={{ textDecoration: 'none' }}> ✓ Paid</span>
+                            <td className="py-2 font-medium">{c.fee_type}</td>
+                            <td className="py-2 text-right tabular-nums">
+                              {isFullyPaid ? (
+                                <span className="inline-flex items-center gap-1 text-success font-semibold text-sm">
+                                  <CheckCircle className="w-3.5 h-3.5" /> Paid
+                                </span>
+                              ) : (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-bold text-sm">₹{remainingAmount.toLocaleString()}</span>
+                                  {paidForComponent > 0 && (
+                                    <span className="text-[11px] text-muted-foreground">of ₹{componentAmount.toLocaleString()}</span>
+                                  )}
+                                </div>
                               )}
                             </td>
-                            <td className="py-1.5 text-right w-16">
+                            <td className="py-2 text-right w-16">
                               {canPayComponent && (
                                 <Button
                                   size="sm"
