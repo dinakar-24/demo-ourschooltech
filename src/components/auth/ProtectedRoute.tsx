@@ -2,16 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { ReactNode, useRef } from 'react';
-import { EyesRefreshAnimation } from '@/components/ui/eyes-refresh-animation';
-
-function isPageRefresh(): boolean {
-  try {
-    const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-    if (entries.length > 0) return entries[0].type === 'reload';
-  } catch {}
-  return false;
-}
+import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -24,14 +15,9 @@ export function ProtectedRoute({ children, allowedRoles, requireImpersonation }:
   const { isImpersonating } = useImpersonation();
   const { isSubdomain } = useTenant();
   const location = useLocation();
-  const isRefresh = useRef(isPageRefresh());
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <EyesRefreshAnimation visible={isRefresh.current} message="Loading..." />
-      </div>
-    );
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!isAuthenticated) {
