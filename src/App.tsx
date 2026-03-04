@@ -107,6 +107,7 @@ const StudentGallery = lazy(() => import("./pages/student/StudentGallery"));
 
 // Shared Pages
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificationsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -244,6 +245,7 @@ function AppRoutes() {
           <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><FeedbackPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/queries" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><QueryPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/students/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><BulkUploadPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminNotificationsPage /></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
           
           {/* Teacher Routes */}
