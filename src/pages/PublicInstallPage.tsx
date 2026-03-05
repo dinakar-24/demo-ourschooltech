@@ -27,13 +27,17 @@ interface SchoolData {
 function InstallButton({ triggerInstall, appName, platform }: { triggerInstall: () => Promise<boolean>; appName: string; platform: string }) {
   const [installing, setInstalling] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const handleClick = async () => {
     setInstalling(true);
+    setFailed(false);
     const success = await triggerInstall();
     setInstalling(false);
     if (success) {
       setInstalled(true);
+    } else {
+      setFailed(true);
     }
   };
 
@@ -54,6 +58,25 @@ function InstallButton({ triggerInstall, appName, platform }: { triggerInstall: 
         <div className="text-left space-y-2 px-4">
           <p className="text-sm"><span className="font-semibold">1.</span> Tap the <span className="font-semibold">Share</span> button <span className="inline-block w-5 h-5 align-middle text-center border border-border rounded text-xs leading-5">↑</span></p>
           <p className="text-sm"><span className="font-semibold">2.</span> Scroll down and tap <span className="font-semibold">"Add to Home Screen"</span></p>
+        </div>
+      </div>
+    );
+  }
+
+  // Android — show manual fallback after failed attempt
+  if (failed) {
+    return (
+      <div className="w-full space-y-3">
+        <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full text-base">
+          <Download className="w-5 h-5" />
+          Try Again
+        </Button>
+        <div className="text-center space-y-1.5">
+          <p className="text-sm text-muted-foreground">Or install manually:</p>
+          <div className="text-left space-y-1.5 px-4">
+            <p className="text-sm"><span className="font-semibold">1.</span> Tap <span className="font-semibold">⋮</span> (browser menu at top right)</p>
+            <p className="text-sm"><span className="font-semibold">2.</span> Tap <span className="font-semibold">"Install app"</span> or <span className="font-semibold">"Add to Home Screen"</span></p>
+          </div>
         </div>
       </div>
     );

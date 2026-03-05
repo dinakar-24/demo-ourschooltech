@@ -32,14 +32,49 @@ interface SchoolBranding {
   appShortName: string | null;
 }
 
-function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () => Promise<boolean>; appName: string }) {
+function InAppInstallButton({ triggerInstall, appName, platform, hasPrompt }: { triggerInstall: () => Promise<boolean>; appName: string; platform: string; hasPrompt: boolean }) {
   const [installing, setInstalling] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const handleClick = async () => {
     setInstalling(true);
-    await triggerInstall();
+    setFailed(false);
+    const success = await triggerInstall();
     setInstalling(false);
+    if (!success) setFailed(true);
   };
+
+  // iOS — always show Safari instructions
+  if (platform === 'ios') {
+    return (
+      <div className="w-full space-y-2 text-center">
+        <p className="text-sm text-muted-foreground">To install on iPhone/iPad:</p>
+        <div className="text-left space-y-1.5 px-4">
+          <p className="text-sm"><span className="font-semibold">1.</span> Tap the <span className="font-semibold">Share</span> button <span className="inline-block w-5 h-5 align-middle text-center border border-border rounded text-xs leading-5">↑</span></p>
+          <p className="text-sm"><span className="font-semibold">2.</span> Tap <span className="font-semibold">"Add to Home Screen"</span></p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show manual instructions if prompt failed
+  if (failed) {
+    return (
+      <div className="w-full space-y-3">
+        <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full">
+          <Download className="w-5 h-5" />
+          Try Again
+        </Button>
+        <div className="text-center space-y-1.5">
+          <p className="text-sm text-muted-foreground">Or install manually:</p>
+          <div className="text-left space-y-1 px-4">
+            <p className="text-sm"><span className="font-semibold">1.</span> Tap <span className="font-semibold">⋮</span> (browser menu)</p>
+            <p className="text-sm"><span className="font-semibold">2.</span> Tap <span className="font-semibold">"Install app"</span> or <span className="font-semibold">"Add to Home Screen"</span></p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -63,7 +98,7 @@ function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () =>
 export function InstallAppPage() {
   const { tenant } = useTenant();
   const { school, user } = useAuth();
-  const { isInstalled, triggerInstall } = useInstallPrompt();
+  const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
   const platform = getPlatform();
   const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
 
@@ -159,7 +194,7 @@ export function InstallAppPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 w-full max-w-xs">
-                <InAppInstallButton triggerInstall={triggerInstall} appName={appName} />
+                <InAppInstallButton triggerInstall={triggerInstall} appName={appName} platform={platform} hasPrompt={hasPrompt} />
               </div>
             )}
           </div>
