@@ -19,7 +19,7 @@ export function InstallAppPage() {
   const platform = getPlatform();
 
   const schoolUrl = tenant
-    ? `https://${tenant.code}.ourschooltech.com`
+    ? `https://${tenant.code.toLowerCase()}.ourschooltech.com`
     : window.location.origin;
 
   const appName = tenant?.appDisplayName || tenant?.name || 'School App';
