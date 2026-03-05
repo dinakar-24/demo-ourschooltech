@@ -110,8 +110,8 @@ export const SchoolCard = memo(function SchoolCard({
         </a>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-1.5 px-4 py-3 border-t bg-muted/30 rounded-b-xl">
+      {/* Actions - Row 1: Main actions */}
+      <div className="flex gap-1.5 px-4 pt-3 pb-1.5 border-t bg-muted/30">
         <Button
           variant="outline"
           size="sm"
@@ -132,18 +132,22 @@ export const SchoolCard = memo(function SchoolCard({
             Impersonate
           </Button>
         )}
+      </div>
+      {/* Actions - Row 2: Settings */}
+      <div className="flex gap-1.5 px-4 pb-3 pt-0 bg-muted/30 rounded-b-xl">
         {onPwaSettings && (
-          <Button variant="outline" size="sm" onClick={() => onPwaSettings(school)} className="h-8 w-8 p-0" title="PWA Settings">
-            <Smartphone className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" onClick={() => onPwaSettings(school)} className="flex-1 h-8 text-xs">
+            <Smartphone className="w-3.5 h-3.5 mr-1" />
+            PWA Settings
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="h-8 w-8 p-0">
+        <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="h-8 w-8 p-0 shrink-0">
           <Pencil className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+          className="h-8 w-8 p-0 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
           onClick={() => onDelete(school)}
         >
           <Trash2 className="w-3.5 h-3.5" />
