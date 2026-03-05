@@ -1,42 +1,99 @@
 
 
-## Redesign SubdomainLanding Login Page
+## Plan: PWA Install Module + Logo Standardization + Branding Cleanup
 
-The uploaded screenshot shows the current subdomain login page. The design needs to be polished for mobile-first responsiveness across all devices.
+Three workstreams: (1) PWA install infrastructure, (2) logo rendering fixes, (3) subdomain text removal.
 
-### Changes to `src/pages/login/SubdomainLanding.tsx`
+---
 
-**Layout:**
-- Use `min-h-[100dvh]` instead of `min-h-screen` for proper mobile viewport handling (avoids address bar overlap)
-- Split into a top gradient area and bottom card section on mobile (card anchored to bottom), centered card on desktop
-- Add `safe-area-inset` padding for notched devices
+### 1. PWA Install Infrastructure
 
-**Card Design:**
-- Rounded top corners only on mobile (`rounded-t-3xl`), full rounded on desktop (`sm:rounded-2xl`)
-- More breathing room: increase padding on mobile (`px-6 py-8`), larger on desktop (`sm:p-10`)
-- Subtle shadow and border for depth
+**New files to create:**
 
-**Branding Section:**
-- Logo: `w-16 h-16` on mobile, `w-20 h-20` on desktop with smooth rounded corners and shadow
-- School name: `text-xl` mobile, `text-2xl` desktop, bold
-- Subtitle "Sign in to your account" in muted gray
+**`src/hooks/useDynamicManifest.ts`**
+- Generates a runtime manifest JSON blob using tenant data (name, logo, colors) and user role
+- Sets `start_url` based on role (`/admin/dashboard`, `/teacher/dashboard`, etc.)
+- Creates blob URL, injects `<link rel="manifest">` into `<head>`
+- Cleans up on unmount
 
-**Form Fields:**
-- Taller inputs (`h-12`) with larger touch targets for mobile
-- Rounded-xl inputs with subtle background
-- Password eye toggle with proper sizing
+**`src/hooks/useInstallPrompt.ts`**
+- Captures `beforeinstallprompt` event
+- Exposes `canInstall`, `isInstalled` (standalone detection), `isIOS`, and `promptInstall()`
+- Persists dismiss state in localStorage
 
-**Button:**
-- Full width, `h-12`, rounded-xl, school's primary color
-- Proper disabled/loading states
+**`src/pages/admin/InstallAppPage.tsx`**
+- Admin page at `/admin/install-app` route
+- Shows school logo + name (no subdomain)
+- Large "Install App" button triggering native prompt (Android/Desktop)
+- iOS instructions (Share → Add to Home Screen)
+- QR code (using `qrcode.react`) pointing to current origin
+- Wrapped in `AdminLayout`
 
-**Footer:**
-- School portal text at bottom, subtle gray
+**`src/components/pwa/DynamicManifestHandler.tsx`**
+- Thin component that calls `useDynamicManifest` with tenant + user role
+- Rendered globally in `AppRoutes`
 
-**Background:**
-- Top portion uses a soft gradient from the tenant's primary color
-- Bottom half clean white/light on mobile
+**Files to edit:**
 
-### Files to Edit
-1. `src/pages/login/SubdomainLanding.tsx` — full redesign with mobile-first responsive layout
+**`src/App.tsx`**
+- Add lazy import for `InstallAppPage`
+- Add route: `/admin/install-app`
+- Render `DynamicManifestHandler` inside `AppRoutes` (after tenant loads)
+
+**`src/components/admin/AdminQuickActions.tsx`**
+- Add "Install App" tile with `Smartphone` icon linking to `/admin/install-app`
+- Replace the existing "Add User" tile (redundant with Students page)
+
+---
+
+### 2. Logo Display Standardization
+
+Fix all logo `<img>` tags to use `object-contain` and remove decorative styling. Every logo follows this pattern:
+
+```tsx
+<div className="w-X h-X flex items-center justify-center overflow-hidden shrink-0">
+  <img src={logo} alt={name} className="max-w-full max-h-full object-contain" />
+</div>
+```
+
+| File | Line | Fix |
+|------|------|-----|
+| `SchoolCard.tsx` | 61 | `object-cover` → `object-contain`, remove `bg-primary/10 rounded-lg` from container |
+| `SchoolsTable.tsx` | 81 | `object-cover` → `object-contain`, remove `bg-primary/10 rounded-lg` from container |
+| `AdminLayout.tsx` | 325 | `object-cover` → `object-contain`, remove `rounded-lg` |
+| `MobileLayout.tsx` | 116 | Remove `rounded-full bg-white/20` |
+| `TopBar.tsx` | 29 | Remove `rounded-lg` |
+| `SubdomainLanding.tsx` | 74 | Remove `rounded-2xl shadow-lg ring-1 ring-black/5` |
+| `AdminDashboard.tsx` | 108 | Remove `rounded-xl bg-muted/50 p-1` |
+| `SchoolSplashScreen.tsx` | 24 | Remove `rounded-2xl` |
+| `LoginPage.tsx` | 398 | `object-cover` → `object-contain`, remove `rounded-xl` from container |
+
+---
+
+### 3. Remove Subdomain Display
+
+Remove any visible subdomain text (e.g., `sse.ourschooltech.com`) from the UI. The `SubdomainLanding.tsx` footer already shows `{tenant.name} School Portal` (no subdomain). Verify no other files display the subdomain string to users.
+
+---
+
+### Files Summary
+
+**Create (4 files):**
+1. `src/hooks/useDynamicManifest.ts`
+2. `src/hooks/useInstallPrompt.ts`
+3. `src/pages/admin/InstallAppPage.tsx`
+4. `src/components/pwa/DynamicManifestHandler.tsx`
+
+**Edit (11 files):**
+1. `src/App.tsx` — route + manifest handler
+2. `src/components/admin/AdminQuickActions.tsx` — add Install App tile
+3. `src/components/super-admin/schools/SchoolCard.tsx` — logo fix
+4. `src/components/super-admin/schools/SchoolsTable.tsx` — logo fix
+5. `src/components/layout/AdminLayout.tsx` — logo fix
+6. `src/components/layout/MobileLayout.tsx` — logo fix
+7. `src/components/layout/TopBar.tsx` — logo fix
+8. `src/pages/login/SubdomainLanding.tsx` — logo fix
+9. `src/pages/admin/AdminDashboard.tsx` — logo fix
+10. `src/components/splash/SchoolSplashScreen.tsx` — logo fix
+11. `src/pages/LoginPage.tsx` — logo fix
 
