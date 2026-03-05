@@ -76,22 +76,27 @@ export function InstallAppPage() {
   }, [tenant, school?.id]);
 
   // Resolve branding
-  const logo = tenant?.logo || schoolBranding?.logo || school?.logo || null;
+  const isSuperAdmin = user?.role === 'super_admin';
+  const logo = isSuperAdmin
+    ? '/images/ost-logo.png'
+    : tenant?.logo || schoolBranding?.logo || school?.logo || null;
   const subdomain = tenant?.subdomain || schoolBranding?.subdomain;
   const subUpper = subdomain?.toUpperCase() || '';
   const roleLabel = user?.role ? (roleLabels[user.role] || '') : '';
   
-  // Role-specific app name: "SSE Admin", "SSE Parent"
-  const appName = user?.role === 'super_admin'
+  // Role-specific app name: "SSE-Admin", "SSE-Parent"
+  const appName = isSuperAdmin
     ? 'OST-SuperAdmin'
     : roleLabel && subUpper
       ? `${subUpper}-${roleLabel}`
       : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
-  // QR code points to the install page on the subdomain
-  const schoolUrl = subdomain
-    ? `https://${subdomain}.ourschooltech.com/install`
-    : `${window.location.origin}/install`;
+  // QR code points to the install page
+  const schoolUrl = isSuperAdmin
+    ? 'https://app.ourschooltech.com/install'
+    : subdomain
+      ? `https://${subdomain}.ourschooltech.com/install`
+      : `${window.location.origin}/install`;
 
   const features = [
     { icon: Zap, label: 'Fast & Lightweight', desc: 'Loads instantly, works like a native app' },
