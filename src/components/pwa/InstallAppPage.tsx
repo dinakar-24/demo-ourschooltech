@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { forwardRef, useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 function getPlatform() {
@@ -71,7 +71,7 @@ function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () =>
   );
 }
 
-export const InstallAppPage = forwardRef<HTMLDivElement>(function InstallAppPage(_props, ref) {
+export const InstallAppPage = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<'div'>>(function InstallAppPage(_props, ref) {
   const { tenant } = useTenant();
   const { school, user } = useAuth();
   const { isInstalled, triggerInstall } = useInstallPrompt();
