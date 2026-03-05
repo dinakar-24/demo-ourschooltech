@@ -42,6 +42,7 @@ interface UserActionsMenuProps {
   onActionComplete: (action?: string, userId?: string) => void;
   currentFullName?: string;
   currentPhone?: string;
+  onEditOverride?: () => void; // Custom edit handler (e.g. full student edit)
 }
 
 type PendingAction = 'delete' | 'disable' | 'enable' | 'reset_password';
@@ -55,6 +56,7 @@ export function UserActionsMenu({
   onActionComplete,
   currentFullName,
   currentPhone,
+  onEditOverride,
 }: UserActionsMenuProps) {
   const { user } = useAuth();
   const { manageUser, isProcessing } = useManageUser();
@@ -181,7 +183,10 @@ export function UserActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover">
-          <DropdownMenuItem onClick={() => { setEditForm({ full_name: currentFullName || userName, phone: currentPhone || '' }); setEditOpen(true); }}>
+          <DropdownMenuItem onClick={() => {
+            if (onEditOverride) { onEditOverride(); return; }
+            setEditForm({ full_name: currentFullName || userName, phone: currentPhone || '' }); setEditOpen(true);
+          }}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Profile
           </DropdownMenuItem>
