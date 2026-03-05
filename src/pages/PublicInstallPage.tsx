@@ -24,11 +24,16 @@ export default function PublicInstallPage() {
       const accepted = await promptInstall();
       if (accepted) {
         toast.success('App installed successfully!');
-      } else {
-        toast.info('Installation cancelled');
       }
-    } catch {
-      toast.error('Installation not available. Please use Chrome or Edge browser.');
+    } catch (err: any) {
+      if (err?.message === 'INSTALL_NOT_AVAILABLE') {
+        toast.error(
+          'Please open this page directly in Chrome or Edge browser to install the app.',
+          { duration: 5000 }
+        );
+      } else {
+        toast.error('Something went wrong. Try again.');
+      }
     } finally {
       setInstalling(false);
     }
