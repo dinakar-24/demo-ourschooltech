@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -8,15 +8,14 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISS_KEY = 'pwa-install-dismissed';
 
 export function useInstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isDismissed, setIsDismissed] = useState(() => {
     return localStorage.getItem(DISMISS_KEY) === 'true';
   });
-  const [hasPrompt, setHasPrompt] = useState(false);
-  const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
-  const resolveWaitRef = useRef<((event: BeforeInstallPromptEvent) => void) | null>(null);
 
   useEffect(() => {
+    // Check if already installed (standalone mode)
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
@@ -24,81 +23,40 @@ export function useInstallPrompt() {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      const promptEvent = e as BeforeInstallPromptEvent;
-      promptRef.current = promptEvent;
-      setHasPrompt(true);
-
-      // If someone is waiting for the prompt, resolve it
-      if (resolveWaitRef.current) {
-        resolveWaitRef.current(promptEvent);
-        resolveWaitRef.current = null;
-      }
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    const installHandler = () => {
+    // Listen for successful install
+    window.addEventListener('appinstalled', () => {
       setIsInstalled(true);
-      promptRef.current = null;
-      setHasPrompt(false);
-    };
-    window.addEventListener('appinstalled', installHandler);
+      setDeferredPrompt(null);
+    });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      window.removeEventListener('appinstalled', installHandler);
     };
   }, []);
 
-  // Wait for the prompt to become available (up to timeout ms)
-  const waitForPrompt = useCallback((timeout = 8000): Promise<BeforeInstallPromptEvent | null> => {
-    if (promptRef.current) return Promise.resolve(promptRef.current);
-
-    return new Promise((resolve) => {
-      resolveWaitRef.current = resolve;
-      setTimeout(() => {
-        resolveWaitRef.current = null;
-        resolve(promptRef.current);
-      }, timeout);
-    });
-  }, []);
-
-  const triggerInstall = useCallback(async (): Promise<boolean> => {
-    // If we already have the prompt, use it directly
-    if (promptRef.current) {
-      promptRef.current.prompt();
-      const { outcome } = await promptRef.current.userChoice;
-      if (outcome === 'accepted') {
-        // Don't set isInstalled here — wait for 'appinstalled' event
-        promptRef.current = null;
-        setHasPrompt(false);
-        return true;
-      }
-      return false;
+  const triggerInstall = useCallback(async () => {
+    if (!deferredPrompt) return false;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      return true;
     }
-
-    // Otherwise wait for the prompt (click itself may trigger engagement)
-    const event = await waitForPrompt(8000);
-    if (event) {
-      event.prompt();
-      const { outcome } = await event.userChoice;
-      if (outcome === 'accepted') {
-        promptRef.current = null;
-        setHasPrompt(false);
-        return true;
-      }
-      return false;
-    }
-
     return false;
-  }, [waitForPrompt]);
+  }, [deferredPrompt]);
 
   const dismiss = useCallback(() => {
     setIsDismissed(true);
     localStorage.setItem(DISMISS_KEY, 'true');
   }, []);
 
-  const canInstall = (hasPrompt || true) && !isInstalled && !isDismissed;
+  const canInstall = !!deferredPrompt && !isInstalled && !isDismissed;
 
-  return { canInstall, triggerInstall, isInstalled, dismiss, isDismissed, hasPrompt };
+  return { canInstall, triggerInstall, isInstalled, dismiss, isDismissed, hasPrompt: !!deferredPrompt };
 }

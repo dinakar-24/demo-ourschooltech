@@ -1,9 +1,8 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
-import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Loader2 } from 'lucide-react';
+import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
@@ -17,7 +16,6 @@ function getPlatform() {
 }
 
 const roleLabels: Record<string, string> = {
-  super_admin: 'Super Admin',
   school_admin: 'Admin',
   teacher: 'Teacher',
   parent: 'Parent',
@@ -32,87 +30,12 @@ interface SchoolBranding {
   appShortName: string | null;
 }
 
-function InAppInstallButton({ triggerInstall, appName, platform, hasPrompt }: { triggerInstall: () => Promise<boolean>; appName: string; platform: string; hasPrompt: boolean }) {
-  const [installing, setInstalling] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  const handleClick = async () => {
-    setInstalling(true);
-    setFailed(false);
-    const success = await triggerInstall();
-    setInstalling(false);
-    if (!success) setFailed(true);
-  };
-
-  // iOS — always show Safari instructions
-  if (platform === 'ios') {
-    return (
-      <div className="w-full space-y-2 text-center">
-        <p className="text-sm text-muted-foreground">To install on iPhone/iPad:</p>
-        <div className="text-left space-y-1.5 px-4">
-          <p className="text-sm"><span className="font-semibold">1.</span> Tap the <span className="font-semibold">Share</span> button <span className="inline-block w-5 h-5 align-middle text-center border border-border rounded text-xs leading-5">↑</span></p>
-          <p className="text-sm"><span className="font-semibold">2.</span> Tap <span className="font-semibold">"Add to Home Screen"</span></p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show manual instructions if prompt failed
-  if (failed) {
-    return (
-      <div className="w-full space-y-3">
-        <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full">
-          <Download className="w-5 h-5" />
-          Try Again
-        </Button>
-        <div className="text-center space-y-1.5">
-          <p className="text-sm text-muted-foreground">Or install manually:</p>
-          <div className="text-left space-y-1 px-4">
-            <p className="text-sm"><span className="font-semibold">1.</span> Tap <span className="font-semibold">⋮</span> (browser menu)</p>
-            <p className="text-sm"><span className="font-semibold">2.</span> Tap <span className="font-semibold">"Install app"</span> or <span className="font-semibold">"Add to Home Screen"</span></p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full">
-      <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full">
-        {installing ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Preparing...
-          </>
-        ) : (
-          <>
-            <Download className="w-5 h-5" />
-            Install {appName}
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
-
 export function InstallAppPage() {
   const { tenant } = useTenant();
   const { school, user } = useAuth();
   const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
   const platform = getPlatform();
   const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
-
-  // Ensure dynamic manifest is set for proper PWA install
-  useDynamicManifest(
-    user?.role === 'school_admin' ? 'admin' : user?.role,
-    schoolBranding ? {
-      name: schoolBranding.name,
-      logo: schoolBranding.logo,
-      subdomain: schoolBranding.subdomain,
-      appDisplayName: schoolBranding.appDisplayName,
-      appShortName: schoolBranding.appShortName,
-    } : undefined
-  );
 
   // When no tenant context (non-subdomain), fetch school details from DB
   useEffect(() => {
@@ -139,28 +62,20 @@ export function InstallAppPage() {
   }, [tenant, school?.id]);
 
   // Resolve branding
-  const isSuperAdmin = user?.role === 'super_admin';
-  const logo = isSuperAdmin
-    ? '/images/ost-logo.png'
-    : tenant?.logo || schoolBranding?.logo || school?.logo || null;
+  const logo = tenant?.logo || schoolBranding?.logo || school?.logo || null;
   const subdomain = tenant?.subdomain || schoolBranding?.subdomain;
   const subUpper = subdomain?.toUpperCase() || '';
   const roleLabel = user?.role ? (roleLabels[user.role] || '') : '';
   
-  // Role-specific app name: "SSE-Admin", "SSE-Parent"
-  const appName = isSuperAdmin
-    ? 'OST-SuperAdmin'
-    : roleLabel && subUpper
-      ? `${subUpper}-${roleLabel}`
-      : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
+  // Role-specific app name: "SSE Admin", "SSE Parent"
+  const appName = roleLabel && subUpper
+    ? `${subUpper} ${roleLabel}`
+    : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
-  // QR code ALWAYS points to the school's real subdomain, never the preview URL
-  const resolvedSubdomain = subdomain || schoolBranding?.subdomain;
-  const schoolUrl = isSuperAdmin
-    ? 'https://app.ourschooltech.com/install'
-    : resolvedSubdomain
-      ? `https://${resolvedSubdomain}.ourschooltech.com/install`
-      : `${window.location.origin}/install`;
+  // QR code points to the install page on the subdomain
+  const schoolUrl = subdomain
+    ? `https://${subdomain}.ourschooltech.com/install`
+    : `${window.location.origin}/install`;
 
   const features = [
     { icon: Zap, label: 'Fast & Lightweight', desc: 'Loads instantly, works like a native app' },
@@ -194,7 +109,22 @@ export function InstallAppPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 w-full max-w-xs">
-                <InAppInstallButton triggerInstall={triggerInstall} appName={appName} platform={platform} hasPrompt={hasPrompt} />
+                {hasPrompt && (
+                  <Button size="lg" onClick={triggerInstall} className="gap-2 w-full">
+                    <Download className="w-5 h-5" />
+                    Install {appName}
+                  </Button>
+                )}
+                {platform === 'ios' && !hasPrompt && (
+                  <div className="text-xs text-muted-foreground text-center space-y-1">
+                    <p className="font-medium">Tap <Share className="w-3.5 h-3.5 inline text-primary" /> Share → <PlusSquare className="w-3.5 h-3.5 inline text-primary" /> Add to Home Screen</p>
+                  </div>
+                )}
+                {platform === 'android' && !hasPrompt && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    <p>Tap <strong>⋮ menu</strong> → <strong>"Install app"</strong> in Chrome</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
