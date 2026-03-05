@@ -222,7 +222,7 @@ export default function FeesPage() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold">Student Fees</h2>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="outline" className="text-xs font-normal">
                 {filteredGroups.length}{filteredGroups.length !== studentGroups.length ? `/${studentGroups.length}` : ''} students
               </Badge>
             </div>
