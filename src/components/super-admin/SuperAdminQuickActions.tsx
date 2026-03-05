@@ -13,7 +13,7 @@ import {
 const quickActions = [
   { label: 'Schools', href: '/super-admin/schools', icon: School, color: 'bg-teal-500' },
   { label: 'Admins', href: '/super-admin/admins', icon: Users, color: 'bg-blue-500' },
-  { label: 'All Users', href: '/super-admin/users', icon: Shield, color: 'bg-purple-500' },
+  { label: 'School Users', href: '/super-admin/users', icon: Shield, color: 'bg-purple-500' },
   { label: 'Subscriptions', href: '/super-admin/subscriptions', icon: CreditCard, color: 'bg-amber-500' },
   { label: 'Notices', href: '/super-admin/announcements', icon: Bell, color: 'bg-rose-500' },
   { label: 'Reports', href: '/super-admin/reports', icon: BarChart3, color: 'bg-indigo-500' },
