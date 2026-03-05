@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -9,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BASE_DOMAIN = 'ourschooltech.com';
@@ -47,6 +48,7 @@ export const SchoolsTable = memo(function SchoolsTable({
   onToggleStatus,
   isTogglingId,
 }: SchoolsTableProps) {
+  const navigate = useNavigate();
   const handleCopyUrl = (subdomain: string) => {
     navigator.clipboard.writeText(`https://${subdomain}.${BASE_DOMAIN}`);
     toast.success('Subdomain URL copied!');
@@ -128,6 +130,15 @@ export const SchoolsTable = memo(function SchoolsTable({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/super-admin/schools/${school.id}`)}
+                    className="h-8 px-2 text-xs"
+                  >
+                    <Users className="w-3.5 h-3.5 mr-1" />
+                    Users
+                  </Button>
                   {onImpersonate && (
                     <Button 
                       variant="outline" 

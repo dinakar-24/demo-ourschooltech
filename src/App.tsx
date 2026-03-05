@@ -26,7 +26,8 @@ const ReceiptVerificationPage = lazy(() => import("./pages/ReceiptVerificationPa
 const SuperAdminDashboard = lazy(() => import("./pages/super-admin/SuperAdminDashboard"));
 const SchoolsPage = lazy(() => import("./pages/super-admin/SchoolsPage"));
 const SchoolAdminsPage = lazy(() => import("./pages/super-admin/SchoolAdminsPage"));
-const AllUsersPage = lazy(() => import("./pages/super-admin/AllUsersPage"));
+const PlatformUsersPage = lazy(() => import("./pages/super-admin/PlatformUsersPage"));
+const SchoolUsersPage = lazy(() => import("./pages/super-admin/SchoolUsersPage"));
 const SystemSettingsPage = lazy(() => import("./pages/super-admin/SystemSettingsPage"));
 const SystemAnnouncementsPage = lazy(() => import("./pages/super-admin/SystemAnnouncementsPage"));
 const AuditLogsPage = lazy(() => import("./pages/super-admin/AuditLogsPage"));
@@ -215,7 +216,8 @@ function AppRoutes() {
               <Route path="/super-admin/dashboard" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/super-admin/schools" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolsPage /></ProtectedRoute>} />
               <Route path="/super-admin/admins" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolAdminsPage /></ProtectedRoute>} />
-              <Route path="/super-admin/users" element={<ProtectedRoute allowedRoles={['super_admin']}><AllUsersPage /></ProtectedRoute>} />
+              <Route path="/super-admin/platform-users" element={<ProtectedRoute allowedRoles={['super_admin']}><PlatformUsersPage /></ProtectedRoute>} />
+              <Route path="/super-admin/schools/:schoolId" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolUsersPage /></ProtectedRoute>} />
               <Route path="/super-admin/announcements" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemAnnouncementsPage /></ProtectedRoute>} />
               <Route path="/super-admin/subscriptions" element={<ProtectedRoute allowedRoles={['super_admin']}><SubscriptionsPage /></ProtectedRoute>} />
               <Route path="/super-admin/reports" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminReportsPage /></ProtectedRoute>} />
