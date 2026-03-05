@@ -7,6 +7,7 @@ export interface Tenant {
   schoolId: string;
   name: string;
   code: string;
+  subdomain: string;
   logo: string | null;
   primaryColor: string;
   accentColor: string;
@@ -162,6 +163,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           id: string;
           name: string;
           code: string;
+          subdomain: string;
           logo: string | null;
           primary_color: string | null;
           accent_color: string | null;
@@ -183,6 +185,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           schoolId: school.id,
           name: school.name,
           code: school.code,
+          subdomain: school.subdomain || school.code.toLowerCase(),
           logo: school.logo,
           primaryColor: school.primary_color || '#0F766E',
           accentColor: school.accent_color || '#E69500',
