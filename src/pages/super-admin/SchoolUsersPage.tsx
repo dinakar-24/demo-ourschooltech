@@ -1,11 +1,14 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, UserCheck, BookOpen, GraduationCap, UserRound, ArrowLeft, Users, School, ChevronRight, ChevronDown, Mail } from 'lucide-react';
+import {
+  Search, UserCheck, BookOpen, GraduationCap, UserRound, ArrowLeft, Users,
+  School, ChevronRight, ChevronDown, Mail, Phone, Hash,
+} from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -14,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 
-type ViewMode = 'overview' | 'admins' | 'teachers' | 'students' | 'parents' | 'classes';
+type ViewMode = 'overview' | 'admins' | 'teachers' | 'classes' | 'section-students';
 
 interface SchoolUser {
   id: string;
@@ -22,24 +25,38 @@ interface SchoolUser {
   full_name: string;
   avatar_url: string | null;
   roles: string[];
-  linked_parent_name?: string;
-  linked_parent_email?: string;
 }
 
-interface ClassSection {
+interface ClassData {
+  id: string;
+  name: string;
+  sections: SectionData[];
+  totalStudents: number;
+}
+
+interface SectionData {
+  id: string;
+  name: string;
+  classId: string;
   className: string;
-  sections: {
-    name: string;
-    studentCount: number;
-    classTeacher?: string;
-  }[];
+  studentCount: number;
+  classTeacher?: string;
+}
+
+interface SectionStudent {
+  id: string;
+  full_name: string;
+  admission_number: string;
+  roll_number: number | null;
+  avatar_url: string | null;
+  parent_name: string | null;
+  parent_email: string | null;
+  parent_phone: string | null;
 }
 
 const CATEGORY_TILES = [
   { key: 'admins' as ViewMode, label: 'Admins', icon: UserCheck, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', border: 'border-teal-200 dark:border-teal-800', role: 'school_admin' },
   { key: 'teachers' as ViewMode, label: 'Teachers', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', role: 'teacher' },
-  { key: 'students' as ViewMode, label: 'Students', icon: GraduationCap, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', role: 'student' },
-  { key: 'parents' as ViewMode, label: 'Parents', icon: UserRound, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30', border: 'border-purple-200 dark:border-purple-800', role: 'parent' },
   { key: 'classes' as ViewMode, label: 'Classes & Sections', icon: School, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', role: '' },
 ];
 
@@ -47,25 +64,34 @@ export default function SchoolUsersPage() {
   const { schoolId } = useParams<{ schoolId: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+
   const [view, setView] = useState<ViewMode>('overview');
-  const [users, setUsers] = useState<SchoolUser[]>([]);
   const [schoolName, setSchoolName] = useState('');
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  // User list state (admins/teachers)
+  const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [disabledUsers, setDisabledUsers] = useState<Set<string>>(new Set());
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [classSections, setClassSections] = useState<ClassSection[]>([]);
-  const [classesLoading, setClassesLoading] = useState(false);
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  // Fetch school name and role counts on mount
+  // Classes state
+  const [classesData, setClassesData] = useState<ClassData[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+
+  // Section students state
+  const [selectedSection, setSelectedSection] = useState<SectionData | null>(null);
+  const [sectionStudents, setSectionStudents] = useState<SectionStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+
+  // Fetch school name + counts on mount
   useEffect(() => {
     if (!schoolId) return;
     (async () => {
       const { data: school } = await supabase.from('schools').select('name').eq('id', schoolId).single();
       setSchoolName(school?.name || 'Unknown School');
 
-      // Get all profiles for this school to count roles
       const { data: profiles } = await supabase.from('profiles').select('id').eq('school_id', schoolId);
       if (!profiles?.length) return;
 
@@ -73,41 +99,29 @@ export default function SchoolUsersPage() {
       const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', userIds);
 
       const roleCounts: Record<string, number> = {};
-      (roles || []).forEach(r => {
-        roleCounts[r.role] = (roleCounts[r.role] || 0) + 1;
-      });
+      (roles || []).forEach(r => { roleCounts[r.role] = (roleCounts[r.role] || 0) + 1; });
       setCounts(roleCounts);
     })();
   }, [schoolId]);
 
-  // Fetch users for a specific role view
+  // Fetch users for admins/teachers
   const fetchUsers = useCallback(async (role: string) => {
     if (!schoolId) return;
     setLoading(true);
     try {
-      // Get user IDs with this role
-      const { data: allProfiles } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('school_id', schoolId);
-
+      const { data: allProfiles } = await supabase.from('profiles').select('id').eq('school_id', schoolId);
       if (!allProfiles?.length) { setUsers([]); setLoading(false); return; }
 
       const allIds = allProfiles.map(p => p.id);
       const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('user_id')
+        .from('user_roles').select('user_id')
         .eq('role', role as 'school_admin' | 'teacher' | 'student' | 'parent' | 'super_admin')
         .in('user_id', allIds);
 
       const roleUserIds = (rolesData || []).map(r => r.user_id);
       if (!roleUserIds.length) { setUsers([]); setLoading(false); return; }
 
-      let query = supabase
-        .from('profiles')
-        .select('id, email, full_name, avatar_url')
-        .in('id', roleUserIds);
-
+      let query = supabase.from('profiles').select('id, email, full_name, avatar_url').in('id', roleUserIds);
       if (debouncedSearch) {
         query = query.or(`full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%`);
       }
@@ -115,71 +129,7 @@ export default function SchoolUsersPage() {
       const { data: profiles, error } = await query.order('full_name');
       if (error) throw error;
 
-      const usersWithRoles: SchoolUser[] = (profiles || []).map(p => ({
-        ...p,
-        roles: [role],
-      }));
-
-      // Enrich students with parent info
-      if (role === 'student' && usersWithRoles.length > 0) {
-        const studentUserIds = usersWithRoles.map(u => u.id);
-        const { data: studentRecords } = await supabase
-          .from('students')
-          .select('parent_email, user_id')
-          .in('user_id', studentUserIds);
-
-        const parentEmails = [...new Set((studentRecords || []).map(s => s.parent_email).filter(Boolean) as string[])];
-        if (parentEmails.length > 0) {
-          const { data: parentProfiles } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .in('email', parentEmails);
-
-          const parentNameMap = new Map<string, string>();
-          (parentProfiles || []).forEach(p => parentNameMap.set(p.email, p.full_name));
-
-          const userIdToParentEmail = new Map<string, string>();
-          (studentRecords || []).forEach(s => {
-            if (s.user_id && s.parent_email) userIdToParentEmail.set(s.user_id, s.parent_email);
-          });
-
-          usersWithRoles.forEach(u => {
-            const parentEmail = userIdToParentEmail.get(u.id);
-            if (parentEmail) {
-              u.linked_parent_email = parentEmail;
-              u.linked_parent_name = parentNameMap.get(parentEmail);
-            }
-          });
-        }
-      }
-
-      // Enrich parents with linked student names
-      if (role === 'parent' && usersWithRoles.length > 0) {
-        const parentEmails = usersWithRoles.map(u => u.email);
-        const { data: studentRecords } = await supabase
-          .from('students')
-          .select('full_name, parent_email')
-          .eq('school_id', schoolId)
-          .in('parent_email', parentEmails);
-
-        const emailToStudents = new Map<string, string[]>();
-        (studentRecords || []).forEach(s => {
-          if (s.parent_email) {
-            const existing = emailToStudents.get(s.parent_email) || [];
-            existing.push(s.full_name);
-            emailToStudents.set(s.parent_email, existing);
-          }
-        });
-
-        usersWithRoles.forEach(u => {
-          const students = emailToStudents.get(u.email);
-          if (students) {
-            u.linked_parent_name = students.join(', '); // reusing field for "linked students"
-          }
-        });
-      }
-
-      setUsers(usersWithRoles);
+      setUsers((profiles || []).map(p => ({ ...p, roles: [role] })));
     } catch {
       toast.error('Failed to load users');
     } finally {
@@ -187,56 +137,53 @@ export default function SchoolUsersPage() {
     }
   }, [schoolId, debouncedSearch]);
 
-  // Fetch classes/sections data
+  // Fetch classes & sections
   const fetchClasses = useCallback(async () => {
     if (!schoolId) return;
     setClassesLoading(true);
     try {
       const { data: classes } = await supabase
-        .from('classes')
-        .select('id, name')
-        .eq('school_id', schoolId)
-        .order('display_order');
+        .from('classes').select('id, name').eq('school_id', schoolId).order('display_order');
 
-      if (!classes?.length) { setClassSections([]); setClassesLoading(false); return; }
+      if (!classes?.length) { setClassesData([]); setClassesLoading(false); return; }
 
       const classIds = classes.map(c => c.id);
       const { data: sections } = await supabase
-        .from('sections')
-        .select('id, name, class_id, class_teacher_id')
-        .in('class_id', classIds)
-        .order('name');
+        .from('sections').select('id, name, class_id, class_teacher_id').in('class_id', classIds).order('name');
 
-      // Get teacher names for class teachers
       const teacherIds = (sections || []).map(s => s.class_teacher_id).filter(Boolean) as string[];
-      let teacherMap = new Map<string, string>();
+      const teacherMap = new Map<string, string>();
       if (teacherIds.length > 0) {
-        const { data: teachers } = await supabase
-          .from('teachers')
-          .select('id, full_name')
-          .in('id', teacherIds);
+        const { data: teachers } = await supabase.from('teachers').select('id, full_name').in('id', teacherIds);
         (teachers || []).forEach(t => teacherMap.set(t.id, t.full_name));
       }
 
-      // Get student counts per class/section
       const { data: countData } = await supabase.rpc('get_student_counts_by_class', { p_school_id: schoolId });
       const countMap = new Map<string, number>();
       (countData || []).forEach((c: { class_name: string; section: string; count: number }) => {
         countMap.set(`${c.class_name}|${c.section}`, Number(c.count));
       });
 
-      const result: ClassSection[] = classes.map(cls => ({
-        className: cls.name,
-        sections: (sections || [])
+      const result: ClassData[] = classes.map(cls => {
+        const classSections: SectionData[] = (sections || [])
           .filter(s => s.class_id === cls.id)
           .map(s => ({
+            id: s.id,
             name: s.name,
+            classId: cls.id,
+            className: cls.name,
             studentCount: countMap.get(`${cls.name}|${s.name}`) || 0,
             classTeacher: s.class_teacher_id ? teacherMap.get(s.class_teacher_id) : undefined,
-          })),
-      }));
+          }));
+        return {
+          id: cls.id,
+          name: cls.name,
+          sections: classSections,
+          totalStudents: classSections.reduce((sum, s) => sum + s.studentCount, 0),
+        };
+      });
 
-      setClassSections(result);
+      setClassesData(result);
     } catch {
       toast.error('Failed to load classes');
     } finally {
@@ -244,22 +191,52 @@ export default function SchoolUsersPage() {
     }
   }, [schoolId]);
 
+  // Fetch students for a specific section
+  const fetchSectionStudents = useCallback(async (section: SectionData) => {
+    if (!schoolId) return;
+    setStudentsLoading(true);
+    try {
+      let query = supabase
+        .from('students')
+        .select('id, full_name, admission_number, roll_number, avatar_url, parent_name, parent_email, parent_phone')
+        .eq('school_id', schoolId)
+        .eq('class_name', section.className)
+        .eq('section', section.name)
+        .eq('status', 'active')
+        .order('roll_number', { ascending: true, nullsFirst: false });
+
+      if (debouncedSearch) {
+        query = query.or(`full_name.ilike.%${debouncedSearch}%,admission_number.ilike.%${debouncedSearch}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setSectionStudents(data || []);
+    } catch {
+      toast.error('Failed to load students');
+    } finally {
+      setStudentsLoading(false);
+    }
+  }, [schoolId, debouncedSearch]);
+
   // Load data when view changes
   useEffect(() => {
     if (view === 'overview') return;
-    if (view === 'classes') {
-      fetchClasses();
-    } else {
+    if (view === 'classes') fetchClasses();
+    else if (view === 'section-students' && selectedSection) fetchSectionStudents(selectedSection);
+    else {
       const tile = CATEGORY_TILES.find(t => t.key === view);
       if (tile?.role) fetchUsers(tile.role);
     }
-  }, [view, fetchUsers, fetchClasses]);
+  }, [view, fetchUsers, fetchClasses, fetchSectionStudents, selectedSection]);
 
-  // Re-fetch on search change (for user views)
+  // Re-fetch on search
   useEffect(() => {
-    if (view !== 'overview' && view !== 'classes') {
+    if (view === 'admins' || view === 'teachers') {
       const tile = CATEGORY_TILES.find(t => t.key === view);
       if (tile?.role) fetchUsers(tile.role);
+    } else if (view === 'section-students' && selectedSection) {
+      fetchSectionStudents(selectedSection);
     }
   }, [debouncedSearch]);
 
@@ -279,6 +256,11 @@ export default function SchoolUsersPage() {
   const handleBack = () => {
     if (view === 'overview') {
       navigate('/super-admin/schools');
+    } else if (view === 'section-students') {
+      setView('classes');
+      setSelectedSection(null);
+      setSearchInput('');
+      setSectionStudents([]);
     } else {
       setView('overview');
       setSearchInput('');
@@ -286,7 +268,20 @@ export default function SchoolUsersPage() {
     }
   };
 
+  const openSection = (section: SectionData) => {
+    setSelectedSection(section);
+    setSearchInput('');
+    setView('section-students');
+  };
+
   const currentTile = CATEGORY_TILES.find(t => t.key === view);
+
+  const getViewTitle = () => {
+    if (view === 'section-students' && selectedSection) {
+      return `Class ${selectedSection.className} - Section ${selectedSection.name}`;
+    }
+    return currentTile?.label || '';
+  };
 
   return (
     <SuperAdminLayout title={schoolName}>
@@ -296,19 +291,21 @@ export default function SchoolUsersPage() {
           <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          {view !== 'overview' && (
+          {view !== 'overview' && view !== 'classes' && (
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder={`Search ${currentTile?.label || ''}...`}
+                placeholder={`Search ${view === 'section-students' ? 'students' : currentTile?.label || ''}...`}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10"
               />
             </div>
           )}
-          {view === 'overview' && (
-            <h2 className="text-lg font-semibold">{schoolName}</h2>
+          {view === 'overview' && <h2 className="text-lg font-semibold">{schoolName}</h2>}
+          {view === 'classes' && <h2 className="text-lg font-semibold">Classes & Sections</h2>}
+          {view === 'section-students' && selectedSection && (
+            <h2 className="text-lg font-semibold">{getViewTitle()}</h2>
           )}
         </div>
 
@@ -338,8 +335,8 @@ export default function SchoolUsersPage() {
           </div>
         )}
 
-        {/* User List View (Admins / Teachers / Students / Parents) */}
-        {view !== 'overview' && view !== 'classes' && (
+        {/* User List View (Admins / Teachers) */}
+        {(view === 'admins' || view === 'teachers') && (
           <>
             {loading ? (
               <Card>
@@ -397,23 +394,6 @@ export default function SchoolUsersPage() {
                           <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
                             <Mail className="w-3 h-3 shrink-0" />{user.email}
                           </p>
-                          {/* Student: show parent info */}
-                          {view === 'students' && user.linked_parent_name && (
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <UserRound className="w-3 h-3 shrink-0 text-purple-500" />
-                              <span className="font-medium">Parent:</span> {user.linked_parent_name}
-                              {user.linked_parent_email && (
-                                <span className="truncate">({user.linked_parent_email})</span>
-                              )}
-                            </p>
-                          )}
-                          {/* Parent: show linked students */}
-                          {view === 'parents' && user.linked_parent_name && (
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <GraduationCap className="w-3 h-3 shrink-0 text-amber-500" />
-                              <span className="font-medium">Children:</span> {user.linked_parent_name}
-                            </p>
-                          )}
                         </div>
                       </div>
                     );
@@ -435,7 +415,7 @@ export default function SchoolUsersPage() {
                   ))}
                 </div>
               </Card>
-            ) : classSections.length === 0 ? (
+            ) : classesData.length === 0 ? (
               <Card>
                 <div className="text-center py-12 text-muted-foreground">
                   <School className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -445,15 +425,15 @@ export default function SchoolUsersPage() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {classSections.map(cls => (
-                  <Card key={cls.className}>
+                {classesData.map(cls => (
+                  <Card key={cls.id}>
                     <Collapsible defaultOpen>
                       <CardHeader className="pb-3">
                         <CollapsibleTrigger className="flex items-center gap-2 w-full group/cls">
                           <School className="w-4 h-4 text-emerald-600" />
-                          <CardTitle className="text-sm">Class {cls.className}</CardTitle>
+                          <CardTitle className="text-sm">Class {cls.name}</CardTitle>
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
-                            {cls.sections.reduce((sum, s) => sum + s.studentCount, 0)} students
+                            {cls.totalStudents} students
                           </Badge>
                           <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground transition-transform group-data-[state=open]/cls:rotate-180" />
                         </CollapsibleTrigger>
@@ -465,9 +445,16 @@ export default function SchoolUsersPage() {
                           ) : (
                             <div className="grid gap-2">
                               {cls.sections.map(sec => (
-                                <div key={sec.name} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                                <div
+                                  key={sec.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                                  onClick={() => openSection(sec)}
+                                >
                                   <div className="space-y-0.5">
-                                    <p className="text-sm font-medium">Section {sec.name}</p>
+                                    <p className="text-sm font-medium flex items-center gap-1">
+                                      Section {sec.name}
+                                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </p>
                                     {sec.classTeacher && (
                                       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                         <BookOpen className="w-3 h-3 shrink-0 text-blue-500" />
@@ -475,12 +462,10 @@ export default function SchoolUsersPage() {
                                       </p>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
-                                      <GraduationCap className="w-3 h-3 mr-1" />
-                                      {sec.studentCount}
-                                    </Badge>
-                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    <GraduationCap className="w-3 h-3 mr-1" />
+                                    {sec.studentCount}
+                                  </Badge>
                                 </div>
                               ))}
                             </div>
@@ -491,6 +476,109 @@ export default function SchoolUsersPage() {
                   </Card>
                 ))}
               </div>
+            )}
+          </>
+        )}
+
+        {/* Section Students View */}
+        {view === 'section-students' && selectedSection && (
+          <>
+            {selectedSection.classTeacher && (
+              <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                <CardContent className="p-3 flex items-center gap-2 text-sm">
+                  <BookOpen className="w-4 h-4 text-blue-500" />
+                  <span className="text-muted-foreground">Class Teacher:</span>
+                  <span className="font-medium">{selectedSection.classTeacher}</span>
+                </CardContent>
+              </Card>
+            )}
+
+            {studentsLoading ? (
+              <Card>
+                <div className="space-y-3 p-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="flex items-center gap-3 py-2">
+                      <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
+                        <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
+                        <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : sectionStudents.length === 0 ? (
+              <Card>
+                <div className="text-center py-12 text-muted-foreground">
+                  <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium">No students found</p>
+                  <p className="text-sm mt-1">
+                    {debouncedSearch ? 'Try a different search term' : 'No students in this section yet'}
+                  </p>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-amber-600" />
+                    Students
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">{sectionStudents.length}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2">
+                  {sectionStudents.map(student => {
+                    const initials = student.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+                    return (
+                      <div key={student.id} className="p-3 border rounded-lg bg-card space-y-1.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-9 h-9 shrink-0">
+                            <AvatarImage src={student.avatar_url ?? undefined} alt={student.full_name} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{student.full_name}</p>
+                            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                              {student.roll_number && (
+                                <span className="flex items-center gap-0.5">
+                                  <Hash className="w-3 h-3" />Roll: {student.roll_number}
+                                </span>
+                              )}
+                              {student.admission_number && (
+                                <span className="truncate">Adm: {student.admission_number}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Parent info */}
+                        {(student.parent_name || student.parent_email || student.parent_phone) && (
+                          <div className="ml-12 pl-0.5 border-l-2 border-purple-200 dark:border-purple-800 pl-2 space-y-0.5">
+                            {student.parent_name && (
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <UserRound className="w-3 h-3 shrink-0 text-purple-500" />
+                                <span className="font-medium">Parent:</span> {student.parent_name}
+                              </p>
+                            )}
+                            {student.parent_phone && (
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <Phone className="w-3 h-3 shrink-0 text-purple-400" />
+                                {student.parent_phone}
+                              </p>
+                            )}
+                            {student.parent_email && (
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <Mail className="w-3 h-3 shrink-0 text-purple-400" />
+                                <span className="truncate">{student.parent_email}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
             )}
           </>
         )}
