@@ -4,7 +4,8 @@ import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Plus, Search, Building2, Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
 import { TableSkeleton, CardSkeleton, ErrorState } from '@/components/ui/data-states';
 import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, useToggleSchoolStatus, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
@@ -14,6 +15,8 @@ import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -96,12 +99,50 @@ export default function SchoolsPage() {
     setTogglingSchool(school);
   }, []);
 
+  const [togglePassword, setTogglePassword] = useState('');
+  const [showTogglePassword, setShowTogglePassword] = useState(false);
+  const [isVerifyingToggle, setIsVerifyingToggle] = useState(false);
+
   const handleConfirmToggle = useCallback(async () => {
-    if (!togglingSchool) return;
-    const newStatus = togglingSchool.is_active === false ? true : false;
-    await toggleStatusMutation.mutateAsync({ schoolId: togglingSchool.id, isActive: newStatus });
+    if (!togglingSchool || !togglePassword.trim()) {
+      toast.error('Please enter your password');
+      return;
+    }
+
+    setIsVerifyingToggle(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        toast.error('Unable to verify identity');
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: togglePassword,
+      });
+
+      if (error) {
+        toast.error('Incorrect password. Please try again.');
+        return;
+      }
+
+      const newStatus = togglingSchool.is_active === false ? true : false;
+      await toggleStatusMutation.mutateAsync({ schoolId: togglingSchool.id, isActive: newStatus });
+      setTogglingSchool(null);
+      setTogglePassword('');
+    } catch {
+      toast.error('Failed to update school status');
+    } finally {
+      setIsVerifyingToggle(false);
+    }
+  }, [toggleStatusMutation, togglingSchool, togglePassword]);
+
+  const handleCloseToggleDialog = useCallback(() => {
     setTogglingSchool(null);
-  }, [toggleStatusMutation, togglingSchool]);
+    setTogglePassword('');
+    setShowTogglePassword(false);
+  }, []);
 
   const isSubmitting = createSchool.isPending || updateSchool.isPending;
   const togglingSchoolIsActive = togglingSchool?.is_active !== false;
@@ -210,32 +251,62 @@ export default function SchoolsPage() {
         />
 
         {/* Toggle Status Confirmation Dialog */}
-        <AlertDialog open={!!togglingSchool} onOpenChange={(open) => !open && setTogglingSchool(null)}>
-          <AlertDialogContent className="max-w-sm">
+        <AlertDialog open={!!togglingSchool} onOpenChange={(open) => !open && handleCloseToggleDialog()}>
+          <AlertDialogContent className="max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle>
+              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-amber-100 flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6 text-amber-600" />
+              </div>
+              <AlertDialogTitle className="text-center">
                 {togglingSchoolIsActive ? 'Disable School?' : 'Enable School?'}
               </AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogDescription className="text-center">
                 {togglingSchoolIsActive
                   ? `Disabling "${togglingSchool?.name}" will prevent all users from logging in. The school's subdomain will show an inactive message.`
                   : `Enabling "${togglingSchool?.name}" will restore access for all users and reactivate the school's subdomain.`
                 }
               </AlertDialogDescription>
             </AlertDialogHeader>
+
+            <div className="space-y-2 py-2">
+              <Label htmlFor="toggle-password">Super Admin Password</Label>
+              <div className="relative">
+                <Input
+                  id="toggle-password"
+                  type={showTogglePassword ? 'text' : 'password'}
+                  value={togglePassword}
+                  onChange={(e) => setTogglePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirmToggle()}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTogglePassword(!showTogglePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showTogglePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
             <AlertDialogFooter>
-              <Button variant="outline" onClick={() => setTogglingSchool(null)} disabled={toggleStatusMutation.isPending}>
+              <Button variant="outline" onClick={handleCloseToggleDialog} disabled={isVerifyingToggle}>
                 Cancel
               </Button>
               <Button
                 variant={togglingSchoolIsActive ? 'destructive' : 'default'}
                 onClick={handleConfirmToggle}
-                disabled={toggleStatusMutation.isPending}
+                disabled={isVerifyingToggle || !togglePassword.trim()}
               >
-                {toggleStatusMutation.isPending
-                  ? 'Processing...'
-                  : togglingSchoolIsActive ? 'Disable School' : 'Enable School'
-                }
+                {isVerifyingToggle ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  togglingSchoolIsActive ? 'Disable School' : 'Enable School'
+                )}
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
