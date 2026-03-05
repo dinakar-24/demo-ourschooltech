@@ -1,6 +1,5 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
-import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,16 +80,48 @@ export default function PublicInstallPage() {
     fetchSchoolBySubdomain();
   }, [tenant, isSubdomain]);
 
-  // Set up dynamic manifest so the browser recognizes this as an installable PWA
-  useDynamicManifest(undefined, schoolData ? {
-    name: schoolData.name,
-    logo: schoolData.logo,
-    subdomain: schoolData.subdomain,
-    appDisplayName: schoolData.appDisplayName,
-    appShortName: schoolData.appShortName,
-    primaryColor: schoolData.primaryColor || undefined,
-    backgroundColor: schoolData.backgroundColor || undefined,
-  } : undefined);
+  // Inject a simple synchronous manifest immediately so browser can fire beforeinstallprompt
+  useEffect(() => {
+    if (!schoolData) return;
+
+    const manifest = {
+      id: `/${schoolData.subdomain}/app`,
+      name: schoolData.appDisplayName || schoolData.name,
+      short_name: schoolData.appShortName || schoolData.subdomain?.toUpperCase() || 'App',
+      description: `${schoolData.appDisplayName || schoolData.name} School Portal`,
+      theme_color: schoolData.primaryColor || '#0F766E',
+      background_color: schoolData.backgroundColor || '#ffffff',
+      display: 'standalone',
+      display_override: ['standalone', 'minimal-ui'],
+      orientation: 'portrait',
+      start_url: '/',
+      scope: '/',
+      icons: schoolData.logo
+        ? [
+            { src: schoolData.logo, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: schoolData.logo, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: schoolData.logo, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          ]
+        : [
+            { src: '/favicon.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: '/favicon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          ],
+      categories: ['education'],
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const existing = document.querySelector('link[rel="manifest"]');
+    if (existing) existing.remove();
+
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = url;
+    document.head.appendChild(link);
+
+    return () => URL.revokeObjectURL(url);
+  }, [schoolData]);
 
   const logo = schoolData?.logo || null;
   const appName = schoolData?.appDisplayName || schoolData?.name || 'School App';
