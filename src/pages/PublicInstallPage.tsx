@@ -1,18 +1,38 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, ArrowLeft, Download, Smartphone } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Download, Smartphone, Monitor } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const BASE_DOMAIN = 'ourschooltech.com';
+const MAX_WIDTH_TABLET = 1024;
+
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= MAX_WIDTH_TABLET);
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${MAX_WIDTH_TABLET}px)`);
+    const onChange = () => setIsDesktop(window.innerWidth >= MAX_WIDTH_TABLET);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return isDesktop;
+}
 
 export default function PublicInstallPage() {
   const { tenant, isSubdomain } = useTenant();
   const { isInstalled, promptInstall } = useInstallPrompt();
   const [installing, setInstalling] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const isDesktop = useIsDesktop();
 
   const portalUrl = isSubdomain && tenant
     ? `https://${tenant.subdomain}.${BASE_DOMAIN}`
@@ -23,7 +43,7 @@ export default function PublicInstallPage() {
     try {
       const accepted = await promptInstall();
       if (accepted) {
-        toast.success('App installed successfully!');
+        setShowSuccess(true);
       }
     } catch (err: any) {
       if (err?.message === 'INSTALL_NOT_AVAILABLE') {
@@ -73,6 +93,13 @@ export default function PublicInstallPage() {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-sm font-medium text-emerald-700">App is already installed!</p>
+          </div>
+        ) : isDesktop ? (
+          <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+            <Monitor className="w-5 h-5 text-muted-foreground shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              Scan the QR code below from your phone or tablet to install the app.
+            </p>
           </div>
         ) : (
           <Button
@@ -124,6 +151,25 @@ export default function PublicInstallPage() {
           </Link>
         </div>
       </div>
+
+      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <DialogContent className="max-w-xs text-center">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Installation Successful</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 py-4">
+            <CheckCircle2 className="w-14 h-14 text-emerald-500" />
+            {schoolLogo && (
+              <img src={schoolLogo} alt={schoolName} className="w-16 h-16 object-contain" />
+            )}
+            <h3 className="text-lg font-bold text-foreground">{schoolName}</h3>
+            <p className="text-sm text-muted-foreground">App installed successfully! You can now access it from your home screen.</p>
+            <Button onClick={() => setShowSuccess(false)} className="w-full mt-2">
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
