@@ -7,15 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Search, UserCheck, BookOpen, GraduationCap, UserRound, ArrowLeft, Users,
-  School, ChevronRight, ChevronDown, Mail, Phone, Hash,
+  School, ChevronRight, ChevronDown, Mail, Phone, Hash, Pencil,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
+import { EditStudentDialog } from '@/components/admin/EditStudentDialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import type { Student } from '@/hooks/useStudents';
 
 type ViewMode = 'overview' | 'admins' | 'teachers' | 'classes' | 'section-students';
 
@@ -86,6 +88,10 @@ export default function SchoolUsersPage() {
   const [selectedSection, setSelectedSection] = useState<SectionData | null>(null);
   const [sectionStudents, setSectionStudents] = useState<SectionStudent[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
+
+  // Edit student state
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editStudentOpen, setEditStudentOpen] = useState(false);
 
   // Fetch school name + counts on mount
   useEffect(() => {
@@ -200,7 +206,7 @@ export default function SchoolUsersPage() {
     try {
       let query = supabase
         .from('students')
-        .select('id, full_name, admission_number, roll_number, avatar_url, user_id, parent_name, parent_email, parent_phone')
+        .select('id, full_name, admission_number, roll_number, avatar_url, user_id, gender, date_of_birth, parent_name, parent_email, parent_phone, address, status, class_name, section, school_id, academic_year_id, created_at, updated_at')
         .eq('school_id', schoolId)
         .eq('class_name', section.className)
         .eq('section', section.name)
@@ -208,7 +214,7 @@ export default function SchoolUsersPage() {
         .order('roll_number', { ascending: true, nullsFirst: false });
 
       if (debouncedSearch) {
-        query = query.or(`full_name.ilike.%${debouncedSearch}%,admission_number.ilike.%${debouncedSearch}%`);
+        query = query.or(`full_name.ilike.%${debouncedSearch}%,admission_number.ilike.%${debouncedSearch}%,parent_name.ilike.%${debouncedSearch}%,parent_phone.ilike.%${debouncedSearch}%`);
       }
 
       const { data, error } = await query;
@@ -235,6 +241,19 @@ export default function SchoolUsersPage() {
       setStudentsLoading(false);
     }
   }, [schoolId, debouncedSearch]);
+
+  // Open edit student dialog with full data
+  const openEditStudent = useCallback(async (studentId: string) => {
+    const { data } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', studentId)
+      .single();
+    if (data) {
+      setEditingStudent(data as Student);
+      setEditStudentOpen(true);
+    }
+  }, []);
 
   // Load data when view changes
   useEffect(() => {
@@ -316,11 +335,11 @@ export default function SchoolUsersPage() {
           <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          {view !== 'overview' && view !== 'classes' && (
+          {view !== 'overview' && (
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder={`Search ${view === 'section-students' ? 'students' : currentTile?.label || ''}...`}
+                placeholder={`Search ${view === 'section-students' ? 'students, parents...' : view === 'classes' ? 'classes...' : currentTile?.label || ''}...`}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10"
@@ -450,7 +469,7 @@ export default function SchoolUsersPage() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {classesData.map(cls => (
+                {classesData.filter(cls => !debouncedSearch || cls.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || cls.sections.some(s => s.name.toLowerCase().includes(debouncedSearch.toLowerCase()))).map(cls => (
                   <Card key={cls.id}>
                     <Collapsible defaultOpen>
                       <CardHeader className="pb-3">
@@ -565,17 +584,28 @@ export default function SchoolUsersPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-sm font-medium truncate">{student.full_name}</p>
-                              {student.user_id && student.email && (
-                                <UserActionsMenu
-                                  userId={student.user_id}
-                                  userName={student.full_name}
-                                  userEmail={student.email}
-                                  isDisabled={disabledUsers.has(student.user_id)}
-                                  isSelf={currentUser?.id === student.user_id}
-                                  onActionComplete={handleActionComplete}
-                                  currentFullName={student.full_name}
-                                />
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => openEditStudent(student.id)}
+                                  title="Edit Student"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                {student.user_id && student.email && (
+                                  <UserActionsMenu
+                                    userId={student.user_id}
+                                    userName={student.full_name}
+                                    userEmail={student.email}
+                                    isDisabled={disabledUsers.has(student.user_id)}
+                                    isSelf={currentUser?.id === student.user_id}
+                                    onActionComplete={handleActionComplete}
+                                    currentFullName={student.full_name}
+                                  />
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                               {student.roll_number && (
@@ -591,7 +621,7 @@ export default function SchoolUsersPage() {
                         </div>
                         {/* Parent info */}
                         {(student.parent_name || student.parent_email || student.parent_phone) && (
-                          <div className="ml-12 pl-0.5 border-l-2 border-purple-200 dark:border-purple-800 pl-2 space-y-0.5">
+                          <div className="ml-12 border-l-2 border-purple-200 dark:border-purple-800 pl-2 space-y-0.5">
                             {student.parent_name && (
                               <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <UserRound className="w-3 h-3 shrink-0 text-purple-500" />
@@ -621,6 +651,18 @@ export default function SchoolUsersPage() {
           </>
         )}
       </div>
+
+      {/* Edit Student Dialog */}
+      <EditStudentDialog
+        student={editingStudent}
+        open={editStudentOpen}
+        onOpenChange={(open) => {
+          setEditStudentOpen(open);
+          if (!open && selectedSection) {
+            fetchSectionStudents(selectedSection);
+          }
+        }}
+      />
     </SuperAdminLayout>
   );
 }
