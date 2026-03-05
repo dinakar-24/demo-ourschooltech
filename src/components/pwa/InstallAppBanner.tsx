@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { Button } from '@/components/ui/button';
-import { X, Download, ExternalLink } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -44,7 +44,8 @@ export function InstallAppBanner() {
   if (!isTabletOrMobile) return null;
   if (location.pathname === '/install') return null;
   if (!visible) return null;
-  if (!isInstalled && dismissed) return null;
+  if (isInstalled) return null;
+  if (dismissed) return null;
 
   const handleInstall = async () => {
     setInstalling(true);
@@ -72,13 +73,6 @@ export function InstallAppBanner() {
     localStorage.setItem(DISMISS_KEY, Date.now().toString());
   };
 
-  const handleOpenApp = () => {
-    const startUrl = tenant?.subdomain
-      ? `https://${tenant.subdomain}.${BASE_DOMAIN}`
-      : window.location.origin;
-    window.location.href = startUrl;
-  };
-
   const schoolName = tenant?.appDisplayName || tenant?.name || 'School App';
   const schoolLogo = tenant?.logo;
 
@@ -93,42 +87,26 @@ export function InstallAppBanner() {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground leading-tight">
-              {isInstalled ? schoolName : `Install ${schoolName}`}
+              Install {schoolName}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isInstalled
-                ? 'App is installed — open for the best experience'
-                : 'Get the app for a better experience'}
+              Get the app for a better experience
             </p>
           </div>
-          {!isInstalled && (
-            <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground shrink-0 p-1 -mt-1 -mr-1">
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground shrink-0 p-1 -mt-1 -mr-1">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {isInstalled ? (
-          <Button
-            onClick={handleOpenApp}
-            className="w-full mt-3 h-10 rounded-xl text-sm font-bold gap-2"
-            size="sm"
-            variant="outline"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Open in App
-          </Button>
-        ) : (
-          <Button
-            onClick={handleInstall}
-            disabled={installing}
-            className="w-full mt-3 h-10 rounded-xl text-sm font-bold gap-2"
-            size="sm"
-          >
-            <Download className="w-4 h-4" />
-            {installing ? 'Installing...' : 'Install App'}
-          </Button>
-        )}
+        <Button
+          onClick={handleInstall}
+          disabled={installing}
+          className="w-full mt-3 h-10 rounded-xl text-sm font-bold gap-2"
+          size="sm"
+        >
+          <Download className="w-4 h-4" />
+          {installing ? 'Installing...' : 'Install App'}
+        </Button>
       </div>
     </div>
   );
