@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -82,6 +82,18 @@ export default function AllUsersPage() {
     return roleCounts[key as keyof typeof roleCounts] ?? 0;
   };
 
+  // Group users by school for mobile view
+  const groupedBySchool = useMemo(() => {
+    const groups = new Map<string, typeof users>();
+    users.forEach(user => {
+      const key = user.school_name || 'Platform Users';
+      const group = groups.get(key) || [];
+      group.push(user);
+      groups.set(key, group);
+    });
+    return Array.from(groups.entries());
+  }, [users]);
+
   return (
     <SuperAdminLayout title="All Users">
       <div className="space-y-6">
@@ -97,8 +109,8 @@ export default function AllUsersPage() {
         </div>
 
         {/* Role Filter Chips - horizontally scrollable on mobile */}
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
-          <div className="flex gap-1.5 sm:gap-2 sm:flex-wrap w-max sm:w-auto">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex gap-1.5 sm:gap-2 sm:flex-wrap w-max sm:w-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             {ROLE_FILTERS.map((filter) => {
               const Icon = filter.icon;
               const isActive = activeRoleFilter === filter.key;
@@ -167,15 +179,25 @@ export default function AllUsersPage() {
               <>
                 {/* Mobile Card Layout */}
                 {isMobile ? (
-                  <div className="divide-y px-4 pb-2">
-                    {users.map((user) => (
-                      <div key={user.id} className="py-3 first:pt-0">
-                        <UserCard
-                          user={user}
-                          isDisabled={disabledUsers.has(user.id)}
-                          isSelf={currentUser?.id === user.id}
-                          onActionComplete={handleActionComplete}
-                        />
+                  <div className="px-4 pb-2 space-y-4">
+                    {groupedBySchool.map(([schoolName, schoolUsers]) => (
+                      <div key={schoolName}>
+                        <div className="flex items-center gap-2 py-2 mb-1">
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{schoolName}</span>
+                          <span className="text-[10px] text-muted-foreground">({schoolUsers.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {schoolUsers.map((user) => (
+                            <UserCard
+                              key={user.id}
+                              user={user}
+                              isDisabled={disabledUsers.has(user.id)}
+                              isSelf={currentUser?.id === user.id}
+                              onActionComplete={handleActionComplete}
+                            />
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
