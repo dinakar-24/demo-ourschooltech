@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Upload, X, Smartphone, Palette, Image, Type } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useUpdateSchool } from '@/hooks/useSchools';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -51,7 +51,7 @@ export const PwaSettingsDialog = memo(function PwaSettingsDialog({
   onOpenChange,
   school,
 }: PwaSettingsDialogProps) {
-  const updateSchool = useUpdateSchool();
+  const queryClient = useQueryClient();
   const [data, setData] = useState<PwaSettingsData>({
     app_display_name: '',
     app_short_name: '',
@@ -137,6 +137,7 @@ export const PwaSettingsDialog = memo(function PwaSettingsDialog({
         .eq('id', school.id);
 
       if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['schools'] });
       toast.success('PWA settings saved! Changes will reflect on next app load.');
       onOpenChange(false);
     } catch (err: any) {
