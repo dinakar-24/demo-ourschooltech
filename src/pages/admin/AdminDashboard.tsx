@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 md:p-5 shadow-sm">
           <div className="flex items-center gap-3.5">
             {displaySchoolLogo ? (
-              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-contain bg-muted/50 p-1 shrink-0" />
+              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-12 h-12 md:w-14 md:h-14 object-contain shrink-0" />
             ) : (
               <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <GraduationCap className="w-6 h-6 md:w-7 md:h-7 text-primary" />
