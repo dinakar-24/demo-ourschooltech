@@ -23,6 +23,7 @@ export function useDynamicManifest(currentRole?: string) {
     const shortName = tenant.appShortName || tenant.code.toUpperCase();
 
     const manifest = {
+      id: `/${tenant.code}/${currentRole || 'app'}`,
       name: roleLabel ? `${appName} - ${roleLabel}` : appName,
       short_name: roleLabel ? `${shortName} ${roleLabel}` : shortName,
       description: `${appName}${roleLabel ? ` ${roleLabel} Portal` : ''}`,
