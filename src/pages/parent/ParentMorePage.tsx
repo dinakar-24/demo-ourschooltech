@@ -12,7 +12,6 @@ import {
   Settings,
   User,
   LogOut,
-  Smartphone,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -44,7 +43,6 @@ const menuSections = [
     items: [
       { label: 'Profile', icon: User, href: '/parent/profile', color: 'text-foreground' },
       { label: 'Settings', icon: Settings, href: '/parent/settings', color: 'text-muted-foreground' },
-      { label: 'Install App', icon: Smartphone, href: '/parent/settings?tab=app', color: 'text-primary' },
     ],
   },
 ];

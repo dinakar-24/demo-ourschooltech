@@ -4,11 +4,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, Globe, Smartphone } from 'lucide-react';
+import { Bell, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTranslation } from 'react-i18next';
-import { InstallAppPage } from '@/components/pwa/InstallAppPage';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -52,16 +51,7 @@ export default function TeacherSettings() {
   return (
     <MobileLayout title={t('settingsPage.title')} showBack>
       <div className="p-4 space-y-4">
-        <Tabs defaultValue="settings">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="app" className="gap-1.5">
-              <Smartphone className="w-3.5 h-3.5" />
-              Install App
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="settings" className="space-y-4 mt-4">
+        <div className="space-y-4">
             <Card>
               <CardContent className="p-0 divide-y divide-border">
                 <div className="flex items-center justify-between p-4">
@@ -99,12 +89,7 @@ export default function TeacherSettings() {
             <p className="text-xs text-center text-muted-foreground">
               {t('settingsPage.appVersion')} 1.0.0
             </p>
-          </TabsContent>
-
-          <TabsContent value="app" className="mt-4">
-            <InstallAppPage />
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
     </MobileLayout>
   );
