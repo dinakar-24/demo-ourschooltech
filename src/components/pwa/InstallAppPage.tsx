@@ -130,20 +130,26 @@ export function InstallAppPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 w-full max-w-xs">
-                {hasPrompt && (
-                  <Button size="lg" onClick={triggerInstall} className="gap-2 w-full">
-                    <Download className="w-5 h-5" />
-                    Install {appName}
-                  </Button>
-                )}
-                {platform === 'ios' && !hasPrompt && (
-                  <div className="text-xs text-muted-foreground text-center space-y-1">
+                <Button
+                  size="lg"
+                  onClick={async () => {
+                    if (hasPrompt) {
+                      await triggerInstall();
+                    }
+                  }}
+                  className="gap-2 w-full"
+                >
+                  <Download className="w-5 h-5" />
+                  Install {appName}
+                </Button>
+                {!hasPrompt && platform === 'ios' && (
+                  <div className="text-xs text-muted-foreground text-center space-y-1 mt-1">
                     <p className="font-medium">Tap <Share className="w-3.5 h-3.5 inline text-primary" /> Share → <PlusSquare className="w-3.5 h-3.5 inline text-primary" /> Add to Home Screen</p>
                   </div>
                 )}
-                {platform === 'android' && !hasPrompt && (
-                  <div className="text-xs text-muted-foreground text-center">
-                    <p>Tap <strong>⋮ menu</strong> → <strong>"Install app"</strong> in Chrome</p>
+                {!hasPrompt && platform === 'android' && (
+                  <div className="text-xs text-muted-foreground text-center mt-1">
+                    <p>If button doesn't work: Tap <strong>⋮ menu</strong> → <strong>"Install app"</strong></p>
                   </div>
                 )}
               </div>

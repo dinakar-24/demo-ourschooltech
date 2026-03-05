@@ -145,44 +145,59 @@ export default function PublicInstallPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                  {hasPrompt && (
-                    <Button size="lg" onClick={triggerInstall} className="gap-2 w-full text-base">
-                      <Download className="w-5 h-5" />
-                      Install App
-                    </Button>
-                  )}
-                  {platform === 'ios' && !hasPrompt && (
-                    <div className="space-y-3 w-full">
-                      <div className="flex items-start gap-3 text-left">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                        <p className="text-sm text-foreground">
-                          Tap the <Share className="w-4 h-4 inline text-primary" /> <strong>Share</strong> button in Safari
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-3 text-left">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                        <p className="text-sm text-foreground">
-                          Tap <PlusSquare className="w-4 h-4 inline text-primary" /> <strong>Add to Home Screen</strong>
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-3 text-left">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
-                        <p className="text-sm text-foreground">Tap <strong>Add</strong> to confirm</p>
-                      </div>
-                    </div>
-                  )}
-                  {platform === 'android' && !hasPrompt && (
-                    <div className="space-y-3 w-full">
-                      <div className="flex items-start gap-3 text-left">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                        <p className="text-sm text-foreground">Open this page in <strong>Chrome</strong></p>
-                      </div>
-                      <div className="flex items-start gap-3 text-left">
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                        <p className="text-sm text-foreground">Tap <strong>⋮ menu</strong> → <strong>Install app</strong></p>
-                      </div>
-                    </div>
-                  )}
+                  {/* Always show install button - it will try the native prompt or guide user */}
+                  <Button
+                    size="lg"
+                    onClick={async () => {
+                      if (hasPrompt) {
+                        await triggerInstall();
+                      } else {
+                        // No prompt available — guide user to browser menu
+                        const menuEl = document.getElementById('manual-install-steps');
+                        if (menuEl) menuEl.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="gap-2 w-full text-base"
+                  >
+                    <Download className="w-5 h-5" />
+                    Install App
+                  </Button>
+
+                  <div id="manual-install-steps" className="space-y-3 w-full mt-2">
+                    {platform === 'ios' ? (
+                      <>
+                        <p className="text-xs text-muted-foreground text-center font-medium">If the button above doesn't work:</p>
+                        <div className="flex items-start gap-3 text-left">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
+                          <p className="text-sm text-foreground">
+                            Tap the <Share className="w-4 h-4 inline text-primary" /> <strong>Share</strong> button in Safari
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-3 text-left">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
+                          <p className="text-sm text-foreground">
+                            Tap <PlusSquare className="w-4 h-4 inline text-primary" /> <strong>Add to Home Screen</strong>
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-3 text-left">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
+                          <p className="text-sm text-foreground">Tap <strong>Add</strong> to confirm</p>
+                        </div>
+                      </>
+                    ) : platform === 'android' ? (
+                      <>
+                        <p className="text-xs text-muted-foreground text-center font-medium">If the button above doesn't work:</p>
+                        <div className="flex items-start gap-3 text-left">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
+                          <p className="text-sm text-foreground">Make sure you're using <strong>Chrome</strong></p>
+                        </div>
+                        <div className="flex items-start gap-3 text-left">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
+                          <p className="text-sm text-foreground">Tap <strong>⋮ menu</strong> (top right) → <strong>Install app</strong></p>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>

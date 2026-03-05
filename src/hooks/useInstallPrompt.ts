@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -13,6 +13,7 @@ export function useInstallPrompt() {
   const [isDismissed, setIsDismissed] = useState(() => {
     return localStorage.getItem(DISMISS_KEY) === 'true';
   });
+  const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     // Check if already installed (standalone mode)
@@ -23,29 +24,36 @@ export function useInstallPrompt() {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      promptRef.current = promptEvent;
+      setDeferredPrompt(promptEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
     // Listen for successful install
-    window.addEventListener('appinstalled', () => {
+    const installHandler = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
-    });
+      promptRef.current = null;
+    };
+    window.addEventListener('appinstalled', installHandler);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installHandler);
     };
   }, []);
 
   const triggerInstall = useCallback(async () => {
-    if (!deferredPrompt) return false;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    const prompt = promptRef.current || deferredPrompt;
+    if (!prompt) return false;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      promptRef.current = null;
       return true;
     }
     return false;
