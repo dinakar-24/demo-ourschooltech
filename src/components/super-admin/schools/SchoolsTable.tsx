@@ -150,8 +150,9 @@ export const SchoolsTable = memo(function SchoolsTable({
                       </Button>
                     )}
                     {onPwaSettings && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onPwaSettings(school)} title="PWA Settings">
-                        <Smartphone className="w-3.5 h-3.5" />
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onPwaSettings(school)} title="PWA Settings">
+                        <Smartphone className="w-3.5 h-3.5 mr-1" />
+                        PWA
                       </Button>
                     )}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(school)}>
