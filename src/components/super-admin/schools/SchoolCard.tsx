@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BASE_DOMAIN = 'ourschooltech.com';
@@ -29,6 +29,7 @@ interface SchoolCardProps {
   onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
   onToggleStatus?: (school: School) => void;
+  onPwaSettings?: (school: School) => void;
   isToggling?: boolean;
 }
 
@@ -38,6 +39,7 @@ export const SchoolCard = memo(function SchoolCard({
   onDelete,
   onImpersonate,
   onToggleStatus,
+  onPwaSettings,
   isToggling,
 }: SchoolCardProps) {
   const navigate = useNavigate();
@@ -128,6 +130,11 @@ export const SchoolCard = memo(function SchoolCard({
           >
             <Eye className="w-3.5 h-3.5 mr-1" />
             Impersonate
+          </Button>
+        )}
+        {onPwaSettings && (
+          <Button variant="outline" size="sm" onClick={() => onPwaSettings(school)} className="h-8 w-8 p-0" title="PWA Settings">
+            <Smartphone className="w-3.5 h-3.5" />
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="h-8 w-8 p-0">
