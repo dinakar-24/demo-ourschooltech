@@ -55,118 +55,116 @@ export const SchoolsTable = memo(function SchoolsTable({
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[26%]">School Name</TableHead>
-          <TableHead className="w-[10%]">Code</TableHead>
-          <TableHead className="w-[20%]">Subdomain</TableHead>
-          <TableHead className="w-[12%]">City</TableHead>
-          <TableHead className="w-[8%] text-center">Status</TableHead>
-          <TableHead className="w-[24%] text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {schools.map((school) => {
-          const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
-          const isActive = school.is_active !== false;
-          return (
-            <TableRow key={school.id} className={!isActive ? 'opacity-60' : ''}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {school.logo ? (
-                      <img 
-                        src={school.logo} 
-                        alt={`${school.name} logo`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <Building2 className="w-5 h-5 text-primary" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">{school.name}</p>
-                      {(school as any).primary_color && (
-                        <div className="flex gap-0.5 shrink-0">
-                          <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: (school as any).primary_color }} title="Primary" />
-                          <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: (school as any).accent_color || '#E69500' }} title="Accent" />
-                        </div>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>School</TableHead>
+            <TableHead>Subdomain</TableHead>
+            <TableHead>City</TableHead>
+            <TableHead className="text-center w-20">Status</TableHead>
+            <TableHead className="text-right w-48">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {schools.map((school) => {
+            const isActive = school.is_active !== false;
+            return (
+              <TableRow key={school.id} className={!isActive ? 'opacity-60' : ''}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {school.logo ? (
+                        <img 
+                          src={school.logo} 
+                          alt={`${school.name} logo`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <Building2 className="w-4 h-4 text-primary" />
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{school.address}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm truncate max-w-[200px]">{school.name}</p>
+                        {(school as any).primary_color && (
+                          <div className="flex gap-0.5 shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).primary_color }} />
+                            <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: (school as any).accent_color || '#E69500' }} />
+                          </div>
+                        )}
+                        <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded shrink-0">{school.code}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate max-w-[240px]">{school.address}</p>
+                    </div>
                   </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{school.code}</span>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono text-muted-foreground truncate max-w-[140px]">{school.subdomain}.{BASE_DOMAIN}</span>
-                  <button onClick={() => handleCopyUrl(school.subdomain)} className="text-muted-foreground hover:text-foreground shrink-0" title="Copy URL">
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                  <a href={subdomainUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0" title="Open subdomain">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate">{school.city}</span>
-                </div>
-              </TableCell>
-              <TableCell className="text-center">
-                <Switch
-                  checked={isActive}
-                  disabled={isTogglingId === school.id}
-                  onCheckedChange={() => onToggleStatus?.(school)}
-                  aria-label={isActive ? 'Disable school' : 'Enable school'}
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/super-admin/schools/${school.id}`)}
-                    className="h-8 px-2 text-xs"
-                  >
-                    <Users className="w-3.5 h-3.5 mr-1" />
-                    Users
-                  </Button>
-                  {onImpersonate && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onImpersonate(school)}
-                      className="h-8 px-2 text-xs"
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-mono text-muted-foreground">{school.subdomain}.{BASE_DOMAIN}</span>
+                    <button onClick={() => handleCopyUrl(school.subdomain)} className="text-muted-foreground hover:text-foreground shrink-0" title="Copy URL">
+                      <Copy className="w-3 h-3" />
+                    </button>
+                    <a href={`https://${school.subdomain}.${BASE_DOMAIN}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0" title="Open">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{school.city}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Switch
+                    checked={isActive}
+                    disabled={isTogglingId === school.id}
+                    onCheckedChange={() => onToggleStatus?.(school)}
+                    aria-label={isActive ? 'Disable school' : 'Enable school'}
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/super-admin/schools/${school.id}`)}
+                      className="h-7 px-2 text-xs"
                     >
-                      <Eye className="w-3.5 h-3.5 mr-1" />
-                      View as Admin
+                      <Users className="w-3.5 h-3.5 mr-1" />
+                      Users
                     </Button>
-                  )}
-                  <Button variant="ghost" size="icon-sm" onClick={() => onEdit(school)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => onDelete(school)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+                    {onImpersonate && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => onImpersonate(school)}
+                        className="h-7 px-2 text-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        Impersonate
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(school)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => onDelete(school)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 });

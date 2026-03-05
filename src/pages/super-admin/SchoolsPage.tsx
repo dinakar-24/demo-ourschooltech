@@ -179,8 +179,8 @@ export default function SchoolsPage() {
           <CardContent>
             {isLoading ? (
               <>
-                <div className="md:hidden"><CardSkeleton count={3} /></div>
-                <div className="hidden md:block"><TableSkeleton rows={5} columns={6} /></div>
+              <div className="lg:hidden"><CardSkeleton count={3} /></div>
+                <div className="hidden lg:block"><TableSkeleton rows={5} columns={5} /></div>
               </>
             ) : isError ? (
               <ErrorState onRetry={() => refetch()} />
@@ -195,7 +195,7 @@ export default function SchoolsPage() {
             ) : (
               <>
                 {/* Mobile Card View */}
-                <div className="md:hidden space-y-3">
+                <div className="lg:hidden grid gap-3 sm:grid-cols-2">
                   {schools.map((school) => (
                     <SchoolCard
                       key={school.id}
@@ -210,7 +210,7 @@ export default function SchoolsPage() {
                 </div>
 
                 {/* Desktop Table View */}
-                <div className="hidden md:block">
+                <div className="hidden lg:block">
                   <SchoolsTable
                     schools={schools}
                     onEdit={handleEdit}
