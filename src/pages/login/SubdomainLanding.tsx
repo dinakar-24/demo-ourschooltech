@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getRoleDashboard } from '@/components/auth/ProtectedRoute';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 
 export default function SubdomainLanding() {
   const { tenant } = useTenant();
@@ -18,6 +19,7 @@ export default function SubdomainLanding() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   if (authLoading) {
     return (
@@ -151,10 +153,22 @@ export default function SubdomainLanding() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-gray-400 mt-8">
+        <div className="text-center mt-4">
+          <button
+            type="button"
+            onClick={() => setForgotOpen(true)}
+            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            Forgot Password?
+          </button>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
           {tenant.name} School Portal
         </p>
       </div>
+
+      <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>
   );
 }
