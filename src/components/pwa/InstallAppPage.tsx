@@ -15,16 +15,24 @@ function getPlatform() {
   return 'desktop';
 }
 
+const roleLabels: Record<string, string> = {
+  school_admin: 'Admin',
+  teacher: 'Teacher',
+  parent: 'Parent',
+  student: 'Student',
+};
+
 interface SchoolBranding {
   name: string;
   logo: string | null;
   subdomain: string;
   appDisplayName: string | null;
+  appShortName: string | null;
 }
 
 export function InstallAppPage() {
   const { tenant } = useTenant();
-  const { school } = useAuth();
+  const { school, user } = useAuth();
   const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
   const platform = getPlatform();
   const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
@@ -36,7 +44,7 @@ export function InstallAppPage() {
     const fetchSchool = async () => {
       const { data } = await supabase
         .from('schools')
-        .select('name, logo, subdomain, app_display_name')
+        .select('name, logo, subdomain, app_display_name, app_short_name')
         .eq('id', school.id)
         .single();
       
@@ -46,20 +54,28 @@ export function InstallAppPage() {
           logo: data.logo,
           subdomain: data.subdomain,
           appDisplayName: data.app_display_name,
+          appShortName: data.app_short_name,
         });
       }
     };
     fetchSchool();
   }, [tenant, school?.id]);
 
-  // Resolve branding: prefer tenant context, fall back to fetched school data
+  // Resolve branding
   const logo = tenant?.logo || schoolBranding?.logo || school?.logo || null;
-  const appName = tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
   const subdomain = tenant?.subdomain || schoolBranding?.subdomain;
+  const subUpper = subdomain?.toUpperCase() || '';
+  const roleLabel = user?.role ? (roleLabels[user.role] || '') : '';
+  
+  // Role-specific app name: "SSE Admin", "SSE Parent"
+  const appName = roleLabel && subUpper
+    ? `${subUpper} ${roleLabel}`
+    : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
+  // QR code points to the install page on the subdomain
   const schoolUrl = subdomain
-    ? `https://${subdomain}.ourschooltech.com`
-    : window.location.origin;
+    ? `https://${subdomain}.ourschooltech.com/install`
+    : `${window.location.origin}/install`;
 
   const features = [
     { icon: Zap, label: 'Fast & Lightweight', desc: 'Loads instantly, works like a native app' },
@@ -91,112 +107,55 @@ export function InstallAppPage() {
                 <CheckCircle className="w-5 h-5" />
                 <span className="text-sm font-medium">App is installed!</span>
               </div>
-            ) : hasPrompt ? (
-              <Button size="lg" onClick={triggerInstall} className="gap-2">
-                <Download className="w-5 h-5" />
-                Install App
-              </Button>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* QR Code */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col items-center text-center gap-4">
-            <h3 className="text-base font-semibold text-foreground">Scan to Install on Mobile</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Scan this QR code with any phone camera to open the app and install it
-            </p>
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-border">
-              <QRCodeSVG
-                value={schoolUrl}
-                size={180}
-                level="H"
-                includeMargin={false}
-                imageSettings={logo ? {
-                  src: logo,
-                  height: 36,
-                  width: 36,
-                  excavate: true,
-                } : undefined}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground font-mono">{schoolUrl}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Platform-specific instructions */}
-      {!isInstalled && (
-        <Card>
-          <CardContent className="pt-6">
-            {platform === 'ios' ? (
-              <div className="space-y-4">
-                <h3 className="text-base font-semibold text-foreground">Install on iPhone / iPad</h3>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                        Tap the <Share className="w-4 h-4 inline text-primary" /> Share button
-                      </p>
-                      <p className="text-xs text-muted-foreground">Found at the bottom of Safari</p>
-                    </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                {hasPrompt && (
+                  <Button size="lg" onClick={triggerInstall} className="gap-2 w-full">
+                    <Download className="w-5 h-5" />
+                    Install {appName}
+                  </Button>
+                )}
+                {platform === 'ios' && !hasPrompt && (
+                  <div className="text-xs text-muted-foreground text-center space-y-1">
+                    <p className="font-medium">Tap <Share className="w-3.5 h-3.5 inline text-primary" /> Share → <PlusSquare className="w-3.5 h-3.5 inline text-primary" /> Add to Home Screen</p>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                        Tap <PlusSquare className="w-4 h-4 inline text-primary" /> "Add to Home Screen"
-                      </p>
-                      <p className="text-xs text-muted-foreground">Scroll down in the share menu to find it</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Tap "Add" to confirm</p>
-                      <p className="text-xs text-muted-foreground">The app icon will appear on your home screen</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : platform === 'android' ? (
-              <div className="space-y-4">
-                <h3 className="text-base font-semibold text-foreground">Install on Android</h3>
-                {hasPrompt ? (
-                  <p className="text-sm text-muted-foreground">
-                    Tap the <strong>"Install App"</strong> button above to add it to your home screen.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Open in Chrome browser</p>
-                        <p className="text-xs text-muted-foreground">This works best in Google Chrome</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Tap the ⋮ menu → "Install app"</p>
-                        <p className="text-xs text-muted-foreground">Or look for the install banner at the bottom</p>
-                      </div>
-                    </div>
+                )}
+                {platform === 'android' && !hasPrompt && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    <p>Tap <strong>⋮ menu</strong> → <strong>"Install app"</strong> in Chrome</p>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold text-foreground">Install on Desktop</h3>
-                <p className="text-sm text-muted-foreground">
-                  Look for the install icon in your browser's address bar, or use the button above.
-                </p>
-              </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* QR Code — show only on desktop/tablet */}
+      {platform === 'desktop' && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center text-center gap-4">
+              <h3 className="text-base font-semibold text-foreground">Scan to Install on Mobile</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Scan this QR code with any phone camera to install the app
+              </p>
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-border">
+                <QRCodeSVG
+                  value={schoolUrl}
+                  size={180}
+                  level="H"
+                  includeMargin={false}
+                  imageSettings={logo ? {
+                    src: logo,
+                    height: 36,
+                    width: 36,
+                    excavate: true,
+                  } : undefined}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground font-mono">{schoolUrl}</p>
+            </div>
           </CardContent>
         </Card>
       )}
