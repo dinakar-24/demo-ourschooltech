@@ -12,6 +12,8 @@ interface UserWithRole {
   school_name?: string;
   roles: string[];
   linked_students?: string[];
+  linked_parent_name?: string;
+  linked_parent_email?: string;
 }
 
 interface RoleCounts {
@@ -187,6 +189,58 @@ export function useAllUsers({ page, pageSize, searchQuery, roleFilter }: UseAllU
             u.linked_students = parentStudentMap.get(u.email) || [];
           }
         });
+      }
+
+      // Enrich students with linked parent info
+      const studentUsers = usersWithRoles.filter(u => u.roles.includes('student'));
+      if (studentUsers.length > 0) {
+        const studentEmails = studentUsers.map(s => s.email);
+        const { data: studentRecords } = await supabase
+          .from('students')
+          .select('parent_email, user_id')
+          .in('parent_email', studentEmails.length > 0 ? studentEmails : ['__none__']);
+        
+        // Also try matching by user_id for students
+        const studentUserIds = studentUsers.map(s => s.id);
+        const { data: studentByUserId } = await supabase
+          .from('students')
+          .select('parent_email, user_id')
+          .in('user_id', studentUserIds);
+
+        const allStudentRecords = [...(studentRecords || []), ...(studentByUserId || [])];
+        
+        // Collect unique parent emails
+        const parentEmailsForStudents = [...new Set(
+          allStudentRecords.map(s => s.parent_email).filter(Boolean) as string[]
+        )];
+
+        if (parentEmailsForStudents.length > 0) {
+          const { data: parentProfiles } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .in('email', parentEmailsForStudents);
+
+          const parentNameMap = new Map<string, string>();
+          (parentProfiles || []).forEach(p => parentNameMap.set(p.email, p.full_name));
+
+          // Map user_id to parent_email
+          const userIdToParentEmail = new Map<string, string>();
+          allStudentRecords.forEach(s => {
+            if (s.user_id && s.parent_email) {
+              userIdToParentEmail.set(s.user_id, s.parent_email);
+            }
+          });
+
+          usersWithRoles.forEach(u => {
+            if (u.roles.includes('student')) {
+              const parentEmail = userIdToParentEmail.get(u.id);
+              if (parentEmail) {
+                u.linked_parent_email = parentEmail;
+                u.linked_parent_name = parentNameMap.get(parentEmail);
+              }
+            }
+          });
+        }
       }
 
       setUsers(usersWithRoles);
