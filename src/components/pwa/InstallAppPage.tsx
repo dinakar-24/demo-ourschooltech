@@ -119,11 +119,12 @@ export function InstallAppPage() {
       ? `${subUpper}-${roleLabel}`
       : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
-  // QR code points to the install page
+  // QR code ALWAYS points to the school's real subdomain, never the preview URL
+  const resolvedSubdomain = subdomain || schoolBranding?.subdomain;
   const schoolUrl = isSuperAdmin
     ? 'https://app.ourschooltech.com/install'
-    : subdomain
-      ? `https://${subdomain}.ourschooltech.com/install`
+    : resolvedSubdomain
+      ? `https://${resolvedSubdomain}.ourschooltech.com/install`
       : `${window.location.origin}/install`;
 
   const features = [
