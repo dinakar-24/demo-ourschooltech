@@ -19,17 +19,41 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useUpdateStudent, Student } from '@/hooks/useStudents';
 import { useClasses } from '@/hooks/useClasses';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface EditStudentDialogProps {
   student: Student | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  schoolId?: string; // Optional: for Super Admin context where useClasses won't work
 }
 
-export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDialogProps) {
+export function EditStudentDialog({ student, open, onOpenChange, schoolId }: EditStudentDialogProps) {
   const updateStudent = useUpdateStudent();
-  const { data: classes } = useClasses();
+  const { data: hookClasses } = useClasses();
+
+  // Fallback: fetch classes directly when schoolId is provided (Super Admin)
+  const effectiveSchoolId = schoolId || student?.school_id;
+  const { data: directClasses } = useQuery({
+    queryKey: ['classes-direct', effectiveSchoolId],
+    queryFn: async () => {
+      const { data: cls } = await supabase
+        .from('classes').select('id, name, display_order').eq('school_id', effectiveSchoolId!).order('display_order');
+      const classIds = (cls || []).map(c => c.id);
+      if (!classIds.length) return [];
+      const { data: secs } = await supabase
+        .from('sections').select('id, name, class_id').in('class_id', classIds).order('name');
+      return (cls || []).map(c => ({
+        ...c,
+        sections: (secs || []).filter(s => s.class_id === c.id),
+      }));
+    },
+    enabled: !!effectiveSchoolId && !hookClasses?.length,
+  });
+
+  const classes = hookClasses?.length ? hookClasses : directClasses;
 
   const [form, setForm] = useState({
     full_name: '',
