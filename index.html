@@ -12,6 +12,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="manifest" href="/default-manifest.webmanifest" />
     <link rel="preload" as="image" href="/src/assets/logo.png" />
     <style>
       @keyframes eyeOrbit{0%{transform:translate(-12.73px,-12.73px)}12.5%{transform:translate(0,-18px)}25%{transform:translate(12.73px,-12.73px)}37.5%{transform:translate(18px,0)}50%{transform:translate(12.73px,12.73px)}62.5%{transform:translate(0,18px)}75%{transform:translate(-12.73px,12.73px)}87.5%{transform:translate(-18px,0)}100%{transform:translate(-12.73px,-12.73px)}}
@@ -34,13 +35,12 @@
 
   <body>
     <script>
-      // Force reload on new deploy + kill old service workers
+      // Version-based cache bust (only on version change, not every load)
       (function(){
-        var APP_VERSION = '2026022804';
+        var APP_VERSION = '2026030501';
         var stored = localStorage.getItem('app_version');
         if(stored && stored !== APP_VERSION){
           localStorage.setItem('app_version', APP_VERSION);
-          // Clear all caches then hard reload
           if('caches' in window){
             caches.keys().then(function(keys){
               var p=[];
@@ -53,17 +53,6 @@
           return;
         }
         if(!stored) localStorage.setItem('app_version', APP_VERSION);
-        // Kill old service workers
-        if('serviceWorker' in navigator){
-          navigator.serviceWorker.getRegistrations().then(function(regs){
-            for(var i=0;i<regs.length;i++) regs[i].unregister();
-          });
-        }
-        if('caches' in window){
-          caches.keys().then(function(keys){
-            for(var j=0;j<keys.length;j++) caches.delete(keys[j]);
-          });
-        }
       })();
     </script>
     <div id="root">

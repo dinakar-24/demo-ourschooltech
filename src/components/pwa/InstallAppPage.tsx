@@ -34,21 +34,15 @@ interface SchoolBranding {
 
 function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () => Promise<boolean>; appName: string }) {
   const [installing, setInstalling] = useState(false);
-  const [failed, setFailed] = useState(false);
 
   const handleClick = async () => {
     setInstalling(true);
-    setFailed(false);
-    const success = await triggerInstall();
+    await triggerInstall();
     setInstalling(false);
-    if (!success) {
-      setFailed(true);
-      setTimeout(() => setFailed(false), 5000);
-    }
   };
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full">
       <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full">
         {installing ? (
           <>
@@ -62,11 +56,6 @@ function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () =>
           </>
         )}
       </Button>
-      {failed && (
-        <p className="text-xs text-muted-foreground text-center">
-          Please wait a moment and try again
-        </p>
-      )}
     </div>
   );
 }
