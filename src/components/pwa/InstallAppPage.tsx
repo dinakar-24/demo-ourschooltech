@@ -16,6 +16,7 @@ function getPlatform() {
 }
 
 const roleLabels: Record<string, string> = {
+  super_admin: 'Super Admin',
   school_admin: 'Admin',
   teacher: 'Teacher',
   parent: 'Parent',
@@ -68,9 +69,11 @@ export function InstallAppPage() {
   const roleLabel = user?.role ? (roleLabels[user.role] || '') : '';
   
   // Role-specific app name: "SSE Admin", "SSE Parent"
-  const appName = roleLabel && subUpper
-    ? `${subUpper} ${roleLabel}`
-    : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
+  const appName = user?.role === 'super_admin'
+    ? 'OST Super Admin'
+    : roleLabel && subUpper
+      ? `${subUpper} ${roleLabel}`
+      : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
   // QR code points to the install page on the subdomain
   const schoolUrl = subdomain
