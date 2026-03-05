@@ -36,6 +36,7 @@ const SystemAnnouncementsPage = lazy(() => import("./pages/super-admin/SystemAnn
 const AuditLogsPage = lazy(() => import("./pages/super-admin/AuditLogsPage"));
 const SuperAdminReportsPage = lazy(() => import("./pages/super-admin/SuperAdminReportsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/super-admin/SubscriptionsPage"));
+const SuperAdminInstallPage = lazy(() => import("./pages/super-admin/SuperAdminInstallPage"));
 
 
 // Lazy loaded pages -- Admin
@@ -262,6 +263,7 @@ function AppRoutes() {
               <Route path="/super-admin/reports" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminReportsPage /></ProtectedRoute>} />
               <Route path="/super-admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogsPage /></ProtectedRoute>} />
               <Route path="/super-admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemSettingsPage /></ProtectedRoute>} />
+              <Route path="/super-admin/install" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminInstallPage /></ProtectedRoute>} />
               <Route path="/super-admin/*" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
             </>
           )}
