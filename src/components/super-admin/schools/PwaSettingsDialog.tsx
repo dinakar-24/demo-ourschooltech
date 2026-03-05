@@ -290,7 +290,7 @@ export const PwaSettingsDialog = memo(function PwaSettingsDialog({
 
             {/* Phone mockup */}
             <div
-              className="w-[180px] h-[320px] rounded-[24px] border-4 border-foreground/20 overflow-hidden shadow-lg flex flex-col items-center justify-center relative"
+              className="w-[180px] h-[320px] rounded-[24px] border-2 border-border overflow-hidden shadow-lg flex flex-col items-center justify-center relative bg-white"
               style={{ backgroundColor: data.background_color }}
             >
               {/* Status bar */}
@@ -301,30 +301,30 @@ export const PwaSettingsDialog = memo(function PwaSettingsDialog({
               {/* Splash content */}
               <div className="flex flex-col items-center gap-3 px-4">
                 {logoPreview ? (
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white flex items-center justify-center shadow-md">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white flex items-center justify-center shadow-sm border border-border">
                     <img src={logoPreview} alt="" className="w-14 h-14 object-contain" />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md" style={{ backgroundColor: data.primary_color }}>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: data.primary_color }}>
                     <span className="text-white text-2xl font-bold">{displayName.charAt(0)}</span>
                   </div>
                 )}
                 <div className="text-center">
-                  <p className="text-[11px] font-bold leading-tight" style={{ color: data.secondary_color }}>
+                  <p className="text-[11px] font-bold leading-tight text-foreground">
                     {displayName}
                   </p>
-                  <p className="text-[9px] mt-0.5 opacity-60" style={{ color: data.secondary_color }}>
+                  <p className="text-[9px] mt-0.5 text-muted-foreground">
                     Loading...
                   </p>
                 </div>
                 {/* Loading bar */}
-                <div className="w-20 h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${data.primary_color}30` }}>
-                  <div className="w-1/2 h-full rounded-full" style={{ backgroundColor: data.primary_color }} />
+                <div className="w-20 h-1.5 rounded-full overflow-hidden bg-muted">
+                  <div className="w-3/5 h-full rounded-full" style={{ backgroundColor: data.primary_color }} />
                 </div>
               </div>
 
               {/* Home indicator */}
-              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-foreground/20" />
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-muted-foreground/20" />
             </div>
 
             {/* Icon preview */}
