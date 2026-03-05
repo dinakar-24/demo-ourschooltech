@@ -12,6 +12,7 @@ import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { DynamicManifestHandler } from "@/components/pwa/DynamicManifestHandler";
+import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -22,6 +23,7 @@ import TenantErrorPage from "./pages/TenantErrorPage";
 import SubdomainLanding from "./pages/login/SubdomainLanding";
 
 const ReceiptVerificationPage = lazy(() => import("./pages/ReceiptVerificationPage"));
+const PublicInstallPage = lazy(() => import("./pages/PublicInstallPage"));
 
 // Lazy loaded pages -- Super Admin
 const SuperAdminDashboard = lazy(() => import("./pages/super-admin/SuperAdminDashboard"));
@@ -183,12 +185,14 @@ function AppRoutes() {
   return (
     <>
       <DynamicManifestHandler />
+      <InstallAppBanner />
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<AuthRedirect />} />
           <Route path="/receipt/:receiptNumber" element={<ReceiptVerificationPage />} />
+          <Route path="/install" element={<PublicInstallPage />} />
           
           <Route path="/login" element={isSubdomain ? <Navigate to="/" replace /> : <LoginPage />} />
 
