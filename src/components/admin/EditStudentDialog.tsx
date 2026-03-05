@@ -30,12 +30,12 @@ interface EditStudentDialogProps {
   schoolId?: string; // Optional: for Super Admin context where useClasses won't work
 }
 
-export function EditStudentDialog({ student, open, onOpenChange, schoolId }: EditStudentDialogProps) {
+export function EditStudentDialog({ student, open, onOpenChange, schoolId: overrideSchoolId }: EditStudentDialogProps) {
   const updateStudent = useUpdateStudent();
   const { data: hookClasses } = useClasses();
 
-  // Fallback: fetch classes directly when schoolId is provided (Super Admin)
-  const effectiveSchoolId = schoolId || student?.school_id;
+  // For Super Admin: fetch classes directly using the student's school
+  const effectiveSchoolId = overrideSchoolId || student?.school_id;
   const { data: directClasses } = useQuery({
     queryKey: ['classes-direct', effectiveSchoolId],
     queryFn: async () => {
@@ -50,10 +50,11 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId }: Edi
         sections: (secs || []).filter(s => s.class_id === c.id),
       }));
     },
-    enabled: !!effectiveSchoolId && !hookClasses?.length,
+    enabled: open && !!effectiveSchoolId,
   });
 
-  const classes = hookClasses?.length ? hookClasses : directClasses;
+  // Use hookClasses if available (school admin context), otherwise use direct fetch
+  const classes = (hookClasses && hookClasses.length > 0) ? hookClasses : directClasses;
 
   const [form, setForm] = useState({
     full_name: '',
