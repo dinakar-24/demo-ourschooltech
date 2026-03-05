@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import React, { forwardRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 function getPlatform() {
@@ -71,7 +71,7 @@ function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () =>
   );
 }
 
-export const InstallAppPage = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<'div'>>(function InstallAppPage(_props, ref) {
+export function InstallAppPage() {
   const { tenant } = useTenant();
   const { school, user } = useAuth();
   const { isInstalled, triggerInstall } = useInstallPrompt();
@@ -145,7 +145,7 @@ export const InstallAppPage = forwardRef<HTMLDivElement, React.ComponentPropsWit
   ];
 
   return (
-    <div ref={ref} className="space-y-6">
+    <div className="space-y-6">
       {/* Header with branding */}
       <Card>
         <CardContent className="pt-6">
@@ -226,4 +226,4 @@ export const InstallAppPage = forwardRef<HTMLDivElement, React.ComponentPropsWit
       </Card>
     </div>
   );
-});
+}
