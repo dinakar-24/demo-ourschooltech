@@ -5,19 +5,38 @@ import { NotificationSettings } from '@/components/super-admin/settings/Notifica
 import { BrandingSettings } from '@/components/super-admin/settings/BrandingSettings';
 import { SecuritySettings } from '@/components/super-admin/settings/SecuritySettings';
 import { SubscriptionPricingSettings } from '@/components/super-admin/settings/SubscriptionPricingSettings';
+import { UserCog, IndianRupee, Bell, Palette, ShieldCheck } from 'lucide-react';
+
+const TABS = [
+  { value: 'accounts', label: 'Accounts', icon: UserCog },
+  { value: 'pricing', label: 'Pricing', icon: IndianRupee },
+  { value: 'notifications', label: 'Notifs', icon: Bell },
+  { value: 'branding', label: 'Branding', icon: Palette },
+  { value: 'security', label: 'Security', icon: ShieldCheck },
+];
 
 export default function SystemSettingsPage() {
   return (
     <SuperAdminLayout title="System Settings">
       <div className="space-y-6 animate-fade-up">
         <Tabs defaultValue="accounts" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[620px]">
-            <TabsTrigger value="accounts">Accounts</TabsTrigger>
-            <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="branding">Branding</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+            <TabsList className="inline-flex h-auto p-1 gap-0.5 bg-muted/60 rounded-xl w-auto min-w-max">
+              {TABS.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  >
+                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    {tab.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
 
           <TabsContent value="accounts">
             <SchoolDefaultsSettings />
