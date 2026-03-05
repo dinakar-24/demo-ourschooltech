@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare } from 'lucide-react';
+import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { forwardRef, useEffect, useState } from 'react';
@@ -32,10 +32,49 @@ interface SchoolBranding {
   appShortName: string | null;
 }
 
+function InAppInstallButton({ triggerInstall, appName }: { triggerInstall: () => Promise<boolean>; appName: string }) {
+  const [installing, setInstalling] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleClick = async () => {
+    setInstalling(true);
+    setFailed(false);
+    const success = await triggerInstall();
+    setInstalling(false);
+    if (!success) {
+      setFailed(true);
+      setTimeout(() => setFailed(false), 5000);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-2">
+      <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full">
+        {installing ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Preparing...
+          </>
+        ) : (
+          <>
+            <Download className="w-5 h-5" />
+            Install {appName}
+          </>
+        )}
+      </Button>
+      {failed && (
+        <p className="text-xs text-muted-foreground text-center">
+          Please wait a moment and try again
+        </p>
+      )}
+    </div>
+  );
+}
+
 export const InstallAppPage = forwardRef<HTMLDivElement>(function InstallAppPage(_props, ref) {
   const { tenant } = useTenant();
   const { school, user } = useAuth();
-  const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
+  const { isInstalled, triggerInstall } = useInstallPrompt();
   const platform = getPlatform();
   const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
 
@@ -130,28 +169,7 @@ export const InstallAppPage = forwardRef<HTMLDivElement>(function InstallAppPage
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 w-full max-w-xs">
-                <Button
-                  size="lg"
-                  onClick={async () => {
-                    if (hasPrompt) {
-                      await triggerInstall();
-                    }
-                  }}
-                  className="gap-2 w-full"
-                >
-                  <Download className="w-5 h-5" />
-                  Install {appName}
-                </Button>
-                {!hasPrompt && platform === 'ios' && (
-                  <div className="text-xs text-muted-foreground text-center space-y-1 mt-1">
-                    <p className="font-medium">Tap <Share className="w-3.5 h-3.5 inline text-primary" /> Share → <PlusSquare className="w-3.5 h-3.5 inline text-primary" /> Add to Home Screen</p>
-                  </div>
-                )}
-                {!hasPrompt && platform === 'android' && (
-                  <div className="text-xs text-muted-foreground text-center mt-1">
-                    <p>If button doesn't work: Tap <strong>⋮ menu</strong> → <strong>"Install app"</strong></p>
-                  </div>
-                )}
+                <InAppInstallButton triggerInstall={triggerInstall} appName={appName} />
               </div>
             )}
           </div>

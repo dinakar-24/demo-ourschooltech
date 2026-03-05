@@ -1,6 +1,6 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
-import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare, ArrowLeft } from 'lucide-react';
+import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -24,10 +24,49 @@ interface SchoolData {
   backgroundColor: string | null;
 }
 
+function InstallButton({ triggerInstall, appName }: { triggerInstall: () => Promise<boolean>; appName: string }) {
+  const [installing, setInstalling] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleClick = async () => {
+    setInstalling(true);
+    setFailed(false);
+    const success = await triggerInstall();
+    setInstalling(false);
+    if (!success) {
+      setFailed(true);
+      // Auto-hide failure message after 5 seconds
+      setTimeout(() => setFailed(false), 5000);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-2">
+      <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full text-base">
+        {installing ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Preparing Install...
+          </>
+        ) : (
+          <>
+            <Download className="w-5 h-5" />
+            Install {appName}
+          </>
+        )}
+      </Button>
+      {failed && (
+        <p className="text-xs text-muted-foreground text-center">
+          Please wait a moment and try again, or use your browser's menu → "Install app"
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function PublicInstallPage() {
   const { tenant, isSubdomain } = useTenant();
-  const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
-  const platform = getPlatform();
+  const { isInstalled, triggerInstall } = useInstallPrompt();
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -176,59 +215,7 @@ export default function PublicInstallPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                  {/* Always show install button - it will try the native prompt or guide user */}
-                  <Button
-                    size="lg"
-                    onClick={async () => {
-                      if (hasPrompt) {
-                        await triggerInstall();
-                      } else {
-                        // No prompt available — guide user to browser menu
-                        const menuEl = document.getElementById('manual-install-steps');
-                        if (menuEl) menuEl.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="gap-2 w-full text-base"
-                  >
-                    <Download className="w-5 h-5" />
-                    Install App
-                  </Button>
-
-                  <div id="manual-install-steps" className="space-y-3 w-full mt-2">
-                    {platform === 'ios' ? (
-                      <>
-                        <p className="text-xs text-muted-foreground text-center font-medium">If the button above doesn't work:</p>
-                        <div className="flex items-start gap-3 text-left">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                          <p className="text-sm text-foreground">
-                            Tap the <Share className="w-4 h-4 inline text-primary" /> <strong>Share</strong> button in Safari
-                          </p>
-                        </div>
-                        <div className="flex items-start gap-3 text-left">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                          <p className="text-sm text-foreground">
-                            Tap <PlusSquare className="w-4 h-4 inline text-primary" /> <strong>Add to Home Screen</strong>
-                          </p>
-                        </div>
-                        <div className="flex items-start gap-3 text-left">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
-                          <p className="text-sm text-foreground">Tap <strong>Add</strong> to confirm</p>
-                        </div>
-                      </>
-                    ) : platform === 'android' ? (
-                      <>
-                        <p className="text-xs text-muted-foreground text-center font-medium">If the button above doesn't work:</p>
-                        <div className="flex items-start gap-3 text-left">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
-                          <p className="text-sm text-foreground">Make sure you're using <strong>Chrome</strong></p>
-                        </div>
-                        <div className="flex items-start gap-3 text-left">
-                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
-                          <p className="text-sm text-foreground">Tap <strong>⋮ menu</strong> (top right) → <strong>Install app</strong></p>
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
+                  <InstallButton triggerInstall={triggerInstall} appName={subUpper || appName} />
                 </div>
               )}
             </div>
