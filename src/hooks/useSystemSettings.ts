@@ -24,10 +24,10 @@ export function useSystemSettings() {
 
   const updateSetting = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: Record<string, any> }) => {
+      const userId = (await supabase.auth.getUser()).data.user?.id;
       const { error } = await supabase
         .from('system_settings' as any)
-        .update({ value, updated_by: (await supabase.auth.getUser()).data.user?.id } as any)
-        .eq('key', key);
+        .upsert({ key, value, updated_by: userId, updated_at: new Date().toISOString() } as any, { onConflict: 'key' });
       if (error) throw error;
     },
     onSuccess: () => {
