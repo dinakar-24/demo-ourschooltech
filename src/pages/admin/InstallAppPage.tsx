@@ -7,9 +7,10 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Smartphone, Share, Plus, MoreVertical, CheckCircle2 } from 'lucide-react';
+import { Smartphone, CheckCircle2, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 const BASE_DOMAIN = 'ourschooltech.com';
 
@@ -17,12 +18,12 @@ export default function InstallAppPage() {
   const { school } = useAuth();
   const { impersonatedSchool, isImpersonating } = useImpersonation();
   const { tenant, isSubdomain } = useTenant();
-  const { canInstall, isInstalled, isIOS, promptInstall } = useInstallPrompt();
+  const { isInstalled, promptInstall } = useInstallPrompt();
   const schoolId = useEffectiveSchoolId();
+  const [installing, setInstalling] = useState(false);
 
   const displaySchool = isImpersonating ? impersonatedSchool : school;
 
-  // Fetch subdomain for the current school (needed when super admin impersonates)
   const { data: schoolSubdomain } = useQuery({
     queryKey: ['school-subdomain', schoolId],
     queryFn: async () => {
@@ -33,7 +34,6 @@ export default function InstallAppPage() {
     staleTime: Infinity,
   });
 
-  // Build the correct school portal URL
   const portalUrl = isSubdomain && tenant
     ? `https://${tenant.subdomain}.${BASE_DOMAIN}`
     : schoolSubdomain
@@ -41,9 +41,18 @@ export default function InstallAppPage() {
       : window.location.origin;
 
   const handleInstall = async () => {
-    const accepted = await promptInstall();
-    if (accepted) {
-      toast.success('App installed successfully!');
+    setInstalling(true);
+    try {
+      const accepted = await promptInstall();
+      if (accepted) {
+        toast.success('App installed successfully!');
+      } else {
+        toast.info('Installation cancelled');
+      }
+    } catch {
+      toast.error('Installation not available. Please use Chrome or Edge browser.');
+    } finally {
+      setInstalling(false);
     }
   };
 
@@ -55,100 +64,46 @@ export default function InstallAppPage() {
   return (
     <AdminLayout title="Install App">
       <div className="max-w-lg mx-auto space-y-6 pb-8">
-        {/* School branding */}
         <div className="text-center space-y-3 pt-2">
           {displaySchool?.logo && (
             <div className="w-20 h-20 mx-auto flex items-center justify-center overflow-hidden shrink-0">
-              <img
-                src={displaySchool.logo}
-                alt={displaySchool.name}
-                className="max-w-full max-h-full object-contain"
-              />
+              <img src={displaySchool.logo} alt={displaySchool.name} className="max-w-full max-h-full object-contain" />
             </div>
           )}
           <div>
             <h2 className="text-lg font-bold text-foreground">{displaySchool?.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">Install as a mobile app</p>
+            <p className="text-sm text-muted-foreground mt-1">Install the app on your device</p>
           </div>
         </div>
 
-        {/* Already installed state */}
-        {isInstalled && (
+        {isInstalled ? (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 p-4 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
               App is already installed on this device!
             </p>
           </div>
-        )}
-
-        {/* Install button (Android/Desktop) */}
-        {canInstall && !isInstalled && (
-          <Button onClick={handleInstall} className="w-full h-12 rounded-xl text-base font-semibold gap-2" size="lg">
-            <Smartphone className="w-5 h-5" />
-            Install App
+        ) : (
+          <Button
+            onClick={handleInstall}
+            disabled={installing}
+            className="w-full h-12 rounded-xl text-base font-semibold gap-2"
+            size="lg"
+          >
+            {installing ? (
+              <>
+                <Smartphone className="w-5 h-5 animate-pulse" />
+                Installing...
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                Install App
+              </>
+            )}
           </Button>
         )}
 
-        {/* iOS instructions */}
-        {isIOS && !isInstalled && (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="font-semibold text-foreground text-sm">Install on iPhone / iPad</h3>
-            <ol className="space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Share className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tap the <strong className="text-foreground">Share</strong> button in Safari's toolbar
-                </p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Plus className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Scroll down and tap <strong className="text-foreground">Add to Home Screen</strong>
-                </p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tap <strong className="text-foreground">Add</strong> to install the app
-                </p>
-              </li>
-            </ol>
-          </div>
-        )}
-
-        {/* Android instructions (when prompt not available) */}
-        {!canInstall && !isIOS && !isInstalled && (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="font-semibold text-foreground text-sm">Install on Android</h3>
-            <ol className="space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <MoreVertical className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tap the <strong className="text-foreground">⋮ menu</strong> in your browser
-                </p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Plus className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tap <strong className="text-foreground">Install App</strong> or <strong className="text-foreground">Add to Home Screen</strong>
-                </p>
-              </li>
-            </ol>
-          </div>
-        )}
-
-        {/* QR Code */}
         <div className="rounded-xl border border-border bg-card p-5 text-center space-y-3">
           <h3 className="font-semibold text-foreground text-sm">Share with Teachers & Parents</h3>
           <p className="text-xs text-muted-foreground">Scan this QR code from any phone to open the school portal</p>

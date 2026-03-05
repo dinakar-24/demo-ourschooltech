@@ -10,15 +10,15 @@ const DISMISS_KEY = 'pwa-install-dismissed';
 
 export function InstallAppBanner() {
   const { tenant, isSubdomain } = useTenant();
-  const { canInstall, isInstalled, isIOS, promptInstall } = useInstallPrompt();
+  const { isInstalled, promptInstall } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(() => {
-    // Only dismiss for 24 hours
     const stored = localStorage.getItem(DISMISS_KEY);
     if (!stored) return false;
     const dismissedAt = parseInt(stored, 10);
     return Date.now() - dismissedAt < 24 * 60 * 60 * 1000;
   });
   const [visible, setVisible] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -26,17 +26,23 @@ export function InstallAppBanner() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Only show on subdomain pages, not on /install (has its own UI)
   if (!isSubdomain) return null;
   if (location.pathname === '/install') return null;
   if (isInstalled || dismissed || !visible) return null;
 
   const handleInstall = async () => {
-    if (canInstall) {
+    setInstalling(true);
+    try {
       const accepted = await promptInstall();
       if (accepted) {
         toast.success('App installed successfully!');
+      } else {
+        toast.info('Installation cancelled');
       }
+    } catch {
+      toast.error('Installation not available. Please use Chrome or Edge browser.');
+    } finally {
+      setInstalling(false);
     }
   };
 
@@ -70,24 +76,14 @@ export function InstallAppBanner() {
           </button>
         </div>
 
-        {/* Always show install button - native prompt if available, otherwise guide user */}
         <Button
-          onClick={canInstall ? handleInstall : undefined}
+          onClick={handleInstall}
+          disabled={installing}
           className="w-full mt-3 h-10 rounded-xl text-sm font-bold gap-2"
           size="sm"
-          asChild={!canInstall}
         >
-          {canInstall ? (
-            <>
-              <Download className="w-4 h-4" />
-              Install App
-            </>
-          ) : (
-            <a href="/install" className="flex items-center justify-center gap-2">
-              <Download className="w-4 h-4" />
-              Install App
-            </a>
-          )}
+          <Download className="w-4 h-4" />
+          {installing ? 'Installing...' : 'Install App'}
         </Button>
       </div>
     </div>
