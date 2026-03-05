@@ -12,6 +12,7 @@ import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { useDynamicManifest } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
+import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { lazy, Suspense } from "react";
 
 // Eagerly loaded pages (small, needed immediately)
@@ -330,6 +331,7 @@ const App = () => (
             <AuthProvider>
               <ImpersonationProvider>
                 <AppRoutes />
+                <InstallAppBanner />
               </ImpersonationProvider>
             </AuthProvider>
           </TenantProvider>

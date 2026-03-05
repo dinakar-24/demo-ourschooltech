@@ -23,7 +23,9 @@ import {
   Shield,
   Loader2,
   Globe,
+  Smartphone,
 } from 'lucide-react';
+import { InstallAppPage } from '@/components/pwa/InstallAppPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
@@ -92,6 +94,7 @@ export default function SettingsPage() {
     { value: 'notifications', label: 'Notifications', icon: Bell },
     { value: 'security', label: 'Security', icon: Lock },
     { value: 'language', label: 'Language', icon: Globe },
+    { value: 'app', label: 'Install App', icon: Smartphone },
   ];
 
   return (
@@ -118,7 +121,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Desktop: Tab bar */}
-          <TabsList className="hidden sm:grid sm:grid-cols-5 sm:w-[500px]">
+          <TabsList className="hidden sm:grid sm:grid-cols-6 sm:w-[600px]">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
             ))}
@@ -357,6 +360,11 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Install App */}
+          <TabsContent value="app" className="space-y-6">
+            <InstallAppPage />
           </TabsContent>
 
         </Tabs>
