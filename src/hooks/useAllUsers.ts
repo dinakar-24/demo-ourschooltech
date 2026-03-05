@@ -11,6 +11,7 @@ interface UserWithRole {
   avatar_url: string | null;
   school_name?: string;
   roles: string[];
+  linked_students?: string[];
 }
 
 interface RoleCounts {
@@ -159,11 +160,34 @@ export function useAllUsers({ page, pageSize, searchQuery, roleFilter }: UseAllU
         rolesMap.set(r.user_id, existing);
       });
 
-      const usersWithRoles = (profiles || []).map(profile => ({
+      const usersWithRoles: UserWithRole[] = (profiles || []).map(profile => ({
         ...profile,
         roles: rolesMap.get(profile.id) || [],
         school_name: profile.school_id ? schoolsCache.current.get(profile.school_id) : undefined,
       }));
+
+      // Enrich parents with linked student names
+      const parentUsers = usersWithRoles.filter(u => u.roles.includes('parent'));
+      if (parentUsers.length > 0) {
+        const parentEmails = parentUsers.map(p => p.email);
+        const { data: linkedStudents } = await supabase
+          .from('students')
+          .select('full_name, parent_email')
+          .in('parent_email', parentEmails);
+
+        const parentStudentMap = new Map<string, string[]>();
+        (linkedStudents || []).forEach((s: any) => {
+          const existing = parentStudentMap.get(s.parent_email) || [];
+          existing.push(s.full_name);
+          parentStudentMap.set(s.parent_email, existing);
+        });
+
+        usersWithRoles.forEach(u => {
+          if (u.roles.includes('parent')) {
+            u.linked_students = parentStudentMap.get(u.email) || [];
+          }
+        });
+      }
 
       setUsers(usersWithRoles);
       setTotalCount(count || 0);
