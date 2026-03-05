@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { Button } from '@/components/ui/button';
-import { X, Download, Share } from 'lucide-react';
+import { X, Download, Share, MoreVertical, Plus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export function InstallAppBanner() {
-  const { tenant, isSubdomain } = useTenant();
+  const { tenant } = useTenant();
   const { canInstall, isInstalled, isIOS, promptInstall } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(false);
   const [visible, setVisible] = useState(false);
+  const location = useLocation();
 
   // Show banner after a short delay
   useEffect(() => {
@@ -16,11 +18,11 @@ export function InstallAppBanner() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Don't show if not on subdomain, already installed, or dismissed this session
-  if (!isSubdomain || isInstalled || dismissed || !visible) return null;
+  // Don't show on /install page (it has its own UI), or if already installed, or dismissed
+  if (location.pathname === '/install') return null;
+  if (isInstalled || dismissed || !visible) return null;
 
-  // Show for both canInstall (Android/Desktop) and iOS
-  if (!canInstall && !isIOS) return null;
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
   const handleInstall = async () => {
     if (canInstall) {
@@ -30,7 +32,6 @@ export function InstallAppBanner() {
 
   const handleDismiss = () => {
     setDismissed(true);
-    // Only dismiss for this session, show again next visit
   };
 
   return (
@@ -45,10 +46,16 @@ export function InstallAppBanner() {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground leading-tight">
-              Install {tenant?.appDisplayName || tenant?.name}
+              Install {tenant?.appDisplayName || tenant?.name || 'School App'}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {isIOS ? 'Tap Share → Add to Home Screen' : 'Add to your home screen for quick access'}
+              {canInstall
+                ? 'Add to your home screen for quick access'
+                : isIOS
+                  ? 'Tap Share → Add to Home Screen'
+                  : isAndroid
+                    ? 'Tap ⋮ menu → Install App'
+                    : 'Add to your home screen for quick access'}
             </p>
           </div>
           <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground shrink-0 p-0.5">
@@ -56,6 +63,7 @@ export function InstallAppBanner() {
           </button>
         </div>
 
+        {/* Native install prompt (Chrome/Edge on Android/Desktop) */}
         {canInstall && (
           <Button onClick={handleInstall} className="w-full mt-3 h-9 rounded-xl text-sm font-semibold gap-2" size="sm">
             <Download className="w-4 h-4" />
@@ -63,10 +71,27 @@ export function InstallAppBanner() {
           </Button>
         )}
 
+        {/* iOS instructions */}
         {isIOS && !canInstall && (
           <div className="flex items-center gap-2 mt-3 p-2.5 rounded-lg bg-muted/50 text-xs text-muted-foreground">
             <Share className="w-4 h-4 shrink-0 text-primary" />
-            <span>Tap the <strong className="text-foreground">Share</strong> button below, then <strong className="text-foreground">Add to Home Screen</strong></span>
+            <span>Tap the <strong className="text-foreground">Share</strong> button, then <strong className="text-foreground">Add to Home Screen</strong></span>
+          </div>
+        )}
+
+        {/* Android fallback (when beforeinstallprompt didn't fire) */}
+        {isAndroid && !canInstall && !isIOS && (
+          <div className="flex items-center gap-2 mt-3 p-2.5 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+            <MoreVertical className="w-4 h-4 shrink-0 text-primary" />
+            <span>Tap <strong className="text-foreground">⋮ menu</strong> → <strong className="text-foreground">Install App</strong> or <strong className="text-foreground">Add to Home Screen</strong></span>
+          </div>
+        )}
+
+        {/* Desktop fallback */}
+        {!canInstall && !isIOS && !isAndroid && (
+          <div className="flex items-center gap-2 mt-3 p-2.5 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+            <Plus className="w-4 h-4 shrink-0 text-primary" />
+            <span>Use your browser's <strong className="text-foreground">Install</strong> option to add this app</span>
           </div>
         )}
       </div>
