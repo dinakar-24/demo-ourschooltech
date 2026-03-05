@@ -10,6 +10,7 @@ import { TableSkeleton, CardSkeleton, ErrorState } from '@/components/ui/data-st
 import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, useToggleSchoolStatus, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
 import { DeleteSchoolDialog } from '@/components/super-admin/schools/DeleteSchoolDialog';
+import { PwaSettingsDialog } from '@/components/super-admin/schools/PwaSettingsDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
 import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 import { usePagination } from '@/hooks/usePagination';
@@ -48,6 +49,8 @@ export default function SchoolsPage() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [deletingSchool, setDeletingSchool] = useState<School | null>(null);
   const [togglingSchool, setTogglingSchool] = useState<School | null>(null);
+  const [pwaSchool, setPwaSchool] = useState<any>(null);
+  const [pwaDialogOpen, setPwaDialogOpen] = useState(false);
 
   const handleOpenAddDialog = useCallback(() => {
     setEditingSchool(null);
@@ -97,6 +100,19 @@ export default function SchoolsPage() {
 
   const handleToggleStatus = useCallback((school: School) => {
     setTogglingSchool(school);
+  }, []);
+
+  const handlePwaSettings = useCallback(async (school: School) => {
+    // Fetch full school data including PWA fields
+    const { data } = await supabase
+      .from('schools')
+      .select('id, name, code, logo, primary_color, accent_color, secondary_color, background_color, app_display_name, app_short_name, splash_screen_image_url')
+      .eq('id', school.id)
+      .single();
+    if (data) {
+      setPwaSchool(data);
+      setPwaDialogOpen(true);
+    }
   }, []);
 
   const [togglePassword, setTogglePassword] = useState('');
@@ -204,6 +220,7 @@ export default function SchoolsPage() {
                       onDelete={handleDelete}
                       onImpersonate={handleImpersonate}
                       onToggleStatus={handleToggleStatus}
+                      onPwaSettings={handlePwaSettings}
                       isToggling={toggleStatusMutation.isPending && togglingSchool?.id === school.id}
                     />
                   ))}
@@ -217,6 +234,7 @@ export default function SchoolsPage() {
                     onDelete={handleDelete}
                     onImpersonate={handleImpersonate}
                     onToggleStatus={handleToggleStatus}
+                    onPwaSettings={handlePwaSettings}
                     isTogglingId={toggleStatusMutation.isPending ? togglingSchool?.id || null : null}
                   />
                 </div>
@@ -240,6 +258,16 @@ export default function SchoolsPage() {
           editingSchool={editingSchool}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+        />
+
+        {/* PWA Settings Dialog */}
+        <PwaSettingsDialog
+          open={pwaDialogOpen}
+          onOpenChange={(open) => {
+            setPwaDialogOpen(open);
+            if (!open) setPwaSchool(null);
+          }}
+          school={pwaSchool}
         />
 
         {/* Delete Confirmation Dialog */}

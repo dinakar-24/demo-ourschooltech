@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BASE_DOMAIN = 'ourschooltech.com';
@@ -37,6 +37,7 @@ interface SchoolsTableProps {
   onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
   onToggleStatus?: (school: School) => void;
+  onPwaSettings?: (school: School) => void;
   isTogglingId?: string | null;
 }
 
@@ -46,6 +47,7 @@ export const SchoolsTable = memo(function SchoolsTable({
   onDelete,
   onImpersonate,
   onToggleStatus,
+  onPwaSettings,
   isTogglingId,
 }: SchoolsTableProps) {
   const navigate = useNavigate();
@@ -145,6 +147,11 @@ export const SchoolsTable = memo(function SchoolsTable({
                       >
                         <Eye className="w-3.5 h-3.5 mr-1" />
                         Impersonate
+                      </Button>
+                    )}
+                    {onPwaSettings && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onPwaSettings(school)} title="PWA Settings">
+                        <Smartphone className="w-3.5 h-3.5" />
                       </Button>
                     )}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(school)}>
