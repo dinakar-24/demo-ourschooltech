@@ -1,75 +1,33 @@
 
 
-## Plan: PWA Install Module with QR Code Download
+## Plan: Fix PWA Manifest — Correct Names, Proper Icons, Standalone App
 
-### Overview
-Build a complete PWA install system across all roles (Admin, Teacher, Parent, Student) with school branding and a scannable QR code that links to the school's subdomain URL for easy app installation.
+### Problems Identified
 
-### 1. Install `vite-plugin-pwa` and configure
+1. **Name shows "DPS001"** — The `short_name` uses `tenant.code.toUpperCase()` (e.g., "DPS001") instead of a readable abbreviation. It should show role-specific names like "SSE Admin", "SSE Parent", etc.
+2. **Logo not fitting** — The manifest declares the school logo as `purpose: 'any maskable'` combined in one entry. Maskable icons need safe-zone padding. Declaring a regular logo as maskable causes cropping/fitting issues.
+3. **Chrome badge showing** — This happens when the PWA isn't properly installed via the manifest (likely because the dynamic manifest isn't applied correctly when not on a subdomain, or the static fallback manifest from vite-plugin-pwa takes over).
+4. **Manifest only works on subdomain** — `useDynamicManifest` exits early with `if (!isSubdomain || !tenant) return;`, so when admin accesses via the main URL, the static "OurSchoolTech" manifest from `vite.config.ts` is used instead.
 
-Update `vite.config.ts` to add the PWA plugin with:
-- `registerType: 'autoUpdate'` for automatic service worker updates
-- `navigateFallbackDenylist: [/^\/~oauth/]` to protect OAuth flows
-- Minimal fallback manifest (overridden by `useDynamicManifest` at runtime)
-- Workbox runtime caching for assets and API calls
+### Changes
 
-### 2. Create `useInstallPrompt` hook
+#### 1. Fix `useDynamicManifest.ts`
+- Remove the `if (!isSubdomain || !tenant) return;` guard — allow it to work for logged-in users even without subdomain by accepting school data as props
+- Accept optional school branding props (name, logo, subdomain) as fallback when no tenant
+- Fix `short_name` to use school abbreviation/subdomain + role (e.g., "SSE Admin", "SSE Parent") instead of the code
+- Split icons into two entries: one with `purpose: 'any'` and one with `purpose: 'maskable'` — this prevents the cropping issue
+- Add proper `categories` and `display_override` for better PWA behavior
 
-New file: `src/hooks/useInstallPrompt.ts`
-- Captures `beforeinstallprompt` browser event
-- Exposes `canInstall`, `triggerInstall()`, `isInstalled` (detects standalone mode)
-- Dismissal state persisted in localStorage
+#### 2. Update `src/App.tsx` (ManifestManager component)
+- Pass school data from `useAuth()` to `useDynamicManifest` so it works even without subdomain/tenant context
+- Fetch school branding (subdomain, logo, app_display_name) from DB when tenant is not available
 
-### 3. Create `InstallAppBanner` component
+#### 3. Update `vite.config.ts`
+- Set `manifest: false` in vite-plugin-pwa config so the static manifest doesn't interfere with the dynamic one
+- Keep service worker and workbox config as-is
 
-New file: `src/components/pwa/InstallAppBanner.tsx`
-- Floating bottom banner shown on mobile when app is not installed
-- Displays school logo + name from `TenantContext`
-- "Install" button and dismiss "X"
-- Auto-hides when already installed or dismissed
-
-### 4. Create `InstallAppPage` component with QR Code
-
-New file: `src/components/pwa/InstallAppPage.tsx`
-
-This is the main install guide page featuring:
-- **School branding**: logo, name, primary color from TenantContext
-- **Working QR code** using `qrcode.react` (already installed) that encodes the school's subdomain URL (e.g., `https://greenwood.ourschooltech.com`)
-- **Platform detection**: shows native install button on Android, step-by-step "Add to Home Screen" instructions for iOS Safari
-- **"Already Installed"** state when running in standalone mode
-- **Feature highlights**: offline access, push notifications, fast loading
-
-The QR code URL is constructed dynamically: `https://{school.code}.ourschooltech.com` -- so anyone scanning it on their phone lands on the school's branded landing page and can install from there.
-
-### 5. Update `useDynamicManifest`
-
-Add `id` field for better PWA identity tracking.
-
-### 6. Integrate into all role settings/menus
-
-- **Admin Settings** (`SettingsPage.tsx`): Add "App" tab with the install page + QR code
-- **Teacher Settings** (`TeacherSettings.tsx`): Add "Install App" section with QR
-- **Parent More** (`ParentMorePage.tsx`): Add "Install App" menu item; **Parent Settings** (`ParentSettings.tsx`): Add install section
-- **Student Settings** (`StudentSettings.tsx`): Add install section
-- **All dashboards**: Render `<InstallAppBanner />` globally in `App.tsx`
-
-### 7. Clean up `main.tsx`
-
-Remove old service worker unregister code -- `vite-plugin-pwa` handles SW lifecycle.
-
-### Files to create
-1. `src/hooks/useInstallPrompt.ts`
-2. `src/components/pwa/InstallAppBanner.tsx`
-3. `src/components/pwa/InstallAppPage.tsx`
-
-### Files to modify
-1. `vite.config.ts` -- add vite-plugin-pwa
-2. `src/main.tsx` -- remove old SW cleanup
-3. `src/hooks/useDynamicManifest.ts` -- add `id` field
-4. `src/App.tsx` -- render InstallAppBanner
-5. `src/pages/admin/SettingsPage.tsx` -- add App/Install tab
-6. `src/pages/parent/ParentMorePage.tsx` -- add Install App link
-7. `src/pages/parent/ParentSettings.tsx` -- add install section
-8. `src/pages/student/StudentSettings.tsx` -- add install section
-9. `src/pages/teacher/TeacherSettings.tsx` -- add install section
+### Files to Modify
+1. `src/hooks/useDynamicManifest.ts` — accept school fallback, fix short_name, fix icon purpose
+2. `src/App.tsx` — pass school branding to manifest hook
+3. `vite.config.ts` — disable static manifest generation
 
