@@ -49,6 +49,8 @@ interface SectionStudent {
   admission_number: string;
   roll_number: number | null;
   avatar_url: string | null;
+  user_id: string | null;
+  email: string | null;
   parent_name: string | null;
   parent_email: string | null;
   parent_phone: string | null;
@@ -198,7 +200,7 @@ export default function SchoolUsersPage() {
     try {
       let query = supabase
         .from('students')
-        .select('id, full_name, admission_number, roll_number, avatar_url, parent_name, parent_email, parent_phone')
+        .select('id, full_name, admission_number, roll_number, avatar_url, user_id, parent_name, parent_email, parent_phone')
         .eq('school_id', schoolId)
         .eq('class_name', section.className)
         .eq('section', section.name)
@@ -211,7 +213,22 @@ export default function SchoolUsersPage() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setSectionStudents(data || []);
+
+      // Fetch emails from profiles for students with user_id
+      const userIds = (data || []).map(s => s.user_id).filter(Boolean) as string[];
+      const emailMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds);
+        (profiles || []).forEach(p => emailMap.set(p.id, p.email));
+      }
+
+      setSectionStudents((data || []).map(s => ({
+        ...s,
+        email: s.user_id ? (emailMap.get(s.user_id) || null) : null,
+      })));
     } catch {
       toast.error('Failed to load students');
     } finally {
@@ -246,12 +263,20 @@ export default function SchoolUsersPage() {
     } else if (action === 'enable' && userId) {
       setDisabledUsers(prev => { const next = new Set(prev); next.delete(userId); return next; });
     } else if (action === 'delete' && userId) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+      if (view === 'section-students') {
+        setSectionStudents(prev => prev.filter(s => s.user_id !== userId));
+      } else {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+      }
       return;
     }
-    const tile = CATEGORY_TILES.find(t => t.key === view);
-    if (tile?.role) fetchUsers(tile.role);
-  }, [view, fetchUsers]);
+    if (view === 'section-students' && selectedSection) {
+      fetchSectionStudents(selectedSection);
+    } else {
+      const tile = CATEGORY_TILES.find(t => t.key === view);
+      if (tile?.role) fetchUsers(tile.role);
+    }
+  }, [view, fetchUsers, fetchSectionStudents, selectedSection]);
 
   const handleBack = () => {
     if (view === 'overview') {
@@ -538,7 +563,20 @@ export default function SchoolUsersPage() {
                             <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{student.full_name}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium truncate">{student.full_name}</p>
+                              {student.user_id && student.email && (
+                                <UserActionsMenu
+                                  userId={student.user_id}
+                                  userName={student.full_name}
+                                  userEmail={student.email}
+                                  isDisabled={disabledUsers.has(student.user_id)}
+                                  isSelf={currentUser?.id === student.user_id}
+                                  onActionComplete={handleActionComplete}
+                                  currentFullName={student.full_name}
+                                />
+                              )}
+                            </div>
                             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                               {student.roll_number && (
                                 <span className="flex items-center gap-0.5">
