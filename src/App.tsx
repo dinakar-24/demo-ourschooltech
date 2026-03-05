@@ -10,9 +10,7 @@ import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { ProtectedRoute, getRoleDashboard } from "@/components/auth/ProtectedRoute";
 import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
-import { useDynamicManifest, SchoolBrandingFallback } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
-import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -23,7 +21,6 @@ import TenantErrorPage from "./pages/TenantErrorPage";
 import SubdomainLanding from "./pages/login/SubdomainLanding";
 
 const ReceiptVerificationPage = lazy(() => import("./pages/ReceiptVerificationPage"));
-const PublicInstallPage = lazy(() => import("./pages/PublicInstallPage"));
 
 // Lazy loaded pages -- Super Admin
 const SuperAdminDashboard = lazy(() => import("./pages/super-admin/SuperAdminDashboard"));
@@ -36,7 +33,7 @@ const SystemAnnouncementsPage = lazy(() => import("./pages/super-admin/SystemAnn
 const AuditLogsPage = lazy(() => import("./pages/super-admin/AuditLogsPage"));
 const SuperAdminReportsPage = lazy(() => import("./pages/super-admin/SuperAdminReportsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/super-admin/SubscriptionsPage"));
-const SuperAdminInstallPage = lazy(() => import("./pages/super-admin/SuperAdminInstallPage"));
+
 
 
 // Lazy loaded pages -- Admin
@@ -162,51 +159,6 @@ function AuthRedirect() {
   return <Navigate to="/login" replace />;
 }
 
-// Dynamic manifest handler
-function DynamicManifestHandler() {
-  const { user, school } = useAuth();
-  const { tenant } = useTenant();
-  const [schoolBranding, setSchoolBranding] = useState<SchoolBrandingFallback | undefined>(undefined);
-
-  const roleMap: Record<string, string> = {
-    school_admin: 'admin',
-    teacher: 'teacher',
-    parent: 'parent',
-    student: 'student',
-  };
-
-  // Fetch school branding when no tenant context (non-subdomain access)
-  useEffect(() => {
-    if (tenant || !school?.id) {
-      setSchoolBranding(undefined);
-      return;
-    }
-
-    const fetchBranding = async () => {
-      const { data } = await supabase
-        .from('schools')
-        .select('name, logo, subdomain, app_display_name, app_short_name, primary_color, background_color')
-        .eq('id', school.id)
-        .single();
-
-      if (data) {
-        setSchoolBranding({
-          name: data.name,
-          logo: data.logo ?? undefined,
-          subdomain: data.subdomain,
-          appDisplayName: data.app_display_name,
-          appShortName: data.app_short_name,
-          primaryColor: data.primary_color ?? undefined,
-          backgroundColor: data.background_color ?? undefined,
-        });
-      }
-    };
-    fetchBranding();
-  }, [tenant, school?.id]);
-
-  useDynamicManifest(user ? roleMap[user.role] : undefined, schoolBranding);
-  return null;
-}
 
 // Predictive preloader -- silently loads role-specific chunks after login
 function PrefetchHandler() {
@@ -228,14 +180,14 @@ function AppRoutes() {
 
   return (
     <>
-      <DynamicManifestHandler />
+      
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<AuthRedirect />} />
           <Route path="/receipt/:receiptNumber" element={<ReceiptVerificationPage />} />
-          <Route path="/install" element={<PublicInstallPage />} />
+          
           <Route path="/login" element={isSubdomain ? <Navigate to="/" replace /> : <LoginPage />} />
 
           {isSubdomain && (
@@ -263,7 +215,7 @@ function AppRoutes() {
               <Route path="/super-admin/reports" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminReportsPage /></ProtectedRoute>} />
               <Route path="/super-admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogsPage /></ProtectedRoute>} />
               <Route path="/super-admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemSettingsPage /></ProtectedRoute>} />
-              <Route path="/super-admin/install" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminInstallPage /></ProtectedRoute>} />
+              
               <Route path="/super-admin/*" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
             </>
           )}
@@ -371,7 +323,7 @@ const App = () => (
             <AuthProvider>
               <ImpersonationProvider>
                 <AppRoutes />
-                <InstallAppBanner />
+                
               </ImpersonationProvider>
             </AuthProvider>
           </TenantProvider>
