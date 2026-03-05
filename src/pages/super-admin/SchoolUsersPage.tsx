@@ -59,9 +59,9 @@ interface SectionStudent {
 }
 
 const CATEGORY_TILES = [
-  { key: 'admins' as ViewMode, label: 'Admins', icon: UserCheck, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30', border: 'border-teal-200 dark:border-teal-800', role: 'school_admin' },
-  { key: 'teachers' as ViewMode, label: 'Teachers', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', role: 'teacher' },
-  { key: 'classes' as ViewMode, label: 'Classes & Sections', icon: School, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', role: '' },
+  { key: 'admins' as ViewMode, label: 'Admins', icon: UserCheck, color: 'text-teal-600', bg: 'bg-gradient-to-br from-teal-50 to-teal-100/60 dark:from-teal-950/40 dark:to-teal-900/20', border: 'border-teal-200/60 dark:border-teal-800/60', iconBg: 'bg-teal-100 dark:bg-teal-900/50', role: 'school_admin' },
+  { key: 'teachers' as ViewMode, label: 'Teachers', icon: BookOpen, color: 'text-blue-600', bg: 'bg-gradient-to-br from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/20', border: 'border-blue-200/60 dark:border-blue-800/60', iconBg: 'bg-blue-100 dark:bg-blue-900/50', role: 'teacher' },
+  { key: 'classes' as ViewMode, label: 'Classes & Sections', icon: School, color: 'text-emerald-600', bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100/60 dark:from-emerald-950/40 dark:to-emerald-900/20', border: 'border-emerald-200/60 dark:border-emerald-800/60', iconBg: 'bg-emerald-100 dark:bg-emerald-900/50', role: '' },
 ];
 
 export default function SchoolUsersPage() {
@@ -329,29 +329,34 @@ export default function SchoolUsersPage() {
 
   return (
     <SuperAdminLayout title={schoolName}>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9 rounded-full">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          {view !== 'overview' && (
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder={`Search ${view === 'section-students' ? 'students, parents...' : view === 'classes' ? 'classes...' : currentTile?.label || ''}...`}
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          )}
-          {view === 'overview' && <h2 className="text-lg font-semibold">{schoolName}</h2>}
-          {view === 'classes' && <h2 className="text-lg font-semibold">Classes & Sections</h2>}
-          {view === 'section-students' && selectedSection && (
-            <h2 className="text-lg font-semibold">{getViewTitle()}</h2>
-          )}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold truncate">
+              {view === 'overview' ? schoolName : view === 'section-students' && selectedSection ? getViewTitle() : currentTile?.label || 'Classes & Sections'}
+            </h2>
+            {view === 'overview' && (
+              <p className="text-xs text-muted-foreground">Manage school users and structure</p>
+            )}
+          </div>
         </div>
+
+        {/* Search bar for non-overview */}
+        {view !== 'overview' && (
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={`Search ${view === 'section-students' ? 'students, parents...' : view === 'classes' ? 'classes...' : currentTile?.label || ''}...`}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        )}
 
         {/* Overview Tiles */}
         {view === 'overview' && (
@@ -362,16 +367,20 @@ export default function SchoolUsersPage() {
               return (
                 <Card
                   key={tile.key}
-                  className={`cursor-pointer hover:shadow-md transition-shadow border ${tile.border} ${tile.bg}`}
+                  className={`cursor-pointer group hover:shadow-lg transition-all duration-200 border ${tile.border} ${tile.bg} hover:scale-[1.02]`}
                   onClick={() => setView(tile.key)}
                 >
-                  <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center gap-2">
-                    <Icon className={`w-8 h-8 ${tile.color}`} />
-                    <p className="font-semibold text-sm">{tile.label}</p>
-                    {count !== undefined && (
-                      <Badge variant="secondary" className="text-xs">{count}</Badge>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
+                  <CardContent className="p-5 sm:p-6 flex flex-col items-center text-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl ${tile.iconBg} flex items-center justify-center`}>
+                      <Icon className={`w-6 h-6 ${tile.color}`} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{tile.label}</p>
+                      {count !== undefined && (
+                        <p className={`text-2xl font-bold mt-1 ${tile.color}`}>{count}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </CardContent>
                 </Card>
               );
