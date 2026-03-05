@@ -6,12 +6,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 const BASE_DOMAIN = 'ourschooltech.com';
 const MAX_WIDTH_TABLET = 1024;
@@ -31,7 +25,6 @@ export default function PublicInstallPage() {
   const { tenant, isSubdomain } = useTenant();
   const { isInstalled, promptInstall } = useInstallPrompt();
   const [installing, setInstalling] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const isDesktop = useIsDesktop();
 
   const portalUrl = isSubdomain && tenant
@@ -43,7 +36,7 @@ export default function PublicInstallPage() {
     try {
       const accepted = await promptInstall();
       if (accepted) {
-        setShowSuccess(true);
+        toast.success('App installed successfully!');
       }
     } catch (err: any) {
       if (err?.message === 'INSTALL_NOT_AVAILABLE') {
@@ -152,24 +145,6 @@ export default function PublicInstallPage() {
         </div>
       </div>
 
-      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <DialogContent className="max-w-xs text-center">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Installation Successful</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-3 py-4">
-            <CheckCircle2 className="w-14 h-14 text-emerald-500" />
-            {schoolLogo && (
-              <img src={schoolLogo} alt={schoolName} className="w-16 h-16 object-contain" />
-            )}
-            <h3 className="text-lg font-bold text-foreground">{schoolName}</h3>
-            <p className="text-sm text-muted-foreground">App installed successfully! You can now access it from your home screen.</p>
-            <Button onClick={() => setShowSuccess(false)} className="w-full mt-2">
-              Got it
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
