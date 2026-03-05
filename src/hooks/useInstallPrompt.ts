@@ -69,7 +69,7 @@ export function useInstallPrompt() {
       promptRef.current.prompt();
       const { outcome } = await promptRef.current.userChoice;
       if (outcome === 'accepted') {
-        setIsInstalled(true);
+        // Don't set isInstalled here — wait for 'appinstalled' event
         promptRef.current = null;
         setHasPrompt(false);
         return true;
@@ -83,7 +83,6 @@ export function useInstallPrompt() {
       event.prompt();
       const { outcome } = await event.userChoice;
       if (outcome === 'accepted') {
-        setIsInstalled(true);
         promptRef.current = null;
         setHasPrompt(false);
         return true;

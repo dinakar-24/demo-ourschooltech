@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'favicon.png', 'images/ost-logo.png'],
+      includeAssets: ['favicon.ico', 'favicon.png', 'images/ost-logo.png', 'pwa-icon-512.png', 'pwa-icon-maskable-512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
@@ -32,7 +32,39 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      manifest: false,
+      manifest: {
+        id: '/ost/app',
+        name: 'Our School Tech',
+        short_name: 'OST',
+        description: 'Smart School Management for Modern Education',
+        theme_color: '#0F766E',
+        background_color: '#ffffff',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        categories: ['education'],
+        icons: [
+          {
+            src: '/pwa-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          {
+            src: '/favicon.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+        ],
+      },
     }),
   ].filter(Boolean),
   resolve: {

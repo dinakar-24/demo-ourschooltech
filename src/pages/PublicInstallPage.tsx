@@ -177,11 +177,12 @@ export default function PublicInstallPage() {
         ? [
             { src: schoolData.logo, sizes: '192x192', type: 'image/png', purpose: 'any' },
             { src: schoolData.logo, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: schoolData.logo, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+            { src: schoolData.logo, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ]
         : [
+            { src: '/pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: '/pwa-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
             { src: '/favicon.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: '/favicon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           ],
       categories: ['education'],
     };
