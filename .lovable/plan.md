@@ -1,33 +1,42 @@
 
 
-## Plan: Fix PWA Manifest — Correct Names, Proper Icons, Standalone App
+## Redesign SubdomainLanding Login Page
 
-### Problems Identified
+The uploaded screenshot shows the current subdomain login page. The design needs to be polished for mobile-first responsiveness across all devices.
 
-1. **Name shows "DPS001"** — The `short_name` uses `tenant.code.toUpperCase()` (e.g., "DPS001") instead of a readable abbreviation. It should show role-specific names like "SSE Admin", "SSE Parent", etc.
-2. **Logo not fitting** — The manifest declares the school logo as `purpose: 'any maskable'` combined in one entry. Maskable icons need safe-zone padding. Declaring a regular logo as maskable causes cropping/fitting issues.
-3. **Chrome badge showing** — This happens when the PWA isn't properly installed via the manifest (likely because the dynamic manifest isn't applied correctly when not on a subdomain, or the static fallback manifest from vite-plugin-pwa takes over).
-4. **Manifest only works on subdomain** — `useDynamicManifest` exits early with `if (!isSubdomain || !tenant) return;`, so when admin accesses via the main URL, the static "OurSchoolTech" manifest from `vite.config.ts` is used instead.
+### Changes to `src/pages/login/SubdomainLanding.tsx`
 
-### Changes
+**Layout:**
+- Use `min-h-[100dvh]` instead of `min-h-screen` for proper mobile viewport handling (avoids address bar overlap)
+- Split into a top gradient area and bottom card section on mobile (card anchored to bottom), centered card on desktop
+- Add `safe-area-inset` padding for notched devices
 
-#### 1. Fix `useDynamicManifest.ts`
-- Remove the `if (!isSubdomain || !tenant) return;` guard — allow it to work for logged-in users even without subdomain by accepting school data as props
-- Accept optional school branding props (name, logo, subdomain) as fallback when no tenant
-- Fix `short_name` to use school abbreviation/subdomain + role (e.g., "SSE Admin", "SSE Parent") instead of the code
-- Split icons into two entries: one with `purpose: 'any'` and one with `purpose: 'maskable'` — this prevents the cropping issue
-- Add proper `categories` and `display_override` for better PWA behavior
+**Card Design:**
+- Rounded top corners only on mobile (`rounded-t-3xl`), full rounded on desktop (`sm:rounded-2xl`)
+- More breathing room: increase padding on mobile (`px-6 py-8`), larger on desktop (`sm:p-10`)
+- Subtle shadow and border for depth
 
-#### 2. Update `src/App.tsx` (ManifestManager component)
-- Pass school data from `useAuth()` to `useDynamicManifest` so it works even without subdomain/tenant context
-- Fetch school branding (subdomain, logo, app_display_name) from DB when tenant is not available
+**Branding Section:**
+- Logo: `w-16 h-16` on mobile, `w-20 h-20` on desktop with smooth rounded corners and shadow
+- School name: `text-xl` mobile, `text-2xl` desktop, bold
+- Subtitle "Sign in to your account" in muted gray
 
-#### 3. Update `vite.config.ts`
-- Set `manifest: false` in vite-plugin-pwa config so the static manifest doesn't interfere with the dynamic one
-- Keep service worker and workbox config as-is
+**Form Fields:**
+- Taller inputs (`h-12`) with larger touch targets for mobile
+- Rounded-xl inputs with subtle background
+- Password eye toggle with proper sizing
 
-### Files to Modify
-1. `src/hooks/useDynamicManifest.ts` — accept school fallback, fix short_name, fix icon purpose
-2. `src/App.tsx` — pass school branding to manifest hook
-3. `vite.config.ts` — disable static manifest generation
+**Button:**
+- Full width, `h-12`, rounded-xl, school's primary color
+- Proper disabled/loading states
+
+**Footer:**
+- School portal text at bottom, subtle gray
+
+**Background:**
+- Top portion uses a soft gradient from the tenant's primary color
+- Bottom half clean white/light on mobile
+
+### Files to Edit
+1. `src/pages/login/SubdomainLanding.tsx` — full redesign with mobile-first responsive layout
 
