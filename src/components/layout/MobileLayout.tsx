@@ -113,7 +113,7 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
               </Button>
             )}
             {school?.logo ? (
-              <img src={school.logo} alt={school.name} className="w-8 h-8 rounded-full object-contain bg-white/20" />
+              <img src={school.logo} alt={school.name} className="w-8 h-8 object-contain" />
             ) : (
               <Avatar className="w-8 h-8 border border-primary-foreground/20">
                 <AvatarImage src={avatarUrl} alt={user?.name} />

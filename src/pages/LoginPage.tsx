@@ -395,7 +395,7 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
               <img
                 src={logoUrl}
                 alt={schoolInfo.school_name}
-                className={`w-full h-full object-cover transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                className={`w-full h-full object-contain transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
                 onLoad={() => setLogoLoaded(true)}
                 loading="eager"
                 fetchPriority="high"

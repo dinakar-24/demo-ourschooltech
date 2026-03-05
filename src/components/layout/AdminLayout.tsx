@@ -322,7 +322,7 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         {!isCollapsed && (
           <div className="flex items-center gap-3">
             {displaySchoolLogo ? (
-              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-9 h-9 rounded-lg object-cover" />
+              <img src={displaySchoolLogo} alt={displaySchoolName || 'School'} className="w-9 h-9 object-contain" />
             ) : (
               <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
                 <School className="w-5 h-5 text-primary-foreground" />

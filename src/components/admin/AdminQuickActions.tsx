@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { 
-  UserPlus, 
+  Smartphone, 
   ClipboardCheck, 
   CreditCard, 
   GraduationCap,
@@ -18,7 +18,7 @@ const quickActions = [
   { label: 'Classes', href: '/admin/classes', icon: BookOpen, color: 'bg-purple-500' },
   { label: 'Notices', href: '/admin/announcements', icon: Bell, color: 'bg-rose-500' },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3, color: 'bg-indigo-500' },
-  { label: 'Add User', href: '/admin/students', icon: UserPlus, color: 'bg-primary' },
+  { label: 'Install App', href: '/admin/install-app', icon: Smartphone, color: 'bg-primary' },
 ];
 
 export function AdminQuickActions() {

@@ -11,6 +11,7 @@ import { ProtectedRoute, getRoleDashboard } from "@/components/auth/ProtectedRou
 import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
+import { DynamicManifestHandler } from "@/components/pwa/DynamicManifestHandler";
 import { supabase } from "@/integrations/supabase/client";
 import { lazy, Suspense, useEffect, useState } from "react";
 
@@ -61,6 +62,7 @@ const TransportPage = lazy(() => import("./pages/admin/TransportPage"));
 const GalleryPage = lazy(() => import("./pages/admin/GalleryPage"));
 const FeedbackPage = lazy(() => import("./pages/admin/FeedbackPage"));
 const QueryPage = lazy(() => import("./pages/admin/QueryPage"));
+const InstallAppPage = lazy(() => import("./pages/admin/InstallAppPage"));
 
 // Lazy loaded pages -- Teacher
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
@@ -180,7 +182,7 @@ function AppRoutes() {
 
   return (
     <>
-      
+      <DynamicManifestHandler />
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
@@ -247,6 +249,7 @@ function AppRoutes() {
           <Route path="/admin/queries" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><QueryPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/students/bulk-upload" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><BulkUploadPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminNotificationsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/install-app" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><InstallAppPage /></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
           
           {/* Teacher Routes */}

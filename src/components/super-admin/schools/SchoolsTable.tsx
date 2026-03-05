@@ -73,12 +73,12 @@ export const SchoolsTable = memo(function SchoolsTable({
               <TableRow key={school.id} className={!isActive ? 'opacity-60' : ''}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="w-9 h-9 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {school.logo ? (
                         <img 
                           src={school.logo} 
                           alt={`${school.name} logo`}
-                          className="w-full h-full object-cover"
+                          className="max-w-full max-h-full object-contain"
                           loading="lazy"
                         />
                       ) : (

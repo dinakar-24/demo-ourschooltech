@@ -71,7 +71,7 @@ export default function SubdomainLanding() {
             <img
               src={tenant.logo}
               alt={tenant.name}
-              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl object-contain mb-4 shadow-lg ring-1 ring-black/5"
+              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto object-contain mb-4"
               loading="eager"
               fetchPriority="high"
               decoding="sync"

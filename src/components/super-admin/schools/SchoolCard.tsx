@@ -53,12 +53,12 @@ export const SchoolCard = memo(function SchoolCard({
     <div className={`rounded-xl border bg-card shadow-sm transition-opacity ${!isActive ? 'opacity-60' : ''}`}>
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="w-10 h-10 flex items-center justify-center overflow-hidden flex-shrink-0">
           {school.logo ? (
             <img 
               src={school.logo} 
               alt={`${school.name} logo`}
-              className="w-full h-full object-cover"
+              className="max-w-full max-h-full object-contain"
               loading="lazy"
             />
           ) : (

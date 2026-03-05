@@ -21,7 +21,7 @@ export function SchoolSplashScreen() {
         <img
           src={tenant.logo}
           alt={tenant.name}
-          className="w-24 h-24 rounded-2xl object-contain mb-6 animate-in fade-in zoom-in duration-500" loading="eager" fetchPriority="high" decoding="sync"
+          className="w-24 h-24 object-contain mb-6 animate-in fade-in zoom-in duration-500" loading="eager" fetchPriority="high" decoding="sync"
         />
       ) : (
         <div
