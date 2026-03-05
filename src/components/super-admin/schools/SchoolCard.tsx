@@ -1,7 +1,8 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BASE_DOMAIN = 'ourschooltech.com';
@@ -39,6 +40,7 @@ export const SchoolCard = memo(function SchoolCard({
   onToggleStatus,
   isToggling,
 }: SchoolCardProps) {
+  const navigate = useNavigate();
   const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
   const isActive = school.is_active !== false;
 
@@ -100,6 +102,15 @@ export const SchoolCard = memo(function SchoolCard({
 
       {/* Action buttons */}
       <div className="flex gap-2 pt-1 border-t">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/super-admin/schools/${school.id}`)}
+          className="flex-1 h-9 text-xs"
+        >
+          <Users className="w-3.5 h-3.5 mr-1.5" />
+          View Users
+        </Button>
         {onImpersonate && (
           <Button 
             variant="outline" 

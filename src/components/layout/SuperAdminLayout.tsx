@@ -30,7 +30,7 @@ const menuItems = [
   { label: 'Dashboard', href: '/super-admin/dashboard', icon: LayoutDashboard },
   { label: 'Schools', href: '/super-admin/schools', icon: School },
   { label: 'School Admins', href: '/super-admin/admins', icon: Users },
-  { label: 'All Users', href: '/super-admin/users', icon: Shield },
+  { label: 'Platform Users', href: '/super-admin/platform-users', icon: Shield },
   { label: 'Announcements', href: '/super-admin/announcements', icon: Bell },
   { label: 'Reports', href: '/super-admin/reports', icon: BarChart3 },
   { label: 'Subscriptions', href: '/super-admin/subscriptions', icon: CreditCard },
