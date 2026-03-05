@@ -10,10 +10,11 @@ import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { ProtectedRoute, getRoleDashboard } from "@/components/auth/ProtectedRoute";
 import { SubscriptionGuard } from "@/components/admin/SubscriptionGuard";
 import { AdminPermissionGuard } from "@/components/admin/AdminPermissionGuard";
-import { useDynamicManifest } from "@/hooks/useDynamicManifest";
+import { useDynamicManifest, SchoolBrandingFallback } from "@/hooks/useDynamicManifest";
 import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
-import { lazy, Suspense } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
@@ -160,14 +161,47 @@ function AuthRedirect() {
 
 // Dynamic manifest handler
 function DynamicManifestHandler() {
-  const { user } = useAuth();
+  const { user, school } = useAuth();
+  const { tenant } = useTenant();
+  const [schoolBranding, setSchoolBranding] = useState<SchoolBrandingFallback | undefined>(undefined);
+
   const roleMap: Record<string, string> = {
     school_admin: 'admin',
     teacher: 'teacher',
     parent: 'parent',
     student: 'student',
   };
-  useDynamicManifest(user ? roleMap[user.role] : undefined);
+
+  // Fetch school branding when no tenant context (non-subdomain access)
+  useEffect(() => {
+    if (tenant || !school?.id) {
+      setSchoolBranding(undefined);
+      return;
+    }
+
+    const fetchBranding = async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('name, logo, subdomain, app_display_name, app_short_name, primary_color, background_color')
+        .eq('id', school.id)
+        .single();
+
+      if (data) {
+        setSchoolBranding({
+          name: data.name,
+          logo: data.logo ?? undefined,
+          subdomain: data.subdomain,
+          appDisplayName: data.app_display_name,
+          appShortName: data.app_short_name,
+          primaryColor: data.primary_color ?? undefined,
+          backgroundColor: data.background_color ?? undefined,
+        });
+      }
+    };
+    fetchBranding();
+  }, [tenant, school?.id]);
+
+  useDynamicManifest(user ? roleMap[user.role] : undefined, schoolBranding);
   return null;
 }
 
