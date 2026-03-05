@@ -131,7 +131,7 @@ export default function AllUsersPage() {
         </div>
 
         {/* Role Filter Chips */}
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="hidden sm:block overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <div className="flex gap-1.5 sm:gap-2 sm:flex-wrap w-max sm:w-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             {ROLE_FILTERS.map((filter) => {
               const Icon = filter.icon;
