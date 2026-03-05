@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { Mail, GraduationCap } from 'lucide-react';
+import { Mail, GraduationCap, UserRound } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 
@@ -12,6 +12,8 @@ interface UserCardProps {
     school_name?: string;
     roles: string[];
     linked_students?: string[];
+    linked_parent_name?: string;
+    linked_parent_email?: string;
   };
   isDisabled: boolean;
   isSelf: boolean;
@@ -76,6 +78,14 @@ export function UserCard({ user, isDisabled, isSelf, onActionComplete }: UserCar
             </span>
           )}
         </div>
+
+        {/* Show linked parent for student cards */}
+        {user.linked_parent_name && (
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+            <UserRound className="w-3 h-3 shrink-0 text-purple-500" />
+            <span className="font-medium">Parent:</span> {user.linked_parent_name}
+          </p>
+        )}
       </div>
     </div>
   );

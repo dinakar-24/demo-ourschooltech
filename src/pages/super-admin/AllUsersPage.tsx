@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Mail, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, UserX } from 'lucide-react';
+import { Search, Users, Mail, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, UserX, ChevronDown, UserRound } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
 import { UserCard } from '@/components/super-admin/UserCard';
@@ -16,6 +16,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const getRoleBadgeVariant = (role: string): 'default' | 'destructive' | 'outline' | 'secondary' => {
   switch (role) {
@@ -37,6 +38,12 @@ const ROLE_FILTERS = [
   { key: 'student', label: 'Student', shortLabel: 'Student', icon: GraduationCap, color: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
   { key: 'no_role', label: 'No Role', shortLabel: 'None', icon: UserX, color: 'bg-gray-500/10 text-gray-500 border-gray-500/30' },
 ] as const;
+
+const ROLE_SUB_GROUPS = [
+  { role: 'school_admin', label: 'Admins', icon: UserCheck, color: 'text-teal-600' },
+  { role: 'teacher', label: 'Teachers', icon: BookOpen, color: 'text-blue-600' },
+  { role: 'student', label: 'Students', icon: GraduationCap, color: 'text-amber-600' },
+];
 
 export default function AllUsersPage() {
   const { user: currentUser } = useAuth();
@@ -82,16 +89,31 @@ export default function AllUsersPage() {
     return roleCounts[key as keyof typeof roleCounts] ?? 0;
   };
 
-  // Group users by school for mobile view
-  const groupedBySchool = useMemo(() => {
-    const groups = new Map<string, typeof users>();
+  // Hierarchical grouping for mobile
+  const hierarchicalGroups = useMemo(() => {
+    // Platform users: no school_id (super admins, no-role)
+    const platformUsers = users.filter(u => !u.school_id);
+    
+    // School groups
+    const schoolMap = new Map<string, { schoolName: string; users: typeof users }>();
     users.forEach(user => {
-      const key = user.school_name || 'Platform Users';
-      const group = groups.get(key) || [];
-      group.push(user);
-      groups.set(key, group);
+      if (!user.school_id) return;
+      const key = user.school_id;
+      if (!schoolMap.has(key)) {
+        schoolMap.set(key, { schoolName: user.school_name || 'Unknown School', users: [] });
+      }
+      schoolMap.get(key)!.users.push(user);
     });
-    return Array.from(groups.entries());
+
+    const schoolGroups = Array.from(schoolMap.values()).map(({ schoolName, users: schoolUsers }) => ({
+      schoolName,
+      roleGroups: ROLE_SUB_GROUPS.map(rg => ({
+        ...rg,
+        users: schoolUsers.filter(u => u.roles.includes(rg.role)),
+      })).filter(rg => rg.users.length > 0),
+    }));
+
+    return { platformUsers, schoolGroups };
   }, [users]);
 
   return (
@@ -108,7 +130,7 @@ export default function AllUsersPage() {
           />
         </div>
 
-        {/* Role Filter Chips - horizontally scrollable on mobile */}
+        {/* Role Filter Chips */}
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <div className="flex gap-1.5 sm:gap-2 sm:flex-wrap w-max sm:w-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
             {ROLE_FILTERS.map((filter) => {
@@ -142,7 +164,7 @@ export default function AllUsersPage() {
           </div>
         </div>
 
-        {/* Users Table */}
+        {/* Users */}
         <Card>
           <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -177,32 +199,86 @@ export default function AllUsersPage() {
               </div>
             ) : (
               <>
-                {/* Mobile Card Layout */}
+                {/* Mobile Hierarchical Layout */}
                 {isMobile ? (
                   <div className="px-4 pb-2 space-y-4">
-                    {groupedBySchool.map(([schoolName, schoolUsers]) => (
-                      <div key={schoolName}>
-                        <div className="flex items-center gap-2 py-2 mb-1">
-                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{schoolName}</span>
-                          <span className="text-[10px] text-muted-foreground">({schoolUsers.length})</span>
-                        </div>
-                        <div className="space-y-2">
-                          {schoolUsers.map((user) => (
-                            <UserCard
-                              key={user.id}
-                              user={user}
-                              isDisabled={disabledUsers.has(user.id)}
-                              isSelf={currentUser?.id === user.id}
-                              onActionComplete={handleActionComplete}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                    {/* Platform Users */}
+                    {hierarchicalGroups.platformUsers.length > 0 && (
+                      <Collapsible defaultOpen>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 group">
+                          <ShieldAlert className="w-4 h-4 text-red-500" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Platform Users
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            ({hierarchicalGroups.platformUsers.length})
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="space-y-2 ml-1 border-l-2 border-red-200 pl-3">
+                            {hierarchicalGroups.platformUsers.map(user => (
+                              <UserCard
+                                key={user.id}
+                                user={user}
+                                isDisabled={disabledUsers.has(user.id)}
+                                isSelf={currentUser?.id === user.id}
+                                onActionComplete={handleActionComplete}
+                              />
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* School Groups */}
+                    {hierarchicalGroups.schoolGroups.map(({ schoolName, roleGroups }) => (
+                      <Collapsible key={schoolName} defaultOpen>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 group">
+                          <Building2 className="w-4 h-4 text-primary" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            {schoolName}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            ({roleGroups.reduce((sum, rg) => sum + rg.users.length, 0)})
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="ml-1 border-l-2 border-primary/20 pl-3 space-y-3">
+                            {roleGroups.map(rg => {
+                              const Icon = rg.icon;
+                              return (
+                                <Collapsible key={rg.role} defaultOpen>
+                                  <CollapsibleTrigger className="flex items-center gap-1.5 w-full py-1 group/sub">
+                                    <Icon className={`w-3.5 h-3.5 ${rg.color}`} />
+                                    <span className="text-xs font-semibold text-muted-foreground">{rg.label}</span>
+                                    <span className="text-[10px] text-muted-foreground">({rg.users.length})</span>
+                                    <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground transition-transform group-data-[state=open]/sub:rotate-180" />
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <div className="space-y-2 mt-1">
+                                      {rg.users.map(user => (
+                                        <UserCard
+                                          key={user.id}
+                                          user={user}
+                                          isDisabled={disabledUsers.has(user.id)}
+                                          isSelf={currentUser?.id === user.id}
+                                          onActionComplete={handleActionComplete}
+                                        />
+                                      ))}
+                                    </div>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              );
+                            })}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     ))}
                   </div>
                 ) : (
-                  /* Desktop/Tablet Table */
+                  /* Desktop Table */
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -211,6 +287,7 @@ export default function AllUsersPage() {
                           <TableHead>Email</TableHead>
                           <TableHead>Roles</TableHead>
                           <TableHead>School</TableHead>
+                          <TableHead>Parent</TableHead>
                           <TableHead className="w-12">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -250,6 +327,21 @@ export default function AllUsersPage() {
                               {user.school_name ? (
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <Building2 className="w-3 h-3" />{user.school_name}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {user.linked_parent_name ? (
+                                <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                                  <UserRound className="w-3 h-3 text-purple-500" />
+                                  {user.linked_parent_name}
+                                </div>
+                              ) : user.linked_students && user.linked_students.length > 0 ? (
+                                <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                                  <GraduationCap className="w-3 h-3" />
+                                  {user.linked_students.join(', ')}
                                 </div>
                               ) : (
                                 <span className="text-muted-foreground text-sm">-</span>
