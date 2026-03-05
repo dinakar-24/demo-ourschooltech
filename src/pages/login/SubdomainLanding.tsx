@@ -19,10 +19,9 @@ export default function SubdomainLanding() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If already authenticated, redirect to dashboard
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: tenant?.backgroundColor || '#ffffff' }}>
+      <div className="min-h-[100dvh] flex items-center justify-center" style={{ backgroundColor: tenant?.backgroundColor || '#ffffff' }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -42,8 +41,6 @@ export default function SubdomainLanding() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      // AuthContext handles role detection and validation
-      // ProtectedRoute will redirect to the correct dashboard
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
     } finally {
@@ -53,98 +50,110 @@ export default function SubdomainLanding() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
+      className="min-h-[100dvh] flex flex-col sm:items-center sm:justify-center"
       style={{
-        background: `linear-gradient(135deg, ${tenant.primaryColor}15 0%, ${tenant.backgroundColor || '#ffffff'} 50%, ${tenant.accentColor}10 100%)`,
+        background: `linear-gradient(160deg, ${tenant.primaryColor}20 0%, ${tenant.primaryColor}08 40%, ${tenant.backgroundColor || '#ffffff'} 60%)`,
       }}
     >
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8">
-          {/* School branding */}
-          <div className="text-center mb-8">
-            {tenant.logo ? (
-              <img
-                src={tenant.logo}
-                alt={tenant.name}
-                className="w-20 h-20 mx-auto rounded-2xl object-contain mb-4 shadow-lg" loading="eager" fetchPriority="high" decoding="sync"
-              />
-            ) : (
-              <div
-                className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-4 shadow-lg"
-                style={{ backgroundColor: `${tenant.primaryColor}15` }}
-              >
-                <span className="text-3xl font-bold" style={{ color: tenant.primaryColor }}>
-                  {tenant.name.charAt(0)}
-                </span>
-              </div>
-            )}
-            <h1 className="text-2xl font-bold text-gray-900">
-              {tenant.appDisplayName || tenant.name}
-            </h1>
-            <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
+      {/* Top gradient spacer on mobile — pushes card to bottom */}
+      <div className="flex-1 sm:hidden" />
+
+      {/* Card */}
+      <div
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl bg-white/95 backdrop-blur-xl shadow-[0_-4px_32px_rgba(0,0,0,0.08)] sm:shadow-2xl border-t sm:border border-black/5 px-6 py-8 sm:p-10"
+        style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+      >
+        {/* School branding */}
+        <div className="text-center mb-8">
+          {tenant.logo ? (
+            <img
+              src={tenant.logo}
+              alt={tenant.name}
+              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl object-contain mb-4 shadow-lg ring-1 ring-black/5"
+              loading="eager"
+              fetchPriority="high"
+              decoding="sync"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-1 ring-black/5"
+              style={{ backgroundColor: `${tenant.primaryColor}15` }}
+            >
+              <span className="text-2xl sm:text-3xl font-bold" style={{ color: tenant.primaryColor }}>
+                {tenant.name.charAt(0)}
+              </span>
+            </div>
+          )}
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {tenant.appDisplayName || tenant.name}
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-gray-700 text-sm font-medium">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="h-12 rounded-xl bg-gray-50/80 border-gray-200 text-base"
+              autoComplete="email"
+            />
           </div>
 
-          {/* Single Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Email</Label>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-gray-700 text-sm font-medium">
+              Password
+            </Label>
+            <div className="relative">
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-gray-50 border-gray-200"
-                autoComplete="email"
+                className="h-12 rounded-xl bg-gray-50/80 border-gray-200 pr-12 text-base"
+                autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-gray-50 border-gray-200 pr-10"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+          <Button
+            type="submit"
+            className="w-full h-12 rounded-xl text-base font-semibold shadow-sm"
+            disabled={isSubmitting}
+            style={{ backgroundColor: tenant.primaryColor }}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
+          </Button>
+        </form>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitting}
-              style={{ backgroundColor: tenant.primaryColor }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-gray-400 mt-6">
-            {tenant.name} School Portal
-          </p>
-        </div>
+        <p className="text-center text-xs text-gray-400 mt-8">
+          {tenant.name} School Portal
+        </p>
       </div>
     </div>
   );
