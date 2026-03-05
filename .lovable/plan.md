@@ -1,35 +1,20 @@
 
 
-## Performance Fix: Add Database Indexes for Email Lookup at Scale
+## Problem Identified
 
-The uploaded reference describes a critical performance optimization: the `lookup_user_by_email` RPC searches `profiles.email` with no index, causing full table scans at 200K+ users.
+The subdomain `sse.ourschooltech.com` is resolving correctly to your app. The DNS is working. However, the school "SSE" in your database has `is_active` set to `false`.
 
-### Changes
+The `get_school_by_code` function filters with `WHERE ... AND s.is_active = true`, so inactive schools return no data, triggering the "School Not Found" error page.
 
-**1 database migration (2 indexes, 0 code changes)**
+## Fix
 
-Create two indexes:
-- **Unique index on `profiles.email`** — converts O(n) full scan to O(1) index lookup for login
-- **Index on `user_roles.user_id`** — ensures the JOIN during role lookup is also indexed
+No code changes needed. You need to **activate the school** in your Super Admin panel:
 
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_email
-ON public.profiles (email);
+1. Go to the Super Admin dashboard
+2. Navigate to Schools
+3. Find "SSE" and toggle it to **Active**
 
-CREATE INDEX IF NOT EXISTS idx_user_roles_user_id
-ON public.user_roles (user_id);
-```
+Once the school is marked active, `sse.ourschooltech.com` will immediately show the school-branded login page.
 
-### Why This Is Sufficient
-
-The existing `lookup_user_by_email` RPC and `LoginPage.tsx` code are already well-structured — single query with JOINs returning everything in one round-trip. The only missing piece is the index. No code changes needed.
-
-### Impact
-
-| Users | Without Index | With Index |
-|-------|--------------|------------|
-| 1,000 | ~5ms | <0.1ms |
-| 50,000 | ~50ms | <0.1ms |
-| 200,000 | ~200ms | <0.1ms |
-| 1,000,000 | ~1s+ | <0.1ms |
+Alternatively, this can be done directly in the database by updating the school's `is_active` field to `true`.
 
