@@ -32,7 +32,42 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      manifest: false, // We use public/manifest.json + dynamic override
+      manifest: {
+        name: 'Our School Tech',
+        short_name: 'OurSchool',
+        description: 'Smart School Management for Modern Education',
+        start_url: '/',
+        display: 'standalone',
+        orientation: 'portrait',
+        theme_color: '#0F766E',
+        background_color: '#ffffff',
+        icons: [
+          {
+            src: '/favicon.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/favicon.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/favicon.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          {
+            src: '/favicon.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
     }),
   ].filter(Boolean),
   resolve: {

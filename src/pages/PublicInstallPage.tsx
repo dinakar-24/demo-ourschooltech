@@ -1,7 +1,7 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { Button } from '@/components/ui/button';
-import { Smartphone, CheckCircle2, ArrowLeft, Download } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Download, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -65,7 +65,7 @@ export default function PublicInstallPage() {
           )}
           <div>
             <h1 className="text-xl font-bold text-foreground">{schoolName}</h1>
-            <p className="text-sm text-muted-foreground mt-1">Install the app on your device</p>
+            <p className="text-sm text-muted-foreground mt-1">Install as a mobile app</p>
           </div>
         </div>
 
