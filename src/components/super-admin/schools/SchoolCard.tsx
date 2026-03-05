@@ -49,8 +49,9 @@ export const SchoolCard = memo(function SchoolCard({
 
   return (
     <div className={`flex flex-col gap-3 p-4 rounded-lg border bg-card ${!isActive ? 'opacity-60' : ''}`}>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+      {/* Top row: Logo + Info + Toggle */}
+      <div className="flex items-start gap-3">
+        <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
           {school.logo ? (
             <img 
               src={school.logo} 
@@ -59,70 +60,67 @@ export const SchoolCard = memo(function SchoolCard({
               loading="lazy"
             />
           ) : (
-            <Building2 className="w-6 h-6 text-primary" />
+            <Building2 className="w-5 h-5 text-primary" />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium truncate">{school.name}</p>
-            {!isActive && (
-              <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium shrink-0">Disabled</span>
-            )}
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold text-sm truncate">{school.name}</p>
+            <Switch
+              checked={isActive}
+              disabled={isToggling}
+              onCheckedChange={() => onToggleStatus?.(school)}
+              aria-label={isActive ? 'Disable school' : 'Enable school'}
+              className="shrink-0"
+            />
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{school.code}</span>
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px] leading-tight">{school.code}</span>
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3 shrink-0" />
               {school.city}
             </span>
-            {school.primary_color && (
-              <div className="flex gap-0.5 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: school.primary_color }} />
-                <div className="w-2.5 h-2.5 rounded-full border" style={{ backgroundColor: school.accent_color || '#E69500' }} />
-              </div>
+            {!isActive && (
+              <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Disabled</span>
             )}
           </div>
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-xs text-muted-foreground font-mono truncate">{subdomainUrl}</span>
-            <button onClick={handleCopyUrl} className="text-muted-foreground hover:text-foreground shrink-0">
-              <Copy className="w-3 h-3" />
-            </button>
-            <a href={subdomainUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0">
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-        </div>
-        <div className="flex items-center shrink-0">
-          <Switch
-            checked={isActive}
-            disabled={isToggling}
-            onCheckedChange={() => onToggleStatus?.(school)}
-            aria-label={isActive ? 'Disable school' : 'Enable school'}
-          />
         </div>
       </div>
-      <div className="flex gap-2">
+
+      {/* Subdomain row */}
+      <div className="flex items-center gap-1.5 pl-14">
+        <span className="text-[11px] text-muted-foreground font-mono truncate">{school.subdomain}.{BASE_DOMAIN}</span>
+        <button onClick={handleCopyUrl} className="text-muted-foreground hover:text-foreground shrink-0" title="Copy">
+          <Copy className="w-3 h-3" />
+        </button>
+        <a href={subdomainUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0" title="Open">
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 pt-1 border-t">
         {onImpersonate && (
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => onImpersonate(school)}
-            className="flex-1"
+            className="flex-1 h-9 text-xs"
           >
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="w-3.5 h-3.5 mr-1.5" />
             View as Admin
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="px-3">
-          <Pencil className="w-4 h-4" />
+        <Button variant="outline" size="sm" onClick={() => onEdit(school)} className="h-9 w-9 p-0">
+          <Pencil className="w-3.5 h-3.5" />
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="px-3 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+          className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
           onClick={() => onDelete(school)}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5" />
         </Button>
       </div>
     </div>
