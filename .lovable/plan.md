@@ -1,13 +1,20 @@
 
 
-## Plan: Hide Role Filter Chips on Mobile
+## Plan: Fix Mobile Layout for All Users Page
 
-The role filter chips (All, Super Admin, School Admin, Teacher, Parent, Student, No Role) are still showing on mobile and look cluttered. Since the mobile view already uses the hierarchical grouping (Platform Users → Schools → Role sub-groups), these filter chips are redundant on mobile.
+The current mobile view wraps everything in a single Card with an "All System Users" header, and the hierarchical collapsibles are nested inside it. This looks cluttered. The fix is to remove the wrapping Card on mobile and instead show each section (Platform Users, each School) as its own standalone Card.
 
-### Change
+### Changes to `src/pages/super-admin/AllUsersPage.tsx`
 
-**`src/pages/super-admin/AllUsersPage.tsx`** — Wrap the role filter chips container (lines 133-165) with `hidden sm:block` so they only appear on desktop where the flat table view needs filtering. The mobile hierarchical view already organizes by role, making the chips unnecessary.
+1. **Remove wrapping Card on mobile** -- On mobile, instead of one big Card containing all collapsibles, render Platform Users and each School as separate Cards with their own headers.
+
+2. **Simplify mobile structure**:
+   - **Platform Users card** -- Own Card with ShieldAlert icon, contains super admin user cards
+   - **Per-school cards** -- Each school gets its own Card with Building2 icon + school name as header, then role sub-groups (Admins, Teachers, Students) as collapsible sections inside
+   - Each student card shows linked parent name inline
+
+3. **Keep desktop unchanged** -- The table view with filter chips remains exactly as-is
 
 ### Files to modify
-1. `src/pages/super-admin/AllUsersPage.tsx` — Add `hidden sm:block` to the filter chips wrapper div
+1. `src/pages/super-admin/AllUsersPage.tsx` -- Restructure mobile layout to use separate Cards per section instead of one wrapping Card
 
