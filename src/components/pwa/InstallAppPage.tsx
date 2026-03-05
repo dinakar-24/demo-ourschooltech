@@ -1,10 +1,12 @@
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { QRCodeSVG } from 'qrcode.react';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 function getPlatform() {
   const ua = navigator.userAgent;
@@ -13,16 +15,51 @@ function getPlatform() {
   return 'desktop';
 }
 
+interface SchoolBranding {
+  name: string;
+  logo: string | null;
+  subdomain: string;
+  appDisplayName: string | null;
+}
+
 export function InstallAppPage() {
   const { tenant } = useTenant();
+  const { school } = useAuth();
   const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
   const platform = getPlatform();
+  const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
 
-  const schoolUrl = tenant
-    ? `https://${tenant.subdomain}.ourschooltech.com`
+  // When no tenant context (non-subdomain), fetch school details from DB
+  useEffect(() => {
+    if (tenant || !school?.id) return;
+
+    const fetchSchool = async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('name, logo, subdomain, app_display_name')
+        .eq('id', school.id)
+        .single();
+      
+      if (data) {
+        setSchoolBranding({
+          name: data.name,
+          logo: data.logo,
+          subdomain: data.subdomain,
+          appDisplayName: data.app_display_name,
+        });
+      }
+    };
+    fetchSchool();
+  }, [tenant, school?.id]);
+
+  // Resolve branding: prefer tenant context, fall back to fetched school data
+  const logo = tenant?.logo || schoolBranding?.logo || school?.logo || null;
+  const appName = tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
+  const subdomain = tenant?.subdomain || schoolBranding?.subdomain;
+
+  const schoolUrl = subdomain
+    ? `https://${subdomain}.ourschooltech.com`
     : window.location.origin;
-
-  const appName = tenant?.appDisplayName || tenant?.name || 'School App';
 
   const features = [
     { icon: Zap, label: 'Fast & Lightweight', desc: 'Loads instantly, works like a native app' },
@@ -37,8 +74,8 @@ export function InstallAppPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center text-center gap-4">
-            {tenant?.logo ? (
-              <img src={tenant.logo} alt={appName} className="w-20 h-20 rounded-2xl object-contain bg-muted p-2" />
+            {logo ? (
+              <img src={logo} alt={appName} className="w-20 h-20 rounded-2xl object-contain bg-muted p-2" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center">
                 <Download className="w-10 h-10 text-primary-foreground" />
@@ -78,8 +115,8 @@ export function InstallAppPage() {
                 size={180}
                 level="H"
                 includeMargin={false}
-                imageSettings={tenant?.logo ? {
-                  src: tenant.logo,
+                imageSettings={logo ? {
+                  src: logo,
                   height: 36,
                   width: 36,
                   excavate: true,
