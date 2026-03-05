@@ -1,6 +1,7 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { QRCodeSVG } from 'qrcode.react';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,18 @@ export function InstallAppPage() {
   const platform = getPlatform();
   const [schoolBranding, setSchoolBranding] = useState<SchoolBranding | null>(null);
 
+  // Ensure dynamic manifest is set for proper PWA install
+  useDynamicManifest(
+    user?.role === 'school_admin' ? 'admin' : user?.role,
+    schoolBranding ? {
+      name: schoolBranding.name,
+      logo: schoolBranding.logo,
+      subdomain: schoolBranding.subdomain,
+      appDisplayName: schoolBranding.appDisplayName,
+      appShortName: schoolBranding.appShortName,
+    } : undefined
+  );
+
   // When no tenant context (non-subdomain), fetch school details from DB
   useEffect(() => {
     if (tenant || !school?.id) return;
@@ -70,9 +83,9 @@ export function InstallAppPage() {
   
   // Role-specific app name: "SSE Admin", "SSE Parent"
   const appName = user?.role === 'super_admin'
-    ? 'OST Super Admin'
+    ? 'OST-SuperAdmin'
     : roleLabel && subUpper
-      ? `${subUpper} ${roleLabel}`
+      ? `${subUpper}-${roleLabel}`
       : tenant?.appDisplayName || tenant?.name || schoolBranding?.appDisplayName || schoolBranding?.name || school?.name || 'School App';
 
   // QR code points to the install page on the subdomain
