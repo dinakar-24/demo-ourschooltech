@@ -30,34 +30,16 @@ function createResizedIcon(
       const ctx = canvas.getContext('2d')!;
 
       if (maskable) {
-        // Fill background for maskable (safe zone is inner 80%)
+        // Fill background for maskable (safe zone is inner 80%, so use 10% padding)
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, size, size);
-        const padding = size * 0.15;
+        const padding = size * 0.1;
         const drawSize = size - padding * 2;
-        // Center the logo
-        const aspect = img.width / img.height;
-        let dw = drawSize, dh = drawSize;
-        if (aspect > 1) {
-          dh = drawSize / aspect;
-        } else {
-          dw = drawSize * aspect;
-        }
-        const dx = (size - dw) / 2;
-        const dy = (size - dh) / 2;
-        ctx.drawImage(img, dx, dy, dw, dh);
+        // Fill the safe zone fully — stretch to fit
+        ctx.drawImage(img, padding, padding, drawSize, drawSize);
       } else {
-        // For "any" purpose, just draw centered on transparent background
-        const aspect = img.width / img.height;
-        let dw = size, dh = size;
-        if (aspect > 1) {
-          dh = size / aspect;
-        } else {
-          dw = size * aspect;
-        }
-        const dx = (size - dw) / 2;
-        const dy = (size - dh) / 2;
-        ctx.drawImage(img, dx, dy, dw, dh);
+        // For "any" purpose, fill the entire canvas
+        ctx.drawImage(img, 0, 0, size, size);
       }
 
       canvas.toBlob((blob) => {
