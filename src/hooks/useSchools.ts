@@ -193,17 +193,44 @@ export function useDeleteSchool() {
 
   return useMutation({
     mutationFn: async (schoolId: string) => {
-      const { error } = await supabase.from('schools').delete().eq('id', schoolId);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('delete-school', {
+        body: { school_id: schoolId },
+      });
+      if (error) throw new Error(error.message || 'Failed to delete school');
+      if (data && !data.success) throw new Error(data.error || 'Failed to delete school');
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['school-cities'] });
-      toast.success('School deleted successfully');
+      toast.success(data?.message || 'School and all associated data deleted successfully');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete school');
+    },
+  });
+}
+
+export function useToggleSchoolStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ schoolId, isActive }: { schoolId: string; isActive: boolean }) => {
+      const { data, error } = await supabase.functions.invoke('toggle-school-status', {
+        body: { school_id: schoolId, is_active: isActive },
+      });
+      if (error) throw new Error(error.message || 'Failed to update school status');
+      if (data && !data.success) throw new Error(data.error || 'Failed to update school status');
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      toast.success(data?.message || 'School status updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update school status');
     },
   });
 }

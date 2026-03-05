@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Building2 } from 'lucide-react';
 import { TableSkeleton, CardSkeleton, ErrorState } from '@/components/ui/data-states';
-import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, School, SchoolFormData } from '@/hooks/useSchools';
+import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool, useToggleSchoolStatus, School, SchoolFormData } from '@/hooks/useSchools';
 import { SchoolFormDialog } from '@/components/super-admin/schools/SchoolFormDialog';
 import { DeleteSchoolDialog } from '@/components/super-admin/schools/DeleteSchoolDialog';
 import { SchoolsTable } from '@/components/super-admin/schools/SchoolsTable';
@@ -14,6 +14,14 @@ import { SchoolCard } from '@/components/super-admin/schools/SchoolCard';
 import { usePagination } from '@/hooks/usePagination';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function SchoolsPage() {
   const navigate = useNavigate();
@@ -31,10 +39,12 @@ export default function SchoolsPage() {
   const createSchool = useCreateSchool();
   const updateSchool = useUpdateSchool();
   const deleteSchoolMutation = useDeleteSchool();
+  const toggleStatusMutation = useToggleSchoolStatus();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [deletingSchool, setDeletingSchool] = useState<School | null>(null);
+  const [togglingSchool, setTogglingSchool] = useState<School | null>(null);
 
   const handleOpenAddDialog = useCallback(() => {
     setEditingSchool(null);
@@ -82,7 +92,19 @@ export default function SchoolsPage() {
     navigate('/admin/dashboard');
   }, [startImpersonation, navigate]);
 
+  const handleToggleStatus = useCallback((school: School) => {
+    setTogglingSchool(school);
+  }, []);
+
+  const handleConfirmToggle = useCallback(async () => {
+    if (!togglingSchool) return;
+    const newStatus = togglingSchool.is_active === false ? true : false;
+    await toggleStatusMutation.mutateAsync({ schoolId: togglingSchool.id, isActive: newStatus });
+    setTogglingSchool(null);
+  }, [toggleStatusMutation, togglingSchool]);
+
   const isSubmitting = createSchool.isPending || updateSchool.isPending;
+  const togglingSchoolIsActive = togglingSchool?.is_active !== false;
 
   return (
     <SuperAdminLayout title="Schools Management">
@@ -110,14 +132,14 @@ export default function SchoolsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Building2 className="w-5 h-5" />
-              All Schools ({schools.length})
+              All Schools ({totalCount})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <>
                 <div className="md:hidden"><CardSkeleton count={3} /></div>
-                <div className="hidden md:block"><TableSkeleton rows={5} columns={5} /></div>
+                <div className="hidden md:block"><TableSkeleton rows={5} columns={6} /></div>
               </>
             ) : isError ? (
               <ErrorState onRetry={() => refetch()} />
@@ -140,17 +162,21 @@ export default function SchoolsPage() {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       onImpersonate={handleImpersonate}
+                      onToggleStatus={handleToggleStatus}
+                      isToggling={toggleStatusMutation.isPending && togglingSchool?.id === school.id}
                     />
                   ))}
                 </div>
 
-                {/* Desktop Table View - No horizontal scroll */}
+                {/* Desktop Table View */}
                 <div className="hidden md:block">
                   <SchoolsTable
                     schools={schools}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onImpersonate={handleImpersonate}
+                    onToggleStatus={handleToggleStatus}
+                    isTogglingId={toggleStatusMutation.isPending ? togglingSchool?.id || null : null}
                   />
                 </div>
               </>
@@ -182,6 +208,38 @@ export default function SchoolsPage() {
           schoolName={deletingSchool?.name || ''}
           onConfirm={handleConfirmDelete}
         />
+
+        {/* Toggle Status Confirmation Dialog */}
+        <AlertDialog open={!!togglingSchool} onOpenChange={(open) => !open && setTogglingSchool(null)}>
+          <AlertDialogContent className="max-w-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {togglingSchoolIsActive ? 'Disable School?' : 'Enable School?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {togglingSchoolIsActive
+                  ? `Disabling "${togglingSchool?.name}" will prevent all users from logging in. The school's subdomain will show an inactive message.`
+                  : `Enabling "${togglingSchool?.name}" will restore access for all users and reactivate the school's subdomain.`
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <Button variant="outline" onClick={() => setTogglingSchool(null)} disabled={toggleStatusMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant={togglingSchoolIsActive ? 'destructive' : 'default'}
+                onClick={handleConfirmToggle}
+                disabled={toggleStatusMutation.isPending}
+              >
+                {toggleStatusMutation.isPending
+                  ? 'Processing...'
+                  : togglingSchoolIsActive ? 'Disable School' : 'Enable School'
+                }
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SuperAdminLayout>
   );
