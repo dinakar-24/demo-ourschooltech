@@ -2,14 +2,10 @@ import { useState, useCallback, useMemo } from 'react';
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Mail, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, UserX, ChevronDown, UserRound } from 'lucide-react';
+import { Search, Users, Building2, ShieldAlert, GraduationCap, BookOpen, UserCheck, ChevronDown, UserRound, Mail } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserActionsMenu } from '@/components/super-admin/UserActionsMenu';
-import { UserCard } from '@/components/super-admin/UserCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllUsers } from '@/hooks/useAllUsers';
 import { usePagination } from '@/hooks/usePagination';
@@ -18,54 +14,111 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const getRoleBadgeVariant = (role: string): 'default' | 'destructive' | 'outline' | 'secondary' => {
-  switch (role) {
-    case 'super_admin': return 'destructive';
-    case 'school_admin': return 'default';
-    case 'teacher': return 'secondary';
-    case 'parent': return 'outline';
-    case 'student': return 'default';
-    default: return 'outline';
-  }
-};
-
-const ROLE_FILTERS = [
-  { key: null, label: 'All', shortLabel: 'All', icon: Users, color: 'bg-primary/10 text-primary border-primary/30' },
-  { key: 'super_admin', label: 'Super Admin', shortLabel: 'Super', icon: ShieldAlert, color: 'bg-red-500/10 text-red-600 border-red-500/30' },
-  { key: 'school_admin', label: 'School Admin', shortLabel: 'Admin', icon: UserCheck, color: 'bg-teal-500/10 text-teal-600 border-teal-500/30' },
-  { key: 'teacher', label: 'Teacher', shortLabel: 'Teacher', icon: BookOpen, color: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
-  { key: 'parent', label: 'Parent', shortLabel: 'Parent', icon: Users, color: 'bg-purple-500/10 text-purple-600 border-purple-500/30' },
-  { key: 'student', label: 'Student', shortLabel: 'Student', icon: GraduationCap, color: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
-  { key: 'no_role', label: 'No Role', shortLabel: 'None', icon: UserX, color: 'bg-gray-500/10 text-gray-500 border-gray-500/30' },
-] as const;
-
 const ROLE_SUB_GROUPS = [
-  { role: 'school_admin', label: 'Admins', icon: UserCheck, color: 'text-teal-600' },
-  { role: 'teacher', label: 'Teachers', icon: BookOpen, color: 'text-blue-600' },
-  { role: 'student', label: 'Students', icon: GraduationCap, color: 'text-amber-600' },
+  { role: 'school_admin', label: 'Admins', icon: UserCheck, color: 'text-teal-600', borderColor: 'border-teal-300' },
+  { role: 'teacher', label: 'Teachers', icon: BookOpen, color: 'text-blue-600', borderColor: 'border-blue-300' },
+  { role: 'student', label: 'Students', icon: GraduationCap, color: 'text-amber-600', borderColor: 'border-amber-300' },
 ];
+
+function UserCardItem({ user, isDisabled, isSelf, onActionComplete }: {
+  user: {
+    id: string; email: string; full_name: string; avatar_url?: string | null;
+    school_name?: string; roles: string[];
+    linked_students?: string[]; linked_parent_name?: string; linked_parent_email?: string;
+  };
+  isDisabled: boolean; isSelf: boolean;
+  onActionComplete: (action?: string, userId?: string) => void;
+}) {
+  const initials = user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
+  return (
+    <div className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+      <Avatar className="w-9 h-9 shrink-0">
+        <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name} />
+        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-medium truncate">{user.full_name}</p>
+          <UserActionsMenu
+            userId={user.id} userName={user.full_name} userEmail={user.email}
+            isDisabled={isDisabled} isSelf={isSelf} onActionComplete={onActionComplete}
+            currentFullName={user.full_name}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+          <Mail className="w-3 h-3 shrink-0" />{user.email}
+        </p>
+        {/* Show linked parent for students */}
+        {user.linked_parent_name && (
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+            <UserRound className="w-3 h-3 shrink-0 text-purple-500" />
+            <span className="font-medium">Parent:</span> {user.linked_parent_name}
+            {user.linked_parent_email && (
+              <span className="truncate">({user.linked_parent_email})</span>
+            )}
+          </p>
+        )}
+        {/* Show linked students for parents */}
+        {user.linked_students && user.linked_students.length > 0 && (
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+            <GraduationCap className="w-3 h-3 shrink-0" />
+            {user.linked_students.join(', ')}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoleGroupSection({ roleGroup, users, currentUserId, disabledUsers, onActionComplete, defaultOpen = true }: {
+  roleGroup: typeof ROLE_SUB_GROUPS[number];
+  users: any[];
+  currentUserId?: string;
+  disabledUsers: Set<string>;
+  onActionComplete: (action?: string, userId?: string) => void;
+  defaultOpen?: boolean;
+}) {
+  const Icon = roleGroup.icon;
+  return (
+    <Collapsible defaultOpen={defaultOpen}>
+      <CollapsibleTrigger className="flex items-center gap-1.5 w-full py-1.5 group/sub">
+        <Icon className={`w-3.5 h-3.5 ${roleGroup.color}`} />
+        <span className="text-xs font-semibold text-muted-foreground">{roleGroup.label}</span>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{users.length}</Badge>
+        <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground transition-transform group-data-[state=open]/sub:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className={`space-y-2 mt-1 ml-1 border-l-2 ${roleGroup.borderColor} pl-3`}>
+          {users.map(user => (
+            <UserCardItem
+              key={user.id} user={user}
+              isDisabled={disabledUsers.has(user.id)}
+              isSelf={currentUserId === user.id}
+              onActionComplete={onActionComplete}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function AllUsersPage() {
   const { user: currentUser } = useAuth();
   const isMobile = useIsMobile();
   const [searchInput, setSearchInput] = useState('');
-  const [activeRoleFilter, setActiveRoleFilter] = useState<string | null>(null);
   const [disabledUsers, setDisabledUsers] = useState<Set<string>>(new Set());
-  const pagination = usePagination(25);
+  const pagination = usePagination(50);
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
-  const { users, totalCount, roleCounts, loading, refetch, removeUser } = useAllUsers({
+  const { users, totalCount, loading, refetch, removeUser } = useAllUsers({
     page: pagination.page,
     pageSize: pagination.pageSize,
     searchQuery: debouncedSearch,
-    roleFilter: activeRoleFilter,
+    roleFilter: null,
   });
-
-  const handleRoleFilterChange = useCallback((key: string | null) => {
-    setActiveRoleFilter(key);
-    pagination.resetPage();
-  }, [pagination]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchInput(e.target.value);
@@ -84,17 +137,10 @@ export default function AllUsersPage() {
     refetch();
   }, [refetch, removeUser]);
 
-  const getCountForFilter = (key: string | null) => {
-    if (key === null) return roleCounts.all;
-    return roleCounts[key as keyof typeof roleCounts] ?? 0;
-  };
-
-  // Hierarchical grouping for mobile
+  // Hierarchical grouping
   const hierarchicalGroups = useMemo(() => {
-    // Platform users: no school_id (super admins, no-role)
     const platformUsers = users.filter(u => !u.school_id);
-    
-    // School groups
+
     const schoolMap = new Map<string, { schoolName: string; users: typeof users }>();
     users.forEach(user => {
       if (!user.school_id) return;
@@ -107,6 +153,7 @@ export default function AllUsersPage() {
 
     const schoolGroups = Array.from(schoolMap.values()).map(({ schoolName, users: schoolUsers }) => ({
       schoolName,
+      totalCount: schoolUsers.filter(u => !u.roles.includes('parent')).length,
       roleGroups: ROLE_SUB_GROUPS.map(rg => ({
         ...rg,
         users: schoolUsers.filter(u => u.roles.includes(rg.role)),
@@ -116,9 +163,33 @@ export default function AllUsersPage() {
     return { platformUsers, schoolGroups };
   }, [users]);
 
+  const LoadingSkeleton = () => (
+    <div className="space-y-3 p-4">
+      {[1, 2, 3, 4, 5].map(i => (
+        <div key={i} className="flex items-center gap-3 py-2">
+          <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
+            <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const EmptyState = () => (
+    <div className="text-center py-12 text-muted-foreground">
+      <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+      <p className="font-medium">No users found</p>
+      <p className="text-sm mt-1">
+        {debouncedSearch ? 'Try a different search term' : 'No users in the system yet'}
+      </p>
+    </div>
+  );
+
   return (
     <SuperAdminLayout title="All Users">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -130,280 +201,94 @@ export default function AllUsersPage() {
           />
         </div>
 
-        {/* Role Filter Chips */}
-        <div className="hidden sm:block overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <div className="flex gap-1.5 sm:gap-2 sm:flex-wrap w-max sm:w-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {ROLE_FILTERS.map((filter) => {
-              const Icon = filter.icon;
-              const isActive = activeRoleFilter === filter.key;
-              const count = getCountForFilter(filter.key);
-              return (
-                <button
-                  key={filter.key ?? 'all'}
-                  onClick={() => handleRoleFilterChange(filter.key)}
-                  className={`
-                    inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap shrink-0
-                    ${isActive
-                      ? `${filter.color} ring-2 ring-offset-1 ring-current shadow-sm`
-                      : 'bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground'
-                    }
-                  `}
-                >
-                  <Icon className="w-3 h-3" />
-                  <span className="sm:hidden">{filter.shortLabel}</span>
-                  <span className="hidden sm:inline">{filter.label}</span>
-                  <span className={`
-                    inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold
-                    ${isActive ? 'bg-background/50' : 'bg-muted'}
-                  `}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Mobile Layout */}
-        {isMobile ? (
-          loading ? (
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex items-center gap-3 py-2">
-                    <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
-                      <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
-                    </div>
-                    <div className="h-5 w-16 bg-muted rounded-full animate-pulse shrink-0" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : users.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">No users found</p>
-                <p className="text-sm mt-1">
-                  {debouncedSearch ? 'Try a different search term' : 'No users in the system yet'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {/* Platform Users Card */}
-              {hierarchicalGroups.platformUsers.length > 0 && (
-                <Card>
+        {loading ? (
+          <Card><LoadingSkeleton /></Card>
+        ) : users.length === 0 ? (
+          <Card><EmptyState /></Card>
+        ) : (
+          <div className="space-y-4">
+            {/* Platform Users */}
+            {hierarchicalGroups.platformUsers.length > 0 && (
+              <Card>
+                <Collapsible defaultOpen>
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full group/platform">
                       <ShieldAlert className="w-4 h-4 text-destructive" />
-                      Platform Users
-                      <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
+                      <CardTitle className="text-sm">Platform Users</CardTitle>
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">
                         {hierarchicalGroups.platformUsers.length}
                       </Badge>
-                    </CardTitle>
+                      <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground transition-transform group-data-[state=open]/platform:rotate-180" />
+                    </CollapsibleTrigger>
                   </CardHeader>
-                  <CardContent className="pt-0 space-y-2">
-                    {hierarchicalGroups.platformUsers.map(user => (
-                      <UserCard
-                        key={user.id}
-                        user={user}
-                        isDisabled={disabledUsers.has(user.id)}
-                        isSelf={currentUser?.id === user.id}
-                        onActionComplete={handleActionComplete}
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-2">
+                      {hierarchicalGroups.platformUsers.map(user => (
+                        <UserCardItem
+                          key={user.id} user={user}
+                          isDisabled={disabledUsers.has(user.id)}
+                          isSelf={currentUser?.id === user.id}
+                          onActionComplete={handleActionComplete}
+                        />
+                      ))}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            )}
 
-              {/* Per-School Cards */}
-              {hierarchicalGroups.schoolGroups.map(({ schoolName, roleGroups }) => (
-                <Card key={schoolName}>
+            {/* Schools Header */}
+            {hierarchicalGroups.schoolGroups.length > 0 && (
+              <div className="flex items-center gap-2 pt-2">
+                <Building2 className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground">Schools</h2>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {hierarchicalGroups.schoolGroups.length}
+                </Badge>
+              </div>
+            )}
+
+            {/* Per-School Cards */}
+            {hierarchicalGroups.schoolGroups.map(({ schoolName, totalCount: schoolTotal, roleGroups }) => (
+              <Card key={schoolName}>
+                <Collapsible defaultOpen={hierarchicalGroups.schoolGroups.length <= 3}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
+                    <CollapsibleTrigger className="flex items-center gap-2 w-full group/school">
                       <Building2 className="w-4 h-4 text-primary" />
-                      {schoolName}
-                      <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
-                        {roleGroups.reduce((sum, rg) => sum + rg.users.length, 0)}
+                      <CardTitle className="text-sm">{schoolName}</CardTitle>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                        {schoolTotal}
                       </Badge>
-                    </CardTitle>
+                      <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground transition-transform group-data-[state=open]/school:rotate-180" />
+                    </CollapsibleTrigger>
                   </CardHeader>
-                  <CardContent className="pt-0 space-y-3">
-                    {roleGroups.map(rg => {
-                      const Icon = rg.icon;
-                      return (
-                        <Collapsible key={rg.role} defaultOpen>
-                          <CollapsibleTrigger className="flex items-center gap-1.5 w-full py-1.5 group/sub">
-                            <Icon className={`w-3.5 h-3.5 ${rg.color}`} />
-                            <span className="text-xs font-semibold text-muted-foreground">{rg.label}</span>
-                            <span className="text-[10px] text-muted-foreground">({rg.users.length})</span>
-                            <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground transition-transform group-data-[state=open]/sub:rotate-180" />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="space-y-2 mt-1 ml-1 border-l-2 border-muted pl-3">
-                              {rg.users.map(user => (
-                                <UserCard
-                                  key={user.id}
-                                  user={user}
-                                  isDisabled={disabledUsers.has(user.id)}
-                                  isSelf={currentUser?.id === user.id}
-                                  onActionComplete={handleActionComplete}
-                                />
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              ))}
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-3">
+                      {roleGroups.map(rg => (
+                        <RoleGroupSection
+                          key={rg.role}
+                          roleGroup={rg}
+                          users={rg.users}
+                          currentUserId={currentUser?.id}
+                          disabledUsers={disabledUsers}
+                          onActionComplete={handleActionComplete}
+                        />
+                      ))}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            ))}
 
-              <PaginationControls
-                page={pagination.page}
-                pageSize={pagination.pageSize}
-                totalCount={totalCount}
-                onPageChange={pagination.setPage}
-                onPageSizeChange={pagination.setPageSize}
-                isLoading={loading}
-              />
-            </div>
-          )
-        ) : (
-          /* Desktop Card with Table */
-          <Card>
-            <CardHeader className="pb-6">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="w-5 h-5" />
-                {activeRoleFilter
-                  ? `${ROLE_FILTERS.find(f => f.key === activeRoleFilter)?.label || ''} Users`
-                  : 'All System Users'
-                } ({totalCount.toLocaleString()})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="p-4 space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="flex items-center gap-3 py-2">
-                      <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
-                        <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
-                      </div>
-                      <div className="h-5 w-16 bg-muted rounded-full animate-pulse shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="font-medium">No users found</p>
-                  <p className="text-sm mt-1">
-                    {debouncedSearch ? 'Try a different search term' : 'No users in the system yet'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>User</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Roles</TableHead>
-                          <TableHead>School</TableHead>
-                          <TableHead>Parent</TableHead>
-                          <TableHead className="w-12">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {users.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="w-10 h-10">
-                                  <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name} />
-                                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                    {user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{user.full_name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Mail className="w-3 h-3" />{user.email}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {user.roles.length > 0 ? (
-                                  user.roles.map((role) => (
-                                    <Badge key={role} variant={getRoleBadgeVariant(role)}>
-                                      {role.replace('_', ' ')}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">No role</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {user.school_name ? (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Building2 className="w-3 h-3" />{user.school_name}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {user.linked_parent_name ? (
-                                <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                                  <UserRound className="w-3 h-3 text-purple-500" />
-                                  {user.linked_parent_name}
-                                </div>
-                              ) : user.linked_students && user.linked_students.length > 0 ? (
-                                <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                                  <GraduationCap className="w-3 h-3" />
-                                  {user.linked_students.join(', ')}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <UserActionsMenu
-                                userId={user.id}
-                                userName={user.full_name}
-                                userEmail={user.email}
-                                isDisabled={disabledUsers.has(user.id)}
-                                isSelf={currentUser?.id === user.id}
-                                onActionComplete={handleActionComplete}
-                                currentFullName={user.full_name}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <PaginationControls
-                    page={pagination.page}
-                    pageSize={pagination.pageSize}
-                    totalCount={totalCount}
-                    onPageChange={pagination.setPage}
-                    onPageSizeChange={pagination.setPageSize}
-                    isLoading={loading}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+              isLoading={loading}
+            />
+          </div>
         )}
       </div>
     </SuperAdminLayout>
