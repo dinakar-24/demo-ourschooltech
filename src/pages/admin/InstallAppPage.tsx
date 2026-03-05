@@ -46,11 +46,9 @@ export default function InstallAppPage() {
       const accepted = await promptInstall();
       if (accepted) {
         toast.success('App installed successfully!');
-      } else {
-        toast.info('Installation cancelled');
       }
     } catch {
-      toast.error('Installation not available. Please use Chrome or Edge browser.');
+      toast.error('Installation not available. Please use Chrome or Edge browser on the school portal URL.');
     } finally {
       setInstalling(false);
     }
@@ -61,18 +59,21 @@ export default function InstallAppPage() {
     toast.success('Link copied to clipboard');
   };
 
+  const schoolName = displaySchool?.name || tenant?.name || 'School';
+  const schoolLogo = displaySchool?.logo || tenant?.logo;
+
   return (
     <AdminLayout title="Install App">
       <div className="max-w-lg mx-auto space-y-6 pb-8">
         <div className="text-center space-y-3 pt-2">
-          {displaySchool?.logo && (
+          {schoolLogo && (
             <div className="w-20 h-20 mx-auto flex items-center justify-center overflow-hidden shrink-0">
-              <img src={displaySchool.logo} alt={displaySchool.name} className="max-w-full max-h-full object-contain" />
+              <img src={schoolLogo} alt={schoolName} className="max-w-full max-h-full object-contain" />
             </div>
           )}
           <div>
-            <h2 className="text-lg font-bold text-foreground">{displaySchool?.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">Install the app on your device</p>
+            <h2 className="text-lg font-bold text-foreground">{schoolName}</h2>
+            <p className="text-sm text-muted-foreground mt-1">Install as a mobile app</p>
           </div>
         </div>
 
@@ -112,8 +113,8 @@ export default function InstallAppPage() {
               value={portalUrl}
               size={180}
               level="H"
-              imageSettings={displaySchool?.logo ? {
-                src: displaySchool.logo,
+              imageSettings={schoolLogo ? {
+                src: schoolLogo,
                 height: 36,
                 width: 36,
                 excavate: true,
