@@ -35,6 +35,7 @@ const SystemAnnouncementsPage = lazy(() => import("./pages/super-admin/SystemAnn
 const AuditLogsPage = lazy(() => import("./pages/super-admin/AuditLogsPage"));
 const SuperAdminReportsPage = lazy(() => import("./pages/super-admin/SuperAdminReportsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/super-admin/SubscriptionsPage"));
+const AllUsersPage = lazy(() => import("./pages/super-admin/AllUsersPage"));
 
 // Lazy loaded pages -- Admin
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -252,6 +253,7 @@ function AppRoutes() {
               <Route path="/super-admin/schools" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolsPage /></ProtectedRoute>} />
               <Route path="/super-admin/admins" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolAdminsPage /></ProtectedRoute>} />
               <Route path="/super-admin/platform-users" element={<ProtectedRoute allowedRoles={['super_admin']}><PlatformUsersPage /></ProtectedRoute>} />
+              <Route path="/super-admin/users" element={<ProtectedRoute allowedRoles={['super_admin']}><AllUsersPage /></ProtectedRoute>} />
               <Route path="/super-admin/schools/:schoolId" element={<ProtectedRoute allowedRoles={['super_admin']}><SchoolUsersPage /></ProtectedRoute>} />
               <Route path="/super-admin/announcements" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemAnnouncementsPage /></ProtectedRoute>} />
               <Route path="/super-admin/subscriptions" element={<ProtectedRoute allowedRoles={['super_admin']}><SubscriptionsPage /></ProtectedRoute>} />
