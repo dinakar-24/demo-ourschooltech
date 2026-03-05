@@ -22,17 +22,12 @@ export function useDynamicManifest(tenant: Tenant | null, role?: UserRole) {
     const roleSuffix = role ? ` - ${role.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}` : '';
 
     const icons: Array<{ src: string; sizes: string; type: string; purpose?: string }> = [];
-    if (tenant.logo) {
-      icons.push(
-        { src: tenant.logo, sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: tenant.logo, sizes: '512x512', type: 'image/png', purpose: 'any' },
-      );
-    } else {
-      icons.push(
-        { src: '/favicon.png', sizes: '192x192', type: 'image/png' },
-        { src: '/favicon.png', sizes: '512x512', type: 'image/png' },
-      );
-    }
+    const logoSrc = tenant.logo || '/pwa-icon-512.png';
+    icons.push(
+      { src: logoSrc, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: logoSrc, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/pwa-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    );
 
     const manifest = {
       name: `${displayName}${roleSuffix}`,
