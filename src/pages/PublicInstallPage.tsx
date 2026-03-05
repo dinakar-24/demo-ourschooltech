@@ -24,29 +24,48 @@ interface SchoolData {
   backgroundColor: string | null;
 }
 
-function InstallButton({ triggerInstall, appName }: { triggerInstall: () => Promise<boolean>; appName: string }) {
+function InstallButton({ triggerInstall, appName, platform }: { triggerInstall: () => Promise<boolean>; appName: string; platform: string }) {
   const [installing, setInstalling] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [installed, setInstalled] = useState(false);
 
   const handleClick = async () => {
     setInstalling(true);
-    setFailed(false);
     const success = await triggerInstall();
     setInstalling(false);
-    if (!success) {
-      setFailed(true);
-      // Auto-hide failure message after 5 seconds
-      setTimeout(() => setFailed(false), 5000);
+    if (success) {
+      setInstalled(true);
     }
   };
 
+  if (installed) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg">
+        <CheckCircle className="w-5 h-5" />
+        <span className="text-sm font-medium">App installed successfully!</span>
+      </div>
+    );
+  }
+
+  // iOS doesn't support beforeinstallprompt - show Safari instructions
+  if (platform === 'ios') {
+    return (
+      <div className="w-full space-y-3 text-center">
+        <p className="text-sm text-muted-foreground">To install on iPhone/iPad:</p>
+        <div className="text-left space-y-2 px-4">
+          <p className="text-sm"><span className="font-semibold">1.</span> Tap the <span className="font-semibold">Share</span> button <span className="inline-block w-5 h-5 align-middle text-center border border-border rounded text-xs leading-5">↑</span></p>
+          <p className="text-sm"><span className="font-semibold">2.</span> Scroll down and tap <span className="font-semibold">"Add to Home Screen"</span></p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full">
       <Button size="lg" onClick={handleClick} disabled={installing} className="gap-2 w-full text-base">
         {installing ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Preparing Install...
+            Preparing...
           </>
         ) : (
           <>
@@ -55,11 +74,6 @@ function InstallButton({ triggerInstall, appName }: { triggerInstall: () => Prom
           </>
         )}
       </Button>
-      {failed && (
-        <p className="text-xs text-muted-foreground text-center">
-          Please wait a moment and try again, or use your browser's menu → "Install app"
-        </p>
-      )}
     </div>
   );
 }
@@ -67,6 +81,7 @@ function InstallButton({ triggerInstall, appName }: { triggerInstall: () => Prom
 export default function PublicInstallPage() {
   const { tenant, isSubdomain } = useTenant();
   const { isInstalled, triggerInstall } = useInstallPrompt();
+  const platform = getPlatform();
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -215,7 +230,7 @@ export default function PublicInstallPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                  <InstallButton triggerInstall={triggerInstall} appName={subUpper || appName} />
+                  <InstallButton triggerInstall={triggerInstall} appName={subUpper || appName} platform={platform} />
                 </div>
               )}
             </div>
