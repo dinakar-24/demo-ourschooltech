@@ -584,7 +584,18 @@ export default function SchoolUsersPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-sm font-medium truncate">{student.full_name}</p>
-                              <div className="flex items-center gap-1 shrink-0">
+                              {student.user_id && student.email ? (
+                                <UserActionsMenu
+                                  userId={student.user_id}
+                                  userName={student.full_name}
+                                  userEmail={student.email}
+                                  isDisabled={disabledUsers.has(student.user_id)}
+                                  isSelf={currentUser?.id === student.user_id}
+                                  onActionComplete={handleActionComplete}
+                                  currentFullName={student.full_name}
+                                  onEditOverride={() => openEditStudent(student.id)}
+                                />
+                              ) : (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -594,18 +605,7 @@ export default function SchoolUsersPage() {
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
                                 </Button>
-                                {student.user_id && student.email && (
-                                  <UserActionsMenu
-                                    userId={student.user_id}
-                                    userName={student.full_name}
-                                    userEmail={student.email}
-                                    isDisabled={disabledUsers.has(student.user_id)}
-                                    isSelf={currentUser?.id === student.user_id}
-                                    onActionComplete={handleActionComplete}
-                                    currentFullName={student.full_name}
-                                  />
-                                )}
-                              </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                               {student.roll_number && (
