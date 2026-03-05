@@ -185,7 +185,7 @@ function AppRoutes() {
   return (
     <>
       <DynamicManifestHandler />
-      <InstallAppBanner />
+      
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
