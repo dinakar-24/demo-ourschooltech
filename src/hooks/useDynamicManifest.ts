@@ -96,8 +96,9 @@ export function useDynamicManifest(currentRole?: string, schoolFallback?: School
             { src: maskableIconUrl || logo, sizes: '512x512', type: 'image/png', purpose: 'maskable' as const },
           ]
         : [
+            { src: '/pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' as const },
+            { src: '/pwa-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' as const },
             { src: '/favicon.png', sizes: '192x192', type: 'image/png', purpose: 'any' as const },
-            { src: '/favicon.png', sizes: '512x512', type: 'image/png', purpose: 'any' as const },
           ];
 
       const manifest = {
