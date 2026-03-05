@@ -656,6 +656,7 @@ export default function SchoolUsersPage() {
       <EditStudentDialog
         student={editingStudent}
         open={editStudentOpen}
+        schoolId={schoolId}
         onOpenChange={(open) => {
           setEditStudentOpen(open);
           if (!open && selectedSection) {
