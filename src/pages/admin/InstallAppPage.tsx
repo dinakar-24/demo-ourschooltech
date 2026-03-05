@@ -1,19 +1,44 @@
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Share, Plus, MoreVertical, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 
+const BASE_DOMAIN = 'ourschooltech.com';
+
 export default function InstallAppPage() {
   const { school } = useAuth();
   const { impersonatedSchool, isImpersonating } = useImpersonation();
+  const { tenant, isSubdomain } = useTenant();
   const { canInstall, isInstalled, isIOS, promptInstall } = useInstallPrompt();
+  const schoolId = useEffectiveSchoolId();
 
   const displaySchool = isImpersonating ? impersonatedSchool : school;
-  const installUrl = window.location.origin;
+
+  // Fetch subdomain for the current school (needed when super admin impersonates)
+  const { data: schoolSubdomain } = useQuery({
+    queryKey: ['school-subdomain', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('subdomain').eq('id', schoolId!).single();
+      return data?.subdomain || null;
+    },
+    enabled: !!schoolId && !isSubdomain,
+    staleTime: Infinity,
+  });
+
+  // Build the correct school portal URL
+  const portalUrl = isSubdomain && tenant
+    ? `https://${tenant.subdomain}.${BASE_DOMAIN}`
+    : schoolSubdomain
+      ? `https://${schoolSubdomain}.${BASE_DOMAIN}`
+      : window.location.origin;
 
   const handleInstall = async () => {
     const accepted = await promptInstall();
@@ -23,7 +48,7 @@ export default function InstallAppPage() {
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(installUrl);
+    navigator.clipboard.writeText(portalUrl);
     toast.success('Link copied to clipboard');
   };
 
@@ -128,7 +153,17 @@ export default function InstallAppPage() {
           <h3 className="font-semibold text-foreground text-sm">Share with Teachers & Parents</h3>
           <p className="text-xs text-muted-foreground">Scan this QR code from any phone to open the school portal</p>
           <div className="inline-block p-3 bg-white rounded-xl">
-            <QRCodeSVG value={installUrl} size={160} level="M" />
+            <QRCodeSVG
+              value={portalUrl}
+              size={180}
+              level="H"
+              imageSettings={displaySchool?.logo ? {
+                src: displaySchool.logo,
+                height: 36,
+                width: 36,
+                excavate: true,
+              } : undefined}
+            />
           </div>
           <Button variant="outline" size="sm" onClick={handleCopyLink} className="w-full">
             Copy Portal Link
