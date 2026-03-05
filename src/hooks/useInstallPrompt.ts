@@ -9,8 +9,6 @@ export function useInstallPrompt() {
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-
   const isInstalled =
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as any).standalone === true;
@@ -33,14 +31,39 @@ export function useInstallPrompt() {
     };
   }, []);
 
+  // Wait for the prompt event with polling (up to 8 seconds)
+  const waitForPrompt = useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (deferredPrompt.current) {
+        resolve(true);
+        return;
+      }
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        elapsed += 200;
+        if (deferredPrompt.current) {
+          clearInterval(interval);
+          resolve(true);
+        } else if (elapsed >= 8000) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      }, 200);
+    });
+  }, []);
+
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt.current) return false;
-    await deferredPrompt.current.prompt();
-    const { outcome } = await deferredPrompt.current.userChoice;
+    // If not ready yet, wait for the browser event
+    if (!deferredPrompt.current) {
+      const ready = await waitForPrompt();
+      if (!ready) return false;
+    }
+    await deferredPrompt.current!.prompt();
+    const { outcome } = await deferredPrompt.current!.userChoice;
     deferredPrompt.current = null;
     setCanInstall(false);
     return outcome === 'accepted';
-  }, []);
+  }, [waitForPrompt]);
 
-  return { canInstall, isInstalled, isIOS, promptInstall };
+  return { canInstall, isInstalled, promptInstall };
 }
