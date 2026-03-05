@@ -153,7 +153,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         });
 
         if (error || !data) {
-          setTenantError(`School "${subdomain}" not found or inactive.`);
+          setTenantError(`not_found`);
           setIsLoading(false);
           return;
         }
@@ -174,7 +174,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         };
 
         if (!school.is_active) {
-          setTenantError(`School "${subdomain}" is currently inactive.`);
+          setTenantError(`inactive`);
           setIsLoading(false);
           return;
         }
