@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      manifest: false,
+      manifest: false, // We use public/manifest.json + dynamic override
     }),
   ].filter(Boolean),
   resolve: {

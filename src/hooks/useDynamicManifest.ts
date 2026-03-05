@@ -61,7 +61,10 @@ export function useDynamicManifest(tenant: Tenant | null, role?: UserRole) {
       link.rel = 'manifest';
       document.head.appendChild(link);
     }
-    link.href = url;
+    // Only override with blob if tenant has meaningful branding
+    if (tenant.logo || tenant.primaryColor) {
+      link.href = url;
+    }
 
     return () => {
       if (blobUrlRef.current) {
