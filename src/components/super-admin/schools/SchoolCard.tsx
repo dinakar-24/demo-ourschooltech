@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,6 +16,7 @@ interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  is_active?: boolean | null;
   primary_color?: string | null;
   accent_color?: string | null;
   created_at: string;
@@ -25,6 +27,8 @@ interface SchoolCardProps {
   onEdit: (school: School) => void;
   onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
+  onToggleStatus?: (school: School) => void;
+  isToggling?: boolean;
 }
 
 export const SchoolCard = memo(function SchoolCard({ 
@@ -32,8 +36,11 @@ export const SchoolCard = memo(function SchoolCard({
   onEdit, 
   onDelete,
   onImpersonate,
+  onToggleStatus,
+  isToggling,
 }: SchoolCardProps) {
   const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
+  const isActive = school.is_active !== false;
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(subdomainUrl);
@@ -41,7 +48,7 @@ export const SchoolCard = memo(function SchoolCard({
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-lg border bg-card">
+    <div className={`flex flex-col gap-3 p-4 rounded-lg border bg-card ${!isActive ? 'opacity-60' : ''}`}>
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
           {school.logo ? (
@@ -56,7 +63,12 @@ export const SchoolCard = memo(function SchoolCard({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{school.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium truncate">{school.name}</p>
+            {!isActive && (
+              <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium shrink-0">Disabled</span>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">{school.code}</span>
             <span className="flex items-center gap-1">
@@ -70,7 +82,6 @@ export const SchoolCard = memo(function SchoolCard({
               </div>
             )}
           </div>
-          {/* Subdomain URL */}
           <div className="flex items-center gap-1 mt-1">
             <span className="text-xs text-muted-foreground font-mono truncate">{subdomainUrl}</span>
             <button onClick={handleCopyUrl} className="text-muted-foreground hover:text-foreground shrink-0">
@@ -81,8 +92,15 @@ export const SchoolCard = memo(function SchoolCard({
             </a>
           </div>
         </div>
+        <div className="flex items-center shrink-0">
+          <Switch
+            checked={isActive}
+            disabled={isToggling}
+            onCheckedChange={() => onToggleStatus?.(school)}
+            aria-label={isActive ? 'Disable school' : 'Enable school'}
+          />
+        </div>
       </div>
-      {/* Action buttons row */}
       <div className="flex gap-2">
         {onImpersonate && (
           <Button 

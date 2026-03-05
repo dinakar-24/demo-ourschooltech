@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -8,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Building2, MapPin, Phone, Mail, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
+import { Building2, MapPin, Pencil, Trash2, Eye, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BASE_DOMAIN = 'ourschooltech.com';
@@ -23,6 +24,7 @@ interface School {
   phone: string | null;
   email: string | null;
   logo: string | null;
+  is_active?: boolean | null;
   primary_color?: string | null;
   accent_color?: string | null;
   created_at: string;
@@ -33,6 +35,8 @@ interface SchoolsTableProps {
   onEdit: (school: School) => void;
   onDelete: (school: School) => void;
   onImpersonate?: (school: School) => void;
+  onToggleStatus?: (school: School) => void;
+  isTogglingId?: string | null;
 }
 
 export const SchoolsTable = memo(function SchoolsTable({ 
@@ -40,6 +44,8 @@ export const SchoolsTable = memo(function SchoolsTable({
   onEdit, 
   onDelete,
   onImpersonate,
+  onToggleStatus,
+  isTogglingId,
 }: SchoolsTableProps) {
   const handleCopyUrl = (subdomain: string) => {
     navigator.clipboard.writeText(`https://${subdomain}.${BASE_DOMAIN}`);
@@ -50,18 +56,20 @@ export const SchoolsTable = memo(function SchoolsTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[28%]">School Name</TableHead>
-          <TableHead className="w-[12%]">Code</TableHead>
-          <TableHead className="w-[22%]">Subdomain</TableHead>
-          <TableHead className="w-[13%]">City</TableHead>
-          <TableHead className="w-[25%] text-right">Actions</TableHead>
+          <TableHead className="w-[26%]">School Name</TableHead>
+          <TableHead className="w-[10%]">Code</TableHead>
+          <TableHead className="w-[20%]">Subdomain</TableHead>
+          <TableHead className="w-[12%]">City</TableHead>
+          <TableHead className="w-[8%] text-center">Status</TableHead>
+          <TableHead className="w-[24%] text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {schools.map((school) => {
           const subdomainUrl = `https://${school.subdomain}.${BASE_DOMAIN}`;
+          const isActive = school.is_active !== false;
           return (
-            <TableRow key={school.id}>
+            <TableRow key={school.id} className={!isActive ? 'opacity-60' : ''}>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -109,6 +117,14 @@ export const SchoolsTable = memo(function SchoolsTable({
                   <MapPin className="w-3 h-3 flex-shrink-0" />
                   <span className="truncate">{school.city}</span>
                 </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <Switch
+                  checked={isActive}
+                  disabled={isTogglingId === school.id}
+                  onCheckedChange={() => onToggleStatus?.(school)}
+                  aria-label={isActive ? 'Disable school' : 'Enable school'}
+                />
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">

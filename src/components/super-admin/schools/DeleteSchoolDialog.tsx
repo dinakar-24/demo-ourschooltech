@@ -75,9 +75,14 @@ export function DeleteSchoolDialog({ open, onOpenChange, schoolName, onConfirm }
             <AlertTriangle className="w-6 h-6 text-destructive" />
           </div>
           <AlertDialogTitle className="text-center">Delete School</AlertDialogTitle>
-          <AlertDialogDescription className="text-center">
-            You are about to permanently delete <strong className="text-foreground">{schoolName}</strong>. 
-            This action cannot be undone. Enter your password to confirm.
+          <AlertDialogDescription className="text-center space-y-2">
+            <span className="block">
+              You are about to permanently delete <strong className="text-foreground">{schoolName}</strong> and <strong className="text-foreground">all associated data</strong> including:
+            </span>
+            <span className="block text-xs">
+              Students, Teachers, Admins, Attendance, Fees, Exams, Results, Gallery, Announcements, and all user accounts.
+            </span>
+            <span className="block font-medium text-destructive">This action cannot be undone.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
