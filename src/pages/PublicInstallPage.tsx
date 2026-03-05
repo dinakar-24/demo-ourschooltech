@@ -1,10 +1,12 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
-import { QRCodeSVG } from 'qrcode.react';
+import { useDynamicManifest } from '@/hooks/useDynamicManifest';
 import { Download, CheckCircle, Smartphone, Wifi, Bell, Zap, Share, PlusSquare, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 function getPlatform() {
   const ua = navigator.userAgent;
@@ -13,17 +15,86 @@ function getPlatform() {
   return 'desktop';
 }
 
+interface SchoolData {
+  name: string;
+  logo: string | null;
+  subdomain: string;
+  appDisplayName: string | null;
+  appShortName: string | null;
+  primaryColor: string | null;
+  backgroundColor: string | null;
+}
+
 export default function PublicInstallPage() {
-  const { tenant } = useTenant();
+  const { tenant, isSubdomain } = useTenant();
   const { isInstalled, triggerInstall, hasPrompt } = useInstallPrompt();
   const platform = getPlatform();
+  const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const logo = tenant?.logo || null;
-  const appName = tenant?.appDisplayName || tenant?.name || 'School App';
-  const subdomain = tenant?.subdomain;
-  const schoolUrl = subdomain
-    ? `https://${subdomain}.ourschooltech.com`
-    : window.location.origin;
+  // Extract subdomain from current hostname to fetch school branding
+  useEffect(() => {
+    const fetchSchoolBySubdomain = async () => {
+      // If tenant context already has data, use it
+      if (isSubdomain && tenant) {
+        setSchoolData({
+          name: tenant.name,
+          logo: tenant.logo || null,
+          subdomain: tenant.subdomain,
+          appDisplayName: tenant.appDisplayName || null,
+          appShortName: tenant.appShortName || null,
+          primaryColor: tenant.primaryColor || null,
+          backgroundColor: tenant.backgroundColor || null,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Try to extract subdomain from hostname
+      const hostname = window.location.hostname;
+      const match = hostname.match(/^([a-z0-9-]+)\.ourschooltech\.com$/i);
+      const sub = match?.[1];
+      
+      if (sub) {
+        const { data } = await supabase
+          .from('schools')
+          .select('name, logo, subdomain, app_display_name, app_short_name, primary_color, background_color')
+          .eq('subdomain', sub)
+          .eq('is_active', true)
+          .single();
+
+        if (data) {
+          setSchoolData({
+            name: data.name,
+            logo: data.logo,
+            subdomain: data.subdomain,
+            appDisplayName: data.app_display_name,
+            appShortName: data.app_short_name,
+            primaryColor: data.primary_color,
+            backgroundColor: data.background_color,
+          });
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchSchoolBySubdomain();
+  }, [tenant, isSubdomain]);
+
+  // Set up dynamic manifest so the browser recognizes this as an installable PWA
+  useDynamicManifest(undefined, schoolData ? {
+    name: schoolData.name,
+    logo: schoolData.logo,
+    subdomain: schoolData.subdomain,
+    appDisplayName: schoolData.appDisplayName,
+    appShortName: schoolData.appShortName,
+    primaryColor: schoolData.primaryColor || undefined,
+    backgroundColor: schoolData.backgroundColor || undefined,
+  } : undefined);
+
+  const logo = schoolData?.logo || null;
+  const appName = schoolData?.appDisplayName || schoolData?.name || 'School App';
+  const subUpper = schoolData?.subdomain?.toUpperCase() || '';
 
   const features = [
     { icon: Zap, label: 'Fast & Lightweight', desc: 'Loads instantly, works like a native app' },
@@ -31,6 +102,14 @@ export default function PublicInstallPage() {
     { icon: Bell, label: 'Push Notifications', desc: 'Get real-time alerts for attendance, fees & more' },
     { icon: Smartphone, label: 'Home Screen Access', desc: 'Launch directly from your phone' },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex items-center justify-center p-4">
@@ -47,13 +126,13 @@ export default function PublicInstallPage() {
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{appName}</h1>
+                <h1 className="text-2xl font-bold text-foreground">{subUpper || appName}</h1>
                 <p className="text-sm text-muted-foreground mt-1">Install the app for the best experience</p>
               </div>
 
               {isInstalled ? (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-success/10 text-success rounded-lg">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg">
                     <CheckCircle className="w-5 h-5" />
                     <span className="text-sm font-medium">App is installed!</span>
                   </div>
@@ -69,7 +148,7 @@ export default function PublicInstallPage() {
                   {hasPrompt && (
                     <Button size="lg" onClick={triggerInstall} className="gap-2 w-full text-base">
                       <Download className="w-5 h-5" />
-                      Install {appName}
+                      Install App
                     </Button>
                   )}
                   {platform === 'ios' && !hasPrompt && (
@@ -133,7 +212,7 @@ export default function PublicInstallPage() {
         {/* Link to login */}
         <div className="text-center">
           <Link to="/" className="text-sm text-primary hover:underline font-medium">
-            ← Back to Login
+            ← Sign in to your account
           </Link>
         </div>
       </div>
