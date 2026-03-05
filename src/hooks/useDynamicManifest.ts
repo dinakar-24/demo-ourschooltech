@@ -33,13 +33,10 @@ function createResizedIcon(
       const ctx = canvas.getContext('2d')!;
 
       if (maskable) {
-        // Fill background for maskable (safe zone is inner 80%, so use 10% padding)
+        // Fill background then draw icon edge-to-edge (OS applies its own mask)
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, size, size);
-        const padding = size * 0.1;
-        const drawSize = size - padding * 2;
-        // Fill the safe zone fully — stretch to fit
-        ctx.drawImage(img, padding, padding, drawSize, drawSize);
+        ctx.drawImage(img, 0, 0, size, size);
       } else {
         // For "any" purpose, fill the entire canvas
         ctx.drawImage(img, 0, 0, size, size);
