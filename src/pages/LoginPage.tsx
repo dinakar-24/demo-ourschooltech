@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2, ArrowRight, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react';
-import { useRef } from 'react';
 import appLogo from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { SuperAdminOTPLogin } from '@/components/auth/SuperAdminOTPLogin';
@@ -43,6 +41,19 @@ const roleIcons: Record<string, string> = {
   student: '🎓',
 };
 
+/** Races an RPC call against a timeout */
+async function rpcWithTimeout(
+  rpcCall: () => PromiseLike<{ data: any; error: any }>,
+  timeoutMs: number
+): Promise<{ data: any; error: any }> {
+  return Promise.race([
+    Promise.resolve(rpcCall()),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+    ),
+  ]);
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
@@ -59,7 +70,6 @@ export default function LoginPage() {
 
   const handleSplashComplete = useCallback(() => setStep('email'), []);
 
-
   useEffect(() => {
     if (isAuthenticated && user) {
       const paths: Record<string, string> = {
@@ -73,7 +83,6 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // While auth is loading, show a centered loader instead of the login form
   if (authLoading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
@@ -82,7 +91,6 @@ export default function LoginPage() {
     );
   }
 
-  // If already authenticated, don't render login form (redirect will happen via useEffect)
   if (isAuthenticated && user) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[#0B1120]">
@@ -96,16 +104,34 @@ export default function LoginPage() {
     if (!email.trim()) { setError('Please enter your email'); return; }
     setLookupLoading(true);
     setError('');
+
+    const doLookup = () => supabase.rpc('lookup_user_by_email', { _email: email.trim() });
+
     try {
-      // Add timeout to prevent infinite loading
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      
-      const { data, error: rpcError } = await supabase.rpc('lookup_user_by_email', { _email: email.trim() });
-      clearTimeout(timeoutId);
-      
-      if (rpcError) throw rpcError;
-      const result = data as any;
+      let result: any;
+      try {
+        const { data, error: rpcError } = await rpcWithTimeout(doLookup, 12000);
+        if (rpcError) throw rpcError;
+        result = data;
+      } catch (firstErr: any) {
+        if (firstErr.message === 'TIMEOUT') {
+          // Retry once
+          try {
+            const { data, error: rpcError } = await rpcWithTimeout(doLookup, 12000);
+            if (rpcError) throw rpcError;
+            result = data;
+          } catch (retryErr: any) {
+            throw new Error(
+              retryErr.message === 'TIMEOUT'
+                ? 'Taking too long. Please check your connection and try again.'
+                : (retryErr.message || 'Failed to look up account.')
+            );
+          }
+        } else {
+          throw firstErr;
+        }
+      }
+
       if (!result?.found) {
         setError('No account found with this email address');
         setLookupLoading(false);
@@ -116,7 +142,6 @@ export default function LoginPage() {
         setStep('superadmin');
         return;
       }
-      // Prefetch logo so it's cached before password step renders
       if (result.logo_url) {
         const img = new Image();
         img.src = result.logo_url;
@@ -125,10 +150,7 @@ export default function LoginPage() {
       setLookupLoading(false);
       setStep('password');
     } catch (err: any) {
-      const message = err?.name === 'AbortError' 
-        ? 'Request timed out. Please check your internet connection and try again.'
-        : (err.message || 'Failed to look up account. Please try again.');
-      setError(message);
+      setError(err.message || 'Failed to look up account. Please try again.');
       setLookupLoading(false);
     }
   };
@@ -158,22 +180,16 @@ export default function LoginPage() {
     }
   };
 
-  // Splash
   if (step === 'splash') {
     return <LoginSplash onComplete={handleSplashComplete} />;
   }
 
-
-  // Super admin
   if (step === 'superadmin') {
     return (
       <div className="min-h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(145deg, hsl(225, 50%, 18%) 0%, hsl(230, 55%, 12%) 50%, hsl(220, 60%, 8%) 100%)' }}>
         <LoginBackground />
         <div className="flex-1 flex flex-col items-center justify-center px-5 py-8 relative z-10">
-          <motion.div
-            className="w-full max-w-sm"
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', damping: 22 }}
-          >
+          <div className="w-full max-w-sm login-fade-in">
             <div className="text-center mb-6">
               <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto mb-4 border border-white/10">
                 <Shield className="w-8 h-8 text-white/80" />
@@ -184,7 +200,7 @@ export default function LoginPage() {
             <div className="bg-white/[0.06] backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-2xl">
               <SuperAdminOTPLogin onBack={() => setStep('email')} onSuccess={() => {}} initialEmail={email} />
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -207,25 +223,23 @@ export default function LoginPage() {
       {/* Content */}
       <div className="flex-1 flex flex-col items-center px-5 py-4 relative z-10 overflow-auto">
         <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
-          <AnimatePresence mode="wait">
-            {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
-            {step === 'password' && schoolInfo && (
-              <PasswordStep
-                key="password"
-                email={email}
-                password={password}
-                setPassword={setPassword}
-                showPassword={showPassword}
-                setShowPassword={setShowPassword}
-                error={error}
-                loading={loading}
-                schoolInfo={schoolInfo}
-                onSubmit={handlePasswordSubmit}
-                onChangeEmail={() => { setStep('email'); setPassword(''); setError(''); setSchoolInfo(null); }}
-                onForgotPassword={() => setShowForgotPassword(true)}
-              />
-            )}
-          </AnimatePresence>
+          {step === 'email' && <EmailStep key="email" email={email} setEmail={setEmail} error={error} loading={lookupLoading} onSubmit={handleEmailSubmit} />}
+          {step === 'password' && schoolInfo && (
+            <PasswordStep
+              key="password"
+              email={email}
+              password={password}
+              setPassword={setPassword}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              error={error}
+              loading={loading}
+              schoolInfo={schoolInfo}
+              onSubmit={handlePasswordSubmit}
+              onChangeEmail={() => { setStep('email'); setPassword(''); setError(''); setSchoolInfo(null); }}
+              onForgotPassword={() => setShowForgotPassword(true)}
+            />
+          )}
         </div>
       </div>
 
@@ -241,35 +255,20 @@ export default function LoginPage() {
   );
 }
 
-/* ── Background ── */
+/* ── Background (CSS-only, no framer-motion) ── */
 function LoginBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Gradient orbs */}
-      <motion.div
-        className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full"
-        style={{ background: 'radial-gradient(circle, hsl(230 60% 40% / 0.3), transparent 70%)' }}
-        animate={{ scale: [1, 1.1, 1], x: [0, 15, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full"
-        style={{ background: 'radial-gradient(circle, hsl(200 50% 35% / 0.2), transparent 70%)' }}
-        animate={{ scale: [1, 1.08, 1], y: [0, -20, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-      />
-      <motion.div
-        className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full"
-        style={{ background: 'radial-gradient(circle, hsl(260 50% 40% / 0.15), transparent 70%)' }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
-      />
-      {/* Grid pattern */}
+      <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full login-orb-1"
+        style={{ background: 'radial-gradient(circle, hsl(230 60% 40% / 0.3), transparent 70%)' }} />
+      <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full login-orb-2"
+        style={{ background: 'radial-gradient(circle, hsl(200 50% 35% / 0.2), transparent 70%)' }} />
+      <div className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full login-orb-3"
+        style={{ background: 'radial-gradient(circle, hsl(260 50% 40% / 0.15), transparent 70%)' }} />
       <div className="absolute inset-0 opacity-[0.015]" style={{
         backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
         backgroundSize: '32px 32px',
       }} />
-      {/* Subtle noise texture overlay */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
       }} />
@@ -277,7 +276,7 @@ function LoginBackground() {
   );
 }
 
-/* ── Email Step ── */
+/* ── Email Step (CSS animations) ── */
 function EmailStep({ email, setEmail, error, loading, onSubmit }: {
   email: string;
   setEmail: (v: string) => void;
@@ -286,32 +285,21 @@ function EmailStep({ email, setEmail, error, loading, onSubmit }: {
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <motion.div
-      className="flex flex-col"
-      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      transition={{ type: 'spring', damping: 24, stiffness: 200 }}
-    >
-      {/* Illustration */}
-      <motion.div
-        className="flex justify-center mb-6"
-        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1, type: 'spring', damping: 20 }}
-      >
+    <div className="flex flex-col login-fade-in">
+      <div className="flex justify-center mb-6 login-scale-in">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-md flex items-center justify-center border border-white/[0.08] shadow-2xl">
           <GraduationCap className="w-10 h-10 text-white/60" />
         </div>
-      </motion.div>
+      </div>
 
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white tracking-tight">Welcome back</h2>
         <p className="text-white/35 text-sm mt-1.5">Enter your email to continue</p>
       </div>
 
-      <motion.form
+      <form
         onSubmit={onSubmit}
-        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-4"
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.12, type: 'spring', damping: 22 }}
+        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-4 login-slide-up"
       >
         <ErrorMessage error={error} />
         <div className="relative">
@@ -323,24 +311,22 @@ function EmailStep({ email, setEmail, error, loading, onSubmit }: {
             autoFocus
           />
         </div>
-        <motion.button
+        <button
           type="submit" disabled={loading}
-          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 transition-colors"
-          whileTap={{ scale: 0.98 }}
+          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 active:scale-[0.98] transition-all"
         >
           {loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Finding account...</>
           ) : (
             <>Continue <ArrowRight className="w-4 h-4" /></>
           )}
-        </motion.button>
-
-      </motion.form>
-    </motion.div>
+        </button>
+      </form>
+    </div>
   );
 }
 
-/* ── Password Step ── */
+/* ── Password Step (CSS animations) ── */
 function PasswordStep({ email, password, setPassword, showPassword, setShowPassword, error, loading, schoolInfo, onSubmit, onChangeEmail, onForgotPassword }: {
   email: string;
   password: string;
@@ -359,18 +345,9 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
   const [logoLoaded, setLogoLoaded] = useState(false);
 
   return (
-    <motion.div
-      className="flex flex-col"
-      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-      transition={{ type: 'spring', damping: 24, stiffness: 200 }}
-    >
+    <div className="flex flex-col login-fade-in">
       {/* School banner & branding */}
-      <motion.div
-        className="mb-5 rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl"
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.08, type: 'spring', damping: 22 }}
-      >
-        {/* Banner image */}
+      <div className="mb-5 rounded-2xl overflow-hidden border border-white/[0.06] shadow-2xl login-scale-in">
         {hasBanner && (
           <div className="relative h-32 overflow-hidden">
             <img
@@ -382,15 +359,11 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
           </div>
         )}
 
-        {/* School info card */}
         <div className={`bg-white/[0.04] backdrop-blur-2xl p-4 flex items-center gap-3.5 ${hasBanner ? '-mt-8 relative z-10 mx-3 rounded-xl border border-white/[0.08] bg-[hsl(225,50%,12%)/0.9] mb-3' : ''}`}>
-          {/* Logo - letter avatar placeholder with lazy-loaded image */}
           <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative">
-            {/* Always show letter avatar as base */}
             <div className={`absolute inset-0 bg-gradient-to-br from-white/[0.1] to-white/[0.04] flex items-center justify-center border border-white/[0.08] shadow-lg transition-opacity duration-300 ${logoLoaded ? 'opacity-0' : 'opacity-100'}`}>
               <span className="text-2xl font-bold text-white/60">{schoolInfo.school_name?.charAt(0)}</span>
             </div>
-            {/* Fade in real logo on top */}
             {logoUrl && (
               <img
                 src={logoUrl}
@@ -415,29 +388,24 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
           </div>
         </div>
 
-        {/* Welcome text if no banner */}
         {!hasBanner && (
           <div className="px-4 pb-3 pt-1">
             <p className="text-white/30 text-xs">Welcome back, <span className="text-white/50">{schoolInfo.user_name}</span></p>
           </div>
         )}
-      </motion.div>
+      </div>
 
-      {/* Welcome text if banner exists */}
       {hasBanner && (
         <p className="text-white/30 text-xs text-center mb-3">Welcome back, <span className="text-white/50">{schoolInfo.user_name}</span></p>
       )}
 
       {/* Password form */}
-      <motion.form
+      <form
         onSubmit={onSubmit}
-        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-3.5"
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, type: 'spring', damping: 22 }}
+        className="bg-white/[0.04] backdrop-blur-2xl rounded-2xl p-5 border border-white/[0.06] shadow-2xl space-y-3.5 login-slide-up"
       >
         <ErrorMessage error={error} />
 
-        {/* Email display */}
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.05]">
           <Mail className="w-3.5 h-3.5 text-white/25 shrink-0" />
           <span className="text-xs text-white/50 truncate flex-1">{email}</span>
@@ -447,7 +415,6 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
           </button>
         </div>
 
-        {/* Password input */}
         <div className="relative">
           <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
           <Input
@@ -463,17 +430,16 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
           </button>
         </div>
 
-        <motion.button
+        <button
           type="submit" disabled={loading}
-          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 transition-colors"
-          whileTap={{ scale: 0.98 }}
+          className="w-full h-12 rounded-xl bg-white text-[hsl(225,50%,15%)] font-semibold text-sm shadow-lg shadow-white/10 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white/95 active:scale-[0.98] transition-all"
         >
           {loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
           ) : (
             <><Lock className="w-3.5 h-3.5" /> Login</>
           )}
-        </motion.button>
+        </button>
 
         <div className="text-center pt-0.5">
           <button type="button" onClick={onForgotPassword}
@@ -481,27 +447,23 @@ function PasswordStep({ email, password, setPassword, showPassword, setShowPassw
             Forgot password?
           </button>
         </div>
-      </motion.form>
-    </motion.div>
+      </form>
+    </div>
   );
 }
 
-/* ── Error Message ── */
+/* ── Error Message (CSS transition) ── */
 const ErrorMessage = React.forwardRef<HTMLDivElement, { error: string }>(
   function ErrorMessage({ error }, ref) {
+    if (!error) return null;
     return (
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            ref={ref}
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-xs flex items-center gap-2 overflow-hidden"
-          >
-            <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-[10px] font-bold">!</div>
-            <span className="text-red-300/80">{error}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        ref={ref}
+        className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-xs flex items-center gap-2 overflow-hidden login-fade-in"
+      >
+        <div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-[10px] font-bold">!</div>
+        <span className="text-red-300/80">{error}</span>
+      </div>
     );
   }
 );

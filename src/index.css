@@ -404,4 +404,51 @@ input::-webkit-textfield-decoration-container {
     87.5%   { transform: translate(-18px, 0px); }         /* left */
     100%    { transform: translate(-12.73px, -12.73px); } /* top-left */
   }
+
+  /* Login page CSS animations (replaces framer-motion) */
+  @keyframes loginFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes loginScaleIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes loginSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes loginOrb1 {
+    0%, 100% { transform: scale(1) translateX(0); }
+    50% { transform: scale(1.1) translateX(15px); }
+  }
+  @keyframes loginOrb2 {
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.08) translateY(-20px); }
+  }
+  @keyframes loginOrb3 {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+}
+
+.login-fade-in {
+  animation: loginFadeIn 0.4s ease-out both;
+}
+.login-scale-in {
+  animation: loginScaleIn 0.35s ease-out both;
+  animation-delay: 0.08s;
+}
+.login-slide-up {
+  animation: loginSlideUp 0.35s ease-out both;
+  animation-delay: 0.12s;
+}
+.login-orb-1 {
+  animation: loginOrb1 10s ease-in-out infinite;
+}
+.login-orb-2 {
+  animation: loginOrb2 8s ease-in-out 2s infinite;
+}
+.login-orb-3 {
+  animation: loginOrb3 12s ease-in-out 4s infinite;
 }
