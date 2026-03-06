@@ -262,6 +262,39 @@ export type Database = {
           },
         ]
       }
+      error_logs: {
+        Row: {
+          created_at: string
+          error_context: Json | null
+          error_message: string
+          error_type: string
+          id: string
+          school_id: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_context?: Json | null
+          error_message: string
+          error_type: string
+          id?: string
+          school_id?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_context?: Json | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          school_id?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       exams: {
         Row: {
           class_name: string

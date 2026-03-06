@@ -6,6 +6,7 @@ import { SessionWarningBanner } from '@/components/layout/SessionWarningBanner';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { friendlyErrorMessage } from '@/lib/error-utils';
+import { logError, updateLoggerContext } from '@/lib/logger';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -167,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(data.user);
                 setSchool(data.school);
                 cacheAuthData(data.user, data.school);
+                updateLoggerContext(data.user.id, data.user.schoolId);
               }
             }
             setIsLoading(false);
@@ -175,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setSchool(null);
           clearAuthCache();
+          updateLoggerContext(undefined, undefined);
           setIsLoading(false);
         }
       }
@@ -220,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setIsLoading(false);
+      logError('auth', `Login failed: ${error.message}`, { email }, 'warning');
       throw new Error(friendlyErrorMessage(error.message));
     }
   };
