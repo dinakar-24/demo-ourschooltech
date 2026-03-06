@@ -45,7 +45,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useStudents, useStudentStats, useDeleteStudent, Student } from '@/hooks/useStudents';
 import { useCreateFee } from '@/hooks/useFees';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeEdgeFunction } from '@/lib/api';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { CredentialsDialog, type CreatedAccount } from '@/components/admin/CredentialsDialog';
@@ -154,8 +155,9 @@ export default function StudentsPage() {
 
     setIsCreating(true);
     try {
-      const response = await supabase.functions.invoke('create-student-with-accounts', {
-        body: {
+      const result = await invokeEdgeFunction<{ student: any; created_accounts?: any[] }>(
+        'create-student-with-accounts',
+        {
           full_name: formData.full_name,
           admission_number: formData.admission_number,
           class_name: formData.class_name,
@@ -172,12 +174,9 @@ export default function StudentsPage() {
           avatar_url: formData.avatar_url || undefined,
           school_id: schoolId,
         },
-      });
+      );
 
-      if (response.error) throw new Error(response.error.message || 'Failed to create student');
-      if (!response.data?.success) throw new Error(response.data?.error || 'Failed to create student');
-
-      const student = response.data.student;
+      const student = result.student;
 
       // Create fee records
       if (student?.id && feeEntries.length > 0) {
@@ -202,7 +201,7 @@ export default function StudentsPage() {
       }
 
       // Show credentials dialog
-      const accounts = response.data.created_accounts || [];
+      const accounts = result.created_accounts || [];
       if (accounts.length > 0) {
         setCredentialsStudentName(formData.full_name);
         setCreatedAccounts(accounts);
@@ -222,7 +221,7 @@ export default function StudentsPage() {
       setIsAddDialogOpen(false);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Failed to add student';
-      toast.error(msg);
+      toast.error(friendlyErrorMessage(msg));
     } finally {
       setIsCreating(false);
     }
@@ -242,16 +241,15 @@ export default function StudentsPage() {
     if (!schoolId) return;
     setIsDeletingAll(true);
     try {
-      const response = await supabase.functions.invoke('delete-all-students', {
-        body: { school_id: schoolId },
-      });
-      if (response.error) throw new Error(response.error.message);
-      if (!response.data?.success) throw new Error(response.data?.error || 'Failed');
-      toast.success(`Deleted ${response.data.deleted_count} students`);
+      const result = await invokeEdgeFunction<{ deleted_count: number }>(
+        'delete-all-students',
+        { school_id: schoolId },
+      );
+      toast.success(`Deleted ${result.deleted_count} students`);
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['student-stats'] });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete all students');
+      toast.error(friendlyErrorMessage(err.message));
     } finally {
       setIsDeletingAll(false);
       setShowDeleteAllConfirm(false);

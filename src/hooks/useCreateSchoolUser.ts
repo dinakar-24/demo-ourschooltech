@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { extractEdgeFunctionError } from '@/lib/error-utils';
+import { invokeEdgeFunction } from '@/lib/api';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 
 type UserRole = 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -27,18 +27,12 @@ export function useCreateSchoolUser() {
   const createUser = useCallback(async (data: CreateUserData): Promise<boolean> => {
     setIsCreating(true);
     try {
-      const response = await supabase.functions.invoke('create-school-user', {
-        body: data,
-      });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
-
+      await invokeEdgeFunction('create-school-user', data);
       toast.success(`${data.role.replace('_', ' ')} account created successfully`);
       return true;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
-      toast.error(errorMessage);
+      toast.error(friendlyErrorMessage(errorMessage));
       console.error('Create user error:', error);
       return false;
     } finally {

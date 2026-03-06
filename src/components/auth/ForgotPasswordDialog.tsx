@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, KeyRound, Lock, Loader2, ArrowLeft, Eye, EyeOff, CheckCircle2, X, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { extractEdgeFunctionError, validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
+import { invokeEdgeFunction } from '@/lib/api';
+import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -49,11 +49,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
   const handleClose = () => { reset(); onClose(); };
 
   const sendOTP = async () => {
-    const response = await supabase.functions.invoke('send-password-reset-otp', {
-      body: { email: email.trim() },
-    });
-    const errorMsg = await extractEdgeFunctionError(response);
-    if (errorMsg) throw new Error(errorMsg);
+    await invokeEdgeFunction('send-password-reset-otp', { email: email.trim() });
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -105,11 +101,11 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     setLoading(true);
     setError('');
     try {
-      const response = await supabase.functions.invoke('verify-password-reset-otp', {
-        body: { email: email.trim(), otp: otp.trim(), newPassword },
+      await invokeEdgeFunction('verify-password-reset-otp', {
+        email: email.trim(),
+        otp: otp.trim(),
+        newPassword,
       });
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
       toast.success('Password updated successfully!');
       setStep('success');
     } catch (err: any) {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
+import { invokeEdgeFunction } from '@/lib/api';
 
 export interface School {
   id: string;
@@ -193,12 +194,7 @@ export function useDeleteSchool() {
 
   return useMutation({
     mutationFn: async (schoolId: string) => {
-      const { data, error } = await supabase.functions.invoke('delete-school', {
-        body: { school_id: schoolId },
-      });
-      if (error) throw new Error(error.message || 'Failed to delete school');
-      if (data && !data.success) throw new Error(data.error || 'Failed to delete school');
-      return data;
+      return await invokeEdgeFunction('delete-school', { school_id: schoolId });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
@@ -217,12 +213,10 @@ export function useToggleSchoolStatus() {
 
   return useMutation({
     mutationFn: async ({ schoolId, isActive }: { schoolId: string; isActive: boolean }) => {
-      const { data, error } = await supabase.functions.invoke('toggle-school-status', {
-        body: { school_id: schoolId, is_active: isActive },
+      return await invokeEdgeFunction('toggle-school-status', {
+        school_id: schoolId,
+        is_active: isActive,
       });
-      if (error) throw new Error(error.message || 'Failed to update school status');
-      if (data && !data.success) throw new Error(data.error || 'Failed to update school status');
-      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
