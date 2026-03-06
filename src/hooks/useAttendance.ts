@@ -5,6 +5,7 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { sendNotification } from '@/lib/send-notification';
+import { queryKeys } from '@/lib/query-keys';
 
 export interface AttendanceRecord {
   id: string;
@@ -41,7 +42,7 @@ export function useAttendance(date: Date, filters?: {
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['attendance', schoolId, dateStr, filters],
+    queryKey: queryKeys.attendance(schoolId, dateStr, filters),
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -76,7 +77,7 @@ export function useAttendanceSummary(date: Date) {
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['attendance-summary', schoolId, dateStr],
+    queryKey: queryKeys.attendanceSummary(schoolId, dateStr),
     queryFn: async (): Promise<AttendanceSummary> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -106,7 +107,7 @@ export function useClassAttendance(date: Date, className: string, section: strin
   const dateStr = format(date, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['class-attendance', schoolId, dateStr, className, section],
+    queryKey: queryKeys.classAttendance(schoolId, dateStr, className, section),
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -186,9 +187,9 @@ export function useMarkAttendance() {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['class-attendance'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendance });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendanceSummary });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allClassAttendance });
       toast.success('Attendance saved successfully');
 
       // Notify parents of absent students
@@ -232,15 +233,13 @@ export function useMarkAttendance() {
           });
       }
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to save attendance');
-    },
+    // Global mutation error handler provides fallback toast
   });
 }
 
 export function useStudentAttendance(studentId: string, startDate?: Date, endDate?: Date) {
   return useQuery({
-    queryKey: ['student-attendance', studentId, startDate, endDate],
+    queryKey: queryKeys.studentAttendance(studentId, startDate, endDate),
     queryFn: async () => {
       let query = supabase
         .from('attendance')

@@ -2,12 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import type { FeeInvoice } from './useFeeInvoices';
+import { queryKeys } from '@/lib/query-keys';
 
 export function useStudentFeeInvoices(studentId: string | undefined) {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['student-fee-invoices', schoolId, studentId],
+    queryKey: queryKeys.studentFeeInvoices(schoolId, studentId),
     queryFn: async () => {
       if (!schoolId || !studentId) return [] as FeeInvoice[];
 

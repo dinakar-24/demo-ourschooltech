@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 import { getSupabaseRange } from './usePagination';
 import { sendNotification } from '@/lib/send-notification';
+import { queryKeys } from '@/lib/query-keys';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -51,7 +52,7 @@ export function useAnnouncements(filters?: AnnouncementFilters) {
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['announcements', schoolId, filters],
+    queryKey: queryKeys.announcements(schoolId, filters),
     queryFn: async (): Promise<PaginatedAnnouncements> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -88,7 +89,7 @@ export function useAnnouncementStats() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['announcement-stats', schoolId],
+    queryKey: queryKeys.announcementStats(schoolId),
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -143,8 +144,8 @@ export function useCreateAnnouncement() {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncements });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncementStats });
       toast.success(variables.is_active ? 'Announcement published!' : 'Announcement saved as draft');
 
       // Notify targeted users when announcement is active
@@ -186,9 +187,7 @@ export function useCreateAnnouncement() {
         }
       }
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create announcement');
-    },
+    // Global mutation error handler provides fallback toast
   });
 }
 
@@ -208,12 +207,9 @@ export function useUpdateAnnouncement() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncements });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncementStats });
       toast.success('Announcement updated');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update announcement');
     },
   });
 }
@@ -231,12 +227,9 @@ export function useDeleteAnnouncement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncements });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncementStats });
       toast.success('Announcement deleted');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete announcement');
     },
   });
 }
@@ -254,12 +247,9 @@ export function useToggleAnnouncement() {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncements });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncementStats });
       toast.success(variables.isActive ? 'Announcement published' : 'Announcement unpublished');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update announcement');
     },
   });
 }
