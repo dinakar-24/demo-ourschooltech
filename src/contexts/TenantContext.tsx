@@ -71,6 +71,24 @@ function hexToHsl(hex: string): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function setMeta(nameOrProperty: string, content: string) {
+  const isOg = nameOrProperty.startsWith('og:') || nameOrProperty.startsWith('twitter:');
+  const selector = isOg
+    ? `meta[property="${nameOrProperty}"], meta[name="${nameOrProperty}"]`
+    : `meta[name="${nameOrProperty}"]`;
+
+  let el = document.querySelector<HTMLMetaElement>(selector);
+  if (!el) {
+    el = document.createElement('meta');
+    if (isOg) {
+      el.setAttribute('property', nameOrProperty);
+    }
+    el.setAttribute('name', nameOrProperty);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
 function applyTenantBranding(tenant: Tenant) {
   const root = document.documentElement;
 
@@ -128,6 +146,27 @@ function applyTenantBranding(tenant: Tenant) {
     }
     metaTheme.setAttribute('content', tenant.primaryColor);
   }
+
+  // Dynamic OG & Twitter meta tags for social previews
+  const schoolName = tenant.appDisplayName || tenant.name;
+  const schoolUrl = `https://${tenant.subdomain}.ourschooltech.com`;
+  const description = `${schoolName} - School Portal`;
+  const image = tenant.logo || `${schoolUrl}/favicon.png`;
+
+  setMeta('og:title', schoolName);
+  setMeta('og:description', description);
+  setMeta('og:image', image);
+  setMeta('og:url', schoolUrl);
+  setMeta('og:type', 'website');
+  setMeta('og:site_name', schoolName);
+
+  setMeta('twitter:title', schoolName);
+  setMeta('twitter:description', description);
+  setMeta('twitter:image', image);
+  setMeta('twitter:card', 'summary_large_image');
+  setMeta('twitter:site', '');
+
+  setMeta('author', schoolName);
 }
 
 export function TenantProvider({ children }: { children: ReactNode }) {

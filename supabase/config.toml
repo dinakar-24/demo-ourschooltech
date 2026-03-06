@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.process-jobs]
 verify_jwt = false
+
+[functions.og-metadata]
+verify_jwt = false
