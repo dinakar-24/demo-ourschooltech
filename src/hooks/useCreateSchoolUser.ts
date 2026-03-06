@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { extractEdgeFunctionError } from '@/lib/error-utils';
 
 type UserRole = 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -30,26 +31,8 @@ export function useCreateSchoolUser() {
         body: data,
       });
 
-      // The response contains both data and error
-      const result = response.data;
-      const invokeError = response.error;
-
-      // Handle function invocation errors (network, CORS, etc.)
-      if (invokeError) {
-        console.error('Invoke error:', invokeError);
-        // Try to get a meaningful message
-        throw new Error(invokeError.message || 'Failed to call server function');
-      }
-
-      // Handle application-level errors from the function
-      if (!result?.success) {
-        const errorMsg = result?.error || 'Failed to create user';
-        // Make error messages more user-friendly
-        if (errorMsg.includes('already been registered') || errorMsg.includes('email_exists')) {
-          throw new Error('A user with this email already exists');
-        }
-        throw new Error(errorMsg);
-      }
+      const errorMsg = await extractEdgeFunctionError(response);
+      if (errorMsg) throw new Error(errorMsg);
 
       toast.success(`${data.role.replace('_', ' ')} account created successfully`);
       return true;

@@ -8,6 +8,7 @@ import { LoginSplash } from '@/components/login/LoginSplash';
 import { Input } from '@/components/ui/input';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
 
 type LoginStep = 'splash' | 'email' | 'password' | 'superadmin';
 
@@ -101,7 +102,8 @@ export default function LoginPage() {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) { setError('Please enter your email'); return; }
+    const emailErr = validateEmail(email);
+    if (emailErr) { setError(emailErr); return; }
     setLookupLoading(true);
     setError('');
 
@@ -150,7 +152,7 @@ export default function LoginPage() {
       setLookupLoading(false);
       setStep('password');
     } catch (err: any) {
-      setError(err.message || 'Failed to look up account. Please try again.');
+      setError(friendlyErrorMessage(err.message));
       setLookupLoading(false);
     }
   };
@@ -163,7 +165,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.message || 'Authentication failed.');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }

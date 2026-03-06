@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { extractEdgeFunctionError } from '@/lib/error-utils';
 
 type Action = 'disable' | 'enable' | 'delete' | 'update_role' | 'update_profile' | 'reset_password';
 
@@ -22,13 +23,8 @@ export function useManageUser() {
     try {
       const response = await supabase.functions.invoke('manage-user', { body: data });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to call server function');
-      }
-
-      if (!response.data?.success) {
-        throw new Error(response.data?.error || 'Operation failed');
-      }
+      const errorMsg = await extractEdgeFunctionError(response);
+      if (errorMsg) throw new Error(errorMsg);
 
       const actionLabels: Record<Action, string> = {
         disable: 'User disabled',

@@ -5,6 +5,7 @@ import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { SessionWarningBanner } from '@/components/layout/SessionWarningBanner';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -219,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setIsLoading(false);
-      throw new Error(error.message);
+      throw new Error(friendlyErrorMessage(error.message));
     }
   };
 
@@ -239,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setIsLoading(false);
-      throw new Error(error.message);
+      throw new Error(friendlyErrorMessage(error.message));
     }
 
     if (data.user) {
