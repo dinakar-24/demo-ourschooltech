@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getRoleDashboard } from '@/components/auth/ProtectedRoute';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 
 export default function SubdomainLanding() {
   const { tenant } = useTenant();
@@ -44,7 +45,7 @@ export default function SubdomainLanding() {
     try {
       await login(email, password);
     } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+      toast.error(friendlyErrorMessage(err.message));
     } finally {
       setIsSubmitting(false);
     }

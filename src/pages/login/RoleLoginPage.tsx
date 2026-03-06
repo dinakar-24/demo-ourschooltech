@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 
 const roleConfig: Record<string, { label: string; gradient: string; expectedRole: UserRole }> = {
   admin: {
@@ -60,7 +61,7 @@ export default function RoleLoginPage({ role }: RoleLoginPageProps) {
       // Post-login validation is handled in AuthContext via TenantContext
       // But we add a small delay to let state settle, then the ProtectedRoute handles redirect
     } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+      toast.error(friendlyErrorMessage(err.message));
     } finally {
       setIsSubmitting(false);
     }

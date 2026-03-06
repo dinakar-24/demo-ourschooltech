@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { extractEdgeFunctionError, validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
 
 type OTPStep = 'credentials' | 'otp';
 
@@ -47,10 +48,9 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
 
   // Step 1: Verify credentials, then send OTP
   const handleCredentialsSubmit = async () => {
-    if (!email.trim()) { setError('Please enter your email'); return; }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) { setError('Please enter a valid email address'); return; }
-    if (!password.trim()) { setError('Please enter your password'); return; }
+    const emailErr = validateEmail(email);
+    if (emailErr) { setError(emailErr); return; }
+    if (!password.trim()) { setError('Please enter your password.'); return; }
 
     setLoading(true);
     setError('');
@@ -60,41 +60,15 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
         body: { email: email.trim().toLowerCase(), password },
       });
 
-      const result = response.data;
-      const fnError = response.error;
-
-      let errorMsg = '';
-      if (fnError) {
-        try {
-          if ((fnError as any).context) {
-            const body = await (fnError as any).context.json();
-            errorMsg = body?.error || '';
-          }
-        } catch { /* ignore */ }
-        if (!errorMsg) errorMsg = fnError.message || 'Unknown error';
-      } else if (result?.error) {
-        errorMsg = result.error;
-      }
-
-      if (errorMsg) {
-        if (errorMsg.includes('not registered as a Super Admin')) {
-          throw new Error('This email is not authorized for Super Admin access.');
-        }
-        if (errorMsg.includes('Invalid credentials') || errorMsg.includes('Invalid login credentials')) {
-          throw new Error('Incorrect email or password. Please try again.');
-        }
-        if (errorMsg.includes('Email service not configured')) {
-          throw new Error('Unable to send OTP. Please try again later or contact support@ourschooltech.in');
-        }
-        throw new Error(errorMsg);
-      }
+      const errorMsg = await extractEdgeFunctionError(response);
+      if (errorMsg) throw new Error(errorMsg);
 
       setSuccess('OTP sent to your email after credential verification');
-      setNeedsPasswordSetup(result?.needsPasswordSetup || false);
+      setNeedsPasswordSetup(response.data?.needsPasswordSetup || false);
       setResendCooldown(30);
       setStep('otp');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -112,29 +86,14 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
         body: { email: email.trim().toLowerCase(), password, resend: true },
       });
 
-      const result = response.data;
-      const fnError = response.error;
-
-      let errorMsg = '';
-      if (fnError) {
-        try {
-          if ((fnError as any).context) {
-            const body = await (fnError as any).context.json();
-            errorMsg = body?.error || '';
-          }
-        } catch { /* ignore */ }
-        if (!errorMsg) errorMsg = fnError.message || 'Unknown error';
-      } else if (result?.error) {
-        errorMsg = result.error;
-      }
-
+      const errorMsg = await extractEdgeFunctionError(response);
       if (errorMsg) throw new Error(errorMsg);
 
       setSuccess('New OTP sent to your email');
       setResendCooldown(30);
       setOtp('');
     } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -156,28 +115,8 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
         },
       });
 
-      const result = response.data;
-      const fnError = response.error;
-
-      let errorMsg = '';
-      if (fnError) {
-        try {
-          if ((fnError as any).context) {
-            const body = await (fnError as any).context.json();
-            errorMsg = body?.error || '';
-          }
-        } catch { /* ignore */ }
-        if (!errorMsg) errorMsg = fnError.message || 'Unknown error';
-      } else if (result?.error) {
-        errorMsg = result.error;
-      }
-
-      if (errorMsg) {
-        if (errorMsg.includes('Invalid or expired OTP')) {
-          throw new Error('The OTP you entered is incorrect or has expired. Please request a new one.');
-        }
-        throw new Error('Verification failed. Please try again.');
-      }
+      const errorMsg = await extractEdgeFunctionError(response);
+      if (errorMsg) throw new Error(errorMsg);
 
       // Sign in with password
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -186,12 +125,12 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
       });
 
       if (signInError) {
-        throw new Error('Login failed. Please try again.');
+        throw new Error(friendlyErrorMessage(signInError.message));
       }
 
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Something went wrong.');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }

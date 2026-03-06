@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { extractEdgeFunctionError, validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -48,27 +49,17 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
   const handleClose = () => { reset(); onClose(); };
 
   const sendOTP = async () => {
-    const { data, error: fnError } = await supabase.functions.invoke('send-password-reset-otp', {
+    const response = await supabase.functions.invoke('send-password-reset-otp', {
       body: { email: email.trim() },
     });
-    if (fnError) {
-      const errMsg = typeof fnError === 'object' && 'context' in fnError
-        ? (fnError as any).context?.body
-        : fnError.message;
-      try {
-        const parsed = JSON.parse(errMsg || '{}');
-        throw new Error(parsed.error || 'Failed to send OTP');
-      } catch (parseErr) {
-        if (parseErr instanceof SyntaxError) throw new Error(errMsg || 'Failed to send OTP');
-        throw parseErr;
-      }
-    }
-    if (!data?.success) throw new Error(data?.error || 'Failed to send OTP');
+    const errorMsg = await extractEdgeFunctionError(response);
+    if (errorMsg) throw new Error(errorMsg);
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) { setError('Please enter your email'); return; }
+    const emailErr = validateEmail(email);
+    if (emailErr) { setError(emailErr); return; }
     setLoading(true);
     setError('');
     try {
@@ -77,7 +68,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
       setCooldown(60);
       setStep('otp');
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }
@@ -92,7 +83,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
       toast.success('OTP resent to your email');
       setCooldown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setResending(false);
     }
@@ -114,15 +105,15 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     setLoading(true);
     setError('');
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('verify-password-reset-otp', {
+      const response = await supabase.functions.invoke('verify-password-reset-otp', {
         body: { email: email.trim(), otp: otp.trim(), newPassword },
       });
-      if (fnError) throw new Error(fnError.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to reset password');
+      const errorMsg = await extractEdgeFunctionError(response);
+      if (errorMsg) throw new Error(errorMsg);
       toast.success('Password updated successfully!');
       setStep('success');
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password');
+      setError(friendlyErrorMessage(err.message));
     } finally {
       setLoading(false);
     }
