@@ -1,87 +1,81 @@
 
 
-## Production Monitoring and Observability
+## Dynamic Open Graph Metadata for School Subdomains
 
-### Current State
+### The Core Challenge
 
-- **Error handling** is centralized (`error-utils.ts`, `api.ts`) but errors are only shown to users via toasts -- nothing is logged server-side for later analysis.
-- **Audit logs** exist for CRUD operations (via DB triggers) but not for API errors, edge function failures, or auth issues.
-- **Login attempts** are tracked in a `login_attempts` table (used for rate limiting) but not surfaced in any dashboard.
-- **No React Error Boundary** exists anywhere in the app.
-- **No system health dashboard** -- the Super Admin dashboard shows business stats only.
+Social crawlers (WhatsApp, Facebook, Twitter) do **not execute JavaScript**. They read raw HTML meta tags from the initial HTTP response. Since this is a client-side SPA served by Lovable's CDN, we cannot intercept the HTML response at the server level to inject dynamic tags before the page reaches the crawler.
 
-### Plan
+**Two-layer approach:**
 
-#### 1. Create `error_logs` table for centralized server-side error logging
+1. **Client-side meta injection** — Update all OG/Twitter meta tags when tenant resolves. This helps JS-capable platforms (some messaging apps, browsers generating link previews in-app) and ensures tags are correct once the page loads.
 
-A new database table to capture API errors, edge function failures, and auth issues:
+2. **Edge function OG proxy** — Create a dedicated endpoint that returns a minimal HTML page with correct OG tags for any school. Social platforms can be pointed to this via `og:url` or a reverse proxy setup.
 
-```sql
-CREATE TABLE public.error_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  error_type text NOT NULL,        -- 'edge_function' | 'rpc' | 'auth' | 'frontend_crash' | 'network'
-  error_message text NOT NULL,
-  error_context jsonb DEFAULT '{}', -- function name, route, user agent, stack trace, etc.
-  user_id uuid,
-  school_id uuid,
-  severity text NOT NULL DEFAULT 'error'  -- 'warning' | 'error' | 'critical'
-);
+### Layer 1: Client-Side Meta Tag Injection
+
+**File: `src/contexts/TenantContext.tsx`** — Extend `applyTenantBranding()` to set all OG and Twitter meta tags:
+
+```typescript
+// Inside applyTenantBranding():
+const schoolUrl = `https://${tenant.subdomain}.ourschooltech.com`;
+const description = `${tenant.appDisplayName || tenant.name} - School Portal`;
+
+setMeta('og:title', tenant.appDisplayName || tenant.name);
+setMeta('og:description', description);
+setMeta('og:image', tenant.logo || '/favicon.png');
+setMeta('og:url', schoolUrl);
+setMeta('og:type', 'website');
+setMeta('og:site_name', tenant.appDisplayName || tenant.name);
+
+setMeta('twitter:title', tenant.appDisplayName || tenant.name);
+setMeta('twitter:description', description);
+setMeta('twitter:image', tenant.logo || '/favicon.png');
+setMeta('twitter:card', 'summary_large_image');
+
+// Remove any platform branding
+setMeta('author', tenant.appDisplayName || tenant.name);
 ```
 
-RLS: Super admins can SELECT; authenticated users can INSERT (so the client can log errors). No UPDATE/DELETE.
+A helper `setMeta(name, content)` will find-or-create the meta element. Also remove hardcoded "Our School Tech" / "Lovable" references from the tags that get overwritten.
 
-#### 2. Create `src/lib/logger.ts` -- Client-side logging utility
+### Layer 2: Edge Function OG Proxy
 
-A lightweight module that writes to `error_logs` via a fire-and-forget Supabase insert:
+**File: `supabase/functions/og-metadata/index.ts`** — New edge function
 
-- `logError(type, message, context?)` -- inserts into `error_logs`, never throws
-- Batches logs (debounced 2s) to avoid spamming the DB on cascading failures
-- Automatically attaches `user_id`, `school_id` from auth context, plus `user_agent` and current route
+When called with `?school=greenwood`, it:
+1. Fetches school data via `get_school_by_code`
+2. Returns a minimal HTML page with proper OG tags
+3. Includes a redirect to the actual subdomain URL for human visitors
 
-#### 3. Integrate logging into existing error infrastructure
+```html
+<!-- Returned by edge function -->
+<html>
+<head>
+  <meta property="og:title" content="Greenwood Academy" />
+  <meta property="og:description" content="Greenwood Academy - School Portal" />
+  <meta property="og:image" content="https://...logo.png" />
+  <meta property="og:url" content="https://greenwood.ourschooltech.com" />
+  <meta http-equiv="refresh" content="0;url=https://greenwood.ourschooltech.com" />
+</head>
+</html>
+```
 
-| Location | What gets logged |
-|----------|-----------------|
-| `src/lib/api.ts` (`invokeEdgeFunction`) | Edge function errors with function name, status, duration |
-| `src/App.tsx` (QueryClient `mutations.onError`) | All mutation failures |
-| `src/contexts/AuthContext.tsx` (`login`) | Failed login attempts with email (not password) |
-| `src/lib/error-utils.ts` (`extractEdgeFunctionError`) | Raw error details before mapping to friendly message |
+This gives a shareable URL (`https://{supabase-url}/functions/v1/og-metadata?school=greenwood`) that renders correct OG tags for any crawler while redirecting humans to the actual app.
 
-The existing user-facing behavior (toasts) stays unchanged. Logging is additive, not replacing anything.
+### Layer 3: Remove Platform Branding
 
-#### 4. Add performance tracking to `invokeEdgeFunction`
+**File: `index.html`** — Change hardcoded fallback OG tags to be generic (no "Lovable" or "Our School Tech" in the meta tags that subdomain users would see). The client-side injection overwrites these immediately for subdomain access.
 
-Extend `src/lib/api.ts` to measure duration of each edge function call and log slow calls (>5s) as warnings. This uses `performance.now()` -- zero overhead for fast calls.
-
-#### 5. Create global React Error Boundary
-
-New `src/components/ErrorBoundary.tsx`:
-- Catches unhandled React render errors
-- Logs the error + component stack to `error_logs` with type `'frontend_crash'`
-- Shows a friendly fallback UI with "Reload" button
-- Wrap the app in `App.tsx` around `<AppRoutes />`
-
-#### 6. Create Super Admin System Health page
-
-New route `/super-admin/system-health` with `SystemHealthPage.tsx`:
-
-- **Error Rate Chart**: Count of errors per hour (last 24h) using recharts (already installed)
-- **Recent Errors Table**: Last 50 errors with type, message, user, timestamp -- filterable by type/severity
-- **Login Activity**: Failed login count from `login_attempts` table (last 24h)
-- **Edge Function Performance**: Average/p95 duration from logged metrics
-- Add link to Super Admin sidebar navigation
-
-#### Files to create/modify
+### Files to create/modify
 
 | File | Change |
 |------|--------|
-| **Database migration** | Create `error_logs` table + RLS policies |
-| `src/lib/logger.ts` | **New** -- fire-and-forget error logging utility |
-| `src/components/ErrorBoundary.tsx` | **New** -- global React error boundary |
-| `src/pages/super-admin/SystemHealthPage.tsx` | **New** -- monitoring dashboard |
-| `src/lib/api.ts` | Add duration tracking + error logging |
-| `src/App.tsx` | Wrap with ErrorBoundary, add SystemHealth route, add logging to global mutation handler |
-| `src/contexts/AuthContext.tsx` | Log failed login attempts |
-| `src/components/layout/SuperAdminLayout.tsx` | Add "System Health" menu item |
+| `src/contexts/TenantContext.tsx` | Add full OG/Twitter meta tag injection in `applyTenantBranding()` |
+| `supabase/functions/og-metadata/index.ts` | **New** — edge function returning OG-compliant HTML |
+| `index.html` | Remove "Lovable" branding from fallback meta tags |
+
+### Important Limitation
+
+For WhatsApp/Facebook crawlers to see school-branded previews when sharing the actual subdomain URL (e.g., `greenwood.ourschooltech.com`), a server-side proxy (e.g., Cloudflare Worker) would need to detect crawler user agents and serve the edge function response instead of the SPA. The client-side injection and OG proxy edge function are the best achievable within the current architecture and cover most use cases.
 
