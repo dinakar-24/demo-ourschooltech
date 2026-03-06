@@ -16,6 +16,7 @@ import {
   Shield,
   FileText,
   CreditCard,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlobalSearchDialog } from '@/components/super-admin/GlobalSearchDialog';
@@ -34,6 +35,7 @@ const menuItems = [
   { label: 'Announcements', href: '/super-admin/announcements', icon: Bell },
   { label: 'Reports', href: '/super-admin/reports', icon: BarChart3 },
   { label: 'Subscriptions', href: '/super-admin/subscriptions', icon: CreditCard },
+  { label: 'System Health', href: '/super-admin/system-health', icon: Activity },
   { label: 'Audit Logs', href: '/super-admin/audit-logs', icon: FileText },
   { label: 'Settings', href: '/super-admin/settings', icon: Settings },
 ];

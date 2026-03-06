@@ -9,15 +9,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { extractEdgeFunctionError, friendlyErrorMessage } from '@/lib/error-utils';
+import { logError } from '@/lib/logger';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
+const SLOW_THRESHOLD_MS = 5_000;
 
 /**
- * Invoke a Supabase Edge Function with automatic error extraction and timeout.
- *
- * On success the full `data` payload is returned (typed as `T`).
- * On failure a user-friendly `Error` is thrown — callers can let it propagate
- * to `useMutation.onError` or catch it in components.
+ * Invoke a Supabase Edge Function with automatic error extraction, timeout,
+ * performance tracking, and centralized error logging.
  */
 export async function invokeEdgeFunction<T = any>(
   functionName: string,
@@ -25,17 +24,37 @@ export async function invokeEdgeFunction<T = any>(
   options?: { timeoutMs?: number },
 ): Promise<T> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const start = performance.now();
 
-  const result = await Promise.race([
-    supabase.functions.invoke(functionName, { body }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs),
-    ),
-  ]);
+  let result: any;
+  try {
+    result = await Promise.race([
+      supabase.functions.invoke(functionName, { body }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs),
+      ),
+    ]);
+  } catch (err) {
+    const duration = Math.round(performance.now() - start);
+    const msg = (err as Error).message || 'Unknown error';
+    logError('edge_function', msg, { functionName, duration_ms: duration }, 'error');
+    throw err;
+  }
 
-  // `result` is { data, error } from supabase
+  const duration = Math.round(performance.now() - start);
+
+  // Log slow calls as warnings
+  if (duration > SLOW_THRESHOLD_MS) {
+    logError('edge_function', `Slow edge function: ${functionName} (${duration}ms)`, {
+      functionName, duration_ms: duration,
+    }, 'warning');
+  }
+
   const errorMsg = await extractEdgeFunctionError(result);
   if (errorMsg) {
+    logError('edge_function', errorMsg, {
+      functionName, duration_ms: duration,
+    }, 'error');
     throw new Error(errorMsg);
   }
 

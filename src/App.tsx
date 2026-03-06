@@ -17,6 +17,8 @@ import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { friendlyErrorMessage } from "@/lib/error-utils";
+import { logError } from "@/lib/logger";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
@@ -38,7 +40,7 @@ const SystemAnnouncementsPage = lazy(() => import("./pages/super-admin/SystemAnn
 const AuditLogsPage = lazy(() => import("./pages/super-admin/AuditLogsPage"));
 const SuperAdminReportsPage = lazy(() => import("./pages/super-admin/SuperAdminReportsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/super-admin/SubscriptionsPage"));
-
+const SystemHealthPage = lazy(() => import("./pages/super-admin/SystemHealthPage"));
 
 
 // Lazy loaded pages -- Admin
@@ -136,6 +138,7 @@ const queryClient = new QueryClient({
     },
     mutations: {
       onError: (error: Error) => {
+        logError('mutation', error.message, { source: 'global_mutation_handler' });
         toast.error(friendlyErrorMessage(error.message));
       },
     },
@@ -234,6 +237,7 @@ function AppRoutes() {
               <Route path="/super-admin/subscriptions" element={<ProtectedRoute allowedRoles={['super_admin']}><SubscriptionsPage /></ProtectedRoute>} />
               <Route path="/super-admin/reports" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminReportsPage /></ProtectedRoute>} />
               <Route path="/super-admin/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><AuditLogsPage /></ProtectedRoute>} />
+              <Route path="/super-admin/system-health" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemHealthPage /></ProtectedRoute>} />
               <Route path="/super-admin/settings" element={<ProtectedRoute allowedRoles={['super_admin']}><SystemSettingsPage /></ProtectedRoute>} />
               
               <Route path="/super-admin/*" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
@@ -343,7 +347,9 @@ const App = () => (
           <TenantProvider>
             <AuthProvider>
               <ImpersonationProvider>
-                <AppRoutes />
+                <ErrorBoundary>
+                  <AppRoutes />
+                </ErrorBoundary>
                 
               </ImpersonationProvider>
             </AuthProvider>
