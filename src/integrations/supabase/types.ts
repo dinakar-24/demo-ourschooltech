@@ -979,6 +979,60 @@ export type Database = {
           },
         ]
       }
+      jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_type: string
+          max_attempts: number
+          payload: Json
+          priority: number
+          scheduled_for: string
+          school_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type: string
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          scheduled_for?: string
+          school_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          scheduled_for?: string
+          school_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           attempt_type: string
@@ -2512,6 +2566,37 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_jobs: {
+        Args: { _batch_size?: number }
+        Returns: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_type: string
+          max_attempts: number
+          payload: Json
+          priority: number
+          scheduled_for: string
+          school_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_job: { Args: { _job_id: string }; Returns: undefined }
+      fail_job: {
+        Args: { _error: string; _job_id: string }
+        Returns: undefined
+      }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_ticket_number: { Args: { _school_id: string }; Returns: string }
       get_admin_attendance_by_class: {
@@ -2534,6 +2619,7 @@ export type Database = {
             }
             Returns: Json
           }
+      get_job_queue_stats: { Args: never; Returns: Json }
       get_pending_fee_student_count: {
         Args: { _school_id: string }
         Returns: number
