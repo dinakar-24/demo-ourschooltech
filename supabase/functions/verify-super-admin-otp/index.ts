@@ -12,6 +12,8 @@ serve(async (req) => {
   }
 
   try {
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("cf-connecting-ip") || "unknown";
     const { email, otp, newPassword } = await req.json();
 
     if (!email || !otp) {
@@ -30,6 +32,24 @@ serve(async (req) => {
         persistSession: false,
       },
     });
+
+    // Rate limit: 5 OTP verify attempts per IP per 5 minutes
+    const { data: rateLimit } = await supabaseAdmin.rpc("check_rate_limit", {
+      _ip: clientIp,
+      _type: "otp_verify",
+      _max_attempts: 5,
+      _window_minutes: 5,
+    });
+
+    if (rateLimit && !rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many verification attempts. Please try again later.",
+          retry_after_seconds: rateLimit.retry_after_seconds 
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Verify OTP
     const { data: otpData, error: otpError } = await supabaseAdmin
