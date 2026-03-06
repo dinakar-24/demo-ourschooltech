@@ -13,6 +13,48 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Auth check: only super_admin or service role can run this migration
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === serviceRoleKey;
+
+    if (!isServiceRole) {
+      const supabaseUser = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await supabaseUser.auth.getClaims(token);
+      if (error || !data?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const userId = data.claims.sub as string;
+      const adminCheck = createClient(supabaseUrl, serviceRoleKey);
+      const { data: roles } = await adminCheck
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin");
+      if (!isSuperAdmin) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: super admin only" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Get all schools with base64 logos
@@ -35,7 +77,6 @@ Deno.serve(async (req) => {
     for (const school of schools) {
       try {
         const logo = school.logo as string;
-        // Extract mime type and base64 data
         const match = logo.match(/^data:(image\/\w+);base64,(.+)$/);
         if (!match) {
           results.push({ school_id: school.id, name: school.name, status: "skipped", error: "Invalid base64 format" });
@@ -47,14 +88,12 @@ Deno.serve(async (req) => {
         const ext = mimeType.split("/")[1] || "png";
         const fileName = `school-logos/${school.id}.${ext}`;
 
-        // Decode base64 to Uint8Array
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
 
-        // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from("platform-assets")
           .upload(fileName, bytes, {
@@ -64,14 +103,12 @@ Deno.serve(async (req) => {
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data: urlData } = supabase.storage
           .from("platform-assets")
           .getPublicUrl(fileName);
 
         const publicUrl = urlData.publicUrl;
 
-        // Update school record with the URL
         const { error: updateError } = await supabase
           .from("schools")
           .update({ logo: publicUrl })
