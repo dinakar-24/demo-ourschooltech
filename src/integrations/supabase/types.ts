@@ -946,6 +946,30 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempt_type: string
+          created_at: string
+          email: string | null
+          id: string
+          ip_address: string
+        }
+        Insert: {
+          attempt_type?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip_address: string
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip_address?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
@@ -2446,6 +2470,15 @@ export type Database = {
         }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          _ip: string
+          _max_attempts?: number
+          _type: string
+          _window_minutes?: number
+        }
+        Returns: Json
+      }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_ticket_number: { Args: { _school_id: string }; Returns: string }
       get_admin_attendance_by_class: {
@@ -2458,7 +2491,16 @@ export type Database = {
         Returns: Json
       }
       get_distinct_cities: { Args: never; Returns: string[] }
-      get_fee_stats: { Args: { _school_id: string }; Returns: Json }
+      get_fee_stats:
+        | { Args: { _school_id: string }; Returns: Json }
+        | {
+            Args: {
+              _end_date?: string
+              _school_id: string
+              _start_date?: string
+            }
+            Returns: Json
+          }
       get_pending_fee_student_count: {
         Args: { _school_id: string }
         Returns: number

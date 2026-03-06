@@ -13,6 +13,8 @@ serve(async (req) => {
   }
 
   try {
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("cf-connecting-ip") || "unknown";
     const { email } = await req.json();
 
     if (!email) {
@@ -28,6 +30,24 @@ serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Rate limit: 3 password reset requests per IP per 5 minutes
+    const { data: rateLimit } = await supabaseAdmin.rpc("check_rate_limit", {
+      _ip: clientIp,
+      _type: "password_reset",
+      _max_attempts: 3,
+      _window_minutes: 5,
+    });
+
+    if (rateLimit && !rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Too many attempts. Please try again later.",
+          retry_after_seconds: rateLimit.retry_after_seconds 
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Check if user exists in auth
     const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
