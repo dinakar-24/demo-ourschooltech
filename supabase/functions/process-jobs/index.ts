@@ -13,6 +13,49 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    // Auth check: only allow service role, anon key (pg_cron), or super_admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const isServiceRole = token === serviceRoleKey;
+    const isAnonKey = token === anonKey; // pg_cron uses anon key
+
+    if (!isServiceRole && !isAnonKey) {
+      // Validate JWT - only super_admin can manually trigger
+      const supabaseUser = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await supabaseUser.auth.getClaims(token);
+      if (error || !data?.claims) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const userId = data.claims.sub as string;
+      const adminCheck = createClient(supabaseUrl, serviceRoleKey);
+      const { data: roles } = await adminCheck
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      const isSuperAdmin = roles?.some((r: any) => r.role === 'super_admin');
+      if (!isSuperAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -80,12 +123,10 @@ async function processJob(supabase: any, job: any) {
       break;
 
     case 'generate_report':
-      // Placeholder for future report generation
       console.log('Report generation job:', payload);
       break;
 
     case 'bulk_import':
-      // Placeholder — bulk import already uses its own edge function
       console.log('Bulk import job:', payload);
       break;
 
@@ -105,7 +146,6 @@ async function handleSendNotification(supabase: any, payload: any) {
     throw new Error('Missing required notification fields');
   }
 
-  // Insert in-app notifications
   const notifications = user_ids.map((uid: string) => ({
     user_id: uid,
     title,
@@ -118,7 +158,6 @@ async function handleSendNotification(supabase: any, payload: any) {
   const { error } = await supabase.from('notifications').insert(notifications);
   if (error) throw new Error(`Notification insert failed: ${error.message}`);
 
-  // Send push notifications
   const { data: subs } = await supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
@@ -129,7 +168,6 @@ async function handleSendNotification(supabase: any, payload: any) {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
     if (vapidPublicKey && vapidPrivateKey) {
-      // Push via web-push would go here — for now we log
       console.log(`Would send push to ${subs.length} subscriptions`);
     }
   }
@@ -139,7 +177,6 @@ async function handleBulkNotifications(supabase: any, payload: any) {
   const { notifications } = payload;
   if (!notifications?.length) return;
 
-  // Process in batches of 100
   for (let i = 0; i < notifications.length; i += 100) {
     const batch = notifications.slice(i, i + 100);
     const { error } = await supabase.from('notifications').insert(batch);
@@ -151,7 +188,6 @@ async function handleCleanup(supabase: any, payload: any) {
   const { target } = payload;
 
   if (target === 'completed_jobs') {
-    // Delete completed jobs older than 7 days
     const { error } = await supabase
       .from('jobs')
       .delete()
@@ -161,7 +197,6 @@ async function handleCleanup(supabase: any, payload: any) {
   }
 
   if (target === 'error_logs') {
-    // Delete error logs older than 30 days
     const { error } = await supabase
       .from('error_logs')
       .delete()

@@ -14,6 +14,50 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Auth check: only allow service role or valid admin JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === serviceRoleKey;
+    const isAnonKey = token === anonKey; // pg_cron uses anon key
+
+    if (!isServiceRole && !isAnonKey) {
+      // Validate JWT - only super_admin or school_admin can trigger
+      const supabaseUser = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await supabaseUser.auth.getClaims(token);
+      if (error || !data?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const userId = data.claims.sub as string;
+      const adminCheck = createClient(supabaseUrl, serviceRoleKey);
+      const { data: roles } = await adminCheck
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const hasAdmin = roles?.some((r: any) => ["super_admin", "school_admin"].includes(r.role));
+      if (!hasAdmin) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Get all pending fees grouped by student
@@ -69,7 +113,7 @@ Deno.serve(async (req) => {
       .map((s) => s.parent_email)
       .filter(Boolean) as string[];
 
-    let parentMap = new Map<string, string>(); // email -> user_id
+    let parentMap = new Map<string, string>();
     if (parentEmails.length > 0) {
       const { data: parents } = await supabase
         .from("profiles")
@@ -101,7 +145,6 @@ Deno.serve(async (req) => {
 
       if (userIds.length === 0) continue;
 
-      // Insert notifications directly (faster than calling edge function)
       const notificationRows = userIds.map((uid) => ({
         user_id: uid,
         school_id: info.schoolId,

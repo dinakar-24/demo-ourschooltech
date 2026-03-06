@@ -6,51 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Web Push crypto utilities for VAPID
-async function generateVapidAuth(endpoint: string, vapidPublicKey: string, vapidPrivateKey: string, subject: string) {
-  // For Deno, we use a simpler approach - sign the JWT for VAPID
-  const audience = new URL(endpoint).origin;
-
-  const header = { typ: "JWT", alg: "ES256" };
-  const payload = {
-    aud: audience,
-    exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60,
-    sub: subject,
-  };
-
-  const enc = new TextEncoder();
-  const headerB64 = btoa(String.fromCharCode(...enc.encode(JSON.stringify(header))))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const payloadB64 = btoa(String.fromCharCode(...enc.encode(JSON.stringify(payload))))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  const unsignedToken = `${headerB64}.${payloadB64}`;
-
-  // Import the private key
-  const privateKeyBytes = Uint8Array.from(atob(vapidPrivateKey.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-  
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    privateKeyBytes,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    enc.encode(unsignedToken)
-  );
-
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  return {
-    authorization: `vapid t=${unsignedToken}.${sigB64}, k=${vapidPublicKey}`,
-  };
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,7 +14,53 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Auth check: require valid JWT or service-role/anon key
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+
+    // Allow service role key directly (used by other edge functions / cron)
+    const isServiceRole = token === serviceRoleKey;
+
+    if (!isServiceRole) {
+      // Validate JWT and check caller has admin/super_admin role
+      const supabaseUser = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await supabaseUser.auth.getClaims(token);
+      if (error || !data?.claims) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const userId = data.claims.sub as string;
+      // Check that the caller is an admin
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const allowedRoles = ["super_admin", "school_admin", "teacher"];
+      const hasAllowedRole = roles?.some((r: any) => allowedRoles.includes(r.role));
+      if (!hasAllowedRole) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: insufficient permissions" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { user_ids, title, body, type = "general", reference_id, school_id } = await req.json();
@@ -110,7 +111,6 @@ Deno.serve(async (req) => {
 
       for (const sub of subscriptions) {
         try {
-          // Simple fetch to push endpoint (browser push service)
           const res = await fetch(sub.endpoint, {
             method: "POST",
             headers: {
@@ -123,7 +123,6 @@ Deno.serve(async (req) => {
           if (res.ok || res.status === 201) {
             pushCount++;
           } else if (res.status === 404 || res.status === 410) {
-            // Subscription expired, remove it
             await supabase.from("push_subscriptions").delete().eq("id", sub.id);
           }
         } catch (err) {
