@@ -1,79 +1,87 @@
 
 
-## Optimize React Query Configuration for Large-Scale Usage
+## Production Monitoring and Observability
 
 ### Current State
 
-- **QueryClient** is already configured in `App.tsx` with reasonable defaults: `staleTime: 5min`, `gcTime: 30min`, `retry: 1`, `refetchOnWindowFocus: false`.
-- **35+ hooks** define per-query `staleTime` overrides (1–10 min depending on data volatility).
-- **Query keys** are mostly well-structured with `schoolId` included, but some `invalidateQueries` calls use partial keys without `schoolId` (e.g., `['students']` instead of `['students', schoolId]`), which works but is less precise.
-- **No global error handler** — every mutation individually does `onError: (e) => toast.error(e.message)`.
-- **No dashboard prefetching** after login — the user lands on the dashboard and waits for data to load.
+- **Error handling** is centralized (`error-utils.ts`, `api.ts`) but errors are only shown to users via toasts -- nothing is logged server-side for later analysis.
+- **Audit logs** exist for CRUD operations (via DB triggers) but not for API errors, edge function failures, or auth issues.
+- **Login attempts** are tracked in a `login_attempts` table (used for rate limiting) but not surfaced in any dashboard.
+- **No React Error Boundary** exists anywhere in the app.
+- **No system health dashboard** -- the Super Admin dashboard shows business stats only.
 
 ### Plan
 
-#### 1. Enhanced QueryClient configuration
+#### 1. Create `error_logs` table for centralized server-side error logging
 
-Update `App.tsx` QueryClient with:
-- **Global `onError` for mutations**: Automatically toast `friendlyErrorMessage(error.message)` so individual hooks can drop their `onError` handlers (they remain as overrides if needed).
-- **Smarter retry**: `retry: (failureCount, error) => …` — retry once on network errors, never on 4xx auth errors.
-- **`refetchOnReconnect: true`** — refetch stale data when user comes back online.
-- Keep existing `staleTime`/`gcTime` defaults as they're already good.
+A new database table to capture API errors, edge function failures, and auth issues:
 
-#### 2. Create query key constants
-
-Create `src/lib/query-keys.ts` with a factory pattern for the most-used keys:
-
-```typescript
-export const queryKeys = {
-  students: (schoolId: string, filters?: any) => ['students', schoolId, filters],
-  studentStats: (schoolId: string) => ['student-stats', schoolId],
-  adminDashboard: (schoolId: string) => ['admin-dashboard-stats', schoolId],
-  teachers: (schoolId: string) => ['teachers', schoolId],
-  feeInvoices: (schoolId: string, filters?: any) => ['fee-invoices', schoolId, filters],
-  attendance: (schoolId: string, date: string) => ['attendance', schoolId, date],
-  announcements: (schoolId: string) => ['announcements', schoolId],
-  // ... etc
-};
+```sql
+CREATE TABLE public.error_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  error_type text NOT NULL,        -- 'edge_function' | 'rpc' | 'auth' | 'frontend_crash' | 'network'
+  error_message text NOT NULL,
+  error_context jsonb DEFAULT '{}', -- function name, route, user agent, stack trace, etc.
+  user_id uuid,
+  school_id uuid,
+  severity text NOT NULL DEFAULT 'error'  -- 'warning' | 'error' | 'critical'
+);
 ```
 
-Update the top ~10 most-used hooks to use these constants. This prevents typo-based cache misses and ensures `schoolId` is always included.
+RLS: Super admins can SELECT; authenticated users can INSERT (so the client can log errors). No UPDATE/DELETE.
 
-#### 3. Dashboard data prefetching after login
+#### 2. Create `src/lib/logger.ts` -- Client-side logging utility
 
-Extend the existing `usePrefetchRoutes` hook (or create a companion `usePrefetchDashboardData`) that, after login, silently prefetches the role's dashboard RPC data using `queryClient.prefetchQuery()`:
+A lightweight module that writes to `error_logs` via a fire-and-forget Supabase insert:
 
-- **school_admin**: `get_admin_dashboard_stats`, `get_attendance_summary`
-- **teacher**: `get_teacher_dashboard_stats`
-- **super_admin**: `get_super_admin_stats`
-- **parent/student**: their respective child/attendance data
+- `logError(type, message, context?)` -- inserts into `error_logs`, never throws
+- Batches logs (debounced 2s) to avoid spamming the DB on cascading failures
+- Automatically attaches `user_id`, `school_id` from auth context, plus `user_agent` and current route
 
-This runs via `requestIdleCallback` so the data is warm by the time the dashboard renders.
+#### 3. Integrate logging into existing error infrastructure
 
-#### 4. Global mutation error handler
+| Location | What gets logged |
+|----------|-----------------|
+| `src/lib/api.ts` (`invokeEdgeFunction`) | Edge function errors with function name, status, duration |
+| `src/App.tsx` (QueryClient `mutations.onError`) | All mutation failures |
+| `src/contexts/AuthContext.tsx` (`login`) | Failed login attempts with email (not password) |
+| `src/lib/error-utils.ts` (`extractEdgeFunctionError`) | Raw error details before mapping to friendly message |
 
-Add to QueryClient `defaultOptions.mutations.onError`:
-```typescript
-mutations: {
-  onError: (error: Error) => {
-    toast.error(friendlyErrorMessage(error.message));
-  },
-}
-```
+The existing user-facing behavior (toasts) stays unchanged. Logging is additive, not replacing anything.
 
-Then remove the ~30 identical `onError: (e) => toast.error(e.message)` handlers from individual hooks. Hooks that need custom error messages (e.g., "Approval failed: …") keep their overrides — the global handler is only a fallback.
+#### 4. Add performance tracking to `invokeEdgeFunction`
 
-#### Files to modify
+Extend `src/lib/api.ts` to measure duration of each edge function call and log slow calls (>5s) as warnings. This uses `performance.now()` -- zero overhead for fast calls.
+
+#### 5. Create global React Error Boundary
+
+New `src/components/ErrorBoundary.tsx`:
+- Catches unhandled React render errors
+- Logs the error + component stack to `error_logs` with type `'frontend_crash'`
+- Shows a friendly fallback UI with "Reload" button
+- Wrap the app in `App.tsx` around `<AppRoutes />`
+
+#### 6. Create Super Admin System Health page
+
+New route `/super-admin/system-health` with `SystemHealthPage.tsx`:
+
+- **Error Rate Chart**: Count of errors per hour (last 24h) using recharts (already installed)
+- **Recent Errors Table**: Last 50 errors with type, message, user, timestamp -- filterable by type/severity
+- **Login Activity**: Failed login count from `login_attempts` table (last 24h)
+- **Edge Function Performance**: Average/p95 duration from logged metrics
+- Add link to Super Admin sidebar navigation
+
+#### Files to create/modify
 
 | File | Change |
 |------|--------|
-| `src/App.tsx` | Enhanced QueryClient config with global mutation error handler, smart retry |
-| `src/lib/query-keys.ts` | **New** — query key factory constants |
-| `src/hooks/usePrefetchRoutes.ts` | Add dashboard data prefetching alongside chunk preloading |
-| `src/hooks/useStudents.ts` | Use `queryKeys.students()` / `queryKeys.studentStats()` |
-| `src/hooks/useTeachers.ts` | Use `queryKeys.teachers()` |
-| `src/hooks/useFeeInvoices.ts` | Use `queryKeys.feeInvoices()` |
-| `src/hooks/useAttendance.ts` | Use `queryKeys.attendance()` |
-| `src/hooks/useAnnouncements.ts` | Use `queryKeys.announcements()` |
-| ~10 mutation hooks | Remove redundant `onError` handlers (keep custom ones) |
+| **Database migration** | Create `error_logs` table + RLS policies |
+| `src/lib/logger.ts` | **New** -- fire-and-forget error logging utility |
+| `src/components/ErrorBoundary.tsx` | **New** -- global React error boundary |
+| `src/pages/super-admin/SystemHealthPage.tsx` | **New** -- monitoring dashboard |
+| `src/lib/api.ts` | Add duration tracking + error logging |
+| `src/App.tsx` | Wrap with ErrorBoundary, add SystemHealth route, add logging to global mutation handler |
+| `src/contexts/AuthContext.tsx` | Log failed login attempts |
+| `src/components/layout/SuperAdminLayout.tsx` | Add "System Health" menu item |
 
