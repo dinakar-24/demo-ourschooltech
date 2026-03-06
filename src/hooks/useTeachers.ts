@@ -5,6 +5,7 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
 import { invokeEdgeFunction } from '@/lib/api';
+import { queryKeys } from '@/lib/query-keys';
 
 export interface Teacher {
   id: string;
@@ -40,7 +41,7 @@ export function useTeachers(filters?: TeacherFilters) {
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['teachers', schoolId, filters],
+    queryKey: queryKeys.teachers(schoolId, filters),
     queryFn: async (): Promise<PaginatedTeachers> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -96,7 +97,7 @@ export function useAllTeachersList() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['teachers-list', schoolId],
+    queryKey: queryKeys.teachersList(schoolId),
     queryFn: async (): Promise<{ id: string; full_name: string }[]> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -134,7 +135,7 @@ export function useTeacherStats() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['teacher-stats', schoolId],
+    queryKey: queryKeys.teacherStats(schoolId),
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -159,7 +160,7 @@ export function useTeacherSubjects() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['teacher-subjects', schoolId],
+    queryKey: queryKeys.teacherSubjects(schoolId),
     queryFn: async () => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -212,13 +213,10 @@ export function useCreateTeacher() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-subjects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeachers });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeacherStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeacherSubjects });
       toast.success('Teacher added successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to add teacher');
     },
   });
 }
@@ -272,13 +270,10 @@ export function useUpdateTeacher() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-subjects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeachers });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeacherSubjects });
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       toast.success('Teacher updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update teacher');
     },
   });
 }
@@ -294,13 +289,10 @@ export function useDeleteTeacher() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-subjects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeachers });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeacherStats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allTeacherSubjects });
       toast.success('Teacher deleted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete teacher');
     },
   });
 }

@@ -4,6 +4,7 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getSupabaseRange } from './usePagination';
 import { toast } from 'sonner';
+import { queryKeys } from '@/lib/query-keys';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['fee-invoices', schoolId, filters],
+    queryKey: queryKeys.feeInvoices(schoolId, filters),
     queryFn: async () => {
       if (!schoolId) return { data: [] as FeeInvoice[], totalCount: 0 };
 
@@ -133,7 +134,7 @@ export function useInvoiceStats() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['invoice-stats', schoolId],
+    queryKey: queryKeys.invoiceStats(schoolId),
     queryFn: async (): Promise<InvoiceStats> => {
       if (!schoolId) return { totalDue: 0, collected: 0, pending: 0, overdue: 0 };
 
@@ -208,11 +209,10 @@ export function useCreateInvoice() {
       return invoice;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allFeeInvoices });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allInvoiceStats });
       toast.success('Invoice created');
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -246,11 +246,10 @@ export function useApplyDiscount() {
       return data as any;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allFeeInvoices });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allInvoiceStats });
       toast.success('Discount applied successfully');
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -295,10 +294,9 @@ export function useRecordInvoicePayment() {
       return data as any;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allFeeInvoices });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allInvoiceStats });
       toast.success(`Payment recorded! Receipt: ${data?.receipt_number}`);
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 }

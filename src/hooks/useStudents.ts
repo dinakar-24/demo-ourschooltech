@@ -5,6 +5,7 @@ import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
 import { invokeEdgeFunction } from '@/lib/api';
+import { queryKeys } from '@/lib/query-keys';
 
 export interface Student {
   id: string;
@@ -54,7 +55,7 @@ export function useStudents(filters?: {
   const pageSize = filters?.pageSize || 25;
 
   return useQuery({
-    queryKey: ['students', schoolId, filters],
+    queryKey: queryKeys.students(schoolId, filters),
     queryFn: async (): Promise<PaginatedStudents> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -98,7 +99,7 @@ export function useStudentStats() {
   const schoolId = useEffectiveSchoolId();
 
   return useQuery({
-    queryKey: ['student-stats', schoolId],
+    queryKey: queryKeys.studentStats(schoolId),
     queryFn: async (): Promise<StudentStats> => {
       if (!schoolId) throw new Error('No school ID');
 
@@ -174,12 +175,9 @@ export function useCreateStudent() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudents });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudentStats });
       toast.success('Student added successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to add student');
     },
   });
 }
@@ -200,12 +198,9 @@ export function useUpdateStudent() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudents });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudentStats });
       toast.success('Student updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update student');
     },
   });
 }
@@ -222,12 +217,9 @@ export function useDeleteStudent() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudents });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allStudentStats });
       toast.success('Student deleted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete student');
     },
   });
 }

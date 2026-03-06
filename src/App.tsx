@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -15,6 +16,7 @@ import { DynamicManifestHandler } from "@/components/pwa/DynamicManifestHandler"
 import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { friendlyErrorMessage } from "@/lib/error-utils";
 
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
@@ -123,7 +125,19 @@ const queryClient = new QueryClient({
       gcTime: 30 * 60 * 1000,          // 30 minutes -- unused cache kept
       refetchOnMount: true,            // only refetch if stale
       refetchOnWindowFocus: false,     // no refetch on tab switch
-      retry: 1,
+      refetchOnReconnect: true,        // refetch stale data when back online
+      retry: (failureCount, error) => {
+        // Never retry auth/client errors (4xx)
+        const msg = (error as Error)?.message ?? '';
+        if (/40[0-9]|unauthorized|forbidden|not found|already exists/i.test(msg)) return false;
+        // Retry once on network / server errors
+        return failureCount < 1;
+      },
+    },
+    mutations: {
+      onError: (error: Error) => {
+        toast.error(friendlyErrorMessage(error.message));
+      },
     },
   },
 });
