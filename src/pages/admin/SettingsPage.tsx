@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -16,11 +14,6 @@ import {
 } from '@/components/ui/select';
 import {
   School,
-  Bell,
-  Lock,
-  Calendar,
-  CreditCard,
-  Shield,
   Loader2,
   Globe,
 } from 'lucide-react';
@@ -40,11 +33,13 @@ const LANGUAGES = [
   { code: 'bn', label: 'বাংলা (Bengali)' },
   { code: 'ml', label: 'മലയാളം (Malayalam)' },
 ];
+
 export default function SettingsPage() {
   const { school } = useAuth();
   const { t, i18n } = useTranslation();
   const schoolId = useEffectiveSchoolId();
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('school');
 
   const handleLanguageChange = (val: string) => {
     i18n.changeLanguage(val);
@@ -57,21 +52,33 @@ export default function SettingsPage() {
   const [schoolName, setSchoolName] = useState(school?.name || '');
   const [schoolAddress, setSchoolAddress] = useState(school?.address || '');
   const [schoolCity, setSchoolCity] = useState(school?.city || '');
-  const [schoolEmail, setSchoolEmail] = useState('');
-  const [schoolPhone, setSchoolPhone] = useState('');
+  const [schoolEmail, setSchoolEmail] = useState(school?.email || '');
+  const [schoolPhone, setSchoolPhone] = useState(school?.phone || '');
 
   const handleSaveSchoolInfo = async () => {
     if (!schoolId) return;
+    if (!schoolName.trim()) {
+      toast.error('School name is required');
+      return;
+    }
+    if (!schoolAddress.trim()) {
+      toast.error('Address is required');
+      return;
+    }
+    if (!schoolCity.trim()) {
+      toast.error('City is required');
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await supabase
         .from('schools')
         .update({
-          name: schoolName,
-          address: schoolAddress,
-          city: schoolCity,
-          email: schoolEmail,
-          phone: schoolPhone,
+          name: schoolName.trim(),
+          address: schoolAddress.trim(),
+          city: schoolCity.trim(),
+          email: schoolEmail.trim() || null,
+          phone: schoolPhone.trim() || null,
         })
         .eq('id', schoolId);
 
@@ -84,13 +91,8 @@ export default function SettingsPage() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState('school');
-
   const TABS = [
     { value: 'school', label: 'School', icon: School },
-    { value: 'academic', label: 'Academic', icon: Calendar },
-    { value: 'notifications', label: 'Notifications', icon: Bell },
-    { value: 'security', label: 'Security', icon: Lock },
     { value: 'language', label: 'Language', icon: Globe },
   ];
 
@@ -118,7 +120,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Desktop: Tab bar */}
-          <TabsList className="hidden sm:grid sm:grid-cols-6 sm:w-[600px]">
+          <TabsList className="hidden sm:grid sm:grid-cols-2 sm:w-[300px]">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
             ))}
@@ -133,13 +135,13 @@ export default function SettingsPage() {
                   School Information
                 </CardTitle>
                 <CardDescription>
-                  Update your school's basic information and branding.
+                  Update your school's basic information.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>School Name</Label>
+                    <Label>School Name <span className="text-destructive">*</span></Label>
                     <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
@@ -147,11 +149,11 @@ export default function SettingsPage() {
                     <Input defaultValue={school?.code || ''} disabled className="opacity-60" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Address</Label>
+                    <Label>Address <span className="text-destructive">*</span></Label>
                     <Input value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>City</Label>
+                    <Label>City <span className="text-destructive">*</span></Label>
                     <Input value={schoolCity} onChange={(e) => setSchoolCity(e.target.value)} />
                   </div>
                   <div className="space-y-2">
@@ -167,161 +169,6 @@ export default function SettingsPage() {
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save Changes
                 </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Academic Settings */}
-          <TabsContent value="academic" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Academic Year
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Current Academic Year</Label>
-                    <Select defaultValue="2024-25">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2024-25">2024-25</SelectItem>
-                        <SelectItem value="2025-26">2025-26</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Session Start Month</Label>
-                    <Select defaultValue="april">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="april">April</SelectItem>
-                        <SelectItem value="june">June</SelectItem>
-                        <SelectItem value="july">July</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" />
-                  Fee Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Late Fee Penalty</p>
-                    <p className="text-sm text-muted-foreground">Apply penalty for late payments</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <Separator />
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Late Fee Amount (₹)</Label>
-                    <Input type="number" defaultValue="500" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Grace Period (days)</Label>
-                    <Input type="number" defaultValue="7" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Notification Settings */}
-          <TabsContent value="notifications" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
-                  Notification Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Fee Reminders</p>
-                    <p className="text-sm text-muted-foreground">Automatic reminders for pending fees</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Attendance Alerts</p>
-                    <p className="text-sm text-muted-foreground">Alert parents when student is absent</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Security Settings */}
-          <TabsContent value="security" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="w-5 h-5" />
-                  Password Policy
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Minimum Password Length</p>
-                    <p className="text-sm text-muted-foreground">Minimum 8 characters required</p>
-                  </div>
-                  <Input type="number" defaultValue="8" className="w-20" />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Require Special Characters</p>
-                    <p className="text-sm text-muted-foreground">Password must contain @, #, $ etc.</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Access Control
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Session Timeout</p>
-                    <p className="text-sm text-muted-foreground">Auto logout after inactivity</p>
-                  </div>
-                  <Select defaultValue="30">
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 minutes</SelectItem>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -358,8 +205,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
-
         </Tabs>
       </div>
     </AdminLayout>
