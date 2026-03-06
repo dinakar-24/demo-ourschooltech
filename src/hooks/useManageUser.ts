@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { extractEdgeFunctionError } from '@/lib/error-utils';
+import { invokeEdgeFunction } from '@/lib/api';
+import { friendlyErrorMessage } from '@/lib/error-utils';
 
 type Action = 'disable' | 'enable' | 'delete' | 'update_role' | 'update_profile' | 'reset_password';
 
@@ -21,10 +21,7 @@ export function useManageUser() {
   const manageUser = useCallback(async (data: ManageUserData): Promise<{ success: boolean; temp_password?: string }> => {
     setIsProcessing(true);
     try {
-      const response = await supabase.functions.invoke('manage-user', { body: data });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
+      const result = await invokeEdgeFunction<{ temp_password?: string }>('manage-user', data);
 
       const actionLabels: Record<Action, string> = {
         disable: 'User disabled',
@@ -36,10 +33,10 @@ export function useManageUser() {
       };
 
       toast.success(actionLabels[data.action] || 'Action completed');
-      return { success: true, temp_password: response.data?.temp_password };
+      return { success: true, temp_password: result?.temp_password };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Operation failed';
-      toast.error(msg);
+      toast.error(friendlyErrorMessage(msg));
       return { success: false };
     } finally {
       setIsProcessing(false);

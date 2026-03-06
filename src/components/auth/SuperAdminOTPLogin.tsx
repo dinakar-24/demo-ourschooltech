@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { extractEdgeFunctionError, validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
+import { invokeEdgeFunction } from '@/lib/api';
+import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
 
 type OTPStep = 'credentials' | 'otp';
 
@@ -56,15 +57,13 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setError('');
 
     try {
-      const response = await supabase.functions.invoke('send-super-admin-otp', {
-        body: { email: email.trim().toLowerCase(), password },
-      });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
+      const result = await invokeEdgeFunction<{ needsPasswordSetup?: boolean }>(
+        'send-super-admin-otp',
+        { email: email.trim().toLowerCase(), password },
+      );
 
       setSuccess('OTP sent to your email after credential verification');
-      setNeedsPasswordSetup(response.data?.needsPasswordSetup || false);
+      setNeedsPasswordSetup(result?.needsPasswordSetup || false);
       setResendCooldown(30);
       setStep('otp');
     } catch (err: any) {
@@ -82,12 +81,11 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setSuccess('');
 
     try {
-      const response = await supabase.functions.invoke('send-super-admin-otp', {
-        body: { email: email.trim().toLowerCase(), password, resend: true },
+      await invokeEdgeFunction('send-super-admin-otp', {
+        email: email.trim().toLowerCase(),
+        password,
+        resend: true,
       });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
 
       setSuccess('New OTP sent to your email');
       setResendCooldown(30);
@@ -107,16 +105,11 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setError('');
 
     try {
-      const response = await supabase.functions.invoke('verify-super-admin-otp', {
-        body: {
-          email: email.trim().toLowerCase(),
-          otp,
-          newPassword: needsPasswordSetup ? password : undefined,
-        },
+      await invokeEdgeFunction('verify-super-admin-otp', {
+        email: email.trim().toLowerCase(),
+        otp,
+        newPassword: needsPasswordSetup ? password : undefined,
       });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
 
       // Sign in with password
       const { error: signInError } = await supabase.auth.signInWithPassword({

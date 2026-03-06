@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
-import { extractEdgeFunctionError } from '@/lib/error-utils';
+import { invokeEdgeFunction } from '@/lib/api';
 
 export interface Student {
   id: string;
@@ -215,12 +215,11 @@ export function useDeleteStudent() {
 
   return useMutation({
     mutationFn: async ({ studentId, userId }: { studentId: string; userId: string | null }) => {
-      const response = await supabase.functions.invoke('delete-school-user', {
-        body: { user_id: userId, teacher_id: null, student_id: studentId },
+      await invokeEdgeFunction('delete-school-user', {
+        user_id: userId,
+        teacher_id: null,
+        student_id: studentId,
       });
-
-      const errorMsg = await extractEdgeFunctionError(response);
-      if (errorMsg) throw new Error(errorMsg);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });

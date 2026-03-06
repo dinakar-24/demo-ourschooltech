@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { getSupabaseRange } from './usePagination';
+import { invokeEdgeFunction } from '@/lib/api';
 
 export interface Teacher {
   id: string;
@@ -287,13 +288,10 @@ export function useDeleteTeacher() {
 
   return useMutation({
     mutationFn: async ({ teacherId, userId }: { teacherId: string; userId: string | null }) => {
-      // Use edge function to fully delete auth user + all related records
-      const { data, error } = await supabase.functions.invoke('delete-school-user', {
-        body: { user_id: userId, teacher_id: teacherId },
+      await invokeEdgeFunction('delete-school-user', {
+        user_id: userId,
+        teacher_id: teacherId,
       });
-
-      if (error) throw new Error(error.message || 'Failed to delete teacher');
-      if (!data?.success) throw new Error(data?.error || 'Failed to delete teacher');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
