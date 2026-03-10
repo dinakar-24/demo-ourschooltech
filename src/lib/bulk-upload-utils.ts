@@ -28,7 +28,7 @@ export const TEACHER_FIELDS = {
 
 export const FEE_FIELDS = {
   required: ['admission_number', 'fee_type', 'amount', 'due_date'],
-  optional: ['status', 'payment_method', 'paid_date', 'transaction_id'],
+  optional: ['term_name'],
 };
 
 // Header aliases for flexible CSV column names
