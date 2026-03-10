@@ -275,65 +275,108 @@ Deno.serve(async (req) => {
         (students || []).forEach((s: any) => studentMap.set(s.admission_number, s.id));
       }
 
-      for (let i = 0; i < records.length; i += BATCH_SIZE) {
-        const batch = records.slice(i, i + BATCH_SIZE);
-        const validRecords: any[] = [];
+      // Fetch fee terms for matching by name
+      const { data: feeTerms } = await supabase
+        .from("fee_terms")
+        .select("id, name")
+        .eq("school_id", school_id);
+      const termMap = new Map<string, string>();
+      (feeTerms || []).forEach((t: any) => termMap.set(t.name.toLowerCase().trim(), t.id));
 
-        for (let j = 0; j < batch.length; j++) {
-          const r = batch[j];
-          const rowIndex = i + j + 1;
+      // Group rows into invoices by admission_number + due_date
+      const invoiceGroups = new Map<string, { studentId: string; dueDate: string; termId: string | null; components: { fee_type: string; amount: number }[]; rowIndices: number[] }>();
 
-          if (!r.admission_number?.trim() || !r.fee_type?.trim() || !r.amount || !r.due_date?.trim()) {
-            errors.push({ row: rowIndex, error: "Missing required fields (admission_number, fee_type, amount, due_date)" });
-            continue;
-          }
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        const rowIndex = i + 1;
 
-          const studentId = studentMap.get(r.admission_number.trim());
-          if (!studentId) {
-            errors.push({ row: rowIndex, error: `Student not found: ${r.admission_number}` });
-            continue;
-          }
+        if (!r.admission_number?.trim() || !r.fee_type?.trim() || !r.amount || !r.due_date?.trim()) {
+          errors.push({ row: rowIndex, error: "Missing required fields (admission_number, fee_type, amount, due_date)" });
+          continue;
+        }
 
-          const amount = parseFloat(r.amount);
-          if (isNaN(amount) || amount <= 0) {
-            errors.push({ row: rowIndex, error: "Invalid amount" });
-            continue;
-          }
+        const studentId = studentMap.get(r.admission_number.trim());
+        if (!studentId) {
+          errors.push({ row: rowIndex, error: `Student not found: ${r.admission_number}` });
+          continue;
+        }
 
-          validRecords.push({
-            student_id: studentId,
-            school_id,
-            fee_type: r.fee_type.trim(),
-            amount,
-            due_date: r.due_date.trim(),
-            status: r.status?.trim().toLowerCase() || "pending",
-            payment_method: r.payment_method?.trim() || null,
-            paid_date: r.paid_date?.trim() || null,
-            transaction_id: r.transaction_id?.trim() || null,
+        const amount = parseFloat(r.amount);
+        if (isNaN(amount) || amount <= 0) {
+          errors.push({ row: rowIndex, error: "Invalid amount" });
+          continue;
+        }
+
+        const groupKey = `${r.admission_number.trim()}|${r.due_date.trim()}`;
+        const termName = r.term_name?.trim().toLowerCase() || "";
+        const termId = termName ? (termMap.get(termName) || null) : null;
+
+        if (!invoiceGroups.has(groupKey)) {
+          invoiceGroups.set(groupKey, {
+            studentId,
+            dueDate: r.due_date.trim(),
+            termId,
+            components: [],
+            rowIndices: [],
           });
         }
 
-        if (validRecords.length > 0) {
-          const { error: insertError, data: insertedData } = await supabase
-            .from("fees")
-            .insert(validRecords)
-            .select("id");
-
-          if (insertError) {
-            for (let k = 0; k < validRecords.length; k++) {
-              const { error: singleError } = await supabase
-                .from("fees")
-                .insert(validRecords[k]);
-              if (singleError) {
-                errors.push({ row: i + k + 1, error: singleError.message });
-              } else {
-                inserted++;
-              }
-            }
-          } else {
-            inserted += insertedData?.length || validRecords.length;
-          }
+        const group = invoiceGroups.get(groupKey)!;
+        group.components.push({ fee_type: r.fee_type.trim(), amount });
+        group.rowIndices.push(rowIndex);
+        // Use term from first row that has it
+        if (termId && !group.termId) {
+          group.termId = termId;
         }
+      }
+
+      // Create invoices with components
+      for (const [, group] of invoiceGroups) {
+        const totalAmount = group.components.reduce((sum, c) => sum + c.amount, 0);
+
+        const { data: invoice, error: invoiceError } = await supabase
+          .from("fee_invoices")
+          .insert({
+            school_id,
+            student_id: group.studentId,
+            total_amount: totalAmount,
+            balance: totalAmount,
+            paid_amount: 0,
+            due_date: group.dueDate,
+            status: "pending",
+            term_id: group.termId,
+          })
+          .select("id")
+          .single();
+
+        if (invoiceError) {
+          group.rowIndices.forEach(ri => {
+            errors.push({ row: ri, error: invoiceError.message });
+          });
+          continue;
+        }
+
+        // Insert components
+        const componentRecords = group.components.map(c => ({
+          invoice_id: invoice.id,
+          fee_type: c.fee_type,
+          amount: c.amount,
+        }));
+
+        const { error: compError } = await supabase
+          .from("fee_invoice_components")
+          .insert(componentRecords);
+
+        if (compError) {
+          // Rollback invoice
+          await supabase.from("fee_invoices").delete().eq("id", invoice.id);
+          group.rowIndices.forEach(ri => {
+            errors.push({ row: ri, error: compError.message });
+          });
+          continue;
+        }
+
+        inserted += group.components.length;
       }
     }
 

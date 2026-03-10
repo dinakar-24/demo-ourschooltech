@@ -28,7 +28,7 @@ export const TEACHER_FIELDS = {
 
 export const FEE_FIELDS = {
   required: ['admission_number', 'fee_type', 'amount', 'due_date'],
-  optional: ['status', 'payment_method', 'paid_date', 'transaction_id'],
+  optional: ['term_name'],
 };
 
 // Header aliases for flexible CSV column names
@@ -90,14 +90,8 @@ const HEADER_ALIASES: Record<string, string> = {
   'amt': 'amount',
   'due': 'due_date',
   'due date': 'due_date',
-  'paid date': 'paid_date',
-  'paid': 'paid_date',
-  'payment method': 'payment_method',
-  'payment_mode': 'payment_method',
-  'mode': 'payment_method',
-  'txn id': 'transaction_id',
-  'txn_id': 'transaction_id',
-  'transaction': 'transaction_id',
+  'term': 'term_name',
+  'term name': 'term_name',
 };
 
 function normalizeHeader(header: string): string {
@@ -198,12 +192,6 @@ export function validateRows(
       if (row.due_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.due_date)) {
         errors.push('due_date must be YYYY-MM-DD');
       }
-      if (row.paid_date && row.paid_date.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.paid_date)) {
-        errors.push('paid_date must be YYYY-MM-DD');
-      }
-      if (row.status && !['pending', 'paid', 'overdue'].includes(row.status.toLowerCase())) {
-        errors.push('status must be pending/paid/overdue');
-      }
     }
 
     rows.push({
@@ -271,13 +259,10 @@ export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): 
     sampleRow['joining_date'] = '2024-06-01';
   } else {
     sampleRow['admission_number'] = 'ADM001';
-    sampleRow['fee_type'] = 'Tuition';
+    sampleRow['fee_type'] = 'Tuition Fee';
     sampleRow['amount'] = '5000';
     sampleRow['due_date'] = '2026-04-01';
-    sampleRow['status'] = 'pending';
-    sampleRow['payment_method'] = '';
-    sampleRow['paid_date'] = '';
-    sampleRow['transaction_id'] = '';
+    sampleRow['term_name'] = 'Term 1';
   }
 
   const wb = new ExcelJS.Workbook();
