@@ -192,12 +192,6 @@ export function validateRows(
       if (row.due_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.due_date)) {
         errors.push('due_date must be YYYY-MM-DD');
       }
-      if (row.paid_date && row.paid_date.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.paid_date)) {
-        errors.push('paid_date must be YYYY-MM-DD');
-      }
-      if (row.status && !['pending', 'paid', 'overdue'].includes(row.status.toLowerCase())) {
-        errors.push('status must be pending/paid/overdue');
-      }
     }
 
     rows.push({
