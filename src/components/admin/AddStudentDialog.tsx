@@ -1,4 +1,5 @@
-import { useState } from 'react'; // fee types with descriptions
+import { useState } from 'react';
+import { DOBPicker } from '@/components/ui/dob-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
