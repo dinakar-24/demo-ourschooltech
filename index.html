@@ -55,6 +55,54 @@
         }
         if(!stored) localStorage.setItem('app_version', APP_VERSION);
       })();
+
+      // Pre-React subdomain branding
+      (function(){
+        var host = location.hostname;
+        var base = 'ourschooltech.com';
+        if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return;
+        if (!host.endsWith('.' + base)) return;
+        var sub = host.replace('.' + base, '');
+        if (!sub || ['www','app','admin'].indexOf(sub) >= 0) return;
+
+        function applyBrand(t) {
+          if (t.title) document.title = t.title;
+          if (t.logo) {
+            var fav = document.querySelector('link[rel="icon"]');
+            if (fav) fav.href = t.logo;
+            var apple = document.querySelector('link[rel="apple-touch-icon"]');
+            if (apple) apple.href = t.logo;
+          }
+          if (t.color) {
+            var mc = document.querySelector('meta[name="theme-color"]');
+            if (mc) mc.setAttribute('content', t.color);
+            var loader = document.getElementById('pre-react-loader');
+            if (loader) loader.style.background = t.color + '10';
+          }
+        }
+
+        var cached = sessionStorage.getItem('tenant_' + sub);
+        if (cached) {
+          try { applyBrand(JSON.parse(cached)); } catch(e) {}
+          return;
+        }
+
+        var url = 'https://oxqkmugovmqcuosimbzz.supabase.co/rest/v1/rpc/get_school_by_code';
+        var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94cWttdWdvdm1xY3Vvc2ltYnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMDY0MjUsImV4cCI6MjA4NTc4MjQyNX0.HXIEeDbbO4pgZYGqe7gJjSrVfUdgwHwaJJ2M9uDkVRo';
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': key, 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({ _code: sub })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d) return;
+          var brand = { title: d.app_display_name || d.name, logo: d.logo, color: d.primary_color };
+          applyBrand(brand);
+          sessionStorage.setItem('tenant_' + sub, JSON.stringify(brand));
+        })
+        .catch(function(){});
+      })();
     </script>
     <div id="root">
       <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;background:#fff;z-index:200;">
