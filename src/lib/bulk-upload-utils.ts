@@ -259,13 +259,10 @@ export async function generateTemplate(type: 'students' | 'teachers' | 'fees'): 
     sampleRow['joining_date'] = '2024-06-01';
   } else {
     sampleRow['admission_number'] = 'ADM001';
-    sampleRow['fee_type'] = 'Tuition';
+    sampleRow['fee_type'] = 'Tuition Fee';
     sampleRow['amount'] = '5000';
     sampleRow['due_date'] = '2026-04-01';
-    sampleRow['status'] = 'pending';
-    sampleRow['payment_method'] = '';
-    sampleRow['paid_date'] = '';
-    sampleRow['transaction_id'] = '';
+    sampleRow['term_name'] = 'Term 1';
   }
 
   const wb = new ExcelJS.Workbook();
