@@ -1,4 +1,5 @@
-import { useState } from 'react'; // fee types with descriptions
+import { useState } from 'react';
+import { DOBPicker } from '@/components/ui/dob-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,10 +9,7 @@ import {
 import {
   Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Plus, Loader2, User, Hash, Mail, Calendar as CalendarIcon, Droplets, IndianRupee } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, parse } from 'date-fns';
+import { Plus, Loader2, User, Hash, Mail, Droplets, IndianRupee } from 'lucide-react';
 import { IndianPhoneInput } from '@/components/ui/indian-phone-input';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -348,35 +346,10 @@ function StudentFormContent({ formData, feeEntries, onFeeEntriesChange, onInputC
       </div>
 
       {/* DOB */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Date of Birth</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full h-11 justify-start text-left font-normal",
-                !formData.date_of_birth && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {formData.date_of_birth
-                ? format(parse(formData.date_of_birth, 'yyyy-MM-dd', new Date()), 'dd-MM-yyyy')
-                : <span>dd-mm-yyyy</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={formData.date_of_birth ? parse(formData.date_of_birth, 'yyyy-MM-dd', new Date()) : undefined}
-              onSelect={(date) => onInputChange('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
-              disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+      <DOBPicker
+        value={formData.date_of_birth}
+        onChange={(v) => onInputChange('date_of_birth', v)}
+      />
 
 
       {/* Actions */}
