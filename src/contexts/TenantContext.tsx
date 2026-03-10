@@ -237,6 +237,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
         setTenant(tenantData);
         applyTenantBranding(tenantData);
+
+        // Cache for pre-React branding on next refresh
+        try {
+          sessionStorage.setItem(`tenant_${subdomain}`, JSON.stringify({
+            title: tenantData.appDisplayName || tenantData.name,
+            logo: tenantData.logo,
+            color: tenantData.primaryColor,
+          }));
+        } catch (e) { /* quota exceeded — ignore */ }
       } catch (err) {
         console.error('Tenant resolution error:', err);
         setTenantError('Failed to resolve school. Please try again.');
