@@ -1,81 +1,82 @@
 
 
-## Dynamic Open Graph Metadata for School Subdomains
+## Fix: Instant School Branding on Subdomain Page Load
 
-### The Core Challenge
+### Problem
+When refreshing a subdomain page (e.g., `sse.ourschooltech.com`), the browser tab shows generic "School Portal" until React hydrates and TenantContext resolves the school data. The user sees the generic title and favicon for 1-3 seconds.
 
-Social crawlers (WhatsApp, Facebook, Twitter) do **not execute JavaScript**. They read raw HTML meta tags from the initial HTTP response. Since this is a client-side SPA served by Lovable's CDN, we cannot intercept the HTML response at the server level to inject dynamic tags before the page reaches the crawler.
+### Solution
+Add an inline `<script>` block in `index.html` that runs **before React loads**. It:
 
-**Two-layer approach:**
+1. Detects the subdomain from `window.location.hostname`
+2. Checks `sessionStorage` for cached tenant data (instant on refresh)
+3. If no cache, makes a direct `fetch()` to the PostgREST RPC endpoint (`get_school_by_code`) — no SDK needed
+4. Immediately sets `document.title`, favicon, and theme-color meta tag
+5. Caches the result in `sessionStorage` for subsequent refreshes
+6. Also updates the pre-React loader background color to match the school's branding
 
-1. **Client-side meta injection** — Update all OG/Twitter meta tags when tenant resolves. This helps JS-capable platforms (some messaging apps, browsers generating link previews in-app) and ensures tags are correct once the page loads.
+Then, when TenantContext resolves (which already does full branding), it takes over seamlessly. The user never sees "School Portal" in the tab.
 
-2. **Edge function OG proxy** — Create a dedicated endpoint that returns a minimal HTML page with correct OG tags for any school. Social platforms can be pointed to this via `og:url` or a reverse proxy setup.
-
-### Layer 1: Client-Side Meta Tag Injection
-
-**File: `src/contexts/TenantContext.tsx`** — Extend `applyTenantBranding()` to set all OG and Twitter meta tags:
-
-```typescript
-// Inside applyTenantBranding():
-const schoolUrl = `https://${tenant.subdomain}.ourschooltech.com`;
-const description = `${tenant.appDisplayName || tenant.name} - School Portal`;
-
-setMeta('og:title', tenant.appDisplayName || tenant.name);
-setMeta('og:description', description);
-setMeta('og:image', tenant.logo || '/favicon.png');
-setMeta('og:url', schoolUrl);
-setMeta('og:type', 'website');
-setMeta('og:site_name', tenant.appDisplayName || tenant.name);
-
-setMeta('twitter:title', tenant.appDisplayName || tenant.name);
-setMeta('twitter:description', description);
-setMeta('twitter:image', tenant.logo || '/favicon.png');
-setMeta('twitter:card', 'summary_large_image');
-
-// Remove any platform branding
-setMeta('author', tenant.appDisplayName || tenant.name);
-```
-
-A helper `setMeta(name, content)` will find-or-create the meta element. Also remove hardcoded "Our School Tech" / "Lovable" references from the tags that get overwritten.
-
-### Layer 2: Edge Function OG Proxy
-
-**File: `supabase/functions/og-metadata/index.ts`** — New edge function
-
-When called with `?school=greenwood`, it:
-1. Fetches school data via `get_school_by_code`
-2. Returns a minimal HTML page with proper OG tags
-3. Includes a redirect to the actual subdomain URL for human visitors
-
-```html
-<!-- Returned by edge function -->
-<html>
-<head>
-  <meta property="og:title" content="Greenwood Academy" />
-  <meta property="og:description" content="Greenwood Academy - School Portal" />
-  <meta property="og:image" content="https://...logo.png" />
-  <meta property="og:url" content="https://greenwood.ourschooltech.com" />
-  <meta http-equiv="refresh" content="0;url=https://greenwood.ourschooltech.com" />
-</head>
-</html>
-```
-
-This gives a shareable URL (`https://{supabase-url}/functions/v1/og-metadata?school=greenwood`) that renders correct OG tags for any crawler while redirecting humans to the actual app.
-
-### Layer 3: Remove Platform Branding
-
-**File: `index.html`** — Change hardcoded fallback OG tags to be generic (no "Lovable" or "Our School Tech" in the meta tags that subdomain users would see). The client-side injection overwrites these immediately for subdomain access.
-
-### Files to create/modify
+### Files to modify
 
 | File | Change |
 |------|--------|
-| `src/contexts/TenantContext.tsx` | Add full OG/Twitter meta tag injection in `applyTenantBranding()` |
-| `supabase/functions/og-metadata/index.ts` | **New** — edge function returning OG-compliant HTML |
-| `index.html` | Remove "Lovable" branding from fallback meta tags |
+| `index.html` | Add inline script after the cache-bust script that resolves subdomain branding before React loads. Change default `<title>` to empty/minimal so there's no flash of "School Portal". |
+| `src/contexts/TenantContext.tsx` | Write resolved tenant to `sessionStorage` so the inline script can use it on next refresh. |
 
-### Important Limitation
+### Implementation details
 
-For WhatsApp/Facebook crawlers to see school-branded previews when sharing the actual subdomain URL (e.g., `greenwood.ourschooltech.com`), a server-side proxy (e.g., Cloudflare Worker) would need to detect crawler user agents and serve the edge function response instead of the SPA. The client-side injection and OG proxy edge function are the best achievable within the current architecture and cover most use cases.
+**index.html inline script** (runs synchronously before React):
+```javascript
+(function() {
+  var host = location.hostname;
+  var base = 'ourschooltech.com';
+  if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return;
+  if (!host.endsWith('.' + base)) return;
+  var sub = host.replace('.' + base, '');
+  if (!sub || ['www','app','admin'].indexOf(sub) >= 0) return;
+
+  // Try sessionStorage cache first (instant)
+  var cached = sessionStorage.getItem('tenant_' + sub);
+  if (cached) {
+    try {
+      var t = JSON.parse(cached);
+      if (t.title) document.title = t.title;
+      if (t.logo) { /* update favicon */ }
+      if (t.color) { /* update theme-color + loader bg */ }
+    } catch(e) {}
+    return;
+  }
+
+  // Async fetch — updates as soon as response arrives
+  var url = 'SUPABASE_URL/rest/v1/rpc/get_school_by_code';
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': 'ANON_KEY' },
+    body: JSON.stringify({ _code: sub })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d) return;
+    var title = d.app_display_name || d.name;
+    if (title) document.title = title;
+    // Cache for next refresh
+    sessionStorage.setItem('tenant_' + sub, JSON.stringify({
+      title: title, logo: d.logo, color: d.primary_color
+    }));
+  })
+  .catch(function(){});
+})();
+```
+
+**TenantContext.tsx** — after `setTenant(tenantData)`, write to sessionStorage:
+```typescript
+sessionStorage.setItem(`tenant_${subdomain}`, JSON.stringify({
+  title: tenantData.appDisplayName || tenantData.name,
+  logo: tenantData.logo,
+  color: tenantData.primaryColor
+}));
+```
+
+This ensures the first load fetches data (slight delay), but every subsequent refresh is **instant** from cache.
 
