@@ -90,14 +90,8 @@ const HEADER_ALIASES: Record<string, string> = {
   'amt': 'amount',
   'due': 'due_date',
   'due date': 'due_date',
-  'paid date': 'paid_date',
-  'paid': 'paid_date',
-  'payment method': 'payment_method',
-  'payment_mode': 'payment_method',
-  'mode': 'payment_method',
-  'txn id': 'transaction_id',
-  'txn_id': 'transaction_id',
-  'transaction': 'transaction_id',
+  'term': 'term_name',
+  'term name': 'term_name',
 };
 
 function normalizeHeader(header: string): string {
