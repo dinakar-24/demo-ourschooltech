@@ -174,9 +174,12 @@ export default function BulkUploadPage() {
       setStep('result');
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: [uploadType === 'students' ? 'students' : uploadType === 'teachers' ? 'teachers' : 'fees'] });
+      queryClient.invalidateQueries({ queryKey: [uploadType === 'students' ? 'students' : uploadType === 'teachers' ? 'teachers' : 'fee-invoices'] });
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
-      if (uploadType === 'fees') queryClient.invalidateQueries({ queryKey: ['fee-stats'] });
+      if (uploadType === 'fees') {
+        queryClient.invalidateQueries({ queryKey: ['fee-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      }
 
       if (result.errors.length === 0) {
         toast.success(`Successfully uploaded ${result.inserted} ${uploadType}`);
