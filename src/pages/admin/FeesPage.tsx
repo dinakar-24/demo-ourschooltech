@@ -33,6 +33,7 @@ import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
 import { SendReminderDialog } from '@/components/fees/SendReminderDialog';
+import { ImportFeesDialog } from '@/components/fees/ImportFeesDialog';
 
 interface StudentGroup {
   studentId: string;
@@ -117,6 +118,7 @@ export default function FeesPage() {
   // Dialogs
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { generateFeeSummary, generatePendingList, generatePaymentHistory, generateAllInvoices } = useFeeReports();
 
@@ -258,7 +260,7 @@ export default function FeesPage() {
                     <DropdownMenuItem onClick={generateAllInvoices}>All Invoices (Detailed)</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={() => navigate('/admin/bulk-upload', { state: { tab: 'fees' } })}>
+                <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="w-4 h-4 mr-1" /> Import
                 </Button>
                 <Button size="sm" onClick={() => setInvoiceDialogOpen(true)}>
@@ -280,7 +282,7 @@ export default function FeesPage() {
                     <DropdownMenuItem onClick={() => setReminderDialogOpen(true)}>
                       <Bell className="w-4 h-4 mr-2" /> Send Reminders
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/bulk-upload', { state: { tab: 'fees' } })}>
+                    <DropdownMenuItem onClick={() => setImportDialogOpen(true)}>
                       <Upload className="w-4 h-4 mr-2" /> Import from Excel
                     </DropdownMenuItem>
                     <DropdownMenuSub>
@@ -477,6 +479,7 @@ export default function FeesPage() {
         {/* Dialogs */}
         <CreateInvoiceDialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen} />
         <SendReminderDialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen} />
+        <ImportFeesDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       </div>
     </AdminLayout>
   );
