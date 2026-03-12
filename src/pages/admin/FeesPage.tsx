@@ -118,6 +118,7 @@ export default function FeesPage() {
   // Dialogs
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { generateFeeSummary, generatePendingList, generatePaymentHistory, generateAllInvoices } = useFeeReports();
 
