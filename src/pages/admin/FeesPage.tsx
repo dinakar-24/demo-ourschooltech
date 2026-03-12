@@ -479,6 +479,7 @@ export default function FeesPage() {
         {/* Dialogs */}
         <CreateInvoiceDialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen} />
         <SendReminderDialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen} />
+        <ImportFeesDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       </div>
     </AdminLayout>
   );
