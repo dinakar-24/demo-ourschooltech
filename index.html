@@ -36,24 +36,44 @@
 
   <body>
     <script>
-      // Version-based cache bust (only on version change, not every load)
+      // Build-based cache bust + service worker cleanup
       (function(){
-        var APP_VERSION = '2026030501';
-        var stored = localStorage.getItem('app_version');
-        if(stored && stored !== APP_VERSION){
-          localStorage.setItem('app_version', APP_VERSION);
-          if('caches' in window){
-            caches.keys().then(function(keys){
-              var p=[];
-              for(var j=0;j<keys.length;j++) p.push(caches.delete(keys[j]));
-              Promise.all(p).then(function(){ location.reload(true); });
-            });
-          } else {
-            location.reload(true);
-          }
+        var APP_VERSION = '__APP_BUILD_ID__';
+        var VERSION_KEY = 'app_build_id';
+        var SYNC_KEY = 'app_build_sync';
+        var stored = localStorage.getItem(VERSION_KEY);
+
+        if (stored && stored !== APP_VERSION) {
+          if (sessionStorage.getItem(SYNC_KEY) === APP_VERSION) return;
+          sessionStorage.setItem(SYNC_KEY, APP_VERSION);
+          localStorage.setItem(VERSION_KEY, APP_VERSION);
+
+          var clearCaches = ('caches' in window)
+            ? caches.keys().then(function(keys){
+                var deletions = [];
+                for (var i = 0; i < keys.length; i++) deletions.push(caches.delete(keys[i]));
+                return Promise.all(deletions);
+              })
+            : Promise.resolve();
+
+          var clearServiceWorkers = ('serviceWorker' in navigator)
+            ? navigator.serviceWorker.getRegistrations().then(function(regs){
+                var unregs = [];
+                for (var k = 0; k < regs.length; k++) unregs.push(regs[k].unregister());
+                return Promise.all(unregs);
+              })
+            : Promise.resolve();
+
+          Promise.all([clearCaches, clearServiceWorkers]).finally(function(){
+            location.reload();
+          });
           return;
         }
-        if(!stored) localStorage.setItem('app_version', APP_VERSION);
+
+        if (!stored) {
+          localStorage.setItem(VERSION_KEY, APP_VERSION);
+        }
+        sessionStorage.removeItem(SYNC_KEY);
       })();
 
       // Pre-React subdomain branding
