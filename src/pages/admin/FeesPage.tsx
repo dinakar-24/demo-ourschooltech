@@ -33,6 +33,7 @@ import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
 import { SendReminderDialog } from '@/components/fees/SendReminderDialog';
+import { ImportFeesDialog } from '@/components/fees/ImportFeesDialog';
 
 interface StudentGroup {
   studentId: string;
