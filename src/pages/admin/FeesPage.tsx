@@ -282,7 +282,7 @@ export default function FeesPage() {
                     <DropdownMenuItem onClick={() => setReminderDialogOpen(true)}>
                       <Bell className="w-4 h-4 mr-2" /> Send Reminders
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/admin/bulk-upload', { state: { tab: 'fees' } })}>
+                    <DropdownMenuItem onClick={() => setImportDialogOpen(true)}>
                       <Upload className="w-4 h-4 mr-2" /> Import from Excel
                     </DropdownMenuItem>
                     <DropdownMenuSub>
