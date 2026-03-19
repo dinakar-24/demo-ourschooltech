@@ -1,81 +1,67 @@
 
 
-## Dynamic Open Graph Metadata for School Subdomains
+# Cold Start Performance Fix
 
-### The Core Challenge
+## Root Cause Analysis
 
-Social crawlers (WhatsApp, Facebook, Twitter) do **not execute JavaScript**. They read raw HTML meta tags from the initial HTTP response. Since this is a client-side SPA served by Lovable's CDN, we cannot intercept the HTML response at the server level to inject dynamic tags before the page reaches the crawler.
+The performance profile reveals the exact bottlenecks causing the 6+ second cold start:
 
-**Two-layer approach:**
+### Critical Finding 1: Triple duplicate RPC calls
+`get_user_auth_data` is called **3 times** on every cold start, each taking ~1.2-1.4 seconds:
+- Once from `onAuthStateChange` callback (fires on INITIAL_SESSION event)  
+- Once from `getSession().then()` explicit check
+- Once more from a re-render triggered by state updates
 
-1. **Client-side meta injection** — Update all OG/Twitter meta tags when tenant resolves. This helps JS-capable platforms (some messaging apps, browsers generating link previews in-app) and ensures tags are correct once the page loads.
+This alone wastes ~2.5 seconds of network time and creates unnecessary load.
 
-2. **Edge function OG proxy** — Create a dedicated endpoint that returns a minimal HTML page with correct OG tags for any school. Social platforms can be pointed to this via `og:url` or a reverse proxy setup.
+### Critical Finding 2: Blocking font import
+Line 1 of `index.css` uses `@import url('https://fonts.googleapis.com/...')` which **blocks all CSS rendering** until the font stylesheet downloads (~1.4 seconds measured). Nothing paints until this completes.
 
-### Layer 1: Client-Side Meta Tag Injection
+### Critical Finding 3: Oversized logo preload
+The preloaded logo (`/src/assets/logo.png`) is **427KB** — contending with critical resources during initial load.
 
-**File: `src/contexts/TenantContext.tsx`** — Extend `applyTenantBranding()` to set all OG and Twitter meta tags:
+### Critical Finding 4: No DNS preconnect
+The Supabase domain requires a fresh DNS lookup + TLS handshake on cold start before any API call can begin.
 
-```typescript
-// Inside applyTenantBranding():
-const schoolUrl = `https://${tenant.subdomain}.ourschooltech.com`;
-const description = `${tenant.appDisplayName || tenant.name} - School Portal`;
+---
 
-setMeta('og:title', tenant.appDisplayName || tenant.name);
-setMeta('og:description', description);
-setMeta('og:image', tenant.logo || '/favicon.png');
-setMeta('og:url', schoolUrl);
-setMeta('og:type', 'website');
-setMeta('og:site_name', tenant.appDisplayName || tenant.name);
+## Fix Plan
 
-setMeta('twitter:title', tenant.appDisplayName || tenant.name);
-setMeta('twitter:description', description);
-setMeta('twitter:image', tenant.logo || '/favicon.png');
-setMeta('twitter:card', 'summary_large_image');
+### 1. Eliminate duplicate `get_user_auth_data` calls
+**File: `src/contexts/AuthContext.tsx`**
+- Add a `useRef` deduplication guard (`fetchInFlightRef`) so only ONE `fetchUserData` call runs at a time
+- Remove the explicit `getSession().then(fetchUserData)` call — the `onAuthStateChange` with `INITIAL_SESSION` event already handles this
+- Keep the sessionStorage cache for instant UI restoration; background refresh should not re-trigger if a fetch is already in progress
 
-// Remove any platform branding
-setMeta('author', tenant.appDisplayName || tenant.name);
-```
-
-A helper `setMeta(name, content)` will find-or-create the meta element. Also remove hardcoded "Our School Tech" / "Lovable" references from the tags that get overwritten.
-
-### Layer 2: Edge Function OG Proxy
-
-**File: `supabase/functions/og-metadata/index.ts`** — New edge function
-
-When called with `?school=greenwood`, it:
-1. Fetches school data via `get_school_by_code`
-2. Returns a minimal HTML page with proper OG tags
-3. Includes a redirect to the actual subdomain URL for human visitors
-
+### 2. Move font loading to non-blocking
+**File: `src/index.css`** — Remove line 1 (`@import url(...)`)
+**File: `index.html`** — Add non-blocking font loading:
 ```html
-<!-- Returned by edge function -->
-<html>
-<head>
-  <meta property="og:title" content="Greenwood Academy" />
-  <meta property="og:description" content="Greenwood Academy - School Portal" />
-  <meta property="og:image" content="https://...logo.png" />
-  <meta property="og:url" content="https://greenwood.ourschooltech.com" />
-  <meta http-equiv="refresh" content="0;url=https://greenwood.ourschooltech.com" />
-</head>
-</html>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"></noscript>
 ```
 
-This gives a shareable URL (`https://{supabase-url}/functions/v1/og-metadata?school=greenwood`) that renders correct OG tags for any crawler while redirecting humans to the actual app.
+### 3. Add DNS preconnect for backend
+**File: `index.html`** — Add before other links:
+```html
+<link rel="preconnect" href="https://oxqkmugovmqcuosimbzz.supabase.co">
+<link rel="dns-prefetch" href="https://oxqkmugovmqcuosimbzz.supabase.co">
+```
 
-### Layer 3: Remove Platform Branding
+### 4. Remove oversized logo preload  
+**File: `index.html`** — Remove the `<link rel="preload" as="image" href="/src/assets/logo.png" />` line. A 427KB image should not compete with critical JS/CSS resources.
 
-**File: `index.html`** — Change hardcoded fallback OG tags to be generic (no "Lovable" or "Our School Tech" in the meta tags that subdomain users would see). The client-side injection overwrites these immediately for subdomain access.
+---
 
-### Files to create/modify
+## Expected Impact
 
-| File | Change |
-|------|--------|
-| `src/contexts/TenantContext.tsx` | Add full OG/Twitter meta tag injection in `applyTenantBranding()` |
-| `supabase/functions/og-metadata/index.ts` | **New** — edge function returning OG-compliant HTML |
-| `index.html` | Remove "Lovable" branding from fallback meta tags |
-
-### Important Limitation
-
-For WhatsApp/Facebook crawlers to see school-branded previews when sharing the actual subdomain URL (e.g., `greenwood.ourschooltech.com`), a server-side proxy (e.g., Cloudflare Worker) would need to detect crawler user agents and serve the edge function response instead of the SPA. The client-side injection and OG proxy edge function are the best achievable within the current architecture and cover most use cases.
+| Metric | Before | After (estimated) |
+|--------|--------|-------------------|
+| FCP | 1436ms | ~600-800ms |
+| DOM Content Loaded | 6007ms | ~2500-3500ms |
+| RPC calls | 3x | 1x |
+| Font blocking time | ~1400ms | 0ms (async) |
+| Preload contention | 427KB logo | Removed |
 
