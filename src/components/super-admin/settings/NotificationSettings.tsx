@@ -20,7 +20,7 @@ import {
 
 const NOTIF_FALLBACK = { subscription_expiry_alerts: true, new_school_registration: true, payment_failure_alerts: true, maintenance_notices: false };
 const EMAIL_FALLBACK = { smtp_server: '', port: '587', sender_email: 'noreply@ourschooltech.com', sender_name: 'OurSchool Tech' };
-const SMS_FALLBACK = { enabled: false, provider: '', api_key: '' };
+const SMS_FALLBACK = { enabled: false, provider: '', api_key_configured: false };
 const API_FALLBACK = { razorpay_key_id: '', razorpay_key_secret: '' };
 
 export function NotificationSettings() {
@@ -205,8 +205,15 @@ export function NotificationSettings() {
               <Input value={sms.provider} onChange={(e) => setSms(s => ({ ...s, provider: e.target.value }))} placeholder="e.g. Twilio, MSG91" disabled={!sms.enabled} className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">API Key</Label>
-              <Input type="password" value={sms.api_key} onChange={(e) => setSms(s => ({ ...s, api_key: e.target.value }))} placeholder="••••••••" disabled={!sms.enabled} className="h-9" />
+              <Label className="text-xs font-medium">API Key Status</Label>
+              <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                {sms.api_key_configured ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">✓ Configured</span>
+                ) : (
+                  <span className="text-muted-foreground">Not configured</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">SMS API keys are managed as server-side secrets for security.</p>
             </div>
           </div>
           <Button

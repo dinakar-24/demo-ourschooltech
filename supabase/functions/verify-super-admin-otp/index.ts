@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function hashOtp(otp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(otp));
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const OTP_RE = /^\d{6}$/;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,6 +30,30 @@ serve(async (req) => {
         JSON.stringify({ error: "Email and OTP are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Input validation
+    if (typeof email !== "string" || email.length > 254 || !EMAIL_RE.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof otp !== "string" || !OTP_RE.test(otp)) {
+      return new Response(
+        JSON.stringify({ error: "OTP must be a 6-digit code" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (newPassword !== undefined && newPassword !== null) {
+      if (typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 200) {
+        return new Response(
+          JSON.stringify({ error: "Password must be between 8 and 200 characters" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -51,12 +84,15 @@ serve(async (req) => {
       );
     }
 
-    // Verify OTP
+    // Hash the submitted OTP and compare against stored hash
+    const otpHash = await hashOtp(otp);
+
+    // Verify OTP by hash
     const { data: otpData, error: otpError } = await supabaseAdmin
       .from("super_admin_otp")
       .select("*")
       .eq("email", email.toLowerCase())
-      .eq("otp_code", otp)
+      .eq("otp_code", otpHash)
       .eq("used", false)
       .gte("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
@@ -102,7 +138,7 @@ serve(async (req) => {
       if (createError) {
         console.error("Error creating user:", createError);
         return new Response(
-          JSON.stringify({ error: createError.message }),
+          JSON.stringify({ error: "Failed to create account. Please try again." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -134,7 +170,7 @@ serve(async (req) => {
         if (updateError) {
           console.error("Error updating password:", updateError);
           return new Response(
-            JSON.stringify({ error: updateError.message }),
+            JSON.stringify({ error: "Failed to set password. Please try again." }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -166,9 +202,8 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
