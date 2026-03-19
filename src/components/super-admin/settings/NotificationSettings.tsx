@@ -20,7 +20,7 @@ import {
 
 const NOTIF_FALLBACK = { subscription_expiry_alerts: true, new_school_registration: true, payment_failure_alerts: true, maintenance_notices: false };
 const EMAIL_FALLBACK = { smtp_server: '', port: '587', sender_email: 'noreply@ourschooltech.com', sender_name: 'OurSchool Tech' };
-const SMS_FALLBACK = { enabled: false, provider: '', api_key: '' };
+const SMS_FALLBACK = { enabled: false, provider: '', api_key_configured: false };
 const API_FALLBACK = { razorpay_key_id: '', razorpay_key_secret: '' };
 
 export function NotificationSettings() {

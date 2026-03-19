@@ -7,6 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function hashOtp(otp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(otp));
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,6 +28,14 @@ serve(async (req) => {
     if (!email) {
       return new Response(
         JSON.stringify({ error: "Email is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Input validation
+    if (typeof email !== "string" || email.length > 254 || !EMAIL_RE.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -94,6 +110,7 @@ serve(async (req) => {
 
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await hashOtp(otpCode);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
     // Invalidate existing unused OTPs
@@ -103,12 +120,12 @@ serve(async (req) => {
       .eq("email", email.toLowerCase())
       .eq("used", false);
 
-    // Store new OTP
+    // Store hashed OTP
     const { error: insertError } = await supabaseAdmin
       .from("password_reset_otp")
       .insert({
         email: email.toLowerCase(),
-        otp_code: otpCode,
+        otp_code: otpHash,
         expires_at: expiresAt,
       });
 
@@ -182,9 +199,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

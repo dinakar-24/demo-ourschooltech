@@ -40,9 +40,9 @@ Deno.serve(async (req) => {
 
     const { subscriptionId, amount, schoolId, studentCount, paymentType = 'renewal' } = await req.json();
 
-    if (!amount) {
+    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000000 || !Number.isFinite(amount)) {
       return new Response(
-        JSON.stringify({ error: 'Missing amount' }),
+        JSON.stringify({ error: 'Invalid amount: must be a positive number' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

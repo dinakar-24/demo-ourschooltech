@@ -7,6 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function hashOtp(otp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(otp));
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,6 +28,21 @@ serve(async (req) => {
     if (!email || !password) {
       return new Response(
         JSON.stringify({ error: "Email and password are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Input validation
+    if (typeof email !== "string" || email.length > 254 || !EMAIL_RE.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (typeof password !== "string" || password.length < 1 || password.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Invalid password" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -48,10 +71,6 @@ serve(async (req) => {
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     // Step 1: Check if this email is a super_admin
     const { data: profileData } = await supabaseAdmin
@@ -115,7 +134,6 @@ serve(async (req) => {
 
     // Step 2: Verify password BEFORE sending OTP (skip for initial setup)
     if (!needsPasswordSetup && existingUser) {
-      // Use Supabase GoTrueAdmin to verify by attempting a sign-in
       const verifyClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
@@ -126,7 +144,6 @@ serve(async (req) => {
       });
 
       if (signInError) {
-        // Sign out any session that may have been created
         await verifyClient.auth.signOut();
         return new Response(
           JSON.stringify({ error: "Invalid credentials. Please check your email and password." }),
@@ -134,12 +151,12 @@ serve(async (req) => {
         );
       }
 
-      // Sign out the temporary session immediately — we only wanted to verify
       await verifyClient.auth.signOut();
     }
 
     // Step 3: Generate and send OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await hashOtp(otpCode);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
     // Invalidate existing unused OTPs
@@ -149,12 +166,12 @@ serve(async (req) => {
       .eq("email", email.toLowerCase())
       .eq("used", false);
 
-    // Store new OTP
+    // Store hashed OTP
     const { error: insertError } = await supabaseAdmin
       .from("super_admin_otp")
       .insert({
         email: email.toLowerCase(),
-        otp_code: otpCode,
+        otp_code: otpHash,
         expires_at: expiresAt,
       });
 
@@ -233,9 +250,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

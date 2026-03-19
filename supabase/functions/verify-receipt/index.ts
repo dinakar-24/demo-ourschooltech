@@ -14,10 +14,19 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const receiptNumber = url.searchParams.get("receipt_number");
+    const schoolCode = url.searchParams.get("school_code");
 
-    if (!receiptNumber) {
+    if (!receiptNumber || typeof receiptNumber !== "string" || receiptNumber.length > 50) {
       return new Response(
-        JSON.stringify({ error: "receipt_number is required" }),
+        JSON.stringify({ error: "Valid receipt_number is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate receipt number format (alphanumeric with hyphens/slashes)
+    if (!/^[A-Za-z0-9\-\/]+$/.test(receiptNumber)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid receipt number format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -26,6 +35,27 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Rate limit: 10 receipt verifications per IP per 5 minutes
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("cf-connecting-ip") || "unknown";
+
+    const { data: rateLimit } = await supabase.rpc("check_rate_limit", {
+      _ip: clientIp,
+      _type: "receipt_verify",
+      _max_attempts: 10,
+      _window_minutes: 5,
+    });
+
+    if (rateLimit && !rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Too many verification attempts. Please try again later.",
+          retry_after_seconds: rateLimit.retry_after_seconds,
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Look up payment by receipt number
     const { data: payment, error: paymentError } = await supabase
@@ -41,27 +71,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get student details
-    const { data: student } = await supabase
-      .from("students")
-      .select("full_name, admission_number, class_name, section")
-      .eq("id", payment.student_id)
-      .single();
+    // If school_code is provided, verify it matches the payment's school
+    if (schoolCode) {
+      const { data: school } = await supabase
+        .from("schools")
+        .select("code")
+        .eq("id", payment.school_id)
+        .single();
 
-    // Get school name
+      if (!school || school.code.toLowerCase() !== schoolCode.toLowerCase()) {
+        return new Response(
+          JSON.stringify({ verified: false, error: "Receipt not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Get school name only
     const { data: school } = await supabase
       .from("schools")
-      .select("name, code")
+      .select("name")
       .eq("id", payment.school_id)
       .single();
 
-    // Get invoice for total/balance
-    const { data: invoice } = await supabase
-      .from("fee_invoices")
-      .select("total_amount, paid_amount, balance, status")
-      .eq("id", payment.invoice_id)
-      .single();
-
+    // Return minimal verified response — no student PII
     return new Response(
       JSON.stringify({
         verified: true,
@@ -69,14 +102,7 @@ Deno.serve(async (req) => {
         amount_paid: payment.amount,
         payment_date: payment.payment_date,
         payment_method: payment.payment_method,
-        student_name: student?.full_name || "N/A",
-        admission_number: student?.admission_number || "N/A",
-        class_name: student?.class_name || "",
-        section: student?.section || "",
         school_name: school?.name || "N/A",
-        invoice_status: invoice?.status || "N/A",
-        total_amount: invoice?.total_amount || 0,
-        remaining_balance: invoice?.balance || 0,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
