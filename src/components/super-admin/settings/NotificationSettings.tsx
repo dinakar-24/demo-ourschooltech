@@ -205,8 +205,15 @@ export function NotificationSettings() {
               <Input value={sms.provider} onChange={(e) => setSms(s => ({ ...s, provider: e.target.value }))} placeholder="e.g. Twilio, MSG91" disabled={!sms.enabled} className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">API Key</Label>
-              <Input type="password" value={sms.api_key} onChange={(e) => setSms(s => ({ ...s, api_key: e.target.value }))} placeholder="••••••••" disabled={!sms.enabled} className="h-9" />
+              <Label className="text-xs font-medium">API Key Status</Label>
+              <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                {sms.api_key_configured ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">✓ Configured</span>
+                ) : (
+                  <span className="text-muted-foreground">Not configured</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">SMS API keys are managed as server-side secrets for security.</p>
             </div>
           </div>
           <Button
