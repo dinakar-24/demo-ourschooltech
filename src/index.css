@@ -452,3 +452,22 @@ input::-webkit-textfield-decoration-container {
 .login-orb-3 {
   animation: loginOrb3 12s ease-in-out 4s infinite;
 }
+
+/* Mobile keyboard viewport fix - prevent layout shift when virtual keyboard opens */
+@supports (height: 100dvh) {
+  [data-vaul-drawer] {
+    max-height: 85dvh !important;
+  }
+}
+
+/* Ensure focused inputs scroll into view inside drawers/dialogs */
+@media (max-width: 767px) {
+  [data-vaul-drawer] input:focus,
+  [data-vaul-drawer] textarea:focus,
+  [data-vaul-drawer] select:focus,
+  [role="dialog"] input:focus,
+  [role="dialog"] textarea:focus,
+  [role="dialog"] select:focus {
+    scroll-margin-bottom: 120px;
+  }
+}
