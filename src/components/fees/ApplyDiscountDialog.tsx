@@ -30,9 +30,9 @@ export function ApplyDiscountDialog({ open, onOpenChange, invoice }: Props) {
   const [verifying, setVerifying] = useState(false);
   const applyDiscount = useApplyDiscount();
 
-  const balance = Number(invoice?.balance || 0);
+  const balance = Number(invoice?.balance ?? 0);
   const discountAmount = Number(amount) || 0;
-  const isValid = discountAmount > 0 && discountAmount <= balance && reason && password.length >= 8;
+  const isValid = discountAmount > 0 && discountAmount <= balance && !!reason && password.length >= 8;
 
   const resetForm = () => {
     setAmount('');

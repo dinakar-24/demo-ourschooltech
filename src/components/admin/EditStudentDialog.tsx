@@ -127,7 +127,8 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
 
   const classNames = classes?.map(c => c.name) || [];
   const selectedClassData = classes?.find(c => c.name === form.class_name);
-  const sections = selectedClassData?.sections.map(s => s.name) || ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const sections = (selectedClassData?.sections ?? []).map(s => s.name);
+  const sectionOptions = sections.length > 0 ? sections : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -152,8 +153,8 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
             </div>
             <div className="space-y-2">
               <Label>Class *</Label>
-              <Select value={form.class_name} onValueChange={v => setForm(f => ({ ...f, class_name: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.class_name || undefined} onValueChange={v => setForm(f => ({ ...f, class_name: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                 <SelectContent>
                   {classNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -161,10 +162,10 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
             </div>
             <div className="space-y-2">
               <Label>Section *</Label>
-              <Select value={form.section} onValueChange={v => setForm(f => ({ ...f, section: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.section || undefined} onValueChange={v => setForm(f => ({ ...f, section: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                 <SelectContent>
-                  {sections.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {sectionOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -174,7 +175,7 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
             </div>
             <div className="space-y-2">
               <Label>Gender</Label>
-              <Select value={form.gender} onValueChange={v => setForm(f => ({ ...f, gender: v }))}>
+              <Select value={form.gender || undefined} onValueChange={v => setForm(f => ({ ...f, gender: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Male">Male</SelectItem>

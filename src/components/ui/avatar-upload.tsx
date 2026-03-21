@@ -24,7 +24,7 @@ export function AvatarUpload({ value, onChange, fallback, size = 'md', folder = 
   const [preview, setPreview] = useState<string | null>(null);
 
   const displayUrl = preview || value;
-  const initials = fallback?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const initials = fallback?.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '';
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
