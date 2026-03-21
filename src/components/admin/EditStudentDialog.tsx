@@ -162,8 +162,8 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
             </div>
             <div className="space-y-2">
               <Label>Section *</Label>
-              <Select value={form.section} onValueChange={v => setForm(f => ({ ...f, section: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.section || undefined} onValueChange={v => setForm(f => ({ ...f, section: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                 <SelectContent>
                   {sectionOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
