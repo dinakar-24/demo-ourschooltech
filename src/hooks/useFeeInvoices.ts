@@ -138,28 +138,18 @@ export function useInvoiceStats() {
     queryFn: async (): Promise<InvoiceStats> => {
       if (!schoolId) return { totalDue: 0, collected: 0, pending: 0, overdue: 0 };
 
-      const { data, error } = await supabase
-        .from('fee_invoices')
-        .select('total_amount, paid_amount, balance, status, due_date')
-        .eq('school_id', schoolId);
+      const { data, error } = await supabase.rpc('get_invoice_stats' as any, {
+        _school_id: schoolId,
+      } as any);
 
       if (error) throw error;
-
-      const today = new Date().toISOString().split('T')[0];
-      const stats = (data || []).reduce(
-        (acc, inv) => {
-          acc.totalDue += Number(inv.total_amount);
-          acc.collected += Number(inv.paid_amount);
-          if (inv.status === 'pending' && inv.due_date < today) {
-            acc.overdue += Number(inv.balance);
-          } else if (inv.status !== 'paid') {
-            acc.pending += Number(inv.balance);
-          }
-          return acc;
-        },
-        { totalDue: 0, collected: 0, pending: 0, overdue: 0 }
-      );
-      return stats;
+      const r = data as any;
+      return {
+        totalDue: Number(r?.totalDue ?? 0),
+        collected: Number(r?.collected ?? 0),
+        pending: Number(r?.pending ?? 0),
+        overdue: Number(r?.overdue ?? 0),
+      };
     },
     enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,
