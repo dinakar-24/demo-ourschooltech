@@ -1,64 +1,179 @@
 
 
-# Generate Ultra-Detailed Beginner-Friendly MERN Build Guide
+# Performance Audit & Optimization Plan
 
-## What Changed From Previous Plan
+## Executive Summary
+Your app has a solid foundation (RPC-based dashboard stats, pagination, query key factory, prefetch on login) but has several critical bottlenecks that will degrade performance at scale.
 
-The user wants the document explained "like a kid" — letter by letter, word by word, sentence by sentence. This means:
-- Every technical term gets a real-world analogy
-- Every concept starts with "What is X?" before showing code
-- Code blocks have line-by-line comments explaining what each line does
-- Restaurant/school/hotel analogies throughout
-- A full glossary of every term used
+---
 
-## Document Structure (Both Markdown + PDF)
+## CRITICAL ISSUES
 
-The guide covers the ENTIRE OurSchoolTech platform mapped to MERN, organized in 22 sections:
+### 1. FeesPage fetches 500 rows twice per load (pageSize: 500)
 
-1. **What Are We Building?** — Plain-English description, all 5 roles explained with real-world examples, complete feature list by role
-2. **What is MERN?** — Each letter explained, restaurant analogy for request flow, "What is an API?", "What is JSON?"
-3. **Tools to Install** — Step-by-step with download links, verification commands, what each tool does
-4. **Project Folder Structure** — Full directory tree with purpose of every folder (house analogy)
-5. **Create the Project** — Every npm install command with a table explaining each library, .env file template, entry point code with line-by-line comments
-6. **Database Design** — All 40+ MongoDB models mapped from current schema, "What is a Schema?" explanation, complete field listings with types and relationships
-7. **Backend Server** — Middleware explained as airport security checkpoints, example route + controller with comments
-8. **Authentication** — JWT explained as movie tickets, complete login/refresh/logout flow with code
-9. **Multi-Tenancy** — Apartment building analogy, subdomain middleware, NGINX config
-10. **RBAC** — Hotel key analogy, full access matrix table, middleware code
-11. **Frontend (React)** — Axios client with auto-refresh interceptors, AuthContext, ProtectedRoute
-12. **Module-by-Module Guide** — 23 modules in build order across 12 weeks
-13. **File Storage** — Cloudinary setup and upload helper
-14. **Razorpay Payments** — Step-by-step payment flow, order creation, verification
-15. **Push Notifications** — VAPID web push setup
-16. **PWA** — Dynamic manifest per school
-17. **Cron Jobs** — Keep-alive, fee reminders, audit cleanup
-18. **Security Checklist** — 10-point security table
-19. **Performance** — MongoDB indexes, frontend optimization
-20. **Deployment** — VPS with PM2 + NGINX, cloud alternatives
-21. **Complete API Reference** — All ~80+ endpoints with method, roles, description
-22. **12-Week Roadmap** — Week-by-week with hour estimates (280-340 total hours)
+**Problem**: `FeesPage.tsx` loads `useFeeInvoices` AND `useFees` both with `pageSize: 500`, plus joins to students, components, and payments. This means up to 1000 rows with nested relations loaded at once — easily 1-2MB of JSON.
 
-Plus: **Edge Function Mapping** — all 23 current edge functions mapped to Express equivalents
+**Fix**: Reduce to `pageSize: 25` with proper server-side pagination. The `useInvoiceStats` RPC already provides summary stats. Remove the legacy `useFees` call entirely or merge at the database level.
 
-## Technical Details
+```tsx
+// Before
+useFeeInvoices({ pageSize: 500 });
+useFees({ pageSize: 500 });
 
-- Markdown file: ~45KB, comprehensive with code blocks
-- DOCX/PDF: Professionally formatted with branded colors, tables, headers/footers, page numbers
-- All 40+ database collections documented with fields and relationships
-- All 23 edge functions mapped to MERN equivalents
-- Complete API reference (~80+ endpoints)
-- Glossary of 18 technical terms with simple explanations
+// After
+useFeeInvoices({ page, pageSize: 25 });
+// Remove useFees — use fee_invoices as single source of truth
+```
 
-## Output Files
+### 2. useInvoiceStats fetches ALL invoices client-side to compute stats
 
-- `/mnt/documents/MERN_Build_Guide.md` — Full Markdown
-- `/mnt/documents/MERN_Build_Guide.pdf` — PDF (converted from DOCX via LibreOffice)
+**Problem**: `useInvoiceStats()` pulls every `fee_invoices` row for the school (`select('total_amount, paid_amount, balance, status, due_date')`) then reduces them in JavaScript. For 5000 students × 4 terms = 20,000 rows transferred just for 4 numbers.
 
-## Implementation Steps
+**Fix**: Replace with a server-side RPC (you already have `get_fee_stats` for the legacy `fees` table — create an equivalent for `fee_invoices`, or use the existing one).
 
-1. Write the comprehensive Markdown guide (~45KB) to `/mnt/documents/`
-2. Generate a DOCX version using `docx-js` with professional formatting
-3. Convert DOCX to PDF using LibreOffice
-4. QA the PDF by converting to images and inspecting
-5. Deliver both files
+```sql
+-- New RPC: get_invoice_stats
+CREATE OR REPLACE FUNCTION get_invoice_stats(_school_id uuid)
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'public' AS $$
+  SELECT json_build_object(
+    'totalDue', COALESCE(SUM(total_amount), 0),
+    'collected', COALESCE(SUM(paid_amount), 0),
+    'pending', COALESCE(SUM(CASE WHEN status != 'paid' AND due_date >= CURRENT_DATE THEN balance ELSE 0 END), 0),
+    'overdue', COALESCE(SUM(CASE WHEN status != 'paid' AND due_date < CURRENT_DATE THEN balance ELSE 0 END), 0)
+  ) FROM fee_invoices WHERE school_id = _school_id;
+$$;
+```
+
+### 3. TodaysSummary and PendingTasks use raw useEffect+setState (no caching)
+
+**Problem**: Both components bypass React Query — they use `useEffect` with `useState` and make direct Supabase calls. Every re-render/navigation re-fetches. No caching, no dedup, no stale control.
+
+**Fix**: Convert to `useQuery` hooks with proper query keys and `staleTime`.
+
+### 4. useStudentHomework makes 3 sequential queries
+
+**Problem**: `useStudentHomework` calls: (1) `supabase.auth.getUser()`, (2) `profiles` lookup for school_id, (3) `classes` lookup, then (4) `homework` query. Four round-trips for homework.
+
+**Fix**: Use the school_id from AuthContext (already available) and pass class_id directly or do a single joined query.
+
+### 5. useParentChild makes 2 sequential queries
+
+**Problem**: First fetches parent profile to get email, then queries students by parent_email. Two round-trips every time.
+
+**Fix**: Create a single RPC that takes user_id and returns child info, or use a database view.
+
+---
+
+## MODERATE ISSUES
+
+### 6. Over-fetching with `select('*')` in 15+ hooks
+
+**Problem**: 15 hooks use `select('*')` when they only need 3-5 columns. This transfers unnecessary data (addresses, notes, metadata) on every request.
+
+**Fix**: Replace with explicit column selections:
+```ts
+// Before
+.select('*').eq('student_id', studentId)
+// After
+.select('id, date, status').eq('student_id', studentId)
+```
+
+Key offenders: `useAttendance`, `useParentData`, `useGallery`, `useSupportQueries`, `useTransport`, `useClasses`, `useAcademicYears`.
+
+### 7. useTeachers makes N+1 query for avatars
+
+**Problem**: After fetching teachers, it makes a second query to `profiles` to get avatar URLs. This is an N+1 pattern.
+
+**Fix**: Add `avatar_url` column to the `teachers` table directly, or join profiles in a single query using a database view.
+
+### 8. Notifications query has no user_id filter in the WHERE clause
+
+**Problem**: `useNotifications` does `.select('*').order(...).limit(50)` — the `user_id` filter relies entirely on RLS. This works but is slower than an explicit filter because RLS evaluates per-row.
+
+**Fix**: Add `.eq('user_id', user.id)` explicitly for index usage.
+
+### 9. Realtime subscription on notifications lacks cleanup guard
+
+**Problem**: The realtime channel in `useNotifications` can create duplicate subscriptions during React strict mode or fast navigation.
+
+**Fix**: Already has cleanup, but the channel name `'user-notifications'` is static — if two components mount, they'll conflict. Use user-specific channel names.
+
+---
+
+## MISSING DATABASE INDEXES
+
+Based on my index audit, these are missing:
+
+| Table | Missing Index | Queries Affected |
+|---|---|---|
+| `fee_invoices` | `(school_id, status, due_date)` | FeesPage filters, overdue calculation |
+| `fee_invoices` | `(student_id)` | Parent/student fee lookups |
+| `fees` | `(school_id, status, due_date)` | Legacy fee queries |
+| `homework` | `(class_id, due_date)` | Student/parent homework |
+| `notifications` | `(user_id, is_read, created_at)` | NotificationBell unread count |
+| `students` | `(school_id, class_name, section, status)` | Attendance page class lists |
+| `students` | `(user_id)` | Student profile lookup |
+| `students` | `(parent_email)` | Parent-child linking |
+| `online_classes` | `(school_id, teacher_id)` | Teacher online classes |
+| `results` | `(student_id)` | Student results page |
+
+```sql
+-- Migration: Add missing performance indexes
+CREATE INDEX IF NOT EXISTS idx_fee_invoices_school_status ON fee_invoices(school_id, status, due_date);
+CREATE INDEX IF NOT EXISTS idx_fee_invoices_student ON fee_invoices(student_id);
+CREATE INDEX IF NOT EXISTS idx_fees_school_status ON fees(school_id, status);
+CREATE INDEX IF NOT EXISTS idx_homework_class_due ON homework(class_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_students_school_class ON students(school_id, class_name, section) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_students_user_id ON students(user_id);
+CREATE INDEX IF NOT EXISTS idx_students_parent_email ON students(parent_email);
+CREATE INDEX IF NOT EXISTS idx_results_student ON results(student_id);
+CREATE INDEX IF NOT EXISTS idx_online_classes_teacher ON online_classes(school_id, teacher_id);
+```
+
+---
+
+## API CALL COUNT PER PAGE
+
+| Page | Current API Calls | Optimal | Issue |
+|---|---|---|---|
+| Admin Dashboard | 3 (stats RPC + PendingTasks + TodaysSummary) | 1 | Combine into single RPC |
+| Fees Page | 5 (invoices + legacy fees + stats + classes + pending submissions) | 2 | Remove legacy, use RPC for stats |
+| Student Dashboard | 4 (profile + attendance + homework + announcements) | 2 | Combine profile+attendance; homework is 4 sub-queries |
+| Parent Dashboard | 6 (profile lookup + child + attendance + fees + homework + announcements) | 2 | Create `get_parent_dashboard` RPC |
+| Attendance Page | 3 (attendance records + summary + class list) | 2 | Summary already via RPC |
+
+---
+
+## OPTIMIZATION STRATEGY
+
+### Combine Dashboard APIs into single RPCs
+
+Create `get_admin_dashboard_full` that returns stats + pending tasks + today's summary in one call instead of 3 separate queries.
+
+### Caching Strategy Improvements
+
+Current stale times are reasonable (2-5 min). Add these refinements:
+- Set `refetchOnWindowFocus: false` on all admin data hooks (currently missing on several)
+- Use `placeholderData: keepPreviousData` on paginated queries to avoid loading flashes during page changes
+- Add `gcTime: 10 * 60 * 1000` to prevent garbage collection of recently viewed data
+
+### React Re-render Prevention
+
+- `TodaysSummary` and `PendingTasks` trigger full re-renders via `useState` — convert to React Query
+- `FeesPage` re-computes `groupByStudent` on every render — already using `useMemo`, which is correct
+- `formatCurrency` and `greeting` functions in `AdminDashboard` are recreated each render — move outside component or wrap in `useCallback`
+
+---
+
+## IMPLEMENTATION ORDER
+
+1. **Add missing indexes** (migration — immediate 30-50% query speedup)
+2. **Fix FeesPage pageSize 500 → 25** (biggest data transfer reduction)
+3. **Replace useInvoiceStats with RPC** (eliminates 20K row client-side fetch)
+4. **Convert TodaysSummary/PendingTasks to useQuery** (caching + dedup)
+5. **Reduce select('*') to specific columns** (15 hooks)
+6. **Create combined dashboard RPCs** (reduce API calls per page)
+7. **Fix useStudentHomework sequential queries** (4 round-trips → 1)
+8. **Add explicit user_id filter to notifications** (index utilization)
 
