@@ -115,7 +115,7 @@ export default function AdminDashboard() {
             )}
             <div className="min-w-0 flex-1">
               <h2 className="text-base md:text-lg font-bold text-foreground leading-tight truncate">
-                {greeting()}, {user?.name?.split(' ')[0]}! 👋
+                {displayGreeting}, {user?.name?.split(' ')[0]}! 👋
               </h2>
               <p className="text-xs md:text-sm text-muted-foreground truncate mt-0.5">
                 {displaySchoolName || 'Your School'}
