@@ -44,7 +44,7 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
   // Build all section options with IDs
   const allSections = useMemo(() => {
     return (dbClasses || []).flatMap(cls =>
-      cls.sections.map(sec => ({
+      (cls.sections ?? []).map(sec => ({
         id: sec.id,
         label: `${cls.name} - ${sec.name}`,
         classTeacherId: sec.class_teacher_id,
