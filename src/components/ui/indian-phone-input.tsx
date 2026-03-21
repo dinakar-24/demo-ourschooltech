@@ -12,12 +12,13 @@ interface IndianPhoneInputProps {
 }
 
 export function IndianPhoneInput({ value, onChange, placeholder = "9876543210", className, id, required }: IndianPhoneInputProps) {
-  // Strip +91 prefix if present for display
-  const displayValue = value.startsWith('+91') ? value.slice(3).trim() : value;
+  // Strip +91 prefix if present for display — guard against undefined/null
+  const safeValue = value ?? '';
+  const displayValue = safeValue.startsWith('+91') ? safeValue.slice(3).trim() : safeValue;
 
   const handleChange = (raw: string) => {
     // Only allow digits, max 10
-    const digits = raw.replace(/\D/g, '').slice(0, 10);
+    const digits = (raw ?? '').replace(/\D/g, '').slice(0, 10);
     onChange(digits);
   };
 

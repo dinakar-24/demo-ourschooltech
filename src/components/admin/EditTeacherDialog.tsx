@@ -52,11 +52,12 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
     );
   }, [dbClasses]);
 
-  const classOptions = (dbClasses || []).flatMap(cls =>
-    cls.sections.length > 0
-      ? cls.sections.map(sec => `${cls.name}-${sec.name}`)
-      : [cls.name]
-  );
+  const classOptions = (dbClasses || []).flatMap(cls => {
+    const secs = cls.sections ?? [];
+    return secs.length > 0
+      ? secs.map(sec => `${cls.name}-${sec.name}`)
+      : [cls.name];
+  });
 
   // Track which sections this teacher is class teacher of
   const [classTeacherSections, setClassTeacherSections] = useState<string[]>([]);

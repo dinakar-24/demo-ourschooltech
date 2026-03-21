@@ -19,8 +19,11 @@ function formatDateLocal(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function parseDateLocal(str: string): Date {
-  const [y, m, d] = str.split('-').map(Number);
+function parseDateLocal(str: string): Date | undefined {
+  if (!str) return undefined;
+  const parts = str.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return undefined;
+  const [y, m, d] = parts;
   return new Date(y, m - 1, d);
 }
 
