@@ -12,6 +12,19 @@ import { Users, GraduationCap, CreditCard, ClipboardList, CalendarDays, RefreshC
 import { useCurrentAcademicYear } from '@/hooks/useAcademicYears';
 import { useState, useRef, useCallback } from 'react';
 
+const formatCurrency = (amount: number) => {
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
+  return `₹${amount}`;
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
 export default function AdminDashboard() {
   const { user, school } = useAuth();
   const schoolId = useEffectiveSchoolId();
