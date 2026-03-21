@@ -175,7 +175,7 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
             </div>
             <div className="space-y-2">
               <Label>Gender</Label>
-              <Select value={form.gender} onValueChange={v => setForm(f => ({ ...f, gender: v }))}>
+              <Select value={form.gender || undefined} onValueChange={v => setForm(f => ({ ...f, gender: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Male">Male</SelectItem>
