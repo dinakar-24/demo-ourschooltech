@@ -2603,6 +2603,7 @@ export type Database = {
         Args: { _date: string; _school_id: string }
         Returns: Json
       }
+      get_admin_dashboard_full: { Args: { _school_id: string }; Returns: Json }
       get_admin_dashboard_stats: { Args: { _school_id: string }; Returns: Json }
       get_attendance_summary: {
         Args: { _date: string; _school_id: string }
@@ -2619,7 +2620,9 @@ export type Database = {
             }
             Returns: Json
           }
+      get_invoice_stats: { Args: { _school_id: string }; Returns: Json }
       get_job_queue_stats: { Args: never; Returns: Json }
+      get_parent_children: { Args: { _user_id: string }; Returns: Json }
       get_pending_fee_student_count: {
         Args: { _school_id: string }
         Returns: number

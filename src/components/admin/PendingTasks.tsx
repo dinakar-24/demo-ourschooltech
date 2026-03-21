@@ -1,47 +1,41 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, CreditCard, ClipboardList, FileText } from 'lucide-react';
+import { ChevronRight, CreditCard, ClipboardList } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 
-interface PendingData {
-  pendingFees: number;
-  pendingExams: number;
-}
-
 export function PendingTasks() {
   const schoolId = useEffectiveSchoolId();
-  const [data, setData] = useState<PendingData>({ pendingFees: 0, pendingExams: 0 });
 
-  useEffect(() => {
-    if (schoolId) fetchData();
-  }, [schoolId]);
-
-  const fetchData = async () => {
-    const { data: count } = await supabase
-      .rpc('get_pending_fee_student_count', { _school_id: schoolId! });
-    
-    setData({
-      pendingFees: count || 0,
-      pendingExams: 0,
-    });
-  };
+  const { data: pendingFees = 0 } = useQuery({
+    queryKey: ['pending-fees-count', schoolId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_pending_fee_student_count' as any, {
+        _school_id: schoolId,
+      } as any);
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const pendingTasks = [
     { 
       title: 'Pending Fee Collections',
-      count: `${data.pendingFees} students`,
+      count: `${pendingFees} students`,
       href: '/admin/fees',
       icon: CreditCard,
-      priority: 'high',
-      show: data.pendingFees > 0
+      priority: 'high' as const,
+      show: pendingFees > 0
     },
     { 
       title: 'Mark Today\'s Attendance',
       count: 'Classes pending',
       href: '/admin/attendance',
       icon: ClipboardList,
-      priority: 'medium',
+      priority: 'medium' as const,
       show: true
     },
   ].filter(t => t.show);
@@ -62,8 +56,7 @@ export function PendingTasks() {
             className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
           >
             <div className={`w-2 h-2 rounded-full ${
-              task.priority === 'high' ? 'bg-red-500' : 
-              task.priority === 'medium' ? 'bg-amber-500' : 'bg-blue-500'
+              task.priority === 'high' ? 'bg-red-500' : 'bg-amber-500'
             }`} />
             <task.icon className="w-4 h-4 text-muted-foreground" />
             <div className="flex-1 min-w-0">

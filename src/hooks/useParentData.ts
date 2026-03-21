@@ -36,25 +36,13 @@ export function useParentChild() {
     queryFn: async (): Promise<ChildInfo | null> => {
       if (!user?.id) return null;
 
-      // Get parent's email from profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', user.id)
-        .single();
+      const { data, error } = await supabase.rpc('get_parent_children' as any, {
+        _user_id: user.id,
+      } as any);
 
-      if (profileError || !profile?.email) return null;
-
-      // Find student linked to this parent's email
-      const { data: student, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('parent_email', profile.email)
-        .eq('status', 'active')
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return student as ChildInfo | null;
+      if (error) throw error;
+      const children = data as any[];
+      return children?.length > 0 ? children[0] as ChildInfo : null;
     },
     enabled: !!user?.id,
     staleTime: 10 * 60 * 1000,

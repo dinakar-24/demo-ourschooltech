@@ -24,7 +24,8 @@ export function useNotifications() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id, user_id, school_id, title, body, type, reference_id, is_read, created_at')
+        .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -67,7 +68,7 @@ export function useNotifications() {
     if (!user?.id) return;
 
     const channel = supabase
-      .channel('user-notifications')
+      .channel(`user-notifications-${user.id}`)
       .on(
         'postgres_changes',
         {

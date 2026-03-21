@@ -1,47 +1,29 @@
-import { useEffect, useState } from 'react';
-import { ClipboardCheck, CreditCard, UserPlus, Bell } from 'lucide-react';
+import { CreditCard, UserPlus, Bell } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 
-interface SummaryData {
-  attendanceMarked: number;
-  totalClasses: number;
-  feesCollected: number;
-  newAdmissions: number;
-  noticesSent: number;
-}
-
 export function TodaysSummary() {
   const schoolId = useEffectiveSchoolId();
-  const [data, setData] = useState<SummaryData>({
-    attendanceMarked: 0,
-    totalClasses: 0,
-    feesCollected: 0,
-    newAdmissions: 0,
-    noticesSent: 0,
+
+  const { data } = useQuery({
+    queryKey: ['today-summary', schoolId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_admin_dashboard_full' as any, {
+        _school_id: schoolId,
+      } as any);
+      if (error) throw error;
+      const r = data as any;
+      return {
+        feesCollected: Number(r?.todayFeesCollected ?? 0),
+        newAdmissions: Number(r?.todayAdmissions ?? 0),
+        noticesSent: Number(r?.todayNotices ?? 0),
+      };
+    },
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
-
-  useEffect(() => {
-    if (schoolId) fetchData();
-  }, [schoolId]);
-
-  const fetchData = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const [feesRes, admissionsRes, noticesRes] = await Promise.all([
-      supabase.from('fees').select('amount').eq('school_id', schoolId).eq('status', 'paid').gte('paid_date', today),
-      supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).gte('created_at', today),
-      supabase.from('announcements').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).gte('created_at', today),
-    ]);
-
-    setData({
-      attendanceMarked: 0,
-      totalClasses: 15,
-      feesCollected: feesRes.data?.reduce((sum, f) => sum + Number(f.amount), 0) || 0,
-      newAdmissions: admissionsRes.count || 0,
-      noticesSent: noticesRes.count || 0,
-    });
-  };
 
   const formatCurrency = (amount: number) => {
     if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
@@ -52,21 +34,21 @@ export function TodaysSummary() {
   const todayItems = [
     { 
       label: 'Fees Collected', 
-      value: formatCurrency(data.feesCollected), 
+      value: formatCurrency(data?.feesCollected ?? 0), 
       icon: CreditCard,
       color: 'text-amber-500',
       bg: 'bg-amber-500/10'
     },
     { 
       label: 'New Admissions', 
-      value: `${data.newAdmissions} students`, 
+      value: `${data?.newAdmissions ?? 0} students`, 
       icon: UserPlus,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10'
     },
     { 
       label: 'Notices Sent', 
-      value: `${data.noticesSent} announcements`, 
+      value: `${data?.noticesSent ?? 0} announcements`, 
       icon: Bell,
       color: 'text-rose-500',
       bg: 'bg-rose-500/10'

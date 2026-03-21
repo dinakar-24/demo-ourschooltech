@@ -124,27 +124,32 @@ export default function FeesPage() {
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
+
   const { data: invoicesResult, isLoading } = useFeeInvoices({
     status: selectedStatus,
     search: debouncedSearch,
     className: selectedClass,
-    page: 1,
-    pageSize: 500,
+    page,
+    pageSize,
   });
   const invoices = invoicesResult?.data || [];
+  const totalCount = invoicesResult?.totalCount || 0;
   const { data: invoiceStats } = useInvoiceStats();
 
   const { data: legacyResult, isLoading: legacyLoading } = useFees({
     status: selectedStatus,
     search: debouncedSearch,
     className: selectedClass,
-    page: 1,
-    pageSize: 500,
+    page,
+    pageSize,
   });
   const legacyFees = legacyResult?.data || [];
 
   const stats = invoiceStats;
   const loading = isLoading || legacyLoading;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const { data: pendingSubmissions = [] } = usePaymentSubmissions('pending');
   const pendingCount = pendingSubmissions.length;
