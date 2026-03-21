@@ -127,7 +127,8 @@ export function EditStudentDialog({ student, open, onOpenChange, schoolId: overr
 
   const classNames = classes?.map(c => c.name) || [];
   const selectedClassData = classes?.find(c => c.name === form.class_name);
-  const sections = selectedClassData?.sections.map(s => s.name) || ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const sections = (selectedClassData?.sections ?? []).map(s => s.name);
+  const sectionOptions = sections.length > 0 ? sections : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
