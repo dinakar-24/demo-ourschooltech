@@ -85,18 +85,7 @@ export default function AdminDashboard() {
     }
   }, [pullY, refreshing, queryClient]);
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-    if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-    return `₹${amount}`;
-  };
-
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
+  const displayGreeting = getGreeting();
 
   return (
     <AdminLayout title="Dashboard">
