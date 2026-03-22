@@ -7,6 +7,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { toast } from 'sonner';
 import { invokeEdgeFunction } from '@/lib/api';
 import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
+import { getDeviceId } from '@/lib/device-fingerprint';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
