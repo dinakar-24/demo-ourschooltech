@@ -398,7 +398,7 @@ export function AddStudentDialog({ classes, formData, feeEntries, onFeeEntriesCh
             <DrawerDescription>Fill in the student details</DrawerDescription>
           </DrawerHeader>
           <div className="shrink-0">{headerContent}</div>
-          <div className="overflow-y-auto flex-1 min-h-0 bg-background overscroll-contain pb-safe">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0 bg-background overscroll-contain pb-safe">
             <StudentFormContent {...formProps} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>

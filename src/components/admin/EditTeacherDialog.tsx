@@ -319,7 +319,7 @@ export function EditTeacherDialog({ teacher, open, onOpenChange }: EditTeacherDi
           <DrawerHeader className="text-left px-0">
             <DrawerTitle>Edit Teacher</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0">
             {formContent}
           </div>
         </DrawerContent>

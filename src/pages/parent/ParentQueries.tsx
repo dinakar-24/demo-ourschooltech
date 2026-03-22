@@ -181,7 +181,7 @@ export default function ParentQueries() {
           <DrawerHeader className="pb-2">
             <DrawerTitle className="text-left">{selected?.subject}</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0">
             {detailContent}
           </div>
         </DrawerContent>

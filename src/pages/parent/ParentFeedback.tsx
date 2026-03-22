@@ -143,7 +143,7 @@ export default function ParentFeedback() {
           <DrawerHeader className="pb-2">
             <DrawerTitle>Feedback Details</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0">
             {detailContent}
           </div>
         </DrawerContent>

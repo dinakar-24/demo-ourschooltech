@@ -209,7 +209,7 @@ export function SubmitPaymentDialog({ open, onOpenChange, invoiceId, studentId, 
           <DrawerHeader className="pb-2">
             <DrawerTitle className="text-base">{title}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto flex-1 min-h-0">
+          <div data-vaul-no-drag className="px-4 pb-6 overflow-y-auto flex-1 min-h-0">
             {formContent}
           </div>
         </DrawerContent>
