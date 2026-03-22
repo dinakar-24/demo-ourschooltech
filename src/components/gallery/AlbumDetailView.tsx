@@ -80,17 +80,9 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
                 <img src={item.file_url} alt={item.caption || ''} className="w-full h-full object-cover" />
               )}
               {/* Hover overlay */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                 <Button size="icon" variant="ghost" className="h-8 w-8 bg-white/20 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm">
                   <Eye className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 bg-red-500/60 text-white hover:bg-red-500/80 hover:text-white backdrop-blur-sm"
-                  onClick={(e) => { e.stopPropagation(); deleteItem.mutate(item.id); }}
-                >
-                  <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
               {item.file_type === 'video' && (
