@@ -125,6 +125,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
         email: email.trim(),
         otp: otp.trim(),
         newPassword,
+        deviceId: getDeviceId(),
       });
       toast.success('Password updated successfully!');
       setStep('success');
