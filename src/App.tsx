@@ -15,7 +15,7 @@ import { usePrefetchRoutes } from "@/hooks/usePrefetchRoutes";
 import { DynamicManifestHandler } from "@/components/pwa/DynamicManifestHandler";
 import { InstallAppBanner } from "@/components/pwa/InstallAppBanner";
 import { supabase } from "@/integrations/supabase/client";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { friendlyErrorMessage } from "@/lib/error-utils";
 import { logError } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -181,6 +181,21 @@ function AuthRedirect() {
 }
 
 
+// Reset scroll position when mobile keyboard dismisses
+function MobileKeyboardScrollFix() {
+  useEffect(() => {
+    const handleFocusOut = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+        setTimeout(() => window.scrollTo(0, 0), 100);
+      }
+    };
+    document.addEventListener('focusout', handleFocusOut);
+    return () => document.removeEventListener('focusout', handleFocusOut);
+  }, []);
+  return null;
+}
+
 // Predictive preloader -- silently loads role-specific chunks after login
 function PrefetchHandler() {
   const { user } = useAuth();
@@ -203,6 +218,7 @@ function AppRoutes() {
     <>
       <DynamicManifestHandler />
       <InstallAppBanner />
+      <MobileKeyboardScrollFix />
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
