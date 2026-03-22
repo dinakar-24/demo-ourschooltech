@@ -89,8 +89,20 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     e.preventDefault();
     if (!otp.trim()) { setError('Please enter the OTP'); return; }
     if (otp.length !== 6) { setError('OTP must be 6 digits'); return; }
+    setLoading(true);
     setError('');
-    setStep('newPassword');
+    try {
+      await invokeEdgeFunction('verify-otp-only', {
+        email: email.trim(),
+        otp: otp.trim(),
+      });
+      toast.success('OTP verified successfully');
+      setStep('newPassword');
+    } catch (err: any) {
+      setError(friendlyErrorMessage(err.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
