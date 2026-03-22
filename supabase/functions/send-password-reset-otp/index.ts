@@ -21,9 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("cf-connecting-ip") || "unknown";
-    const { email } = await req.json();
+    const { email, deviceId } = await req.json();
 
     if (!email) {
       return new Response(
@@ -32,7 +30,6 @@ serve(async (req) => {
       );
     }
 
-    // Input validation
     if (typeof email !== "string" || email.length > 254 || !EMAIL_RE.test(email)) {
       return new Response(
         JSON.stringify({ error: "Invalid email format" }),
@@ -42,33 +39,55 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Rate limit: 3 password reset requests per IP per 5 minutes
-    const { data: rateLimit } = await supabaseAdmin.rpc("check_rate_limit", {
-      _ip: clientIp,
-      _type: "password_reset",
+    const normalizedEmail = email.toLowerCase();
+    const safeDeviceId = typeof deviceId === "string" && deviceId.length > 0 && deviceId.length <= 128 ? deviceId : null;
+
+    // ── Rate limit by EMAIL (max 3 per 5 min) ──
+    const { data: emailRateLimit } = await supabaseAdmin.rpc("check_email_rate_limit", {
+      _email: normalizedEmail,
+      _type: "password_reset_send",
       _max_attempts: 3,
       _window_minutes: 5,
     });
 
-    if (rateLimit && !rateLimit.allowed) {
+    if (emailRateLimit && !emailRateLimit.allowed) {
       return new Response(
-        JSON.stringify({ 
-          error: "Too many attempts. Please try again later.",
-          retry_after_seconds: rateLimit.retry_after_seconds 
+        JSON.stringify({
+          error: "Too many requests for this email. Please try again later.",
+          retry_after_seconds: emailRateLimit.retry_after_seconds,
         }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if user exists in auth
+    // ── Rate limit by DEVICE (max 5 per 5 min) ──
+    if (safeDeviceId) {
+      const { data: deviceRateLimit } = await supabaseAdmin.rpc("check_device_rate_limit", {
+        _device_id: safeDeviceId,
+        _type: "password_reset_send",
+        _max_attempts: 5,
+        _window_minutes: 5,
+      });
+
+      if (deviceRateLimit && !deviceRateLimit.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "Too many requests from this device. Please try again later.",
+            retry_after_seconds: deviceRateLimit.retry_after_seconds,
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ── Check if user exists ──
     const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = userData?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
+      (u) => u.email?.toLowerCase() === normalizedEmail
     );
 
     if (!existingUser) {
@@ -78,7 +97,7 @@ serve(async (req) => {
       );
     }
 
-    // Ensure user is NOT a super_admin (they have their own flow)
+    // ── Block super_admins ──
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -93,40 +112,26 @@ serve(async (req) => {
       );
     }
 
-    // Rate limiting: max 3 OTP requests per email per hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: recentCount } = await supabaseAdmin
-      .from("password_reset_otp")
-      .select("id", { count: "exact", head: true })
-      .eq("email", email.toLowerCase())
-      .gte("created_at", oneHourAgo);
-
-    if ((recentCount ?? 0) >= 3) {
-      return new Response(
-        JSON.stringify({ error: "Too many OTP requests. Please try again after some time." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Generate 6-digit OTP
+    // ── Generate OTP ──
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await hashOtp(otpCode);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    // Invalidate existing unused OTPs
+    // Invalidate existing unused OTPs for this email
     await supabaseAdmin
       .from("password_reset_otp")
       .update({ used: true })
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .eq("used", false);
 
-    // Store hashed OTP
+    // Store hashed OTP with device_id
     const { error: insertError } = await supabaseAdmin
       .from("password_reset_otp")
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         otp_code: otpHash,
         expires_at: expiresAt,
+        device_id: safeDeviceId,
       });
 
     if (insertError) {
@@ -137,7 +142,7 @@ serve(async (req) => {
       );
     }
 
-    // Send OTP via SMTP
+    // ── Send OTP via SMTP ──
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
     if (!smtpPassword) {
       console.error("SMTP_PASSWORD not configured");
@@ -161,7 +166,7 @@ serve(async (req) => {
 
     await client.send({
       from: "OurSchoolTech <noreply@ourschooltech.com>",
-      to: email.toLowerCase(),
+      to: normalizedEmail,
       subject: "Password Reset OTP - OurSchoolTech",
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
@@ -191,7 +196,7 @@ serve(async (req) => {
 
     await client.close();
 
-    console.log(`Password reset OTP sent to ${email}`);
+    console.log(`Password reset OTP sent to ${normalizedEmail}`);
 
     return new Response(
       JSON.stringify({ success: true, message: "OTP sent to your email" }),

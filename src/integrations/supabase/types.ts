@@ -1037,6 +1037,7 @@ export type Database = {
         Row: {
           attempt_type: string
           created_at: string
+          device_id: string | null
           email: string | null
           id: string
           ip_address: string
@@ -1044,6 +1045,7 @@ export type Database = {
         Insert: {
           attempt_type?: string
           created_at?: string
+          device_id?: string | null
           email?: string | null
           id?: string
           ip_address: string
@@ -1051,6 +1053,7 @@ export type Database = {
         Update: {
           attempt_type?: string
           created_at?: string
+          device_id?: string | null
           email?: string | null
           id?: string
           ip_address?: string
@@ -1182,27 +1185,33 @@ export type Database = {
       password_reset_otp: {
         Row: {
           created_at: string
+          device_id: string | null
           email: string
           expires_at: string
           id: string
           otp_code: string
           used: boolean | null
+          verification_attempts: number
         }
         Insert: {
           created_at?: string
+          device_id?: string | null
           email: string
           expires_at: string
           id?: string
           otp_code: string
           used?: boolean | null
+          verification_attempts?: number
         }
         Update: {
           created_at?: string
+          device_id?: string | null
           email?: string
           expires_at?: string
           id?: string
           otp_code?: string
           used?: boolean | null
+          verification_attempts?: number
         }
         Relationships: []
       }
@@ -2554,6 +2563,24 @@ export type Database = {
           _reason: string
           _school_id: string
           _student_id: string
+        }
+        Returns: Json
+      }
+      check_device_rate_limit: {
+        Args: {
+          _device_id: string
+          _max_attempts?: number
+          _type: string
+          _window_minutes?: number
+        }
+        Returns: Json
+      }
+      check_email_rate_limit: {
+        Args: {
+          _email: string
+          _max_attempts?: number
+          _type: string
+          _window_minutes?: number
         }
         Returns: Json
       }

@@ -7,6 +7,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { toast } from 'sonner';
 import { invokeEdgeFunction } from '@/lib/api';
 import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
+import { getDeviceId } from '@/lib/device-fingerprint';
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
   const handleClose = () => { reset(); onClose(); };
 
   const sendOTP = async () => {
-    await invokeEdgeFunction('send-password-reset-otp', { email: email.trim() });
+    await invokeEdgeFunction('send-password-reset-otp', { email: email.trim(), deviceId: getDeviceId() });
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -95,6 +96,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
       await invokeEdgeFunction('verify-otp-only', {
         email: email.trim(),
         otp: otp.trim(),
+        deviceId: getDeviceId(),
       });
       toast.success('OTP verified successfully');
       setStep('newPassword');
@@ -123,6 +125,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
         email: email.trim(),
         otp: otp.trim(),
         newPassword,
+        deviceId: getDeviceId(),
       });
       toast.success('Password updated successfully!');
       setStep('success');
