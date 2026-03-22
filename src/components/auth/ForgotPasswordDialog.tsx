@@ -245,7 +245,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
-                  <PrimaryButton loading={false} icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Verify OTP" />
+                  <PrimaryButton loading={loading} loadingText="Verifying..." icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Verify OTP" />
                   <div className="flex items-center justify-between pt-0.5">
                     <button type="button"
                       onClick={() => { setStep('email'); setError(''); setOtp(''); }}
