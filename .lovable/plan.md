@@ -1,37 +1,36 @@
 
 
-# Fix: Mobile Drawer Scroll Blocked by Drag Gesture
+# Fix: White Blank Space After Closing Mobile Keyboard
 
 ## Problem
 
-On mobile, the "Add Student" form opens in a Vaul Drawer. The form fields below "Section" (Roll Number, Gender, Blood Group, Parent info, DOB, etc.) exist but are **unreachable** because Vaul's drag-to-dismiss gesture intercepts vertical touch/scroll events on the inner content area. The user swipes up to scroll but the drawer tries to dismiss instead.
+When a user types in an input field inside a Drawer on mobile, the virtual keyboard pushes the viewport up. When the keyboard closes, a white blank space remains at the bottom because:
 
-This affects **all 9 Drawer instances** in the app that have scrollable content (`overflow-y-auto flex-1 min-h-0`), including AddStudent, EditTeacher, CreateInvoice, ViewStudent, SubmitPayment, FeedbackPage, ParentQueries, ParentFeedback, and PaymentReceipt.
+1. **`shouldScaleBackground = true`** in the Drawer component scales the background content down when the drawer opens. Combined with keyboard resize, the background doesn't restore correctly.
+2. **Missing `interactive-widget=resizes-content`** in the viewport meta tag — without this, Chrome on Android uses `resizes-visual` by default, which resizes only the visual viewport (not the layout viewport), causing mismatches when the keyboard dismisses.
+3. **No `window.scrollTo(0,0)` on blur** — after the keyboard closes, the page scroll position can be left offset, showing white space below.
 
 ## Fix
 
-Add `data-vaul-no-drag` attribute to every scrollable container div inside DrawerContent. This tells Vaul to **not** intercept drag gestures on that element, allowing normal scroll behavior.
+### 1. Update viewport meta tag in `index.html`
 
-### Files to modify (add `data-vaul-no-drag` to the scroll container div):
+Add `interactive-widget=resizes-content` to tell the browser to resize the layout viewport (not just the visual viewport) when the keyboard appears/disappears. This prevents the white gap.
 
-1. **`src/components/admin/AddStudentDialog.tsx`** — line 401 scroll div
-2. **`src/components/admin/ViewStudentDialog.tsx`** — line 95 scroll div
-3. **`src/components/admin/EditTeacherDialog.tsx`** — line 322 scroll div
-4. **`src/components/fees/SubmitPaymentDialog.tsx`** — line 212 scroll div
-5. **`src/components/fees/PaymentReceiptDialog.tsx`** — line 531 scroll div
-6. **`src/components/fees/CreateInvoiceDialog.tsx`** — line 235 scroll div
-7. **`src/pages/parent/ParentQueries.tsx`** — lines 145, 184 scroll divs
-8. **`src/pages/parent/ParentFeedback.tsx`** — lines 108, 146 scroll divs
-9. **`src/pages/admin/FeedbackPage.tsx`** — line 151 scroll div
-
-### Example change (same pattern for all):
-```tsx
-// Before
-<div className="overflow-y-auto flex-1 min-h-0 bg-background overscroll-contain pb-safe">
-
-// After
-<div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0 bg-background overscroll-contain pb-safe">
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
 ```
 
-Each file gets a single attribute added to the scrollable `div` — no other changes needed.
+### 2. Disable `shouldScaleBackground` in Drawer component
+
+Change the default from `true` to `false` in `src/components/ui/drawer.tsx`. The scale transform conflicts with keyboard viewport changes on mobile, causing the background to not restore properly.
+
+### 3. Add global blur handler to reset scroll position
+
+In `src/App.tsx` (or `main.tsx`), add a one-time effect that listens for `focusout` on inputs/textareas and calls `window.scrollTo(0, 0)` with a small delay. This catches the edge case where the page remains scrolled after keyboard dismissal.
+
+## Files to Modify
+
+1. **`index.html`** — Add `interactive-widget=resizes-content` to viewport meta
+2. **`src/components/ui/drawer.tsx`** — Change `shouldScaleBackground` default to `false`
+3. **`src/App.tsx`** — Add global focusout scroll-reset effect
 
