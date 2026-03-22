@@ -89,8 +89,20 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
     e.preventDefault();
     if (!otp.trim()) { setError('Please enter the OTP'); return; }
     if (otp.length !== 6) { setError('OTP must be 6 digits'); return; }
+    setLoading(true);
     setError('');
-    setStep('newPassword');
+    try {
+      await invokeEdgeFunction('verify-otp-only', {
+        email: email.trim(),
+        otp: otp.trim(),
+      });
+      toast.success('OTP verified successfully');
+      setStep('newPassword');
+    } catch (err: any) {
+      setError(friendlyErrorMessage(err.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -233,7 +245,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
-                  <PrimaryButton loading={false} icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Verify OTP" />
+                  <PrimaryButton loading={loading} loadingText="Verifying..." icon={<CheckCircle2 className="w-3.5 h-3.5" />} text="Verify OTP" />
                   <div className="flex items-center justify-between pt-0.5">
                     <button type="button"
                       onClick={() => { setStep('email'); setError(''); setOtp(''); }}
