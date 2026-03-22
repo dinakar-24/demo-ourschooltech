@@ -528,7 +528,7 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
           <DrawerHeader className="pb-2">
             <DrawerTitle className="text-base font-semibold">Fee Receipt</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0 px-3 pb-4 space-y-2 bg-background">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0 px-3 pb-4 space-y-2 bg-background">
             {actionButtons}
             {receiptContent}
           </div>

@@ -232,7 +232,7 @@ export function CreateInvoiceDialog({ open, onOpenChange }: CreateInvoiceDialogP
           <DrawerHeader className="px-0 pb-2">
             <DrawerTitle>Create Fee Invoice</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0">
             {formContent}
             {actionButtons}
           </div>

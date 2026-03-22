@@ -92,7 +92,7 @@ export function ViewStudentDialog({ student, open, onOpenChange }: ViewStudentDi
           <DrawerHeader className="sr-only">
             <DrawerTitle>Student Details</DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto flex-1 min-h-0 bg-background">
+          <div data-vaul-no-drag className="overflow-y-auto flex-1 min-h-0 bg-background">
             <StudentDetails student={student} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>
