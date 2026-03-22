@@ -96,6 +96,7 @@ export function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDialogProp
       await invokeEdgeFunction('verify-otp-only', {
         email: email.trim(),
         otp: otp.trim(),
+        deviceId: getDeviceId(),
       });
       toast.success('OTP verified successfully');
       setStep('newPassword');
