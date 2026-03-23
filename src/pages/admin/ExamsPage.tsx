@@ -182,7 +182,7 @@ export default function ExamsPage() {
 
   const classNames = useMemo(() => ['All Classes', ...classes.map(c => c.name)], [classes]);
 
-  const ExamFormFields = () => (
+  const examFormFields = (
     <div className="space-y-4 py-2">
       <div className="space-y-2">
         <Label>Exam Name</Label>
