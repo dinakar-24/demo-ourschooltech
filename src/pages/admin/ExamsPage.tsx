@@ -346,7 +346,7 @@ export default function ExamsPage() {
               </DrawerTrigger>
               <DrawerContent>
                 <DrawerHeader><DrawerTitle>Create New Examination</DrawerTitle></DrawerHeader>
-                <div className="px-4 pb-2"><ExamFormFields /></div>
+                <div data-vaul-no-drag className="px-4 pb-2">{examFormFields}</div>
                 <DrawerFooter className="pt-2">
                   <Button onClick={handleCreate} disabled={createExam.isPending}>
                     {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
