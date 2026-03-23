@@ -522,7 +522,7 @@ export default function ExamsPage() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Edit Examination</DialogTitle></DialogHeader>
-            <ExamFormFields />
+            {examFormFields}
             <FormActions onSubmit={handleEdit} onCancel={() => setIsEditDialogOpen(false)} isPending={updateExam.isPending} submitLabel="Save Changes" />
           </DialogContent>
         </Dialog>
