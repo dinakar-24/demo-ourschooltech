@@ -368,7 +368,7 @@ export default function ExamsPage() {
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>Create New Examination</DialogTitle></DialogHeader>
-                <ExamFormFields />
+                {examFormFields}
                 <FormActions onSubmit={handleCreate} onCancel={() => setIsAddDialogOpen(false)} isPending={createExam.isPending} submitLabel="Create Exam" />
               </DialogContent>
             </Dialog>
