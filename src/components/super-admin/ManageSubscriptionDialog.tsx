@@ -371,7 +371,7 @@ export function ManageSubscriptionDialog({
             <DrawerTitle>{title}</DrawerTitle>
             <DrawerDescription>{description}</DrawerDescription>
           </DrawerHeader>
-          <div className="overflow-y-auto">{formContent}</div>
+          <div data-vaul-no-drag className="overflow-y-auto">{formContent}</div>
         </DrawerContent>
       </Drawer>
     );

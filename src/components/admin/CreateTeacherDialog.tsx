@@ -208,7 +208,7 @@ export const CreateTeacherDialog = memo(function CreateTeacherDialog({ open, onO
             <DrawerDescription>Create a new teacher account</DrawerDescription>
           </DrawerHeader>
           {headerContent}
-          <div className="overflow-y-auto">
+          <div data-vaul-no-drag className="overflow-y-auto">
             <TeacherFormContent formData={formData} onChange={handleFieldChange} onSubmit={handleSubmit} isCreating={isCreating} onClose={() => onOpenChange(false)} />
           </div>
         </DrawerContent>

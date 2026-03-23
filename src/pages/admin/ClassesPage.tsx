@@ -205,7 +205,7 @@ export default function ClassesPage() {
               <DrawerHeader className="text-left px-0">
                 <DrawerTitle>Add New Class</DrawerTitle>
               </DrawerHeader>
-              {addClassFormContent}
+              <div data-vaul-no-drag>{addClassFormContent}</div>
             </DrawerContent>
           </Drawer>
         ) : (

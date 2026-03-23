@@ -459,7 +459,7 @@ const [assignForm, setAssignForm] = useState({ student_id: '', pickup_stop: '', 
         <Drawer open={assignDialogOpen} onOpenChange={handleAssignDialogChange}>
           <DrawerContent className="max-h-[90dvh] flex flex-col bg-background">
             <DrawerHeader className="text-left"><DrawerTitle>Assign Student</DrawerTitle></DrawerHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4">{assignFormJsx}</div>
+            <div data-vaul-no-drag className="flex-1 min-h-0 overflow-y-auto px-4">{assignFormJsx}</div>
             <DrawerFooter className="flex-row gap-2">
               <Button variant="outline" onClick={() => handleAssignDialogChange(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleAssignSubmit} disabled={assignStudent.isPending} className="flex-1">Assign</Button>
