@@ -430,7 +430,7 @@ export default function OnlineClassesPage() {
             <DialogHeader>
               <DialogTitle>{formTitle}</DialogTitle>
             </DialogHeader>
-            <FormContent />
+            {formContent}
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>
