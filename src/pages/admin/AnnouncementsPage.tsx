@@ -489,7 +489,7 @@ export default function AnnouncementsPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Edit Announcement</DialogTitle></DialogHeader>
-          <FormFields />
+          {formFields}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateAnnouncement.isPending}>
