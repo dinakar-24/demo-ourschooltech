@@ -413,8 +413,8 @@ export default function OnlineClassesPage() {
             <DrawerHeader className="text-left">
               <DrawerTitle>{formTitle}</DrawerTitle>
             </DrawerHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4">
-              <FormContent />
+            <div data-vaul-no-drag className="flex-1 min-h-0 overflow-y-auto px-4">
+              {formContent}
             </div>
             <DrawerFooter className="flex-row gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">Cancel</Button>
