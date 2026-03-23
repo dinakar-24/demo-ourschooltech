@@ -506,7 +506,7 @@ export default function ExamsPage() {
         <Drawer open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DrawerContent>
             <DrawerHeader><DrawerTitle>Edit Examination</DrawerTitle></DrawerHeader>
-            <div className="px-4 pb-2"><ExamFormFields /></div>
+            <div data-vaul-no-drag className="px-4 pb-2">{examFormFields}</div>
             <DrawerFooter className="pt-2">
               <Button onClick={handleEdit} disabled={updateExam.isPending}>
                 {updateExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
