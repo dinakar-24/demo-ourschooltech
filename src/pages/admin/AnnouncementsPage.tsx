@@ -215,7 +215,7 @@ export default function AnnouncementsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const FormFields = () => (
+  const formFields = (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
         <Label>Title</Label>
