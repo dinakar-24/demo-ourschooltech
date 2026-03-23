@@ -182,7 +182,7 @@ export default function ExamsPage() {
 
   const classNames = useMemo(() => ['All Classes', ...classes.map(c => c.name)], [classes]);
 
-  const ExamFormFields = () => (
+  const examFormFields = (
     <div className="space-y-4 py-2">
       <div className="space-y-2">
         <Label>Exam Name</Label>
@@ -346,7 +346,7 @@ export default function ExamsPage() {
               </DrawerTrigger>
               <DrawerContent>
                 <DrawerHeader><DrawerTitle>Create New Examination</DrawerTitle></DrawerHeader>
-                <div className="px-4 pb-2"><ExamFormFields /></div>
+                <div data-vaul-no-drag className="px-4 pb-2">{examFormFields}</div>
                 <DrawerFooter className="pt-2">
                   <Button onClick={handleCreate} disabled={createExam.isPending}>
                     {createExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -368,7 +368,7 @@ export default function ExamsPage() {
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>Create New Examination</DialogTitle></DialogHeader>
-                <ExamFormFields />
+                {examFormFields}
                 <FormActions onSubmit={handleCreate} onCancel={() => setIsAddDialogOpen(false)} isPending={createExam.isPending} submitLabel="Create Exam" />
               </DialogContent>
             </Dialog>
@@ -506,7 +506,7 @@ export default function ExamsPage() {
         <Drawer open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DrawerContent>
             <DrawerHeader><DrawerTitle>Edit Examination</DrawerTitle></DrawerHeader>
-            <div className="px-4 pb-2"><ExamFormFields /></div>
+            <div data-vaul-no-drag className="px-4 pb-2">{examFormFields}</div>
             <DrawerFooter className="pt-2">
               <Button onClick={handleEdit} disabled={updateExam.isPending}>
                 {updateExam.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -522,7 +522,7 @@ export default function ExamsPage() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Edit Examination</DialogTitle></DialogHeader>
-            <ExamFormFields />
+            {examFormFields}
             <FormActions onSubmit={handleEdit} onCancel={() => setIsEditDialogOpen(false)} isPending={updateExam.isPending} submitLabel="Save Changes" />
           </DialogContent>
         </Dialog>

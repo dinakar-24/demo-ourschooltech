@@ -245,7 +245,7 @@ export function CreateSchoolAdminDialog({ schools, onSuccess }: CreateSchoolAdmi
             <DrawerDescription>Create a new administrator account</DrawerDescription>
           </DrawerHeader>
           {headerContent}
-          <div className="overflow-y-auto">
+          <div data-vaul-no-drag className="overflow-y-auto">
             <AdminForm
               formData={formData}
               update={update}

@@ -215,7 +215,7 @@ export default function AnnouncementsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const FormFields = () => (
+  const formFields = (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
         <Label>Title</Label>
@@ -370,7 +370,7 @@ export default function AnnouncementsPage() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
-              <FormFields />
+              {formFields}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => handleCreate(false)} disabled={createAnnouncement.isPending || uploadingImage}>
                   {(createAnnouncement.isPending || uploadingImage) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -489,7 +489,7 @@ export default function AnnouncementsPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Edit Announcement</DialogTitle></DialogHeader>
-          <FormFields />
+          {formFields}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateAnnouncement.isPending}>

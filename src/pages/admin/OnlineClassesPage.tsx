@@ -137,7 +137,7 @@ export default function OnlineClassesPage() {
     }
   };
 
-  const FormContent = () => (
+  const formContent = (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2">
         <Label>Title *</Label>
@@ -413,8 +413,8 @@ export default function OnlineClassesPage() {
             <DrawerHeader className="text-left">
               <DrawerTitle>{formTitle}</DrawerTitle>
             </DrawerHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4">
-              <FormContent />
+            <div data-vaul-no-drag className="flex-1 min-h-0 overflow-y-auto px-4">
+              {formContent}
             </div>
             <DrawerFooter className="flex-row gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">Cancel</Button>
@@ -430,7 +430,7 @@ export default function OnlineClassesPage() {
             <DialogHeader>
               <DialogTitle>{formTitle}</DialogTitle>
             </DialogHeader>
-            <FormContent />
+            {formContent}
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>

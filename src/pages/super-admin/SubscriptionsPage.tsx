@@ -429,7 +429,7 @@ function DrawerDetailsWrapper({ subscription, children }: { subscription: any; c
         <DrawerHeader className="px-0">
           <DrawerTitle>Subscription Details</DrawerTitle>
         </DrawerHeader>
-        <div className="overflow-y-auto">
+        <div data-vaul-no-drag className="overflow-y-auto">
           <SubscriptionDetails subscription={subscription} schoolId={subscription.school_id} />
         </div>
       </DrawerContent>

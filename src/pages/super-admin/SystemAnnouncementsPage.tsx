@@ -298,7 +298,7 @@ export default function SystemAnnouncementsPage() {
                     This announcement will be visible to all users across all schools
                   </DrawerDescription>
                 </DrawerHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto" data-vaul-no-drag>
                   <div className="grid gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="title-m">Title *</Label>
