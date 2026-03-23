@@ -181,20 +181,6 @@ function AuthRedirect() {
 }
 
 
-// Reset scroll position when mobile keyboard dismisses
-function MobileKeyboardScrollFix() {
-  useEffect(() => {
-    const handleFocusOut = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target?.tagName && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
-        setTimeout(() => window.scrollTo(0, 0), 100);
-      }
-    };
-    document.addEventListener('focusout', handleFocusOut);
-    return () => document.removeEventListener('focusout', handleFocusOut);
-  }, []);
-  return null;
-}
 
 // Predictive preloader -- silently loads role-specific chunks after login
 function PrefetchHandler() {
