@@ -149,7 +149,7 @@ export function ManagePermissionsDialog({ userId, schoolId, adminName, trigger }
             <DrawerDescription>Configure module access</DrawerDescription>
           </DrawerHeader>
           {headerContent}
-          <div className="overflow-y-auto">
+          <div data-vaul-no-drag className="overflow-y-auto">
             <PermissionsForm userId={userId} schoolId={schoolId} onClose={() => setIsOpen(false)} />
           </div>
         </DrawerContent>
