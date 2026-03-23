@@ -370,7 +370,7 @@ export default function AnnouncementsPage() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>Create Announcement</DialogTitle></DialogHeader>
-              <FormFields />
+              {formFields}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => handleCreate(false)} disabled={createAnnouncement.isPending || uploadingImage}>
                   {(createAnnouncement.isPending || uploadingImage) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
