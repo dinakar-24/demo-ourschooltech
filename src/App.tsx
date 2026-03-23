@@ -204,7 +204,7 @@ function AppRoutes() {
     <>
       <DynamicManifestHandler />
       <InstallAppBanner />
-      <MobileKeyboardScrollFix />
+      
       <PrefetchHandler />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
