@@ -14,7 +14,7 @@ interface ImageViewerProps {
   currentThumbnailUrl?: string | null;
 }
 
-export function ImageViewer({ items, initialIndex, open, onOpenChange, onDelete }: ImageViewerProps) {
+export function ImageViewer({ items, initialIndex, open, onOpenChange, onDelete, onSetThumbnail, currentThumbnailUrl }: ImageViewerProps) {
   const [index, setIndex] = useState(initialIndex);
 
   const current = items[index];
