@@ -113,7 +113,11 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
           initialIndex={viewerIndex}
           open={viewerOpen}
           onOpenChange={setViewerOpen}
-          onDelete={(id) => deleteItem.mutate(id)}
+          onDelete={(id) => {
+            const item = items.find(i => i.id === id);
+            deleteItem.mutate({ id, albumId: album.id, fileUrl: item?.file_url });
+            if (item?.file_url === coverUrl) setCoverUrl(null);
+          }}
           onSetThumbnail={handleSetThumbnail}
           currentThumbnailUrl={coverUrl}
         />
