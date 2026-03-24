@@ -2,9 +2,10 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Upload, Loader2, Image, Video, Trash2, Eye } from 'lucide-react';
-import { useGalleryItems, useUploadGalleryItem, useDeleteGalleryItem, GalleryAlbum } from '@/hooks/useGallery';
+import { ArrowLeft, Upload, Loader2, Image, Video, Eye, ImageIcon } from 'lucide-react';
+import { useGalleryItems, useUploadGalleryItem, useDeleteGalleryItem, useUpdateAlbum, GalleryAlbum } from '@/hooks/useGallery';
 import { ImageViewer } from './ImageViewer';
+import { toast } from 'sonner';
 
 interface AlbumDetailViewProps {
   album: GalleryAlbum;
@@ -15,9 +16,11 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
   const { data: items, isLoading } = useGalleryItems(album.id);
   const uploadItem = useUploadGalleryItem();
   const deleteItem = useDeleteGalleryItem();
+  const updateAlbum = useUpdateAlbum();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [coverUrl, setCoverUrl] = useState(album.cover_image_url);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -27,6 +30,16 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
       await uploadItem.mutateAsync({ albumId: album.id, file });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSetThumbnail = async (fileUrl: string) => {
+    try {
+      await updateAlbum.mutateAsync({ id: album.id, cover_image_url: fileUrl });
+      setCoverUrl(fileUrl);
+      toast.success('Album thumbnail updated');
+    } catch {
+      toast.error('Failed to update thumbnail');
+    }
   };
 
   const openViewer = (idx: number) => {
@@ -79,14 +92,30 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
               ) : (
                 <img src={item.file_url} alt={item.caption || ''} className="w-full h-full object-cover" />
               )}
-              {/* Hover overlay */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+              {/* Hover overlay with set thumbnail */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                 <Button size="icon" variant="ghost" className="h-8 w-8 bg-white/20 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm">
                   <Eye className="w-4 h-4" />
                 </Button>
+                {item.file_type === 'image' && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 bg-white/20 text-white hover:bg-white/30 hover:text-primary backdrop-blur-sm"
+                    onClick={(e) => { e.stopPropagation(); handleSetThumbnail(item.file_url); }}
+                    title="Set as thumbnail"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
+              {coverUrl === item.file_url && (
+                <Badge className="absolute top-1.5 left-1.5 bg-primary/90 text-primary-foreground text-[9px] px-1.5 py-0.5">
+                  Thumbnail
+                </Badge>
+              )}
               {item.file_type === 'video' && (
-                <Badge className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5">
+                <Badge className="absolute top-1.5 right-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5">
                   <Video className="w-3 h-3 mr-0.5" /> Video
                 </Badge>
               )}
@@ -102,6 +131,8 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
           open={viewerOpen}
           onOpenChange={setViewerOpen}
           onDelete={(id) => deleteItem.mutate(id)}
+          onSetThumbnail={handleSetThumbnail}
+          currentThumbnailUrl={coverUrl}
         />
       )}
     </div>
