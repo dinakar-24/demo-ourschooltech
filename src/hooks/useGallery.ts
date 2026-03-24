@@ -174,7 +174,19 @@ export function useDeleteGalleryItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, albumId, fileUrl }: { id: string; albumId: string; fileUrl?: string }) => {
+      // Check if this item is the album's cover image
+      if (fileUrl) {
+        const { data: album } = await supabase
+          .from('gallery_albums')
+          .select('cover_image_url')
+          .eq('id', albumId)
+          .single();
+        if (album?.cover_image_url === fileUrl) {
+          // Clear the cover image
+          await supabase.from('gallery_albums').update({ cover_image_url: null }).eq('id', albumId);
+        }
+      }
       const { error } = await supabase.from('gallery_items').delete().eq('id', id);
       if (error) throw error;
     },

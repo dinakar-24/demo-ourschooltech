@@ -67,24 +67,22 @@ export default function GalleryPage() {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="w-4 h-4 mr-1.5" /> New Album</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl">
               <DialogHeader><DialogTitle>Create Album</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Title</Label>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Title</Label>
                   <Input placeholder="e.g. Annual Day 2025" value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Description (Optional)</Label>
-                  <Textarea placeholder="Brief description..." value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Description <span className="text-muted-foreground">(Optional)</span></Label>
+                  <Textarea placeholder="Brief description..." rows={3} value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Event Date (Optional)</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Event Date <span className="text-muted-foreground">(Optional)</span></Label>
                   <Input type="date" value={formData.event_date} onChange={e => setFormData(p => ({ ...p, event_date: e.target.value }))} />
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleCreate} disabled={createAlbum.isPending || !formData.title}>
+                <Button className="w-full" onClick={handleCreate} disabled={createAlbum.isPending || !formData.title}>
                   {createAlbum.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Create Album
                 </Button>
