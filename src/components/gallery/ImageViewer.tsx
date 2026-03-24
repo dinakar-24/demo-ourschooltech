@@ -33,6 +33,17 @@ export function ImageViewer({ items, initialIndex, open, onOpenChange, onDelete,
               {index + 1} / {items.length}
             </span>
             <div className="flex items-center gap-2">
+              {onSetThumbnail && current.file_type === 'image' && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={`h-8 w-8 hover:bg-white/10 ${currentThumbnailUrl === current.file_url ? 'text-primary' : 'text-white/80 hover:text-primary'}`}
+                  onClick={() => onSetThumbnail(current.file_url)}
+                  title="Set as album thumbnail"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </Button>
+              )}
               {onDelete && (
                 <Button
                   size="icon"
