@@ -98,8 +98,8 @@ export default function SettingsPage() {
 
   return (
     <AdminLayout title="Settings">
-      <div className="space-y-6 animate-fade-up">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <div className="space-y-5 animate-fade-up">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           {/* Mobile: Select dropdown */}
           <div className="sm:hidden">
             <Select value={activeTab} onValueChange={setActiveTab}>
@@ -127,45 +127,47 @@ export default function SettingsPage() {
           </TabsList>
 
           {/* School Settings */}
-          <TabsContent value="school" className="space-y-6">
+          <TabsContent value="school" className="space-y-5 mt-0">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <School className="w-5 h-5" />
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <School className="w-4 h-4" />
                   School Information
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Update your school's basic information.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>School Name <span className="text-destructive">*</span></Label>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">School Name <span className="text-destructive">*</span></Label>
                     <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>School Code</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">School Code</Label>
                     <Input defaultValue={school?.code || ''} disabled className="opacity-60" />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Address <span className="text-destructive">*</span></Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Address <span className="text-destructive">*</span></Label>
                     <Input value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>City <span className="text-destructive">*</span></Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">City <span className="text-destructive">*</span></Label>
                     <Input value={schoolCity} onChange={(e) => setSchoolCity(e.target.value)} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" value={schoolEmail} onChange={(e) => setSchoolEmail(e.target.value)} placeholder="school@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phone</Label>
-                    <Input value={schoolPhone} onChange={(e) => setSchoolPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Email</Label>
+                      <Input type="email" value={schoolEmail} onChange={(e) => setSchoolEmail(e.target.value)} placeholder="school@example.com" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Phone</Label>
+                      <Input value={schoolPhone} onChange={(e) => setSchoolPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+                    </div>
                   </div>
                 </div>
-                <Button onClick={handleSaveSchoolInfo} disabled={saving}>
+                <Button onClick={handleSaveSchoolInfo} disabled={saving} size="sm">
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save Changes
                 </Button>
@@ -174,25 +176,25 @@ export default function SettingsPage() {
           </TabsContent>
 
           {/* Language Settings */}
-          <TabsContent value="language" className="space-y-6">
+          <TabsContent value="language" className="space-y-5 mt-0">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Globe className="w-4 h-4" />
                   Language Preference
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Choose your preferred language for the admin interface.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between max-w-md">
+                <div className="space-y-3">
                   <div>
-                    <p className="font-medium">Interface Language</p>
-                    <p className="text-sm text-muted-foreground">Select the language for all menus and labels</p>
+                    <p className="font-medium text-sm">Interface Language</p>
+                    <p className="text-xs text-muted-foreground">Select the language for all menus and labels</p>
                   </div>
                   <Select value={i18n.language} onValueChange={handleLanguageChange}>
-                    <SelectTrigger className="w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
