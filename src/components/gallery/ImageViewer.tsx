@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X, Trash2, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Trash2, Video, ImageIcon } from 'lucide-react';
 import { GalleryItem } from '@/hooks/useGallery';
 
 interface ImageViewerProps {
@@ -10,6 +10,8 @@ interface ImageViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete?: (id: string) => void;
+  onSetThumbnail?: (fileUrl: string) => void;
+  currentThumbnailUrl?: string | null;
 }
 
 export function ImageViewer({ items, initialIndex, open, onOpenChange, onDelete }: ImageViewerProps) {
