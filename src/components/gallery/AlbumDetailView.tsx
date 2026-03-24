@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Upload, Loader2, Image, Video, Eye, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Image, Video, ImageIcon } from 'lucide-react';
 import { useGalleryItems, useUploadGalleryItem, useDeleteGalleryItem, useUpdateAlbum, GalleryAlbum } from '@/hooks/useGallery';
 import { ImageViewer } from './ImageViewer';
 import { toast } from 'sonner';
