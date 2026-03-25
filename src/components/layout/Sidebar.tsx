@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { prefetchForPath } from '@/lib/prefetch-helpers';
 import {
   LayoutDashboard,
   Users,
@@ -236,6 +239,8 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const location = useLocation();
   const { logout } = useAuth();
   const { tenant, isSubdomain } = useTenant();
+  const queryClient = useQueryClient();
+  const effectiveSchoolId = useEffectiveSchoolId();
 
   // Use tenant branding on subdomains
   const displayLogo = isSubdomain && tenant?.logo ? tenant.logo : appLogo;
@@ -245,6 +250,10 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
 
   const { t, i18n } = useTranslation();
   const { hasPathAccess } = useMyAdminPermissions();
+
+  const handleLinkHover = useCallback((path: string) => {
+    prefetchForPath(path, effectiveSchoolId, queryClient);
+  }, [effectiveSchoolId, queryClient]);
 
   const getFullPath = (path: string) => `${prefix}${path}`;
 
@@ -325,6 +334,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                             )}
                             title={isCollapsed ? translatedLabel : undefined}
                             onClick={onMobileClose}
+                            onMouseEnter={() => handleLinkHover(item.path)}
                           >
                             <item.icon className="w-5 h-5 shrink-0" />
                             {!isCollapsed && <span>{translatedLabel}</span>}
@@ -352,6 +362,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                     )}
                     title={isCollapsed ? translatedLabel : undefined}
                     onClick={onMobileClose}
+                    onMouseEnter={() => handleLinkHover(item.path)}
                   >
                     <item.icon className="w-5 h-5 shrink-0" />
                     {!isCollapsed && <span>{translatedLabel}</span>}
