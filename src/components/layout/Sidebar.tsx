@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { prefetchForPath } from '@/lib/prefetch-helpers';
 import {
   LayoutDashboard,
   Users,
