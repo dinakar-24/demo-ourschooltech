@@ -334,6 +334,7 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
                             )}
                             title={isCollapsed ? translatedLabel : undefined}
                             onClick={onMobileClose}
+                            onMouseEnter={() => handleLinkHover(item.path)}
                           >
                             <item.icon className="w-5 h-5 shrink-0" />
                             {!isCollapsed && <span>{translatedLabel}</span>}
