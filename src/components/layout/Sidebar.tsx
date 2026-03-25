@@ -239,6 +239,8 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
   const location = useLocation();
   const { logout } = useAuth();
   const { tenant, isSubdomain } = useTenant();
+  const queryClient = useQueryClient();
+  const effectiveSchoolId = useEffectiveSchoolId();
 
   // Use tenant branding on subdomains
   const displayLogo = isSubdomain && tenant?.logo ? tenant.logo : appLogo;
@@ -248,6 +250,10 @@ export function Sidebar({ userRole = 'school_admin', schoolName = 'Our School Te
 
   const { t, i18n } = useTranslation();
   const { hasPathAccess } = useMyAdminPermissions();
+
+  const handleLinkHover = useCallback((path: string) => {
+    prefetchForPath(path, effectiveSchoolId, queryClient);
+  }, [effectiveSchoolId, queryClient]);
 
   const getFullPath = (path: string) => `${prefix}${path}`;
 
