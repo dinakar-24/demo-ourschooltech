@@ -186,46 +186,75 @@ export function useMarkAttendance() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendance });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendanceSummary });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allClassAttendance });
+    // ── Optimistic UI: update class attendance cache instantly ──
+    onMutate: async (variables) => {
+      const { date, records } = variables;
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: queryKeys.allClassAttendance });
+      await queryClient.cancelQueries({ queryKey: queryKeys.allAttendanceSummary });
+
+      // Snapshot previous class attendance data for rollback
+      const previousQueries = queryClient.getQueriesData({ queryKey: queryKeys.allClassAttendance });
+
+      // Optimistically update attendance maps in cache
+      previousQueries.forEach(([key, data]: [any, any]) => {
+        if (!data?.attendance || !data?.students) return;
+        const newMap = new Map(data.attendance);
+        records.forEach(r => {
+          newMap.set(r.studentId, {
+            student_id: r.studentId,
+            school_id: schoolId,
+            date,
+            status: r.status,
+            notes: r.notes || null,
+            marked_by: user?.id,
+          });
+        });
+        queryClient.setQueryData(key, {
+          ...data,
+          attendance: newMap,
+          isMarked: true,
+        });
+      });
+
+      return { previousQueries };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback optimistic update
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([key, data]: [any, any]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      toast.error('Failed to save attendance. Changes reverted.');
+    },
+    onSuccess: (_data, variables) => {
       toast.success('Attendance saved successfully');
 
-      // Notify parents of absent students
+      // Notify parents of absent students (background, non-blocking)
       const absentStudentIds = variables.records
         .filter(r => r.status === 'absent')
         .map(r => r.studentId);
 
       if (absentStudentIds.length > 0 && schoolId) {
-        // Look up parent user IDs for absent students
         supabase
           .from('students')
           .select('full_name, parent_email')
           .in('id', absentStudentIds)
           .then(({ data: students }) => {
             if (!students?.length) return;
-
-            const parentEmails = students
-              .map(s => s.parent_email)
-              .filter(Boolean) as string[];
-
+            const parentEmails = students.map(s => s.parent_email).filter(Boolean) as string[];
             if (!parentEmails.length) return;
-
             supabase
               .from('profiles')
               .select('id')
               .in('email', parentEmails)
               .then(({ data: parents }) => {
                 if (!parents?.length) return;
-
-                const parentUserIds = parents.map(p => p.id);
-                const absentNames = students.map(s => s.full_name).join(', ');
-
                 sendNotification({
-                  userIds: parentUserIds,
+                  userIds: parents.map(p => p.id),
                   title: 'Absence Alert',
-                  body: `Your child (${absentNames}) was marked absent on ${variables.date}`,
+                  body: `Your child (${students.map(s => s.full_name).join(', ')}) was marked absent on ${variables.date}`,
                   type: 'attendance',
                   schoolId,
                 });
@@ -233,7 +262,12 @@ export function useMarkAttendance() {
           });
       }
     },
-    // Global mutation error handler provides fallback toast
+    onSettled: () => {
+      // Refetch in background to sync with server truth
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendance });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAttendanceSummary });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allClassAttendance });
+    },
   });
 }
 

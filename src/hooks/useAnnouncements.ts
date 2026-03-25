@@ -226,7 +226,29 @@ export function useDeleteAnnouncement() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    // Optimistic: remove from cache immediately
+    onMutate: async (announcementId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.allAnnouncements });
+      const previousQueries = queryClient.getQueriesData({ queryKey: queryKeys.allAnnouncements });
+      previousQueries.forEach(([key, data]: [any, any]) => {
+        if (data?.data && Array.isArray(data.data)) {
+          queryClient.setQueryData(key, {
+            ...data,
+            data: data.data.filter((a: any) => a.id !== announcementId),
+            totalCount: Math.max(0, (data.totalCount || 0) - 1),
+          });
+        }
+      });
+      return { previousQueries };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([key, data]: [any, any]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncements });
       queryClient.invalidateQueries({ queryKey: queryKeys.allAnnouncementStats });
       toast.success('Announcement deleted');
