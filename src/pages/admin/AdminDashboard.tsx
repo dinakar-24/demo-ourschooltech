@@ -3,6 +3,7 @@ import { AdminQuickActions } from '@/components/admin/AdminQuickActions';
 import { AdminStatCard } from '@/components/admin/AdminStatCard';
 import { TodaysSummary } from '@/components/admin/TodaysSummary';
 import { PendingTasks } from '@/components/admin/PendingTasks';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
