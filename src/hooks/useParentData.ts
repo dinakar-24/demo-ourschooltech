@@ -158,7 +158,7 @@ export function useChildAnnouncements(schoolId?: string) {
 
       const { data, error } = await supabase
         .from('announcements')
-        .select('*')
+        .select('id,title,content,target_classes,created_at,image_url,is_active,school_id')
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
