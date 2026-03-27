@@ -39,7 +39,7 @@ export function useGalleryAlbums(publishedOnly = false) {
       if (!schoolId) throw new Error('No school ID');
       let query = supabase
         .from('gallery_albums')
-        .select('*')
+        .select('id,title,description,cover_image_url,event_date,is_published,school_id,created_at,created_by')
         .eq('school_id', schoolId)
         .order('event_date', { ascending: false, nullsFirst: false });
 
