@@ -41,7 +41,7 @@ export function useTransportRoutes() {
       if (!schoolId) return [];
       const { data, error } = await supabase
         .from('transport_routes')
-        .select('*')
+        .select('id,route_name,route_number,driver_name,driver_phone,vehicle_number,capacity,start_location,end_location,stops,is_active,school_id')
         .eq('school_id', schoolId)
         .order('route_name');
       if (error) throw error;

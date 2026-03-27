@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 export default function StudentHomework() {
   const { t } = useTranslation();
   const { data: profile } = useStudentProfile();
-  const { data: homework, isLoading } = useStudentHomework(profile?.class_name, profile?.section);
+  const { data: homework, isLoading } = useStudentHomework(profile?.class_name, profile?.section, profile?.school_id);
 
   const getStatusBadge = (dueDate: string) => {
     const due = new Date(dueDate);

@@ -39,7 +39,7 @@ export function useGalleryAlbums(publishedOnly = false) {
       if (!schoolId) throw new Error('No school ID');
       let query = supabase
         .from('gallery_albums')
-        .select('*')
+        .select('id,title,description,cover_image_url,event_date,is_published,school_id,created_at,created_by')
         .eq('school_id', schoolId)
         .order('event_date', { ascending: false, nullsFirst: false });
 
@@ -64,7 +64,7 @@ export function useGalleryItems(albumId?: string) {
       if (!albumId) return [];
       const { data, error } = await supabase
         .from('gallery_items')
-        .select('*')
+        .select('id,album_id,file_url,file_type,caption,display_order,school_id,uploaded_by,created_at')
         .eq('album_id', albumId)
         .order('display_order', { ascending: true });
       if (error) throw error;

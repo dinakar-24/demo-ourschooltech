@@ -22,7 +22,7 @@ export default function StudentDashboard() {
   const { t } = useTranslation();
   const { data: student, isLoading: studentLoading } = useStudentProfile();
   const { data: attendanceStats, isLoading: attendanceLoading } = useStudentAttendanceStats(student?.id);
-  const { data: homework, isLoading: homeworkLoading } = useStudentHomework(student?.class_name, student?.section);
+  const { data: homework, isLoading: homeworkLoading } = useStudentHomework(student?.class_name, student?.section, student?.school_id);
   const { data: announcementsData, isLoading: announcementsLoading } = useAnnouncements({ status: 'active', pageSize: 3 });
 
   const studentInfo = student ? {

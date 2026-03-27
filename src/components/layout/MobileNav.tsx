@@ -1,6 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { prefetchForPath } from '@/lib/prefetch-helpers';
 import {
   LayoutDashboard,
   Users,
@@ -67,6 +70,8 @@ const navConfig = {
 export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
   const location = useLocation();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const schoolId = useEffectiveSchoolId();
   const navItems = navConfig[userRole];
   const prefix = rolePrefix[userRole];
 
@@ -83,6 +88,7 @@ export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
         <Link
           key={item.path}
           to={getFullPath(item.path)}
+          onTouchStart={() => prefetchForPath(item.path, schoolId, queryClient)}
           className={cn(
             "mobile-nav-item",
             isActive(item.path) && "mobile-nav-item-active"

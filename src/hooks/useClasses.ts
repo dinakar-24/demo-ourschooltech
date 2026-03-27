@@ -39,7 +39,7 @@ export function useClasses() {
 
       const { data: classes, error: classesError } = await supabase
         .from('classes')
-        .select('*')
+        .select('id,name,display_order,school_id,created_at,updated_at')
         .eq('school_id', schoolId)
         .order('display_order', { ascending: true });
 
