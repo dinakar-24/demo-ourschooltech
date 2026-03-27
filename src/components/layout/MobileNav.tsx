@@ -70,6 +70,8 @@ const navConfig = {
 export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
   const location = useLocation();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const schoolId = useEffectiveSchoolId();
   const navItems = navConfig[userRole];
   const prefix = rolePrefix[userRole];
 
