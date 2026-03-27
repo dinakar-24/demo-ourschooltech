@@ -64,7 +64,7 @@ export function useGalleryItems(albumId?: string) {
       if (!albumId) return [];
       const { data, error } = await supabase
         .from('gallery_items')
-        .select('*')
+        .select('id,album_id,file_url,file_type,caption,display_order,school_id,uploaded_by,created_at')
         .eq('album_id', albumId)
         .order('display_order', { ascending: true });
       if (error) throw error;

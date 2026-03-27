@@ -40,7 +40,7 @@ export function useSupportQueryList(isAdmin = false) {
       if (!schoolId) throw new Error('No school ID');
       let query = supabase
         .from('support_queries')
-        .select('*')
+        .select('id,school_id,submitted_by,submitter_name,submitter_role,ticket_number,subject,description,category,priority,status,created_at')
         .order('created_at', { ascending: false });
 
       if (isAdmin) {

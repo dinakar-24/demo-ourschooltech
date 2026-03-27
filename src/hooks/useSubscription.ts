@@ -44,7 +44,7 @@ export function useSubscription() {
 
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select('id,school_id,razorpay_account_id,plan_type,student_count,price_per_student,total_amount,total_paid_amount,status,start_date,end_date,created_at,updated_at')
         .eq('school_id', user.schoolId)
         .maybeSingle();
 

@@ -85,28 +85,26 @@ export function useStudentAttendanceStats(studentId?: string) {
   });
 }
 
-export function useStudentHomework(className?: string, section?: string) {
+export function useStudentHomework(className?: string, section?: string, schoolId?: string) {
   return useQuery({
-    queryKey: ['student-homework', className, section],
+    queryKey: ['student-homework', className, section, schoolId],
     queryFn: async () => {
-      if (!className) return [];
+      if (!className || !schoolId) return [];
 
-      // Get class ID - filter by school_id for multi-tenant safety
-      const { data: profile } = await supabase.from('profiles').select('school_id').eq('id', (await supabase.auth.getUser()).data.user?.id || '').single();
+      // Single class lookup using schoolId passed from parent
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('id')
         .eq('name', className)
-        .eq('school_id', profile?.school_id || '')
+        .eq('school_id', schoolId)
         .single();
 
       if (classError) return [];
 
-      // Get homework for this class
       const { data, error } = await supabase
         .from('homework')
         .select(`
-          *,
+          id,subject,title,description,due_date,attachments,created_at,class_id,section_id,
           class:classes(id, name),
           section:sections(id, name)
         `)
@@ -116,10 +114,9 @@ export function useStudentHomework(className?: string, section?: string) {
 
       if (error) throw error;
       
-      // Filter by section if specified
       return data?.filter(hw => !hw.section_id || hw.section?.name === section) || [];
     },
-    enabled: !!className,
+    enabled: !!className && !!schoolId,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

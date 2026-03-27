@@ -52,18 +52,33 @@ export function useNotifications() {
 
   const markAllRead = useMutation({
     mutationFn: async () => {
+      if (!user?.id) throw new Error('No user');
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
+        .eq('user_id', user.id)
         .eq('is_read', false);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['notifications', user?.id] });
+      const previous = queryClient.getQueryData<Notification[]>(['notifications', user?.id]);
+      queryClient.setQueryData<Notification[]>(['notifications', user?.id], (old) =>
+        (old || []).map(n => ({ ...n, is_read: true }))
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['notifications', user?.id], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
     },
   });
 
-  // Realtime subscription for new notifications
+  // Realtime subscription for new notifications — append to cache instead of refetching
   useEffect(() => {
     if (!user?.id) return;
 
@@ -77,8 +92,10 @@ export function useNotifications() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+        (payload) => {
+          queryClient.setQueryData<Notification[]>(['notifications', user.id], (old) =>
+            [payload.new as Notification, ...(old || [])].slice(0, 50)
+          );
         }
       )
       .subscribe();

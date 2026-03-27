@@ -188,7 +188,7 @@ export function useParentData() {
       
       const { data, error } = await supabase
         .from('fees')
-        .select('*')
+        .select('id,fee_type,amount,due_date,status,paid_date,receipt_number,student_id')
         .eq('student_id', childProfile.id)
         .order('due_date', { ascending: false })
         .limit(50);

@@ -88,6 +88,7 @@ export function MobileNav({ userRole = 'school_admin' }: MobileNavProps) {
         <Link
           key={item.path}
           to={getFullPath(item.path)}
+          onTouchStart={() => prefetchForPath(item.path, schoolId, queryClient)}
           className={cn(
             "mobile-nav-item",
             isActive(item.path) && "mobile-nav-item-active"

@@ -169,8 +169,16 @@ export default function TeachersPage() {
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : teachers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
