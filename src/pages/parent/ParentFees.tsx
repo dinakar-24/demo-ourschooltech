@@ -24,6 +24,7 @@ export default function ParentFees() {
   const { childProfile, fees, isLoading } = useParentData();
   const { data: invoices = [], isLoading: invoicesLoading } = useParentInvoices(childProfile?.id);
   const { data: submissions = [] } = useParentPaymentSubmissions(childProfile?.id);
+  const { data: payConfig } = usePaymentConfig(user?.schoolId);
 
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -33,6 +34,8 @@ export default function ParentFees() {
   const [submitInvoice, setSubmitInvoice] = useState<ParentInvoice | null>(null);
   const [submitPrefillAmount, setSubmitPrefillAmount] = useState<number | undefined>();
   const [submitPrefillLabel, setSubmitPrefillLabel] = useState<string | undefined>();
+  const [onlinePayOpen, setOnlinePayOpen] = useState(false);
+  const [onlinePayInvoice, setOnlinePayInvoice] = useState<ParentInvoice | null>(null);
 
   const childName = childProfile?.full_name || user?.childName || 'Your Child';
 
