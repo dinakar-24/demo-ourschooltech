@@ -98,6 +98,7 @@ export default function SettingsPage() {
 
   const TABS = [
     { value: 'school', label: 'School', icon: School },
+    { value: 'payments', label: 'Payments', icon: CreditCard },
     { value: 'language', label: 'Language', icon: Globe },
   ];
 
