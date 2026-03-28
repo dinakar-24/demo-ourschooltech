@@ -48,6 +48,10 @@ export default function SystemSettingsPage() {
             <SubscriptionPricingSettings />
           </TabsContent>
 
+          <TabsContent value="payments">
+            <PaymentSettings />
+          </TabsContent>
+
           <TabsContent value="notifications">
             <NotificationSettings />
           </TabsContent>
