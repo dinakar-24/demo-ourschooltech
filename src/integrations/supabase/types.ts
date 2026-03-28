@@ -1182,6 +1182,79 @@ export type Database = {
           },
         ]
       }
+      online_payments: {
+        Row: {
+          amount: number
+          cf_order_id: string | null
+          cf_payment_id: string | null
+          created_at: string
+          extra_charge: number
+          id: string
+          invoice_id: string
+          method: string
+          school_id: string
+          status: string
+          student_id: string
+          total_charged: number
+          transaction_ref: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          amount: number
+          cf_order_id?: string | null
+          cf_payment_id?: string | null
+          created_at?: string
+          extra_charge?: number
+          id?: string
+          invoice_id: string
+          method?: string
+          school_id: string
+          status?: string
+          student_id: string
+          total_charged?: number
+          transaction_ref?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          amount?: number
+          cf_order_id?: string | null
+          cf_payment_id?: string | null
+          created_at?: string
+          extra_charge?: number
+          id?: string
+          invoice_id?: string
+          method?: string
+          school_id?: string
+          status?: string
+          student_id?: string
+          total_charged?: number
+          transaction_ref?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_payments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_payments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_otp: {
         Row: {
           created_at: string
@@ -1508,6 +1581,59 @@ export type Database = {
             foreignKeyName: "school_holidays_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_payment_config: {
+        Row: {
+          cashfree_app_id: string | null
+          cashfree_secret_key: string | null
+          created_at: string
+          extra_charge_override: number | null
+          id: string
+          is_connected: boolean
+          manual_enabled: boolean
+          online_enabled: boolean
+          school_id: string
+          super_admin_override_manual: boolean | null
+          super_admin_override_online: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          cashfree_app_id?: string | null
+          cashfree_secret_key?: string | null
+          created_at?: string
+          extra_charge_override?: number | null
+          id?: string
+          is_connected?: boolean
+          manual_enabled?: boolean
+          online_enabled?: boolean
+          school_id: string
+          super_admin_override_manual?: boolean | null
+          super_admin_override_online?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          cashfree_app_id?: string | null
+          cashfree_secret_key?: string | null
+          created_at?: string
+          extra_charge_override?: number | null
+          id?: string
+          is_connected?: boolean
+          manual_enabled?: boolean
+          online_enabled?: boolean
+          school_id?: string
+          super_admin_override_manual?: boolean | null
+          super_admin_override_online?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_payment_config_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
             referencedRelation: "schools"
             referencedColumns: ["id"]
           },
