@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.verify-otp-only]
 verify_jwt = false
+
+[functions.cashfree-webhook]
+verify_jwt = false
