@@ -8,12 +8,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useParentData } from '@/hooks/useParentData';
 import { useParentInvoices, ParentInvoice } from '@/hooks/useParentInvoices';
 import { useParentPaymentSubmissions } from '@/hooks/usePaymentSubmissions';
+import { usePaymentConfig } from '@/hooks/usePaymentConfig';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
+import { OnlinePaymentDialog } from '@/components/fees/OnlinePaymentDialog';
 import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import {
   CreditCard, CheckCircle, AlertCircle, Clock, IndianRupee, TrendingUp,
-  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send,
+  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send, Wifi,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
