@@ -8,12 +8,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useParentData } from '@/hooks/useParentData';
 import { useParentInvoices, ParentInvoice } from '@/hooks/useParentInvoices';
 import { useParentPaymentSubmissions } from '@/hooks/usePaymentSubmissions';
+import { usePaymentConfig } from '@/hooks/usePaymentConfig';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
+import { OnlinePaymentDialog } from '@/components/fees/OnlinePaymentDialog';
 import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import {
   CreditCard, CheckCircle, AlertCircle, Clock, IndianRupee, TrendingUp,
-  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send,
+  Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send, Wifi,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -22,6 +24,7 @@ export default function ParentFees() {
   const { childProfile, fees, isLoading } = useParentData();
   const { data: invoices = [], isLoading: invoicesLoading } = useParentInvoices(childProfile?.id);
   const { data: submissions = [] } = useParentPaymentSubmissions(childProfile?.id);
+  const { data: payConfig } = usePaymentConfig(user?.schoolId);
 
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -31,6 +34,8 @@ export default function ParentFees() {
   const [submitInvoice, setSubmitInvoice] = useState<ParentInvoice | null>(null);
   const [submitPrefillAmount, setSubmitPrefillAmount] = useState<number | undefined>();
   const [submitPrefillLabel, setSubmitPrefillLabel] = useState<string | undefined>();
+  const [onlinePayOpen, setOnlinePayOpen] = useState(false);
+  const [onlinePayInvoice, setOnlinePayInvoice] = useState<ParentInvoice | null>(null);
 
   const childName = childProfile?.full_name || user?.childName || 'Your Child';
 
@@ -233,15 +238,41 @@ export default function ParentFees() {
 
                       <CollapsibleContent>
                         <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
-                          {/* Submit Payment Button */}
+                          {/* Payment Buttons */}
                           {canSubmit && (
-                            <Button
-                              className="w-full rounded-lg"
-                              onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              Submit Payment Proof (₹{Number(inv.balance).toLocaleString('en-IN')} due)
-                            </Button>
+                            <div className="flex gap-2">
+                              {payConfig?.onlineEnabled && (
+                                <Button
+                                  className="flex-1 rounded-lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOnlinePayInvoice(inv);
+                                    setOnlinePayOpen(true);
+                                  }}
+                                >
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Pay Online
+                                </Button>
+                              )}
+                              {payConfig?.manualEnabled && (
+                                <Button
+                                  variant={payConfig?.onlineEnabled ? "outline" : "default"}
+                                  className="flex-1 rounded-lg"
+                                  onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
+                                >
+                                  <Send className="w-4 h-4 mr-2" />
+                                  Manual Pay
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {canSubmit && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              Balance: ₹{Number(inv.balance).toLocaleString('en-IN')}
+                              {payConfig?.onlineEnabled && payConfig.extraChargePct > 0 && (
+                                <span> · Online: +{payConfig.extraChargePct}% gateway fee</span>
+                              )}
+                            </p>
                           )}
 
                           {/* Pending verification notice */}
@@ -465,6 +496,22 @@ export default function ParentFees() {
           termName={`Due ${new Date(submitInvoice.due_date).toLocaleDateString('en-IN')}`}
           prefillAmount={submitPrefillAmount}
           prefillLabel={submitPrefillLabel}
+        />
+      )}
+
+      {/* Online Payment Dialog */}
+      {onlinePayInvoice && (
+        <OnlinePaymentDialog
+          open={onlinePayOpen}
+          onOpenChange={setOnlinePayOpen}
+          invoiceId={onlinePayInvoice.id}
+          studentId={onlinePayInvoice.student_id}
+          schoolId={user?.schoolId || ''}
+          amount={Number(onlinePayInvoice.balance)}
+          extraChargePct={payConfig?.extraChargePct ?? 0}
+          customerName={childProfile?.full_name}
+          customerEmail={user?.email}
+          termName={`Due ${new Date(onlinePayInvoice.due_date).toLocaleDateString('en-IN')}`}
         />
       )}
     </MobileLayout>

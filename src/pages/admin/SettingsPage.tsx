@@ -16,12 +16,15 @@ import {
   School,
   Loader2,
   Globe,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { PaymentConfigSection } from '@/components/admin/PaymentConfigSection';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -40,6 +43,8 @@ export default function SettingsPage() {
   const schoolId = useEffectiveSchoolId();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('school');
+  const { getSetting } = useSystemSettings();
+  const paymentConfig = getSetting('payment_config', { online_enabled: true, manual_enabled: true });
 
   const handleLanguageChange = (val: string) => {
     i18n.changeLanguage(val);
@@ -93,6 +98,7 @@ export default function SettingsPage() {
 
   const TABS = [
     { value: 'school', label: 'School', icon: School },
+    { value: 'payments', label: 'Payments', icon: CreditCard },
     { value: 'language', label: 'Language', icon: Globe },
   ];
 
@@ -120,7 +126,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Desktop: Tab bar */}
-          <TabsList className="hidden sm:grid sm:grid-cols-2 sm:w-[300px]">
+          <TabsList className="hidden sm:grid sm:grid-cols-3 sm:w-[400px]">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
             ))}
@@ -173,6 +179,17 @@ export default function SettingsPage() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Payment Settings */}
+          <TabsContent value="payments" className="space-y-5 mt-0">
+            {schoolId && (
+              <PaymentConfigSection
+                schoolId={schoolId}
+                globalOnlineEnabled={paymentConfig.online_enabled}
+                globalManualEnabled={paymentConfig.manual_enabled}
+              />
+            )}
           </TabsContent>
 
           {/* Language Settings */}
