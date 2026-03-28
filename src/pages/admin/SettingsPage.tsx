@@ -43,6 +43,8 @@ export default function SettingsPage() {
   const schoolId = useEffectiveSchoolId();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('school');
+  const { getSetting } = useSystemSettings();
+  const paymentConfig = getSetting('payment_config', { online_enabled: true, manual_enabled: true });
 
   const handleLanguageChange = (val: string) => {
     i18n.changeLanguage(val);
