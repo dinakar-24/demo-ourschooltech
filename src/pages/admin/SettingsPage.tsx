@@ -126,7 +126,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Desktop: Tab bar */}
-          <TabsList className="hidden sm:grid sm:grid-cols-2 sm:w-[300px]">
+          <TabsList className="hidden sm:grid sm:grid-cols-3 sm:w-[400px]">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
             ))}
