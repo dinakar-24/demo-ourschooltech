@@ -14,11 +14,11 @@ export function usePaymentConfig(schoolId: string | undefined) {
     enabled: !!schoolId,
     queryFn: async (): Promise<PaymentConfig> => {
       // Get global settings
-      const { data: globalSettings } = await supabase
+      const { data: globalSettings } = await (supabase
         .from('system_settings' as any)
         .select('value')
         .eq('key', 'payment_config')
-        .single();
+        .single() as any);
 
       const globalConfig = (globalSettings?.value as any) ?? {
         online_enabled: true,
