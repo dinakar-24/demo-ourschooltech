@@ -238,15 +238,41 @@ export default function ParentFees() {
 
                       <CollapsibleContent>
                         <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
-                          {/* Submit Payment Button */}
+                          {/* Payment Buttons */}
                           {canSubmit && (
-                            <Button
-                              className="w-full rounded-lg"
-                              onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              Submit Payment Proof (₹{Number(inv.balance).toLocaleString('en-IN')} due)
-                            </Button>
+                            <div className="flex gap-2">
+                              {payConfig?.onlineEnabled && (
+                                <Button
+                                  className="flex-1 rounded-lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOnlinePayInvoice(inv);
+                                    setOnlinePayOpen(true);
+                                  }}
+                                >
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Pay Online
+                                </Button>
+                              )}
+                              {payConfig?.manualEnabled && (
+                                <Button
+                                  variant={payConfig?.onlineEnabled ? "outline" : "default"}
+                                  className="flex-1 rounded-lg"
+                                  onClick={(e) => { e.stopPropagation(); openSubmitPayment(inv); }}
+                                >
+                                  <Send className="w-4 h-4 mr-2" />
+                                  Manual Pay
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {canSubmit && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              Balance: ₹{Number(inv.balance).toLocaleString('en-IN')}
+                              {payConfig?.onlineEnabled && payConfig.extraChargePct > 0 && (
+                                <span> · Online: +{payConfig.extraChargePct}% gateway fee</span>
+                              )}
+                            </p>
                           )}
 
                           {/* Pending verification notice */}
