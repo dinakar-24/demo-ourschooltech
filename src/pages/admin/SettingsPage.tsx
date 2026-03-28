@@ -181,6 +181,17 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
+          {/* Payment Settings */}
+          <TabsContent value="payments" className="space-y-5 mt-0">
+            {schoolId && (
+              <PaymentConfigSection
+                schoolId={schoolId}
+                globalOnlineEnabled={paymentConfig.online_enabled}
+                globalManualEnabled={paymentConfig.manual_enabled}
+              />
+            )}
+          </TabsContent>
+
           {/* Language Settings */}
           <TabsContent value="language" className="space-y-5 mt-0">
             <Card>
