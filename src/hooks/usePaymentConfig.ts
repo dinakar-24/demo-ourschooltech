@@ -27,11 +27,11 @@ export function usePaymentConfig(schoolId: string | undefined) {
       };
 
       // Get school-specific config
-      const { data: schoolConfig } = await supabase
+      const { data: schoolConfig } = await (supabase
         .from('school_payment_config' as any)
         .select('online_enabled, manual_enabled, is_connected, extra_charge_override, super_admin_override_online, super_admin_override_manual')
         .eq('school_id', schoolId)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       const sc = schoolConfig as any;
 
