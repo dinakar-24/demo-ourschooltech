@@ -498,6 +498,22 @@ export default function ParentFees() {
           prefillLabel={submitPrefillLabel}
         />
       )}
+
+      {/* Online Payment Dialog */}
+      {onlinePayInvoice && (
+        <OnlinePaymentDialog
+          open={onlinePayOpen}
+          onOpenChange={setOnlinePayOpen}
+          invoiceId={onlinePayInvoice.id}
+          studentId={onlinePayInvoice.student_id}
+          schoolId={user?.schoolId || ''}
+          amount={Number(onlinePayInvoice.balance)}
+          extraChargePct={payConfig?.extraChargePct ?? 0}
+          customerName={childProfile?.full_name}
+          customerEmail={user?.email}
+          termName={`Due ${new Date(onlinePayInvoice.due_date).toLocaleDateString('en-IN')}`}
+        />
+      )}
     </MobileLayout>
   );
 }
