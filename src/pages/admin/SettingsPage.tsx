@@ -16,12 +16,15 @@ import {
   School,
   Loader2,
   Globe,
+  CreditCard,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { PaymentConfigSection } from '@/components/admin/PaymentConfigSection';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
