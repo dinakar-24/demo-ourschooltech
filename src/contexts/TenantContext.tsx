@@ -170,14 +170,27 @@ function applyTenantBranding(tenant: Tenant) {
 }
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [isSubdomain, setIsSubdomain] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const subdomain = extractSubdomain(window.location.hostname);
+  
+  // Try to restore from sessionStorage for instant resolution
+  const cachedTenant = (() => {
+    if (!subdomain) return null;
+    try {
+      const raw = sessionStorage.getItem(`tenant_full_${subdomain}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Tenant;
+      // Apply branding immediately from cache
+      applyTenantBranding(parsed);
+      return parsed;
+    } catch { return null; }
+  })();
+
+  const [tenant, setTenant] = useState<Tenant | null>(cachedTenant);
+  const [isSubdomain, setIsSubdomain] = useState(!!subdomain);
+  const [isLoading, setIsLoading] = useState(!!subdomain && !cachedTenant);
   const [tenantError, setTenantError] = useState<string | null>(null);
 
   useEffect(() => {
-    const subdomain = extractSubdomain(window.location.hostname);
-
     if (!subdomain) {
       setIsSubdomain(false);
       setIsLoading(false);
@@ -238,8 +251,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         setTenant(tenantData);
         applyTenantBranding(tenantData);
 
-        // Cache for pre-React branding on next refresh
+        // Cache full tenant for instant resolution on next refresh
         try {
+          sessionStorage.setItem(`tenant_full_${subdomain}`, JSON.stringify(tenantData));
           sessionStorage.setItem(`tenant_${subdomain}`, JSON.stringify({
             title: tenantData.appDisplayName || tenantData.name,
             logo: tenantData.logo,
@@ -254,7 +268,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    resolveTenant();
+    // If we have cached tenant, resolve in background without blocking
+    if (cachedTenant) {
+      resolveTenant(); // background refresh, isLoading already false
+    } else {
+      resolveTenant();
+    }
   }, []);
 
   return (
