@@ -5,6 +5,7 @@ interface PaymentConfig {
   onlineEnabled: boolean;
   manualEnabled: boolean;
   isConnected: boolean;
+  connectionStatus: string;
   extraChargePct: number;
 }
 
@@ -40,11 +41,9 @@ export function usePaymentConfig(schoolId: string | undefined) {
       let manualEnabled = globalConfig.manual_enabled;
 
       if (sc) {
-        // Apply school-level settings
         onlineEnabled = onlineEnabled && sc.online_enabled;
         manualEnabled = manualEnabled && sc.manual_enabled;
 
-        // Super admin overrides take precedence
         if (sc.super_admin_override_online !== null && sc.super_admin_override_online !== undefined) {
           onlineEnabled = sc.super_admin_override_online;
         }
@@ -54,12 +53,15 @@ export function usePaymentConfig(schoolId: string | undefined) {
       }
 
       const isConnected = sc?.is_connected ?? false;
+      const connectionStatus = sc?.connection_status ?? 'not_connected';
+      const isApproved = connectionStatus === 'connected';
       const extraChargePct = sc?.extra_charge_override ?? globalConfig.extra_charge_pct ?? 0;
 
       return {
-        onlineEnabled: onlineEnabled && isConnected,
+        onlineEnabled: onlineEnabled && isConnected && isApproved,
         manualEnabled,
-        isConnected,
+        isConnected: isConnected && isApproved,
+        connectionStatus,
         extraChargePct,
       };
     },
