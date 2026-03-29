@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CreditCard, Wifi, WifiOff, Eye, EyeOff } from 'lucide-react';
+import { Loader2, CreditCard, Wifi, WifiOff, Eye, EyeOff, Clock, CheckCircle2, XCircle, Lock, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -16,12 +16,20 @@ interface Props {
   globalManualEnabled: boolean;
 }
 
+type ConnectionStatus = 'not_connected' | 'pending' | 'connected' | 'rejected';
+
+const statusDisplay: Record<ConnectionStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: any }> = {
+  not_connected: { label: 'Not Connected', variant: 'secondary', icon: WifiOff },
+  pending: { label: 'Pending Approval', variant: 'outline', icon: Clock },
+  connected: { label: 'Connected', variant: 'default', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', variant: 'destructive', icon: XCircle },
+};
+
 export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManualEnabled }: Props) {
   const queryClient = useQueryClient();
   const [appId, setAppId] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [showSecret, setShowSecret] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ['school-payment-config', schoolId],
@@ -67,15 +75,19 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleSaveCredentials = () => {
-    if (appId === '••••••••' && secretKey === '••••••••') {
-      toast.info('No changes to credentials');
+  const handleSubmitForApproval = () => {
+    if (!appId || appId === '••••••••' || !secretKey || secretKey === '••••••••') {
+      toast.error('Please enter both App ID and Secret Key');
       return;
     }
-    const payload: any = { is_connected: true };
-    if (appId !== '••••••••') payload.cashfree_app_id = appId;
-    if (secretKey !== '••••••••') payload.cashfree_secret_key = secretKey;
-    saveMutation.mutate(payload);
+    saveMutation.mutate({
+      cashfree_app_id: appId,
+      cashfree_secret_key: secretKey,
+      connection_status: 'pending',
+      is_connected: false,
+      submitted_at: new Date().toISOString(),
+      rejection_reason: null,
+    });
   };
 
   const handleDisconnect = () => {
@@ -83,7 +95,9 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
       cashfree_app_id: null,
       cashfree_secret_key: null,
       is_connected: false,
+      connection_status: 'not_connected',
       online_enabled: false,
+      rejection_reason: null,
     });
   };
 
@@ -97,10 +111,24 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
     return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
-  const isConnected = config?.is_connected ?? false;
+  const connectionStatus = (config?.connection_status || 'not_connected') as ConnectionStatus;
+  const isConnected = connectionStatus === 'connected';
+  const isPending = connectionStatus === 'pending';
+  const isRejected = connectionStatus === 'rejected';
+  const isLocked = config?.locked_by_super_admin ?? false;
+  const statusInfo = statusDisplay[connectionStatus];
+  const StatusIcon = statusInfo.icon;
 
   return (
     <div className="space-y-4">
+      {/* Locked Banner */}
+      {isLocked && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          <Lock className="w-4 h-4 flex-shrink-0" />
+          <span>Payment settings are locked by the platform admin. Contact support to make changes.</span>
+        </div>
+      )}
+
       {/* Connection Status */}
       <Card>
         <CardHeader className="pb-3">
@@ -113,17 +141,28 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Status Badge */}
           <div className="flex items-center gap-2">
-            {isConnected ? (
-              <Badge className="bg-success text-success-foreground gap-1">
-                <Wifi className="w-3 h-3" /> Connected
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1">
-                <WifiOff className="w-3 h-3" /> Not Connected
-              </Badge>
-            )}
+            <Badge variant={statusInfo.variant as any} className="gap-1">
+              <StatusIcon className="w-3 h-3" /> {statusInfo.label}
+            </Badge>
           </div>
+
+          {/* Rejection reason */}
+          {isRejected && config?.rejection_reason && (
+            <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-sm">
+              <p className="font-medium text-destructive text-xs mb-1">Rejection Reason:</p>
+              <p className="text-xs text-muted-foreground">{config.rejection_reason}</p>
+            </div>
+          )}
+
+          {/* Pending message */}
+          {isPending && (
+            <div className="p-3 rounded-lg bg-warning/10 text-warning text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span>Your connection request is under review. You'll be notified once approved.</span>
+            </div>
+          )}
 
           {!globalOnlineEnabled && (
             <div className="p-3 rounded-lg bg-warning/10 text-warning text-sm">
@@ -131,53 +170,58 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
             </div>
           )}
 
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">App ID</Label>
-              <Input
-                value={appId}
-                onChange={(e) => setAppId(e.target.value)}
-                placeholder="Enter Cashfree App ID"
-                onFocus={() => { if (appId === '••••••••') setAppId(''); }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Secret Key</Label>
-              <div className="relative">
+          {/* Credential form — show only when not connected and not pending, or when rejected (can resubmit) */}
+          {(connectionStatus === 'not_connected' || isRejected) && !isLocked && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">App ID</Label>
                 <Input
-                  type={showSecret ? 'text' : 'password'}
-                  value={secretKey}
-                  onChange={(e) => setSecretKey(e.target.value)}
-                  placeholder="Enter Cashfree Secret Key"
-                  onFocus={() => { if (secretKey === '••••••••') setSecretKey(''); }}
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                  placeholder="Enter Cashfree App ID"
+                  onFocus={() => { if (appId === '••••••••') setAppId(''); }}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                  onClick={() => setShowSecret(!showSecret)}
-                >
-                  {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </Button>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveCredentials} disabled={saveMutation.isPending}>
-                {saveMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                {isConnected ? 'Update Credentials' : 'Connect'}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Secret Key</Label>
+                <div className="relative">
+                  <Input
+                    type={showSecret ? 'text' : 'password'}
+                    value={secretKey}
+                    onChange={(e) => setSecretKey(e.target.value)}
+                    placeholder="Enter Cashfree Secret Key"
+                    onFocus={() => { if (secretKey === '••••••••') setSecretKey(''); }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                    onClick={() => setShowSecret(!showSecret)}
+                  >
+                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <Button size="sm" onClick={handleSubmitForApproval} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+                {isRejected ? 'Resubmit for Approval' : 'Submit for Approval'}
               </Button>
-              {isConnected && (
-                <Button size="sm" variant="outline" onClick={handleDisconnect} disabled={saveMutation.isPending}>
-                  Disconnect
-                </Button>
-              )}
             </div>
-          </div>
+          )}
+
+          {/* Connected — show disconnect */}
+          {isConnected && !isLocked && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleDisconnect} disabled={saveMutation.isPending}>
+                Disconnect
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Toggles */}
+      {/* Toggles — only when connected and not locked */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Payment Methods</CardTitle>
@@ -192,7 +236,7 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
             <Switch
               checked={onlineEnabled}
               onCheckedChange={(v) => handleToggle('online_enabled', v)}
-              disabled={!globalOnlineEnabled || !isConnected}
+              disabled={!globalOnlineEnabled || !isConnected || isLocked}
             />
           </div>
           <div className="flex items-center justify-between">
@@ -203,7 +247,7 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
             <Switch
               checked={manualEnabled}
               onCheckedChange={(v) => handleToggle('manual_enabled', v)}
-              disabled={!globalManualEnabled}
+              disabled={!globalManualEnabled || isLocked}
             />
           </div>
         </CardContent>

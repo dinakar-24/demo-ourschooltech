@@ -74,12 +74,12 @@ Deno.serve(async (req) => {
     // Get school's Cashfree credentials
     const { data: payConfig, error: pcErr } = await adminClient
       .from("school_payment_config")
-      .select("cashfree_app_id, cashfree_secret_key, is_connected")
+      .select("cashfree_app_id, cashfree_secret_key, is_connected, connection_status, locked_by_super_admin")
       .eq("school_id", school_id)
       .single();
 
-    if (pcErr || !payConfig || !payConfig.is_connected || !payConfig.cashfree_app_id || !payConfig.cashfree_secret_key) {
-      return new Response(JSON.stringify({ error: "Online payments not configured for this school" }), { status: 400, headers: corsHeaders });
+    if (pcErr || !payConfig || !payConfig.is_connected || payConfig.connection_status !== 'connected' || !payConfig.cashfree_app_id || !payConfig.cashfree_secret_key) {
+      return new Response(JSON.stringify({ error: "Online payments not configured or not approved for this school" }), { status: 400, headers: corsHeaders });
     }
 
     // Get extra charge from system settings

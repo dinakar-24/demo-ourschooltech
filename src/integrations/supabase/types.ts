@@ -1588,43 +1588,61 @@ export type Database = {
       }
       school_payment_config: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           cashfree_app_id: string | null
           cashfree_secret_key: string | null
+          connection_status: string
           created_at: string
           extra_charge_override: number | null
           id: string
           is_connected: boolean
+          locked_by_super_admin: boolean
           manual_enabled: boolean
           online_enabled: boolean
+          rejection_reason: string | null
           school_id: string
+          submitted_at: string | null
           super_admin_override_manual: boolean | null
           super_admin_override_online: boolean | null
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           cashfree_app_id?: string | null
           cashfree_secret_key?: string | null
+          connection_status?: string
           created_at?: string
           extra_charge_override?: number | null
           id?: string
           is_connected?: boolean
+          locked_by_super_admin?: boolean
           manual_enabled?: boolean
           online_enabled?: boolean
+          rejection_reason?: string | null
           school_id: string
+          submitted_at?: string | null
           super_admin_override_manual?: boolean | null
           super_admin_override_online?: boolean | null
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           cashfree_app_id?: string | null
           cashfree_secret_key?: string | null
+          connection_status?: string
           created_at?: string
           extra_charge_override?: number | null
           id?: string
           is_connected?: boolean
+          locked_by_super_admin?: boolean
           manual_enabled?: boolean
           online_enabled?: boolean
+          rejection_reason?: string | null
           school_id?: string
+          submitted_at?: string | null
           super_admin_override_manual?: boolean | null
           super_admin_override_online?: boolean | null
           updated_at?: string
