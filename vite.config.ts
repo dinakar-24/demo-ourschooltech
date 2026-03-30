@@ -91,6 +91,28 @@ export default defineConfig(({ mode }) => {
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-ui': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-popover',
+              '@radix-ui/react-select',
+              '@radix-ui/react-tabs',
+              '@radix-ui/react-dropdown-menu',
+            ],
+            'vendor-charts': ['recharts'],
+            'vendor-pdf': ['jspdf', 'html2canvas'],
+            'vendor-excel': ['exceljs'],
+            'vendor-motion': ['framer-motion'],
+          },
+        },
+      },
+    },
     optimizeDeps: {
       include: ["date-fns"],
     },
