@@ -166,8 +166,7 @@ persistQueryClient({
   maxAge: 24 * 60 * 60 * 1000, // 24 hours
   buster: '', // change to bust cache on major updates
 });
-
-
+function RouteLoadingFallback() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center gap-4 bg-background">
       <svg width="64" height="64" viewBox="0 0 64 64">
