@@ -38,11 +38,35 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
               handler: "NetworkFirst",
               options: {
                 cacheName: "supabase-api",
                 expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "supabase-storage",
+                expiration: { maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: "StaleWhileRevalidate",
+              options: {
+                cacheName: "google-fonts-stylesheets",
+                expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts-webfonts",
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
               },
             },
           ],
