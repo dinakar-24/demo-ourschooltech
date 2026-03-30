@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { get, set, del } from "idb-keyval";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -143,6 +145,26 @@ const queryClient = new QueryClient({
       },
     },
   },
+});
+
+// Persist React Query cache to IndexedDB for instant loading on repeat visits
+const idbPersister = {
+  persistClient: async (client: any) => {
+    await set('react-query-cache', client);
+  },
+  restoreClient: async () => {
+    return await get('react-query-cache');
+  },
+  removeClient: async () => {
+    await del('react-query-cache');
+  },
+};
+
+persistQueryClient({
+  queryClient: queryClient as any,
+  persister: idbPersister,
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  buster: '', // change to bust cache on major updates
 });
 
 function RouteLoadingFallback() {

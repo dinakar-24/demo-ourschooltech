@@ -12,6 +12,7 @@ export interface ChildInfo {
   parent_name: string | null;
   parent_email: string | null;
   avatar_url: string | null;
+  school_id?: string;
 }
 
 export interface ChildAttendanceStats {
@@ -28,6 +29,43 @@ export interface ChildFeeStats {
   overdue: number;
 }
 
+// Consolidated hook — single RPC replaces 4+ serial queries
+export function useParentData() {
+  const { user } = useAuth();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['parent-dashboard', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+
+      const { data, error } = await supabase.rpc('get_parent_dashboard' as any, {
+        _user_id: user.id,
+      } as any);
+
+      if (error) throw error;
+      return data as {
+        child: ChildInfo | null;
+        attendance: ChildAttendanceStats | null;
+        fees: ChildFeeStats | null;
+        announcements: any[];
+      };
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    childProfile: data?.child ?? null,
+    attendanceStats: data?.attendance ?? null,
+    feeStats: data?.fees ?? null,
+    announcements: data?.announcements ?? [],
+    fees: [] as any[], // legacy compat — use fee invoices directly where needed
+    isLoading,
+  };
+}
+
+// Keep individual hooks for pages that need them standalone
 export function useParentChild() {
   const { user } = useAuth();
 
@@ -56,7 +94,6 @@ export function useChildAttendanceStats(studentId?: string) {
     queryFn: async (): Promise<ChildAttendanceStats> => {
       if (!studentId) throw new Error('No student ID');
 
-      // Get current month's attendance
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
@@ -89,7 +126,6 @@ export function useChildFeeStats(studentId?: string) {
     queryFn: async (): Promise<ChildFeeStats> => {
       if (!studentId) throw new Error('No student ID');
 
-      // Query fee_invoices (the actual invoice system) instead of the legacy fees table
       const { data, error } = await supabase
         .from('fee_invoices')
         .select('total_amount, paid_amount, balance, status, due_date')
@@ -116,7 +152,6 @@ export function useChildHomework(studentId?: string, className?: string, section
     queryFn: async () => {
       if (!className) throw new Error('No class name');
 
-      // Get class ID
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('id')
@@ -125,7 +160,6 @@ export function useChildHomework(studentId?: string, className?: string, section
 
       if (classError) return [];
 
-      // Get homework for this class
       let query = supabase
         .from('homework')
         .select(`
@@ -141,7 +175,6 @@ export function useChildHomework(studentId?: string, className?: string, section
 
       if (error) throw error;
       
-      // Filter by section if specified
       return data?.filter(hw => !hw.section_id || hw.section?.name === section) || [];
     },
     enabled: !!className,
@@ -171,41 +204,4 @@ export function useChildAnnouncements(schoolId?: string) {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-}
-
-// Combined hook for parent data
-export function useParentData() {
-  const { data: childProfile, isLoading: isLoadingChild } = useParentChild();
-  
-  const { data: attendanceStats, isLoading: isLoadingAttendance } = useChildAttendanceStats(childProfile?.id);
-  const { data: feeStats, isLoading: isLoadingFees } = useChildFeeStats(childProfile?.id);
-  
-  // Fetch all fees for the child
-  const { data: fees = [], isLoading: isLoadingAllFees } = useQuery({
-    queryKey: ['parent-child-fees', childProfile?.id],
-    queryFn: async () => {
-      if (!childProfile?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('fees')
-        .select('id,fee_type,amount,due_date,status,paid_date,receipt_number,student_id')
-        .eq('student_id', childProfile.id)
-        .order('due_date', { ascending: false })
-        .limit(50);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!childProfile?.id,
-    staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-
-  return {
-    childProfile,
-    attendanceStats,
-    feeStats,
-    fees,
-    isLoading: isLoadingChild || isLoadingAttendance || isLoadingFees || isLoadingAllFees,
-  };
 }

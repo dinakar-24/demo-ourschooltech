@@ -35,7 +35,7 @@ export function WelcomeCard({ student, studentInfo, studentLoading, user, t }: W
         <div className="flex items-center gap-4 relative z-10">
           <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-xl font-bold overflow-hidden ring-2 ring-white/25 shrink-0">
             {(student?.avatar_url || user?.avatar) ? (
-              <img src={student?.avatar_url || user?.avatar} alt={studentInfo.name} className="w-full h-full object-cover" />
+              <img src={student?.avatar_url || user?.avatar} alt={studentInfo.name} className="w-full h-full object-cover" loading="lazy" width={64} height={64} />
             ) : (
               <span className="text-primary-foreground/90 text-lg">{studentInfo.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</span>
             )}

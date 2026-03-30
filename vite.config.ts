@@ -38,11 +38,35 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
               handler: "NetworkFirst",
               options: {
                 cacheName: "supabase-api",
                 expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "supabase-storage",
+                expiration: { maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: "StaleWhileRevalidate",
+              options: {
+                cacheName: "google-fonts-stylesheets",
+                expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts-webfonts",
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
               },
             },
           ],
@@ -90,6 +114,28 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-ui': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-popover',
+              '@radix-ui/react-select',
+              '@radix-ui/react-tabs',
+              '@radix-ui/react-dropdown-menu',
+            ],
+            'vendor-charts': ['recharts'],
+            'vendor-pdf': ['jspdf', 'html2canvas'],
+            'vendor-excel': ['exceljs'],
+            'vendor-motion': ['framer-motion'],
+          },
+        },
+      },
     },
     optimizeDeps: {
       include: ["date-fns"],

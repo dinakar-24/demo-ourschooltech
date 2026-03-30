@@ -90,7 +90,7 @@ export function AlbumDetailView({ album, onBack }: AlbumDetailViewProps) {
               {item.file_type === 'video' ? (
                 <video src={item.file_url} className="w-full h-full object-cover" muted />
               ) : (
-                <img src={item.file_url} alt={item.caption || ''} className="w-full h-full object-cover" />
+                <img src={item.file_url} alt={item.caption || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" />
               )}
               {coverUrl === item.file_url && (
                 <Badge className="absolute top-1.5 left-1.5 bg-primary/90 text-primary-foreground text-[9px] px-1.5 py-0.5">
