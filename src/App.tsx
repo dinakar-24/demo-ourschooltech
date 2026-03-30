@@ -161,11 +161,12 @@ const idbPersister = {
 };
 
 persistQueryClient({
-  queryClient,
+  queryClient: queryClient as any,
   persister: idbPersister,
   maxAge: 24 * 60 * 60 * 1000, // 24 hours
   buster: '', // change to bust cache on major updates
 });
+
 function RouteLoadingFallback() {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center gap-4 bg-background">
