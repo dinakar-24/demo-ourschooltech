@@ -147,7 +147,27 @@ const queryClient = new QueryClient({
   },
 });
 
-function RouteLoadingFallback() {
+// Persist React Query cache to IndexedDB for instant loading on repeat visits
+const idbPersister = {
+  persistClient: async (client: any) => {
+    await set('react-query-cache', client);
+  },
+  restoreClient: async () => {
+    return await get('react-query-cache');
+  },
+  removeClient: async () => {
+    await del('react-query-cache');
+  },
+};
+
+persistQueryClient({
+  queryClient,
+  persister: idbPersister,
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  buster: '', // change to bust cache on major updates
+});
+
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center gap-4 bg-background">
       <svg width="64" height="64" viewBox="0 0 64 64">
