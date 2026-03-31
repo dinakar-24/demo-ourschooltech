@@ -1364,6 +1364,44 @@ export type Database = {
           },
         ]
       }
+      performance_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          duration_ms: number
+          id: string
+          log_type: string
+          school_id: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          duration_ms: number
+          id?: string
+          log_type?: string
+          school_id?: string | null
+          source: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          duration_ms?: number
+          id?: string
+          log_type?: string
+          school_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2763,6 +2801,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_old_performance_logs: { Args: never; Returns: undefined }
       complete_job: { Args: { _job_id: string }; Returns: undefined }
       fail_job: {
         Args: { _error: string; _job_id: string }
@@ -2799,6 +2838,7 @@ export type Database = {
         Args: { _school_id: string }
         Returns: number
       }
+      get_performance_summary: { Args: never; Returns: Json }
       get_role_counts: { Args: never; Returns: Json }
       get_school_by_code: { Args: { _code: string }; Returns: Json }
       get_school_logo_by_id: { Args: { _school_id: string }; Returns: Json }
