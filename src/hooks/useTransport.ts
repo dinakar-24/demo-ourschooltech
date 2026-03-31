@@ -48,6 +48,7 @@ export function useTransportRoutes() {
       return data as TransportRoute[];
     },
     enabled: !!schoolId,
+    staleTime: 10 * 60 * 1000, // Transport routes rarely change
   });
 }
 
