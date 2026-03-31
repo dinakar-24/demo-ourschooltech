@@ -80,7 +80,8 @@ export function useTeacherOnlineClasses(teacherUserId?: string) {
         .select('*, teacher:teachers(id, full_name)')
         .eq('school_id', schoolId)
         .eq('teacher_id', teacher.id)
-        .order('scheduled_at', { ascending: false });
+        .order('scheduled_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       return (data || []) as OnlineClass[];

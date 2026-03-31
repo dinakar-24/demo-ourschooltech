@@ -61,7 +61,7 @@ export function useHomework(filters?: {
         query = query.eq('subject', filters.subject);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
       return data as Homework[];
@@ -87,7 +87,8 @@ export function useTeacherHomework() {
           section:sections(id, name)
         `)
         .eq('assigned_by', user.id)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .limit(50);
 
       if (error) throw error;
       return data as Homework[];

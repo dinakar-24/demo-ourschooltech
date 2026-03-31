@@ -80,6 +80,7 @@ export function useClasses() {
       return classesWithSections;
     },
     enabled: !!schoolId,
+    staleTime: 10 * 60 * 1000, // Classes rarely change — long cache
   });
 }
 
