@@ -61,7 +61,7 @@ export function useHomework(filters?: {
         query = query.eq('subject', filters.subject);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
 
       if (error) throw error;
       return data as Homework[];
