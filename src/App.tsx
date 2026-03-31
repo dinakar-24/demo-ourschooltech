@@ -130,15 +130,23 @@ const queryClient = new QueryClient({
       refetchOnMount: true,            // only refetch if stale
       refetchOnWindowFocus: false,     // no refetch on tab switch
       refetchOnReconnect: true,        // refetch stale data when back online
+      networkMode: 'offlineFirst',     // use cache when offline, fetch when online
       retry: (failureCount, error) => {
-        // Never retry auth/client errors (4xx)
         const msg = (error as Error)?.message ?? '';
-        if (/40[0-9]|unauthorized|forbidden|not found|already exists/i.test(msg)) return false;
-        // Retry once on network / server errors
-        return failureCount < 1;
+        // Never retry auth/client errors (4xx)
+        if (/40[0-9]|unauthorized|forbidden|not found|already exists|validation/i.test(msg)) return false;
+        // Retry up to 2x on network / server errors with backoff
+        return failureCount < 2;
       },
+      retryDelay: (attempt) => Math.min(1000 * Math.pow(2, attempt), 8000),
     },
     mutations: {
+      networkMode: 'offlineFirst',
+      retry: (failureCount, error) => {
+        const msg = (error as Error)?.message ?? '';
+        if (/40[0-9]|unauthorized|forbidden|already exists|validation/i.test(msg)) return false;
+        return failureCount < 1;
+      },
       onError: (error: Error) => {
         logError('mutation', error.message, { source: 'global_mutation_handler' });
         toast.error(friendlyErrorMessage(error.message));
