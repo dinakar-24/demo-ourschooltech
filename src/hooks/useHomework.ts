@@ -87,7 +87,8 @@ export function useTeacherHomework() {
           section:sections(id, name)
         `)
         .eq('assigned_by', user.id)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .limit(50);
 
       if (error) throw error;
       return data as Homework[];
