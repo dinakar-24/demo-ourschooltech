@@ -47,11 +47,12 @@ export function useGalleryAlbums(publishedOnly = false) {
         query = query.eq('is_published', true);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(50);
       if (error) throw error;
       return data as GalleryAlbum[];
     },
     enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
