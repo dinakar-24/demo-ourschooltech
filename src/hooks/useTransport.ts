@@ -63,11 +63,12 @@ export function useStudentTransport(routeId?: string) {
         .select('*, student:students(full_name, class_name, section, admission_number), route:transport_routes(route_name, route_number, vehicle_number, driver_name, driver_phone)')
         .eq('school_id', schoolId);
       if (routeId) query = query.eq('route_id', routeId);
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(200);
       if (error) throw error;
       return data as unknown as StudentTransport[];
     },
     enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
