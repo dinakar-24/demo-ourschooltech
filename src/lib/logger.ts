@@ -1,8 +1,9 @@
 /**
  * Centralized client-side error logger.
  *
- * Writes to the `error_logs` table via a fire-and-forget Supabase insert.
+ * Writes to the `error_logs` table via safe_log_client_error RPC.
  * Batches logs (debounced 2s) to avoid spamming the DB on cascading failures.
+ * Never exposes sensitive data in logs.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -15,8 +16,6 @@ interface LogEntry {
   error_message: string;
   error_context: Record<string, any>;
   severity: Severity;
-  user_id?: string;
-  school_id?: string;
 }
 
 // --- Batching ---
@@ -25,14 +24,38 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const FLUSH_DELAY_MS = 2_000;
 const MAX_BATCH_SIZE = 20;
 
+/** Sanitize context to remove sensitive data before logging */
+function sanitizeContext(ctx: Record<string, any>): Record<string, any> {
+  const sanitized: Record<string, any> = {};
+  const SENSITIVE_KEYS = new Set(['password', 'token', 'secret', 'authorization', 'cookie', 'otp', 'api_key']);
+  
+  for (const [key, value] of Object.entries(ctx)) {
+    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof value === 'string' && value.length > 500) {
+      sanitized[key] = value.slice(0, 500) + '...';
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 async function flush() {
   if (pendingLogs.length === 0) return;
   const batch = pendingLogs.splice(0, MAX_BATCH_SIZE);
 
-  try {
-    await (supabase.from('error_logs' as any) as any).insert(batch);
-  } catch {
-    // Logging should never throw -- silently discard on failure
+  for (const entry of batch) {
+    try {
+      await supabase.rpc('safe_log_client_error', {
+        _error_type: entry.error_type.slice(0, 100),
+        _error_message: entry.error_message.slice(0, 1000),
+        _severity: entry.severity === 'critical' ? 'error' : entry.severity,
+        _context: entry.error_context,
+      });
+    } catch {
+      // Logging should never throw -- silently discard on failure
+    }
   }
 }
 
@@ -43,28 +66,6 @@ function scheduleFlush() {
     flush();
   }, FLUSH_DELAY_MS);
 }
-
-// --- Auth context helpers (cached, non-reactive) ---
-let cachedUserId: string | undefined;
-let cachedSchoolId: string | undefined;
-
-async function refreshAuthContext() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    cachedUserId = session?.user?.id;
-    // Try to get school_id from sessionStorage cache (set by AuthContext)
-    try {
-      const raw = sessionStorage.getItem('ost_auth_cache');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        cachedSchoolId = parsed?.user?.schoolId;
-      }
-    } catch { /* ignore */ }
-  } catch { /* ignore */ }
-}
-
-// Refresh on init
-refreshAuthContext();
 
 // --- Public API ---
 
@@ -79,18 +80,20 @@ export function logError(
 ) {
   const entry: LogEntry = {
     error_type: type,
-    error_message: message.slice(0, 2000), // cap length
-    error_context: {
+    error_message: message.slice(0, 1000),
+    error_context: sanitizeContext({
       ...context,
       route: typeof window !== 'undefined' ? window.location.pathname : undefined,
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-    },
+    }),
     severity,
-    user_id: cachedUserId,
-    school_id: cachedSchoolId,
   };
 
   pendingLogs.push(entry);
+
+  // Cap to prevent memory bloat
+  if (pendingLogs.length > 100) {
+    pendingLogs = pendingLogs.slice(-50);
+  }
 
   // Immediate flush if batch is full
   if (pendingLogs.length >= MAX_BATCH_SIZE) {
@@ -102,8 +105,8 @@ export function logError(
 
 /**
  * Update cached auth context (call from AuthContext when user changes).
+ * Note: user_id and school_id are now set automatically by the RPC using auth.uid()
  */
-export function updateLoggerContext(userId?: string, schoolId?: string) {
-  cachedUserId = userId;
-  cachedSchoolId = schoolId;
+export function updateLoggerContext(_userId?: string, _schoolId?: string) {
+  // No-op: the safe_log_client_error RPC automatically uses auth.uid()
 }
