@@ -5,14 +5,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Input validation ────────────────────────────────────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VALID_ROLES = new Set(["super_admin", "school_admin", "teacher", "parent", "student"]);
+const VALID_ACTIONS = new Set(["disable", "enable", "delete", "update_role", "update_profile", "reset_password"]);
+
+function sanitize(val: unknown, maxLen = 500): string {
+  if (typeof val !== 'string') return '';
+  return val.trim().slice(0, maxLen);
+}
+
+function validateUUID(val: unknown): string {
+  const s = sanitize(val, 36);
+  if (!UUID_RE.test(s)) throw new Error("Invalid ID format");
+  return s;
+}
+
 interface ManageUserRequest {
-  action: "disable" | "enable" | "delete" | "update_role" | "update_profile" | "reset_password";
+  action: string;
   user_id: string;
-  // For update_profile
   full_name?: string;
   phone?: string;
   school_id?: string;
-  // For update_role
   new_role?: string;
   old_role?: string;
 }
@@ -47,10 +62,14 @@ Deno.serve(async (req) => {
     const isSuperAdmin = callerRoles?.some(r => r.role === "super_admin");
     if (!isSuperAdmin) throw new Error("Permission denied: Super admin only");
 
-    const body: ManageUserRequest = await req.json();
-    const { action, user_id } = body;
+    const rawBody: ManageUserRequest = await req.json();
 
-    if (!action || !user_id) throw new Error("Missing action or user_id");
+    // Validate action
+    const action = sanitize(rawBody.action, 30);
+    if (!VALID_ACTIONS.has(action)) throw new Error("Invalid action");
+
+    // Validate user_id
+    const user_id = validateUUID(rawBody.user_id);
 
     // Prevent self-modification for destructive actions
     if (callingUser.id === user_id && ["disable", "delete"].includes(action)) {
@@ -62,11 +81,10 @@ Deno.serve(async (req) => {
     switch (action) {
       case "disable": {
         const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
-          ban_duration: "876000h", // ~100 years
+          ban_duration: "876000h",
         });
         if (error) throw new Error(`Failed to disable user: ${error.message}`);
 
-        // If user is a school_admin, cascade disable to all users in their school
         const { data: targetRoles } = await supabaseAdmin
           .from("user_roles")
           .select("role")
@@ -83,7 +101,6 @@ Deno.serve(async (req) => {
             .single();
 
           if (profile?.school_id) {
-            // Get all users in this school (excluding the admin themselves and super_admins)
             const { data: schoolUsers } = await supabaseAdmin
               .from("profiles")
               .select("id")
@@ -91,7 +108,6 @@ Deno.serve(async (req) => {
               .neq("id", user_id);
 
             if (schoolUsers && schoolUsers.length > 0) {
-              // Filter out super_admins
               const { data: superAdminRoles } = await supabaseAdmin
                 .from("user_roles")
                 .select("user_id")
@@ -108,7 +124,6 @@ Deno.serve(async (req) => {
                 if (!banErr) cascadeCount++;
               }
 
-              // Also deactivate the school
               await supabaseAdmin
                 .from("schools")
                 .update({ is_active: false })
@@ -117,7 +132,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        result = { message: `User disabled successfully${cascadeCount > 0 ? `. ${cascadeCount} school users also disabled.` : ""}` };
+        result = { message: `User disabled${cascadeCount > 0 ? `. ${cascadeCount} school users also disabled.` : ""}` };
         break;
       }
 
@@ -127,7 +142,6 @@ Deno.serve(async (req) => {
         });
         if (error) throw new Error(`Failed to enable user: ${error.message}`);
 
-        // If user is a school_admin, cascade enable to all users in their school
         const { data: targetRolesEn } = await supabaseAdmin
           .from("user_roles")
           .select("role")
@@ -158,7 +172,6 @@ Deno.serve(async (req) => {
                 if (!unbanErr) cascadeEnCount++;
               }
 
-              // Re-activate the school
               await supabaseAdmin
                 .from("schools")
                 .update({ is_active: true })
@@ -167,12 +180,11 @@ Deno.serve(async (req) => {
           }
         }
 
-        result = { message: `User enabled successfully${cascadeEnCount > 0 ? `. ${cascadeEnCount} school users also re-enabled.` : ""}` };
+        result = { message: `User enabled${cascadeEnCount > 0 ? `. ${cascadeEnCount} school users re-enabled.` : ""}` };
         break;
       }
 
       case "delete": {
-        // Check if user is a school_admin — cascade delete all school users
         const { data: delTargetRoles } = await supabaseAdmin
           .from("user_roles")
           .select("role")
@@ -190,8 +202,6 @@ Deno.serve(async (req) => {
 
           if (delProfile?.school_id) {
             const schoolId = delProfile.school_id;
-
-            // Get all other users in this school
             const { data: schoolUsers } = await supabaseAdmin
               .from("profiles")
               .select("id")
@@ -199,7 +209,6 @@ Deno.serve(async (req) => {
               .neq("id", user_id);
 
             if (schoolUsers && schoolUsers.length > 0) {
-              // Filter out super_admins
               const { data: saRoles } = await supabaseAdmin
                 .from("user_roles")
                 .select("user_id")
@@ -210,7 +219,6 @@ Deno.serve(async (req) => {
               const usersToDelete = schoolUsers.filter(u => !saIds.has(u.id));
 
               for (const u of usersToDelete) {
-                // Clean up related records
                 await supabaseAdmin.from("teachers").delete().eq("user_id", u.id);
                 await supabaseAdmin.from("students").delete().eq("user_id", u.id);
                 await supabaseAdmin.from("user_roles").delete().eq("user_id", u.id);
@@ -220,31 +228,37 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Delete the school itself
             await supabaseAdmin.from("schools").delete().eq("id", schoolId);
           }
         }
 
-        // Now delete the admin user themselves
         await supabaseAdmin.from("teachers").delete().eq("user_id", user_id);
         await supabaseAdmin.from("students").delete().eq("user_id", user_id);
         await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
         await supabaseAdmin.from("profiles").delete().eq("id", user_id);
 
         const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
-        // Ignore "user not found" if already deleted via cascade
         if (error && !error.message.includes("not found")) {
           throw new Error(`Failed to delete user: ${error.message}`);
         }
-        result = { message: `User deleted successfully${cascadeDelCount > 0 ? `. ${cascadeDelCount} school users and the school also deleted.` : ""}` };
+        result = { message: `User deleted${cascadeDelCount > 0 ? `. ${cascadeDelCount} school users and school also deleted.` : ""}` };
         break;
       }
 
       case "update_profile": {
         const updates: Record<string, unknown> = {};
-        if (body.full_name) updates.full_name = body.full_name;
-        if (body.phone !== undefined) updates.phone = body.phone;
-        if (body.school_id !== undefined) updates.school_id = body.school_id;
+        const fullName = sanitize(rawBody.full_name, 200);
+        const phone = sanitize(rawBody.phone, 20).replace(/[^\d+\-\s()]/g, '');
+        
+        if (fullName) updates.full_name = fullName;
+        if (rawBody.phone !== undefined) updates.phone = phone || null;
+        if (rawBody.school_id !== undefined) {
+          const sid = sanitize(rawBody.school_id, 36);
+          if (sid && !UUID_RE.test(sid)) throw new Error("Invalid school_id format");
+          updates.school_id = sid || null;
+        }
+
+        if (Object.keys(updates).length === 0) throw new Error("No fields to update");
 
         const { error } = await supabaseAdmin
           .from("profiles")
@@ -252,49 +266,61 @@ Deno.serve(async (req) => {
           .eq("id", user_id);
         if (error) throw new Error(`Failed to update profile: ${error.message}`);
 
-        // Also update auth metadata
-        if (body.full_name) {
+        if (fullName) {
           await supabaseAdmin.auth.admin.updateUserById(user_id, {
-            user_metadata: { full_name: body.full_name },
+            user_metadata: { full_name: fullName },
           });
         }
-        result = { message: "Profile updated successfully" };
+        result = { message: "Profile updated" };
         break;
       }
 
       case "update_role": {
-        if (!body.new_role) throw new Error("new_role is required");
+        const newRole = sanitize(rawBody.new_role, 20);
+        if (!VALID_ROLES.has(newRole)) throw new Error("Invalid role");
         
-        // Remove old roles
-        if (body.old_role) {
+        // Prevent creating additional super_admins via this endpoint
+        if (newRole === "super_admin") {
+          throw new Error("Cannot assign super_admin role via this endpoint");
+        }
+
+        const oldRole = sanitize(rawBody.old_role, 20);
+        if (oldRole) {
           await supabaseAdmin
             .from("user_roles")
             .delete()
             .eq("user_id", user_id)
-            .eq("role", body.old_role);
+            .eq("role", oldRole);
         }
 
-        // Add new role
         const { error } = await supabaseAdmin
           .from("user_roles")
-          .upsert({ user_id, role: body.new_role }, { onConflict: "user_id,role" });
+          .upsert({ user_id, role: newRole }, { onConflict: "user_id,role" });
         if (error) throw new Error(`Failed to update role: ${error.message}`);
-        result = { message: "Role updated successfully" };
+        result = { message: "Role updated" };
         break;
       }
 
       case "reset_password": {
-        const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!1A`;
+        // Generate a strong temporary password
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+        let tempPassword = '';
+        const array = new Uint8Array(12);
+        crypto.getRandomValues(array);
+        for (const b of array) tempPassword += chars[b % chars.length];
+        // Ensure complexity requirements
+        tempPassword = 'T' + tempPassword + '1!a';
+
         const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
           password: tempPassword,
         });
         if (error) throw new Error(`Failed to reset password: ${error.message}`);
-        result = { message: "Password reset successfully", temp_password: tempPassword };
+        result = { message: "Password reset", temp_password: tempPassword };
         break;
       }
 
       default:
-        throw new Error(`Unknown action: ${action}`);
+        throw new Error("Invalid action");
     }
 
     return new Response(
@@ -303,9 +329,10 @@ Deno.serve(async (req) => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error:", errorMessage);
+    // Log internally but don't expose stack traces
+    console.error("manage-user error:", errorMessage);
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: errorMessage.slice(0, 300) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }

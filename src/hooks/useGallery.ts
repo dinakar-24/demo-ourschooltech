@@ -140,9 +140,30 @@ export function useUploadGalleryItem() {
   return useMutation({
     mutationFn: async ({ albumId, file, caption }: { albumId: string; file: File; caption?: string }) => {
       if (!schoolId) throw new Error('No school ID');
-      const ext = file.name.split('.').pop();
-      const path = `${schoolId}/${albumId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('gallery').upload(path, file);
+      
+      // File validation
+      const ALLOWED_TYPES = new Set([
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        'video/mp4', 'video/webm',
+      ]);
+      if (!ALLOWED_TYPES.has(file.type)) {
+        throw new Error('Only JPEG, PNG, WebP, GIF images and MP4/WebM videos are allowed');
+      }
+      const maxSize = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new Error(`File too large. Max ${file.type.startsWith('video/') ? '50' : '10'}MB`);
+      }
+      if (file.size === 0) {
+        throw new Error('File is empty');
+      }
+
+      // Secure filename with UUID (prevents path traversal)
+      const ext = file.name.split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'bin';
+      const path = `${schoolId}/${albumId}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('gallery').upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from('gallery').getPublicUrl(path);
       const fileType = file.type.startsWith('video/') ? 'video' : 'image';
