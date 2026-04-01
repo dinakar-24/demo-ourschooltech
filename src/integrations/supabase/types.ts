@@ -2733,7 +2733,77 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      school_payment_config_safe: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          cashfree_app_id_masked: string | null
+          cashfree_secret_masked: string | null
+          connection_status: string | null
+          created_at: string | null
+          extra_charge_override: number | null
+          id: string | null
+          is_connected: boolean | null
+          locked_by_super_admin: boolean | null
+          manual_enabled: boolean | null
+          online_enabled: boolean | null
+          rejection_reason: string | null
+          school_id: string | null
+          submitted_at: string | null
+          super_admin_override_manual: boolean | null
+          super_admin_override_online: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cashfree_app_id_masked?: never
+          cashfree_secret_masked?: never
+          connection_status?: string | null
+          created_at?: string | null
+          extra_charge_override?: number | null
+          id?: string | null
+          is_connected?: boolean | null
+          locked_by_super_admin?: boolean | null
+          manual_enabled?: boolean | null
+          online_enabled?: boolean | null
+          rejection_reason?: string | null
+          school_id?: string | null
+          submitted_at?: string | null
+          super_admin_override_manual?: boolean | null
+          super_admin_override_online?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cashfree_app_id_masked?: never
+          cashfree_secret_masked?: never
+          connection_status?: string | null
+          created_at?: string | null
+          extra_charge_override?: number | null
+          id?: string | null
+          is_connected?: boolean | null
+          locked_by_super_admin?: boolean | null
+          manual_enabled?: boolean | null
+          online_enabled?: boolean | null
+          rejection_reason?: string | null
+          school_id?: string | null
+          submitted_at?: string | null
+          super_admin_override_manual?: boolean | null
+          super_admin_override_online?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_payment_config_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_fee_discount: {
