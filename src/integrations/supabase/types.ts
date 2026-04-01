@@ -2953,6 +2953,24 @@ export type Database = {
         }
         Returns: Json
       }
+      safe_log_client_error: {
+        Args: {
+          _context?: Json
+          _error_message: string
+          _error_type: string
+          _severity?: string
+        }
+        Returns: undefined
+      }
+      safe_log_client_event: {
+        Args: {
+          _details?: Json
+          _duration_ms?: number
+          _event_type: string
+          _source: string
+        }
+        Returns: undefined
+      }
       search_schools_public: {
         Args: { _query: string }
         Returns: {

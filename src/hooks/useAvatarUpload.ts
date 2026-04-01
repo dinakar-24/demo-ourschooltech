@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+]);
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 async function compressImage(file: File, maxSize = 200, quality = 0.8): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -9,7 +15,6 @@ async function compressImage(file: File, maxSize = 200, quality = 0.8): Promise<
       const canvas = document.createElement('canvas');
       let { width, height } = img;
 
-      // Resize to fit within maxSize x maxSize
       if (width > height) {
         if (width > maxSize) { height = Math.round((height * maxSize) / width); width = maxSize; }
       } else {
@@ -21,7 +26,6 @@ async function compressImage(file: File, maxSize = 200, quality = 0.8): Promise<
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Try WebP first, fallback to JPEG
       canvas.toBlob(
         (blob) => {
           if (blob) resolve(blob);
@@ -45,23 +49,29 @@ export function useAvatarUpload() {
     try {
       setUploading(true);
 
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload an image file');
+      // Strict file type validation
+      if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+        toast.error('Only JPEG, PNG, WebP, and GIF images are allowed');
         return null;
       }
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > MAX_FILE_SIZE) {
         toast.error('Image must be less than 5MB');
+        return null;
+      }
+      if (file.size === 0) {
+        toast.error('File is empty');
         return null;
       }
 
       // Compress & resize before uploading
       const compressed = await compressImage(file, 200, 0.8);
       const ext = compressed.type === 'image/webp' ? 'webp' : 'jpg';
+      // Use crypto UUID for secure unique filename
       const fileName = `${folder}/${crypto.randomUUID()}.${ext}`;
 
       const { error } = await supabase.storage.from('avatars').upload(fileName, compressed, {
         cacheControl: '3600',
-        upsert: false,
+        upsert: false, // Prevent overwrites
         contentType: compressed.type,
       });
 

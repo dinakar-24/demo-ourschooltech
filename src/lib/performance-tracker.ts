@@ -1,7 +1,7 @@
 /**
  * Client-side performance tracker.
  * 
- * Tracks slow Supabase queries and logs them to the performance_logs table.
+ * Tracks slow Supabase queries and logs them via safe_log_client_event RPC.
  * Fire-and-forget — never blocks the main flow.
  */
 
@@ -15,17 +15,17 @@ async function flush() {
   if (pendingLogs.length === 0) return;
   const batch = pendingLogs.splice(0, 10);
 
-  try {
-    await supabase.from('performance_logs' as any).insert(
-      batch.map(log => ({
-        log_type: 'slow_query',
-        source: log.source,
-        duration_ms: log.duration_ms,
-        details: log.details,
-      }))
-    );
-  } catch {
-    // Silently discard — performance logging must never crash
+  for (const log of batch) {
+    try {
+      await supabase.rpc('safe_log_client_event', {
+        _event_type: 'slow_query',
+        _source: log.source.slice(0, 200),
+        _duration_ms: Math.min(log.duration_ms, 600000),
+        _details: log.details,
+      });
+    } catch {
+      // Silently discard — performance logging must never crash
+    }
   }
 }
 
@@ -49,35 +49,15 @@ export function trackPerformance(
   if (durationMs < SLOW_QUERY_THRESHOLD_MS) return;
 
   pendingLogs.push({
-    source,
+    source: source.slice(0, 200),
     duration_ms: Math.round(durationMs),
-    details: {
-      ...details,
-      route: typeof window !== 'undefined' ? window.location.pathname : undefined,
-    },
+    details: details ?? {},
   });
 
-  if (pendingLogs.length >= 10) {
-    flush();
-  } else {
-    scheduleFlush();
+  // Cap pending logs to prevent memory bloat
+  if (pendingLogs.length > 50) {
+    pendingLogs = pendingLogs.slice(-50);
   }
-}
 
-/**
- * Wrap a Supabase query with automatic performance tracking.
- */
-export async function trackedQuery<T>(
-  name: string,
-  queryFn: () => Promise<T>,
-): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await queryFn();
-    trackPerformance(name, performance.now() - start);
-    return result;
-  } catch (err) {
-    trackPerformance(name, performance.now() - start, { error: (err as Error).message });
-    throw err;
-  }
+  scheduleFlush();
 }
