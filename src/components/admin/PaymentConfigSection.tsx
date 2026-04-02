@@ -45,6 +45,28 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
     },
   });
 
+  // Realtime subscription for instant status updates
+  useEffect(() => {
+    if (!schoolId) return;
+    const channel = supabase
+      .channel(`payment-config-${schoolId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'school_payment_config',
+          filter: `school_id=eq.${schoolId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['school-payment-config', schoolId] });
+          queryClient.invalidateQueries({ queryKey: ['payment-config', schoolId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [schoolId, queryClient]);
+
   const [onlineEnabled, setOnlineEnabled] = useState(false);
   const [manualEnabled, setManualEnabled] = useState(true);
 
