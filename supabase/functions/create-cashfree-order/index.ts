@@ -16,11 +16,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+      console.error("Missing required environment variables");
+      return new Response(JSON.stringify({ error: "Server configuration error" }), { status: 500, headers: corsHeaders });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
@@ -34,10 +41,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: corsHeaders });
     }
 
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Verify invoice exists and amount is valid
     const { data: invoice, error: invErr } = await adminClient
@@ -76,8 +80,21 @@ Deno.serve(async (req) => {
       .eq("school_id", school_id)
       .single();
 
-    if (pcErr || !payConfig || !payConfig.is_connected || payConfig.connection_status !== 'connected' || !payConfig.cashfree_app_id || !payConfig.cashfree_secret_key) {
-      return new Response(JSON.stringify({ error: "Online payments not configured or not approved for this school" }), { status: 400, headers: corsHeaders });
+    if (pcErr || !payConfig) {
+      console.error("Payment config error:", pcErr?.message);
+      return new Response(JSON.stringify({ error: "Online payments not configured for this school" }), { status: 400, headers: corsHeaders });
+    }
+
+    if (!payConfig.is_connected || payConfig.connection_status !== "connected") {
+      return new Response(JSON.stringify({ error: "Online payments not approved for this school" }), { status: 400, headers: corsHeaders });
+    }
+
+    const appId = payConfig.cashfree_app_id;
+    const secretKey = payConfig.cashfree_secret_key;
+
+    if (!appId || !secretKey || appId === "••••••••" || secretKey === "••••••••") {
+      console.error("Invalid Cashfree credentials - masked or empty");
+      return new Response(JSON.stringify({ error: "Payment gateway credentials are invalid. Please contact your school admin." }), { status: 400, headers: corsHeaders });
     }
 
     // Get extra charge from system settings
@@ -87,18 +104,29 @@ Deno.serve(async (req) => {
       .eq("key", "payment_config")
       .single();
 
-    const extraChargePct = sysSettings?.value?.extra_charge_pct ?? 0;
+    const globalConfig = (sysSettings?.value as Record<string, unknown>) ?? {};
+    const extraChargePct = Number(globalConfig.extra_charge_pct ?? 0);
     const extraCharge = Math.round((amount * extraChargePct / 100) * 100) / 100;
     const totalCharged = amount + extraCharge;
 
+    // Determine Cashfree environment based on app ID prefix
+    // Test app IDs typically start with "TEST" prefix
+    const isTestMode = appId.toUpperCase().startsWith("TEST");
+    const cfBaseUrl = isTestMode
+      ? "https://sandbox.cashfree.com/pg/orders"
+      : "https://api.cashfree.com/pg/orders";
+
     // Create Cashfree order
     const orderId = `ORD_${school_id.substring(0, 8)}_${Date.now()}`;
-    const cfResponse = await fetch("https://api.cashfree.com/pg/orders", {
+    
+    console.log(`Creating Cashfree order: ${orderId}, mode: ${isTestMode ? "SANDBOX" : "PRODUCTION"}, amount: ${totalCharged}`);
+
+    const cfResponse = await fetch(cfBaseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-client-id": payConfig.cashfree_app_id,
-        "x-client-secret": payConfig.cashfree_secret_key,
+        "x-client-id": appId,
+        "x-client-secret": secretKey,
         "x-api-version": "2023-08-01",
       },
       body: JSON.stringify({
@@ -113,7 +141,7 @@ Deno.serve(async (req) => {
         },
         order_meta: {
           return_url: `${req.headers.get("origin") || ""}/parent/fees?payment_status={order_status}&order_id={order_id}`,
-          notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/cashfree-webhook`,
+          notify_url: `${supabaseUrl}/functions/v1/cashfree-webhook`,
         },
       }),
     });
@@ -121,7 +149,14 @@ Deno.serve(async (req) => {
     if (!cfResponse.ok) {
       const cfError = await cfResponse.text();
       console.error("Cashfree API error:", cfError);
-      return new Response(JSON.stringify({ error: "Failed to create payment order" }), { status: 500, headers: corsHeaders });
+      
+      // Provide a more helpful error message
+      let userMessage = "Failed to create payment order";
+      if (cfError.includes("authentication")) {
+        userMessage = "Payment gateway authentication failed. The school's Cashfree credentials may be invalid.";
+      }
+      
+      return new Response(JSON.stringify({ error: userMessage }), { status: 500, headers: corsHeaders });
     }
 
     const cfData = await cfResponse.json();
