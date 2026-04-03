@@ -196,36 +196,52 @@ export function PaymentSettings() {
             <CardDescription className="text-xs">Schools awaiting Cashfree connection approval.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {pendingSchools.map(school => (
-              <div key={school.id} className="flex items-center justify-between p-3 rounded-lg border border-warning/30 bg-warning/5">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{school.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {school.code} • Submitted {school.config?.submitted_at ? new Date(school.config.submitted_at).toLocaleDateString('en-IN') : 'recently'}
-                  </p>
+            {pendingSchools.map(school => {
+              const rawAppId = school.config?.cashfree_app_id || '';
+              const maskedAppId = rawAppId.length > 6
+                ? rawAppId.substring(0, 4) + '••••' + rawAppId.substring(rawAppId.length - 4)
+                : rawAppId ? '••••••••' : 'Not provided';
+              const isTest = rawAppId.toUpperCase().startsWith('TEST');
+
+              return (
+                <div key={school.id} className="p-3 rounded-lg border border-warning/30 bg-warning/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{school.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {school.code} • Submitted {school.config?.submitted_at ? new Date(school.config.submitted_at).toLocaleDateString('en-IN') : 'recently'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-7 text-xs"
+                        onClick={() => approvalMutation.mutate({ schoolId: school.id, action: 'approve' })}
+                        disabled={approvalMutation.isPending}
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-xs"
+                        onClick={() => setRejectDialog({ open: true, schoolId: school.id, schoolName: school.name })}
+                        disabled={approvalMutation.isPending}
+                      >
+                        <XCircle className="w-3 h-3 mr-1" /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">App ID:</span>
+                    <code className="bg-background px-1.5 py-0.5 rounded text-[11px] font-mono">{maskedAppId}</code>
+                    {isTest && <Badge variant="outline" className="text-[10px] h-4">Sandbox</Badge>}
+                    {!isTest && rawAppId && <Badge variant="secondary" className="text-[10px] h-4">Production</Badge>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="h-7 text-xs"
-                    onClick={() => approvalMutation.mutate({ schoolId: school.id, action: 'approve' })}
-                    disabled={approvalMutation.isPending}
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-7 text-xs"
-                    onClick={() => setRejectDialog({ open: true, schoolId: school.id, schoolName: school.name })}
-                    disabled={approvalMutation.isPending}
-                  >
-                    <XCircle className="w-3 h-3 mr-1" /> Reject
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -246,6 +262,11 @@ export function PaymentSettings() {
                 const cfg = statusConfig[status];
                 const StatusIcon = cfg.icon;
                 const isLocked = school.config?.locked_by_super_admin ?? false;
+                const rawAppId = school.config?.cashfree_app_id || '';
+                const maskedId = rawAppId.length > 6
+                  ? rawAppId.substring(0, 4) + '••••' + rawAppId.substring(rawAppId.length - 4)
+                  : '';
+                const isTest = rawAppId.toUpperCase().startsWith('TEST');
 
                 return (
                   <div key={school.id} className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-2">
@@ -254,7 +275,7 @@ export function PaymentSettings() {
                         <StatusIcon className={`w-4 h-4 shrink-0 ${cfg.color}`} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{school.name}</p>
-                          <p className="text-xs text-muted-foreground">{school.code}</p>
+                          <p className="text-xs text-muted-foreground">{school.code}{maskedId ? ` • ${maskedId}` : ''}{isTest ? ' (Sandbox)' : ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
