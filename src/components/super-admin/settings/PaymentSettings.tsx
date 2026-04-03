@@ -275,7 +275,7 @@ export function PaymentSettings() {
                         <StatusIcon className={`w-4 h-4 shrink-0 ${cfg.color}`} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{school.name}</p>
-                          <p className="text-xs text-muted-foreground">{school.code}</p>
+                          <p className="text-xs text-muted-foreground">{school.code}{maskedId ? ` • ${maskedId}` : ''}{isTest ? ' (Sandbox)' : ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
