@@ -58,9 +58,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Already processed
+    // Already processed or explicitly expired
     if (onlinePayment.status === "SUCCESS") {
-      return new Response(JSON.stringify({ status: "already_processed" }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ status: "already_processed" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (onlinePayment.status === "EXPIRED") {
+      console.log("Ignoring webhook for expired order:", cfOrderId);
+      return new Response(JSON.stringify({ status: "expired_ignored" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Verify signature with school's secret

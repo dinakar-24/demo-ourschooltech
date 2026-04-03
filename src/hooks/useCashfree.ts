@@ -46,8 +46,9 @@ export function useCashfree() {
     setLoading(true);
     try {
       // Create order via edge function
-      const { data: sessionData, error } = await supabase.functions.invoke<CreateCashfreeOrderResponse>('create-cashfree-order', {
-        body: {
+      const sessionData = await invokeEdgeFunction<CreateCashfreeOrderResponse>(
+        'create-cashfree-order',
+        {
           invoice_id: params.invoiceId,
           student_id: params.studentId,
           school_id: params.schoolId,
@@ -56,9 +57,10 @@ export function useCashfree() {
           customer_email: params.customerEmail,
           customer_phone: params.customerPhone,
         },
-      });
+        { skipDedupe: true }
+      );
 
-      if (error || !sessionData?.payment_session_id) {
+      if (!sessionData?.payment_session_id) {
         toast.error(sessionData?.error || 'Failed to create payment order');
         setLoading(false);
         return { success: false };
