@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     if (opErr || !onlinePayment) {
       console.error("Payment record not found for order:", cfOrderId);
-      return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Already processed or explicitly expired
