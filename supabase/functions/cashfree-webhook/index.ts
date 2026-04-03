@@ -123,10 +123,10 @@ Deno.serve(async (req) => {
         .eq("id", onlinePayment.id);
     }
 
-    return new Response(JSON.stringify({ status: "ok" }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ status: "ok" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
     console.error("cashfree-webhook error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
