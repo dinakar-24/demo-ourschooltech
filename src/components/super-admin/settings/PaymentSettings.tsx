@@ -262,6 +262,11 @@ export function PaymentSettings() {
                 const cfg = statusConfig[status];
                 const StatusIcon = cfg.icon;
                 const isLocked = school.config?.locked_by_super_admin ?? false;
+                const rawAppId = school.config?.cashfree_app_id || '';
+                const maskedId = rawAppId.length > 6
+                  ? rawAppId.substring(0, 4) + '••••' + rawAppId.substring(rawAppId.length - 4)
+                  : '';
+                const isTest = rawAppId.toUpperCase().startsWith('TEST');
 
                 return (
                   <div key={school.id} className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-2">
