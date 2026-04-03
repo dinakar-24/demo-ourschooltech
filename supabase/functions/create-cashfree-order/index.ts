@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
       order_amount: totalCharged,
       extra_charge: extraCharge,
       base_amount: amount,
+      cashfree_mode: isTestMode ? "sandbox" : "production",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
