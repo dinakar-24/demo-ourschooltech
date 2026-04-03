@@ -124,8 +124,7 @@ export function PaymentConfigSection({ schoolId, globalOnlineEnabled, globalManu
   };
 
   const handleToggle = (field: string, value: boolean) => {
-    // Only send the toggle field — never include credential fields to avoid overwriting with masked values
-    const { error } = saveMutation.mutate({ [field]: value });
+    saveMutation.mutate({ [field]: value });
     if (field === 'online_enabled') setOnlineEnabled(value);
     if (field === 'manual_enabled') setManualEnabled(value);
   };
