@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       const isValid = await verifySignature(rawBody, signature, payConfig.cashfree_secret_key);
       if (!isValid) {
         console.error("Invalid webhook signature for order:", cfOrderId);
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 403, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
