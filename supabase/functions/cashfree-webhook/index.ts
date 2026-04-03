@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
       if (rpcErr) {
         console.error("record_fee_payment error:", rpcErr);
-        return new Response(JSON.stringify({ error: "Failed to record payment" }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Failed to record payment" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Update online_payments
