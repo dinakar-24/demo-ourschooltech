@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const paymentStatus = payload?.data?.payment?.payment_status;
 
     if (!cfOrderId) {
-      return new Response(JSON.stringify({ error: "Missing order_id" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing order_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Get the payment record
