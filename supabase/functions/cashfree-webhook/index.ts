@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const paymentStatus = payload?.data?.payment?.payment_status;
 
     if (!cfOrderId) {
-      return new Response(JSON.stringify({ error: "Missing order_id" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Missing order_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Get the payment record
@@ -55,12 +55,17 @@ Deno.serve(async (req) => {
 
     if (opErr || !onlinePayment) {
       console.error("Payment record not found for order:", cfOrderId);
-      return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Already processed
+    // Already processed or explicitly expired
     if (onlinePayment.status === "SUCCESS") {
-      return new Response(JSON.stringify({ status: "already_processed" }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ status: "already_processed" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (onlinePayment.status === "EXPIRED") {
+      console.log("Ignoring webhook for expired order:", cfOrderId);
+      return new Response(JSON.stringify({ status: "expired_ignored" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Verify signature with school's secret
@@ -74,7 +79,7 @@ Deno.serve(async (req) => {
       const isValid = await verifySignature(rawBody, signature, payConfig.cashfree_secret_key);
       if (!isValid) {
         console.error("Invalid webhook signature for order:", cfOrderId);
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 403, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -93,7 +98,7 @@ Deno.serve(async (req) => {
 
       if (rpcErr) {
         console.error("record_fee_payment error:", rpcErr);
-        return new Response(JSON.stringify({ error: "Failed to record payment" }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Failed to record payment" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Update online_payments
@@ -118,10 +123,10 @@ Deno.serve(async (req) => {
         .eq("id", onlinePayment.id);
     }
 
-    return new Response(JSON.stringify({ status: "ok" }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ status: "ok" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
     console.error("cashfree-webhook error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

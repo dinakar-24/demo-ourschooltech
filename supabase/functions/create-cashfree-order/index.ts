@@ -61,16 +61,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Amount exceeds balance" }), { status: 400, headers: corsHeaders });
     }
 
-    // Check for duplicate pending orders
-    const { data: existingOrder } = await adminClient
+    const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+    // Expire stale pending orders so abandoned checkout sessions don't block retries
+    const { error: expireErr } = await adminClient
       .from("online_payments")
-      .select("id")
+      .update({
+        status: "EXPIRED",
+        transaction_ref: "Expired pending payment session",
+      })
       .eq("invoice_id", invoice_id)
       .eq("status", "PENDING")
+      .lt("created_at", staleBefore);
+
+    if (expireErr) {
+      console.error("Failed to expire stale pending orders:", expireErr);
+    }
+
+    // Only block if there is still an active recent pending order
+    const { data: existingOrder } = await adminClient
+      .from("online_payments")
+      .select("id, created_at")
+      .eq("invoice_id", invoice_id)
+      .eq("status", "PENDING")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existingOrder) {
-      return new Response(JSON.stringify({ error: "A pending payment already exists for this invoice" }), { status: 409, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "A payment attempt is already in progress for this invoice. Please complete it or wait a few minutes before retrying." }), { status: 409, headers: corsHeaders });
     }
 
     // Get school's Cashfree credentials
