@@ -91,7 +91,7 @@ export function useCashfree() {
       if (result?.error) {
         toast.error(result.error.message || 'Payment was not completed. Please try again.');
         setLoading(false);
-        return { success: false };
+        return { success: false, alreadyPaid: false };
       }
 
       if (!result?.error) {
