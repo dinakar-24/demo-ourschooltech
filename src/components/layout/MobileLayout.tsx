@@ -99,42 +99,28 @@ export function MobileLayout({ children, title, showBack, onBack }: MobileLayout
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-primary text-primary-foreground px-4 py-3 safe-area-top">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-primary text-primary-foreground safe-area-top">
+        <div className="flex items-center justify-between h-14 px-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {showBack && (
               <Button 
                 variant="ghost" 
-                size="icon-sm" 
+                size="icon" 
                 onClick={handleBack}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0 -ml-1 w-9 h-9"
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
             )}
-            {school?.logo ? (
-              <img src={school.logo} alt={school.name} className="w-8 h-8 object-contain" />
-            ) : (
-              <Avatar className="w-8 h-8 border border-primary-foreground/20">
-                <AvatarImage src={avatarUrl} alt={user?.name} />
-                <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
-                  {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
+            {school?.logo && (
+              <img src={school.logo} alt={school.name} className="w-7 h-7 object-contain shrink-0 rounded" />
             )}
-            <div>
-              <h1 className="text-base font-semibold">
-                {title || school?.name}
-              </h1>
-              {!title && (
-                <p className="text-xs text-primary-foreground/70 capitalize">
-                  {role.replace('_', ' ')}
-                </p>
-              )}
-            </div>
+            <h1 className="text-[15px] font-semibold truncate">
+              {title || school?.name || 'Dashboard'}
+            </h1>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="shrink-0 ml-2">
             <NotificationBell />
           </div>
         </div>
