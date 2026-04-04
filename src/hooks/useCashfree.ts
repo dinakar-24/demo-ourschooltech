@@ -66,9 +66,11 @@ export function useCashfree() {
       );
 
       if (!sessionData?.payment_session_id) {
-        toast.error(sessionData?.error || 'Failed to create payment order');
+        const errorMsg = sessionData?.error || 'Failed to create payment order';
+        const alreadyPaid = errorMsg.toLowerCase().includes('already paid');
+        toast.error(errorMsg);
         setLoading(false);
-        return { success: false };
+        return { success: false, alreadyPaid };
       }
 
       const Cashfree = await loadCashfreeSDK();
