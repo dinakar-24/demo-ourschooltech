@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MobileLayout } from '@/components/layout/MobileLayout';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,8 +38,23 @@ export default function ParentFees() {
   const [submitPrefillLabel, setSubmitPrefillLabel] = useState<string | undefined>();
   const [onlinePayOpen, setOnlinePayOpen] = useState(false);
   const [onlinePayInvoice, setOnlinePayInvoice] = useState<ParentInvoice | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const childName = childProfile?.full_name || user?.childName || 'Your Child';
+  // Handle return from Cashfree full-page redirect (mobile)
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment_status');
+    const orderId = searchParams.get('order_id');
+    if (paymentStatus && orderId) {
+      if (paymentStatus === 'PAID' || paymentStatus === 'SUCCESS') {
+        toast.success('Payment submitted. Status will update shortly after confirmation.');
+      } else if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED') {
+        toast.error('Payment was not completed. Please try again.');
+      }
+      // Clean URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
 
   // Invoice-based stats
   const invoiceStats = {
