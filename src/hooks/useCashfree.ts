@@ -42,10 +42,15 @@ export function useCashfree() {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    ) || window.innerWidth < 768;
+  };
+
   const initiatePayment = useCallback(async (params: InitiatePaymentParams) => {
     setLoading(true);
     try {
-      // Create order via edge function
       const sessionData = await invokeEdgeFunction<CreateCashfreeOrderResponse>(
         'create-cashfree-order',
         {
@@ -66,17 +71,21 @@ export function useCashfree() {
         return { success: false };
       }
 
-      // Load SDK and open checkout
       const Cashfree = await loadCashfreeSDK();
       const cashfree = Cashfree({
         mode: sessionData.cashfree_mode === 'sandbox' ? 'sandbox' : 'production',
       });
 
+      // On mobile, use full-page redirect for better UX; on desktop use modal
+      const redirectTarget = isMobile() ? '_self' : '_modal';
+
       const result = await cashfree.checkout({
         paymentSessionId: sessionData.payment_session_id,
-        redirectTarget: '_modal',
+        redirectTarget,
       });
 
+      // If redirectTarget is '_self', the page navigates away — this code won't run.
+      // It only runs for '_modal' (desktop).
       if (result?.error) {
         toast.error(result.error.message || 'Payment was not completed. Please try again.');
         setLoading(false);
@@ -85,7 +94,6 @@ export function useCashfree() {
 
       if (!result?.error) {
         toast.success('Payment submitted. Status will update shortly after confirmation.');
-        // Invalidate fee queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['parent-invoices'] });
         queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
         queryClient.invalidateQueries({ queryKey: ['parent-data'] });
