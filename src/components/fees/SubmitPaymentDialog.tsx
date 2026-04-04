@@ -60,8 +60,9 @@ export function SubmitPaymentDialog({ open, onOpenChange, invoiceId, studentId, 
 
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount <= 0 || numAmount > maxAmount) {
-      toast.error(`Amount must be between ₹1 and ₹${maxAmount.toLocaleString()}`);
+    const allowedMax = prefillAmount && prefillAmount > 0 ? prefillAmount : maxAmount;
+    if (!numAmount || numAmount <= 0 || numAmount > allowedMax) {
+      toast.error(`Amount must be between ₹1 and ₹${allowedMax.toLocaleString()}`);
       return;
     }
     if (!transactionId.trim()) {

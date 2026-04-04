@@ -71,7 +71,8 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice, prefillAmount
 
   const canSubmit = () => {
     if (!invoice || !amount || Number(amount) <= 0) return false;
-    if (Number(amount) > Number(invoice.balance || 0)) return false;
+    const allowedMax = Number(prefillAmount || invoice.balance || 0);
+    if (Number(amount) > allowedMax) return false;
     if (isDigital && !transactionId.trim()) return false;
     if (isCheque && (!chequeNumber.trim() || !bankName.trim() || !chequeDate)) return false;
     return true;
