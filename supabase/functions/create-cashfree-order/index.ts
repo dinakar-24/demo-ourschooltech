@@ -5,6 +5,165 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const CASHFREE_API_VERSION = "2023-08-01";
+const PAYMENT_IN_PROGRESS_MESSAGE = "A payment attempt is already in progress for this invoice. Please complete it or wait a few minutes before retrying.";
+const PAYMENT_CONFIRMATION_MESSAGE = "Your previous payment is still being confirmed. Please refresh in a moment before trying again.";
+
+type OnlinePaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "EXPIRED";
+
+type PendingOrderResolution =
+  | { canProceed: true }
+  | { canProceed: false; error: string };
+
+function isTestMode(appId: string) {
+  return appId.toUpperCase().startsWith("TEST");
+}
+
+function getCashfreeBaseUrl(appId: string) {
+  return isTestMode(appId)
+    ? "https://sandbox.cashfree.com/pg/orders"
+    : "https://api.cashfree.com/pg/orders";
+}
+
+function getCashfreeHeaders(appId: string, secretKey: string, includeJson = false) {
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    "x-client-id": appId,
+    "x-client-secret": secretKey,
+    "x-api-version": CASHFREE_API_VERSION,
+  };
+}
+
+function normalizeOrderStatus(status: string): OnlinePaymentStatus | "ACTIVE" | "UNKNOWN" {
+  switch (status.toUpperCase()) {
+    case "PAID":
+      return "SUCCESS";
+    case "FAILED":
+    case "CANCELLED":
+      return "FAILED";
+    case "EXPIRED":
+    case "TERMINATED":
+      return "EXPIRED";
+    case "ACTIVE":
+    case "PENDING":
+    case "INITIALIZED":
+    case "OPEN":
+    case "TERMINATION_REQUESTED":
+      return "ACTIVE";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+async function updateOnlinePaymentStatus(
+  adminClient: any,
+  paymentId: string,
+  status: OnlinePaymentStatus,
+  transactionRef: string,
+) {
+  const { error } = await adminClient
+    .from("online_payments")
+    .update({
+      status,
+      transaction_ref: transactionRef,
+    })
+    .eq("id", paymentId);
+
+  if (error) {
+    console.error("Failed to update online payment status:", error);
+  }
+}
+
+async function reconcileExistingPendingOrder({
+  adminClient,
+  existingOrder,
+  cashfreeBaseUrl,
+  appId,
+  secretKey,
+}: {
+  adminClient: any;
+  existingOrder: { id: string; cf_order_id: string | null };
+  cashfreeBaseUrl: string;
+  appId: string;
+  secretKey: string;
+}): Promise<PendingOrderResolution> {
+  if (!existingOrder.cf_order_id) {
+    await updateOnlinePaymentStatus(
+      adminClient,
+      existingOrder.id,
+      "EXPIRED",
+      "Released stale local payment without Cashfree order id",
+    );
+    return { canProceed: true };
+  }
+
+  const orderLookupResponse = await fetch(`${cashfreeBaseUrl}/${existingOrder.cf_order_id}`, {
+    method: "GET",
+    headers: getCashfreeHeaders(appId, secretKey),
+  });
+
+  if (orderLookupResponse.status === 404) {
+    await updateOnlinePaymentStatus(
+      adminClient,
+      existingOrder.id,
+      "EXPIRED",
+      "Released retry lock after Cashfree order was not found",
+    );
+    return { canProceed: true };
+  }
+
+  if (!orderLookupResponse.ok) {
+    const lookupError = await orderLookupResponse.text();
+    console.error("Failed to fetch existing Cashfree order:", existingOrder.cf_order_id, lookupError);
+    return { canProceed: false, error: PAYMENT_IN_PROGRESS_MESSAGE };
+  }
+
+  const orderData = await orderLookupResponse.json();
+  const rawOrderStatus = String(orderData?.order_status || "").toUpperCase();
+  const normalizedStatus = normalizeOrderStatus(rawOrderStatus);
+
+  if (normalizedStatus === "SUCCESS") {
+    await updateOnlinePaymentStatus(
+      adminClient,
+      existingOrder.id,
+      "PENDING",
+      `Cashfree order is ${rawOrderStatus}; awaiting webhook confirmation`,
+    );
+    return { canProceed: false, error: PAYMENT_CONFIRMATION_MESSAGE };
+  }
+
+  if (normalizedStatus === "FAILED" || normalizedStatus === "EXPIRED") {
+    await updateOnlinePaymentStatus(
+      adminClient,
+      existingOrder.id,
+      normalizedStatus,
+      `Released retry lock after Cashfree order became ${rawOrderStatus}`,
+    );
+    return { canProceed: true };
+  }
+
+  const terminateResponse = await fetch(`${cashfreeBaseUrl}/${existingOrder.cf_order_id}`, {
+    method: "PATCH",
+    headers: getCashfreeHeaders(appId, secretKey, true),
+    body: JSON.stringify({ order_status: "TERMINATED" }),
+  });
+
+  if (!terminateResponse.ok) {
+    const terminateError = await terminateResponse.text();
+    console.error("Failed to terminate existing Cashfree order:", existingOrder.cf_order_id, terminateError);
+    return { canProceed: false, error: PAYMENT_IN_PROGRESS_MESSAGE };
+  }
+
+  await updateOnlinePaymentStatus(
+    adminClient,
+    existingOrder.id,
+    "EXPIRED",
+    `Released previous Cashfree session (${rawOrderStatus || "UNKNOWN"}) before retry`,
+  );
+
+  return { canProceed: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -43,7 +202,6 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify invoice exists and amount is valid
     const { data: invoice, error: invErr } = await adminClient
       .from("fee_invoices")
       .select("id, balance, school_id, status")
@@ -61,38 +219,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Amount exceeds balance" }), { status: 400, headers: corsHeaders });
     }
 
-    const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-
-    // Expire stale pending orders so abandoned checkout sessions don't block retries
-    const { error: expireErr } = await adminClient
-      .from("online_payments")
-      .update({
-        status: "EXPIRED",
-        transaction_ref: "Expired pending payment session",
-      })
-      .eq("invoice_id", invoice_id)
-      .eq("status", "PENDING")
-      .lt("created_at", staleBefore);
-
-    if (expireErr) {
-      console.error("Failed to expire stale pending orders:", expireErr);
-    }
-
-    // Only block if there is still an active recent pending order
-    const { data: existingOrder } = await adminClient
-      .from("online_payments")
-      .select("id, created_at")
-      .eq("invoice_id", invoice_id)
-      .eq("status", "PENDING")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingOrder) {
-      return new Response(JSON.stringify({ error: "A payment attempt is already in progress for this invoice. Please complete it or wait a few minutes before retrying." }), { status: 409, headers: corsHeaders });
-    }
-
-    // Get school's Cashfree credentials
     const { data: payConfig, error: pcErr } = await adminClient
       .from("school_payment_config")
       .select("cashfree_app_id, cashfree_secret_key, is_connected, connection_status, locked_by_super_admin")
@@ -116,7 +242,46 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Payment gateway credentials are invalid. Please contact your school admin." }), { status: 400, headers: corsHeaders });
     }
 
-    // Get extra charge from system settings
+    const cashfreeBaseUrl = getCashfreeBaseUrl(appId);
+    const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+    const { error: expireErr } = await adminClient
+      .from("online_payments")
+      .update({
+        status: "EXPIRED",
+        transaction_ref: "Expired pending payment session",
+      })
+      .eq("invoice_id", invoice_id)
+      .eq("status", "PENDING")
+      .lt("created_at", staleBefore);
+
+    if (expireErr) {
+      console.error("Failed to expire stale pending orders:", expireErr);
+    }
+
+    const { data: existingOrder } = await adminClient
+      .from("online_payments")
+      .select("id, created_at, cf_order_id")
+      .eq("invoice_id", invoice_id)
+      .eq("status", "PENDING")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingOrder) {
+      const resolution = await reconcileExistingPendingOrder({
+        adminClient,
+        existingOrder,
+        cashfreeBaseUrl,
+        appId,
+        secretKey,
+      });
+
+      if (!resolution.canProceed) {
+        return new Response(JSON.stringify({ error: resolution.error }), { status: 409, headers: corsHeaders });
+      }
+    }
+
     const { data: sysSettings } = await adminClient
       .from("system_settings")
       .select("value")
@@ -128,26 +293,14 @@ Deno.serve(async (req) => {
     const extraCharge = Math.round((amount * extraChargePct / 100) * 100) / 100;
     const totalCharged = amount + extraCharge;
 
-    // Determine Cashfree environment based on app ID prefix
-    // Test app IDs typically start with "TEST" prefix
-    const isTestMode = appId.toUpperCase().startsWith("TEST");
-    const cfBaseUrl = isTestMode
-      ? "https://sandbox.cashfree.com/pg/orders"
-      : "https://api.cashfree.com/pg/orders";
-
-    // Create Cashfree order
+    const cashfreeMode = isTestMode(appId) ? "sandbox" : "production";
     const orderId = `ORD_${school_id.substring(0, 8)}_${Date.now()}`;
-    
-    console.log(`Creating Cashfree order: ${orderId}, mode: ${isTestMode ? "SANDBOX" : "PRODUCTION"}, amount: ${totalCharged}`);
 
-    const cfResponse = await fetch(cfBaseUrl, {
+    console.log(`Creating Cashfree order: ${orderId}, mode: ${cashfreeMode.toUpperCase()}, amount: ${totalCharged}`);
+
+    const cfResponse = await fetch(cashfreeBaseUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-client-id": appId,
-        "x-client-secret": secretKey,
-        "x-api-version": "2023-08-01",
-      },
+      headers: getCashfreeHeaders(appId, secretKey, true),
       body: JSON.stringify({
         order_id: orderId,
         order_amount: totalCharged,
@@ -168,19 +321,17 @@ Deno.serve(async (req) => {
     if (!cfResponse.ok) {
       const cfError = await cfResponse.text();
       console.error("Cashfree API error:", cfError);
-      
-      // Provide a more helpful error message
+
       let userMessage = "Failed to create payment order";
       if (cfError.includes("authentication")) {
         userMessage = "Payment gateway authentication failed. The school's Cashfree credentials may be invalid.";
       }
-      
+
       return new Response(JSON.stringify({ error: userMessage }), { status: 500, headers: corsHeaders });
     }
 
     const cfData = await cfResponse.json();
 
-    // Insert online_payments record
     await adminClient.from("online_payments").insert({
       school_id,
       student_id,
@@ -199,7 +350,7 @@ Deno.serve(async (req) => {
       order_amount: totalCharged,
       extra_charge: extraCharge,
       base_amount: amount,
-      cashfree_mode: isTestMode ? "sandbox" : "production",
+      cashfree_mode: cashfreeMode,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
