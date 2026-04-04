@@ -221,57 +221,82 @@ export function PaymentReceiptDialog({ open, onOpenChange, payment, invoice, cop
   };
 
   // ── Cumulative payment calculations ──────────────────────────────
-  const allPayments = (invoice.payments || []).sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const allPayments = [...(invoice.payments || [])].sort((a, b) => {
+    const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return timeDiff !== 0 ? timeDiff : a.id.localeCompare(b.id);
+  });
   const currentPayment = Number(payment.amount);
   const totalFees = Number(invoice.total_amount);
 
-  // Sum of all payments made BEFORE this one (by created_at timestamp)
-  const currentPaymentTime = new Date(payment.created_at).getTime();
-  const previouslyPaid = allPayments
-    .filter(p => new Date(p.created_at).getTime() < currentPaymentTime)
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-
+  const currentPaymentIndex = allPayments.findIndex((p) => p.id === payment.id);
+  const previousPayments = currentPaymentIndex >= 0 ? allPayments.slice(0, currentPaymentIndex) : [];
+  const previouslyPaid = previousPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const totalPaidTillDate = previouslyPaid + currentPayment;
   const remainingBalance = Math.max(0, totalFees - totalPaidTillDate);
 
-  // Component-wise allocation: track how much was paid against each component
-  const componentAllocations = (invoice.components || []).map(c => {
-    const compAmount = Number(c.amount);
-    const feeTypeLower = c.fee_type.toLowerCase();
+  const componentAllocations = (invoice.components || []).map((component) => ({
+    fee_type: component.fee_type,
+    amount: Number(component.amount),
+    prevPaid: 0,
+    currentPaid: 0,
+    totalPaid: 0,
+    balance: Number(component.amount),
+  }));
 
-    // Sum payments allocated to this component (via notes) up to current payment
-    let allocatedPrev = 0;
-    let allocatedCurrent = 0;
+  const relevantPayments = currentPaymentIndex >= 0 ? allPayments.slice(0, currentPaymentIndex + 1) : allPayments;
 
-    for (const p of allPayments) {
-      const notesLower = (p.notes || '').toLowerCase();
-      const matchesComponent = notesLower.includes(feeTypeLower);
-      const hasAnyComponentMatch = (invoice.components || []).some(comp =>
-        notesLower.includes(comp.fee_type.toLowerCase())
-      );
+  const findTargetComponentIndex = (notes: string | null | undefined) => {
+    if (!notes) return -1;
+    const normalizedNotes = notes.toLowerCase();
+    return componentAllocations.findIndex((component) => normalizedNotes.includes(component.fee_type.toLowerCase()));
+  };
 
-      if (hasAnyComponentMatch && matchesComponent) {
-        if (p.id === payment.id) {
-          allocatedCurrent = Number(p.amount);
-        } else if (new Date(p.created_at).getTime() < currentPaymentTime) {
-          allocatedPrev += Number(p.amount);
+  relevantPayments.forEach((paid) => {
+    let remainingAmount = Number(paid.amount);
+    if (remainingAmount <= 0 || componentAllocations.length === 0) return;
+
+    const isCurrentPayment = paid.id === payment.id;
+    const targetIndex = findTargetComponentIndex(paid.notes);
+
+    if (targetIndex >= 0) {
+      const target = componentAllocations[targetIndex];
+      const targetRemaining = Math.max(0, target.amount - target.totalPaid);
+      const targetAllocation = Math.min(remainingAmount, targetRemaining);
+
+      if (targetAllocation > 0) {
+        if (isCurrentPayment) {
+          target.currentPaid += targetAllocation;
+        } else {
+          target.prevPaid += targetAllocation;
         }
+        target.totalPaid += targetAllocation;
+        target.balance = Math.max(0, target.amount - target.totalPaid);
+        remainingAmount -= targetAllocation;
       }
     }
 
-    return {
-      fee_type: c.fee_type,
-      amount: compAmount,
-      prevPaid: allocatedPrev,
-      currentPaid: allocatedCurrent,
-      totalPaid: allocatedPrev + allocatedCurrent,
-      balance: Math.max(0, compAmount - allocatedPrev - allocatedCurrent),
-    };
+    for (const component of componentAllocations) {
+      if (remainingAmount <= 0) break;
+
+      const componentRemaining = Math.max(0, component.amount - component.totalPaid);
+      if (componentRemaining <= 0) continue;
+
+      const allocation = Math.min(remainingAmount, componentRemaining);
+      if (allocation <= 0) continue;
+
+      if (isCurrentPayment) {
+        component.currentPaid += allocation;
+      } else {
+        component.prevPaid += allocation;
+      }
+
+      component.totalPaid += allocation;
+      component.balance = Math.max(0, component.amount - component.totalPaid);
+      remainingAmount -= allocation;
+    }
   });
 
-  const hasComponentAllocation = componentAllocations.some(c => c.currentPaid > 0 || c.prevPaid > 0);
+  const hasComponentAllocation = componentAllocations.length > 0;
 
 
   const paymentDate = new Date(payment.payment_date);
