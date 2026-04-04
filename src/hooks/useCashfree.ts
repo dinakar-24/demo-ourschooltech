@@ -104,12 +104,12 @@ export function useCashfree() {
       }
 
       setLoading(false);
-      return { success: false };
+      return { success: false, alreadyPaid: false };
     } catch (err: any) {
       console.error('Cashfree payment error:', err);
       toast.error('Payment failed: ' + (err.message || 'Unknown error'));
       setLoading(false);
-      return { success: false };
+      return { success: false, alreadyPaid: false };
     }
   }, [queryClient]);
 
