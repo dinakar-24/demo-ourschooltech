@@ -44,6 +44,10 @@ export function OnlinePaymentDialog({
     if (result.success) {
       onOpenChange(false);
     }
+    // If error says "already paid", close dialog so user can see the receipt
+    if (!result.success && result.alreadyPaid) {
+      onOpenChange(false);
+    }
   };
 
   const content = (

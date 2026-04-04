@@ -66,9 +66,11 @@ export function useCashfree() {
       );
 
       if (!sessionData?.payment_session_id) {
-        toast.error(sessionData?.error || 'Failed to create payment order');
+        const errorMsg = sessionData?.error || 'Failed to create payment order';
+        const alreadyPaid = errorMsg.toLowerCase().includes('already paid');
+        toast.error(errorMsg);
         setLoading(false);
-        return { success: false };
+        return { success: false, alreadyPaid };
       }
 
       const Cashfree = await loadCashfreeSDK();
@@ -89,7 +91,7 @@ export function useCashfree() {
       if (result?.error) {
         toast.error(result.error.message || 'Payment was not completed. Please try again.');
         setLoading(false);
-        return { success: false };
+        return { success: false, alreadyPaid: false };
       }
 
       if (!result?.error) {
@@ -102,12 +104,12 @@ export function useCashfree() {
       }
 
       setLoading(false);
-      return { success: false };
+      return { success: false, alreadyPaid: false };
     } catch (err: any) {
       console.error('Cashfree payment error:', err);
       toast.error('Payment failed: ' + (err.message || 'Unknown error'));
       setLoading(false);
-      return { success: false };
+      return { success: false, alreadyPaid: false };
     }
   }, [queryClient]);
 

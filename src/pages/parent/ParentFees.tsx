@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 export default function ParentFees() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { childProfile, fees, isLoading } = useParentData();
   const { data: invoices = [], isLoading: invoicesLoading } = useParentInvoices(childProfile?.id);
   const { data: submissions = [] } = useParentPaymentSubmissions(childProfile?.id);
@@ -45,15 +47,20 @@ export default function ParentFees() {
     const paymentStatus = searchParams.get('payment_status');
     const orderId = searchParams.get('order_id');
     if (paymentStatus && orderId) {
+      // Invalidate queries to fetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['parent-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-data'] });
+
       if (paymentStatus === 'PAID' || paymentStatus === 'SUCCESS') {
-        toast.success('Payment submitted. Status will update shortly after confirmation.');
+        toast.success('Payment successful! Your receipt is available below.');
       } else if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED') {
         toast.error('Payment was not completed. Please try again.');
       }
       // Clean URL params
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, queryClient]);
 
 
   // Invoice-based stats
