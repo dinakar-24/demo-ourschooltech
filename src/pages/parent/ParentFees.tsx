@@ -536,6 +536,12 @@ export default function ParentFees() {
           customerName={childProfile?.full_name}
           customerEmail={user?.email}
           termName={`Due ${new Date(onlinePayInvoice.due_date).toLocaleDateString('en-IN')}`}
+          components={(onlinePayInvoice.components || []).map(c => ({
+            id: c.id,
+            fee_type: c.fee_type,
+            amount: Number(c.amount),
+          }))}
+          paidAmount={Number(onlinePayInvoice.paid_amount)}
         />
       )}
     </MobileLayout>
