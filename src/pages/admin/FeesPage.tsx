@@ -29,6 +29,8 @@ import { usePaymentSubmissions } from '@/hooks/usePaymentSubmissions';
 import { PaymentVerificationPanel } from '@/components/fees/PaymentVerificationPanel';
 import { useFees, FeeRecord } from '@/hooks/useFees';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
+import { useFeeRealtime } from '@/hooks/useFeeRealtime';
 import { useFeeReports } from '@/hooks/useFeeReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateInvoiceDialog } from '@/components/fees/CreateInvoiceDialog';
@@ -106,11 +108,18 @@ function groupByStudent(invoices: FeeInvoice[], legacyFees: FeeRecord[]): Studen
 export default function FeesPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const schoolId = useEffectiveSchoolId();
   const [searchInput, setSearchInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSection, setSelectedSection] = useState('all');
   const [showVerifications, setShowVerifications] = useState(false);
+
+  useFeeRealtime({
+    schoolId,
+    scope: 'admin-fees',
+    enabled: !!schoolId,
+  });
 
   const { data: classes } = useClasses();
   const { data: sections } = useSections(selectedClass !== 'all' ? selectedClass : undefined);

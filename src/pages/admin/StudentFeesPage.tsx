@@ -15,6 +15,7 @@ import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { FeeReceiptDialog } from '@/components/fees/FeeReceiptDialog';
 import { ApplyDiscountDialog } from '@/components/fees/ApplyDiscountDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useFeeRealtime } from '@/hooks/useFeeRealtime';
 import {
   ArrowLeft, FileText, CreditCard, Receipt, Percent, CheckCircle, AlertCircle, User, Phone, Users,
 } from 'lucide-react';
@@ -67,6 +68,12 @@ function PaymentsList({ payments, openReceipt }: {
 export default function StudentFeesPage() {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
+
+  useFeeRealtime({
+    studentId,
+    scope: 'student-fees',
+    enabled: !!studentId,
+  });
 
   const { data: invoices = [], isLoading } = useStudentFeeInvoices(studentId);
   const { data: legacyResult, isLoading: legacyLoading } = useFees({
