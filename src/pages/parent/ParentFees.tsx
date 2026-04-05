@@ -12,6 +12,7 @@ import { useParentData } from '@/hooks/useParentData';
 import { useParentInvoices, ParentInvoice } from '@/hooks/useParentInvoices';
 import { useParentPaymentSubmissions } from '@/hooks/usePaymentSubmissions';
 import { usePaymentConfig } from '@/hooks/usePaymentConfig';
+import { useFeeRealtime } from '@/hooks/useFeeRealtime';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
 import { OnlinePaymentDialog } from '@/components/fees/OnlinePaymentDialog';
@@ -30,6 +31,12 @@ export default function ParentFees() {
   const { data: invoices = [], isLoading: invoicesLoading } = useParentInvoices(childProfile?.id);
   const { data: submissions = [] } = useParentPaymentSubmissions(childProfile?.id);
   const { data: payConfig } = usePaymentConfig(user?.schoolId);
+
+  useFeeRealtime({
+    studentId: childProfile?.id,
+    scope: 'parent-fees',
+    enabled: !!childProfile?.id,
+  });
 
   const [expandedInvoice, setExpandedInvoice] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
