@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
 import { OnlinePaymentDialog } from '@/components/fees/OnlinePaymentDialog';
 import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
+import { computeComponentBalances } from '@/lib/fee-waterfall';
 import {
   CreditCard, CheckCircle, AlertCircle, Clock, IndianRupee, TrendingUp,
   Loader2, Receipt, Building2, Percent, ChevronDown, ChevronRight, Send, Wifi,
