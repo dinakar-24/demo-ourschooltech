@@ -8,7 +8,6 @@ const corsHeaders = {
 async function verifySignature(body: string, timestamp: string, signature: string, secretKey: string): Promise<boolean> {
   try {
     const encoder = new TextEncoder();
-    // Cashfree PG webhook: HMAC-SHA256(timestamp + rawBody) using client secret
     const message = timestamp + body;
     const key = await crypto.subtle.importKey(
       "raw",
@@ -45,7 +44,7 @@ Deno.serve(async (req) => {
     const cfPaymentId = payload?.data?.payment?.cf_payment_id;
     const paymentStatus = payload?.data?.payment?.payment_status;
 
-    console.log("Webhook received:", { cfOrderId, paymentStatus, hasSignature: !!signature, hasTimestamp: !!timestamp });
+    console.log("Webhook received:", { cfOrderId, paymentStatus, hasSignature: !!signature });
 
     if (!cfOrderId) {
       return new Response(JSON.stringify({ error: "Missing order_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -63,8 +62,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Already processed or explicitly expired
+    // Already processed or explicitly expired — skip
     if (onlinePayment.status === "SUCCESS") {
+      console.log("Already processed, skipping:", cfOrderId);
       return new Response(JSON.stringify({ status: "already_processed" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -82,11 +82,9 @@ Deno.serve(async (req) => {
 
     if (payConfig?.cashfree_secret_key && signature) {
       const isTestMode = payConfig.cashfree_app_id?.toUpperCase().startsWith("TEST");
-
       const isValid = await verifySignature(rawBody, timestamp, signature, payConfig.cashfree_secret_key);
 
       if (!isValid) {
-        // In sandbox/test mode, log warning but still process (sandbox signatures can be unreliable)
         if (isTestMode) {
           console.warn("Webhook signature mismatch in TEST mode — proceeding anyway for order:", cfOrderId);
         } else {
@@ -97,7 +95,28 @@ Deno.serve(async (req) => {
     }
 
     if (paymentStatus === "SUCCESS") {
-      // Record the fee payment using existing RPC
+      // *** ATOMIC LOCK: Only proceed if we can atomically claim this payment ***
+      // Update status from PENDING -> SUCCESS in one atomic operation.
+      // If another webhook already changed it, this returns 0 rows and we skip.
+      const { data: claimed, error: claimErr } = await adminClient
+        .from("online_payments")
+        .update({
+          status: "SUCCESS",
+          cf_payment_id: String(cfPaymentId || ""),
+          transaction_ref: payload?.data?.payment?.payment_group || "",
+          verified_at: new Date().toISOString(),
+        })
+        .eq("id", onlinePayment.id)
+        .eq("status", "PENDING")  // Only if still PENDING — prevents double processing
+        .select("id")
+        .maybeSingle();
+
+      if (claimErr || !claimed) {
+        console.log("Payment already claimed by another webhook, skipping:", cfOrderId);
+        return new Response(JSON.stringify({ status: "already_processed" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Now safe to record the fee payment — we have the exclusive lock
       const { error: rpcErr } = await adminClient.rpc("record_fee_payment", {
         _school_id: onlinePayment.school_id,
         _invoice_id: onlinePayment.invoice_id,
@@ -111,21 +130,15 @@ Deno.serve(async (req) => {
 
       if (rpcErr) {
         console.error("record_fee_payment error:", rpcErr);
+        // Revert the status so webhook can retry
+        await adminClient
+          .from("online_payments")
+          .update({ status: "PENDING", verified_at: null })
+          .eq("id", onlinePayment.id);
         return new Response(JSON.stringify({ error: "Failed to record payment" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Update online_payments
-      await adminClient
-        .from("online_payments")
-        .update({
-          status: "SUCCESS",
-          cf_payment_id: String(cfPaymentId || ""),
-          transaction_ref: payload?.data?.payment?.payment_group || "",
-          verified_at: new Date().toISOString(),
-        })
-        .eq("id", onlinePayment.id);
-
-      console.log("Payment SUCCESS recorded for order:", cfOrderId);
+      console.log("Payment SUCCESS recorded for order:", cfOrderId, "amount:", onlinePayment.amount);
 
     } else if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED") {
       await adminClient
@@ -135,7 +148,8 @@ Deno.serve(async (req) => {
           cf_payment_id: String(cfPaymentId || ""),
           transaction_ref: payload?.data?.payment?.payment_message || "Payment failed",
         })
-        .eq("id", onlinePayment.id);
+        .eq("id", onlinePayment.id)
+        .eq("status", "PENDING");  // Only if still PENDING
 
       console.log("Payment FAILED recorded for order:", cfOrderId);
     }
