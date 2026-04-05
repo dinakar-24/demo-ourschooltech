@@ -329,7 +329,7 @@ export default function ParentFees() {
                             </div>
                           ))}
 
-                          {/* Components */}
+                          {/* Fee Breakdown - Clean Cards */}
                           {(inv.components || []).length > 0 && (() => {
                             const balances = computeComponentBalances(
                               (inv.components || []).map(c => ({ id: c.id, fee_type: c.fee_type, amount: Number(c.amount) })),
@@ -338,40 +338,18 @@ export default function ParentFees() {
                             return (
                               <div>
                                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fee Breakdown</p>
-                                <div className="space-y-1.5">
+                                <div className="rounded-lg border border-border/40 overflow-hidden divide-y divide-border/40">
                                   {balances.map(c => (
-                                    <div key={c.id} className={`flex items-center justify-between p-3 rounded-lg ${c.remaining <= 0 ? 'bg-success/5 opacity-70' : 'bg-muted/50'}`}>
-                                      <div className="flex items-center gap-2.5">
-                                        <div className={`w-1 h-6 rounded-full ${c.remaining <= 0 ? 'bg-success' : 'bg-primary/40'}`} />
-                                        <div>
-                                          <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
-                                          {c.paid > 0 && c.remaining > 0 && (
-                                            <p className="text-[11px] text-muted-foreground">₹{c.paid.toLocaleString('en-IN')} paid</p>
-                                          )}
-                                        </div>
-                                      </div>
+                                    <div key={c.id} className="flex items-center justify-between px-3 py-2.5">
                                       <div className="flex items-center gap-2">
-                                        {c.remaining <= 0 ? (
-                                          <span className="text-xs text-success font-medium">Paid ✓</span>
-                                        ) : (
-                                          <>
-                                            <span className="text-sm font-bold text-foreground">₹{c.remaining.toLocaleString('en-IN')}</span>
-                                            {canSubmit && (
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs px-2.5 rounded-md"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openSubmitPayment(inv, c.remaining, c.fee_type);
-                                                }}
-                                              >
-                                                Pay
-                                              </Button>
-                                            )}
-                                          </>
-                                        )}
+                                        <div className={`w-1.5 h-1.5 rounded-full ${c.remaining <= 0 ? 'bg-success' : 'bg-warning'}`} />
+                                        <span className="text-sm text-foreground">{c.fee_type}</span>
                                       </div>
+                                      {c.remaining <= 0 ? (
+                                        <span className="text-xs text-success font-medium">Paid ✓</span>
+                                      ) : (
+                                        <span className="text-sm font-semibold text-foreground">₹{c.remaining.toLocaleString('en-IN')}</span>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -545,6 +523,12 @@ export default function ParentFees() {
           termName={`Due ${new Date(submitInvoice.due_date).toLocaleDateString('en-IN')}`}
           prefillAmount={submitPrefillAmount}
           prefillLabel={submitPrefillLabel}
+          components={(submitInvoice.components || []).map(c => ({
+            id: c.id,
+            fee_type: c.fee_type,
+            amount: Number(c.amount),
+          }))}
+          paidAmount={Number(submitInvoice.paid_amount)}
         />
       )}
 
