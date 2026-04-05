@@ -323,37 +323,54 @@ export default function ParentFees() {
                           ))}
 
                           {/* Components */}
-                          {(inv.components || []).length > 0 && (
-                            <div>
-                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fee Breakdown</p>
-                              <div className="space-y-1.5">
-                                {(inv.components || []).map(c => (
-                                  <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-1 h-6 rounded-full bg-primary/40" />
-                                      <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
+                          {(inv.components || []).length > 0 && (() => {
+                            const balances = computeComponentBalances(
+                              (inv.components || []).map(c => ({ id: c.id, fee_type: c.fee_type, amount: Number(c.amount) })),
+                              Number(inv.paid_amount)
+                            );
+                            return (
+                              <div>
+                                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fee Breakdown</p>
+                                <div className="space-y-1.5">
+                                  {balances.map(c => (
+                                    <div key={c.id} className={`flex items-center justify-between p-3 rounded-lg ${c.remaining <= 0 ? 'bg-success/5 opacity-70' : 'bg-muted/50'}`}>
+                                      <div className="flex items-center gap-2.5">
+                                        <div className={`w-1 h-6 rounded-full ${c.remaining <= 0 ? 'bg-success' : 'bg-primary/40'}`} />
+                                        <div>
+                                          <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
+                                          {c.paid > 0 && c.remaining > 0 && (
+                                            <p className="text-[11px] text-muted-foreground">₹{c.paid.toLocaleString('en-IN')} paid</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {c.remaining <= 0 ? (
+                                          <span className="text-xs text-success font-medium">Paid ✓</span>
+                                        ) : (
+                                          <>
+                                            <span className="text-sm font-bold text-foreground">₹{c.remaining.toLocaleString('en-IN')}</span>
+                                            {canSubmit && (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-xs px-2.5 rounded-md"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openSubmitPayment(inv, c.remaining, c.fee_type);
+                                                }}
+                                              >
+                                                Pay
+                                              </Button>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-bold text-foreground">₹{Number(c.amount).toLocaleString('en-IN')}</span>
-                                      {canSubmit && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-xs px-2.5 rounded-md"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openSubmitPayment(inv, Number(c.amount), c.fee_type);
-                                          }}
-                                        >
-                                          Pay
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* Discounts */}
                           {(inv.discounts || []).length > 0 && (
