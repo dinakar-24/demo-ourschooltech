@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { useCashfree } from '@/hooks/useCashfree';
-import { Loader2, CreditCard, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Loader2, CreditCard, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { computeComponentBalances, type FeeComponentBalance } from '@/lib/fee-waterfall';
 
 interface FeeComponent {
   id: string;
@@ -20,7 +20,7 @@ interface Props {
   invoiceId: string;
   studentId: string;
   schoolId: string;
-  amount: number;
+  amount: number; // outstanding balance
   extraChargePct: number;
   customerName?: string;
   customerEmail?: string;
@@ -39,19 +39,30 @@ export function OnlinePaymentDialog({
   const { initiatePayment, loading } = useCashfree();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [useCustomAmount, setUseCustomAmount] = useState(false);
-  const [customAmount, setCustomAmount] = useState('');
 
-  // Reset selections when dialog opens
+  // Compute per-component remaining balances using waterfall
+  const componentBalances = useMemo(
+    () => computeComponentBalances(components, paidAmount),
+    [components, paidAmount]
+  );
+
+  // Components that still have a remaining balance
+  const unpaidComponents = useMemo(
+    () => componentBalances.filter(c => c.remaining > 0),
+    [componentBalances]
+  );
+
+  const paidComponents = useMemo(
+    () => componentBalances.filter(c => c.remaining <= 0),
+    [componentBalances]
+  );
+
+  // Reset selections when dialog opens — auto-select all unpaid
   useEffect(() => {
     if (open) {
-      if (components.length > 0) {
-        setSelectedIds(new Set(components.map(c => c.id)));
-      }
-      setUseCustomAmount(false);
-      setCustomAmount('');
+      setSelectedIds(new Set(unpaidComponents.map(c => c.id)));
     }
-  }, [open, components]);
+  }, [open, unpaidComponents]);
 
   const toggleComponent = (id: string) => {
     setSelectedIds(prev => {
@@ -60,22 +71,17 @@ export function OnlinePaymentDialog({
       else next.add(id);
       return next;
     });
-    setUseCustomAmount(false);
   };
 
   const selectedTotal = useMemo(() => {
-    if (useCustomAmount) {
-      const val = parseFloat(customAmount);
-      return isNaN(val) ? 0 : Math.min(val, amount);
-    }
-    if (components.length === 0) return amount;
-    return components
+    if (unpaidComponents.length === 0) return amount;
+    return unpaidComponents
       .filter(c => selectedIds.has(c.id))
-      .reduce((s, c) => s + Number(c.amount), 0);
-  }, [selectedIds, components, amount, useCustomAmount, customAmount]);
+      .reduce((s, c) => s + c.remaining, 0);
+  }, [selectedIds, unpaidComponents, amount]);
 
   // Cap to balance
-  const payableAmount = Math.min(selectedTotal, amount);
+  const payableAmount = Math.min(Math.round(selectedTotal * 100) / 100, amount);
   const extraCharge = Math.round((payableAmount * extraChargePct / 100) * 100) / 100;
   const totalPayable = payableAmount + extraCharge;
 
@@ -97,23 +103,21 @@ export function OnlinePaymentDialog({
     }
   };
 
+  const allUnpaidSelected = unpaidComponents.length > 0 && unpaidComponents.every(c => selectedIds.has(c.id));
+
   const content = (
     <div className="space-y-4">
-      {/* Student & Invoice Info */}
-      {(customerName || termName) && (
-        <div className="rounded-lg bg-muted/40 p-3 space-y-0.5">
-          {customerName && (
-            <p className="text-sm font-medium text-foreground">{customerName}</p>
-          )}
-          {termName && (
-            <p className="text-xs text-muted-foreground">{termName}</p>
-          )}
+      {/* Student Info */}
+      {customerName && (
+        <div className="rounded-lg bg-muted/40 p-3">
+          <p className="text-sm font-medium text-foreground">{customerName}</p>
+          {termName && <p className="text-xs text-muted-foreground mt-0.5">{termName}</p>}
         </div>
       )}
 
-      {/* Fee Components with Checkboxes */}
-      {components.length > 0 ? (
-        <div className="space-y-2">
+      {/* Fee Components */}
+      {unpaidComponents.length > 0 ? (
+        <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Select Fees to Pay
@@ -122,21 +126,21 @@ export function OnlinePaymentDialog({
               type="button"
               className="text-xs text-primary font-medium"
               onClick={() => {
-                if (selectedIds.size === components.length) {
+                if (allUnpaidSelected) {
                   setSelectedIds(new Set());
                 } else {
-                  setSelectedIds(new Set(components.map(c => c.id)));
+                  setSelectedIds(new Set(unpaidComponents.map(c => c.id)));
                 }
-                setUseCustomAmount(false);
               }}
             >
-              {selectedIds.size === components.length ? 'Deselect All' : 'Select All'}
+              {allUnpaidSelected ? 'Deselect All' : 'Select All'}
             </button>
           </div>
 
           <div className="space-y-1.5">
-            {components.map(c => {
+            {unpaidComponents.map(c => {
               const checked = selectedIds.has(c.id);
+              const isPartiallyPaid = c.paid > 0;
               return (
                 <label
                   key={c.id}
@@ -150,49 +154,37 @@ export function OnlinePaymentDialog({
                     checked={checked}
                     onCheckedChange={() => toggleComponent(c.id)}
                   />
-                  <span className="flex-1 text-sm font-medium text-foreground">{c.fee_type}</span>
-                  <span className="text-sm font-bold text-foreground">
-                    ₹{Number(c.amount).toLocaleString('en-IN')}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
+                    {isPartiallyPaid && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        ₹{c.paid.toLocaleString('en-IN')} paid of ₹{c.original_amount.toLocaleString('en-IN')}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                    ₹{c.remaining.toLocaleString('en-IN')}
                   </span>
                 </label>
               );
             })}
           </div>
 
-          {/* Custom amount option */}
-          <div className="pt-1">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={useCustomAmount}
-                onCheckedChange={(checked) => {
-                  setUseCustomAmount(!!checked);
-                  if (checked) {
-                    setCustomAmount(String(amount));
-                  }
-                }}
-              />
-              <span className="text-sm text-muted-foreground">Enter custom amount</span>
-            </label>
-            {useCustomAmount && (
-              <div className="mt-2 ml-7">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
-                  <Input
-                    type="number"
-                    value={customAmount}
-                    onChange={(e) => setCustomAmount(e.target.value)}
-                    className="pl-7 h-10"
-                    placeholder="Enter amount"
-                    min={1}
-                    max={amount}
-                  />
+          {/* Show already-paid components */}
+          {paidComponents.length > 0 && (
+            <div className="pt-1 space-y-1">
+              {paidComponents.map(c => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 opacity-60"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                  <span className="flex-1 text-sm text-muted-foreground">{c.fee_type}</span>
+                  <span className="text-xs text-success font-medium">Paid ✓</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Max: ₹{amount.toLocaleString('en-IN')} (outstanding balance)
-                </p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         /* No components — simple single amount display */
@@ -224,7 +216,7 @@ export function OnlinePaymentDialog({
       {!isValid && (
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/5 text-destructive text-xs">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Select at least one fee or enter a valid amount</span>
+          <span>Select at least one fee to pay</span>
         </div>
       )}
 
