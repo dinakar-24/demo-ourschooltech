@@ -551,7 +551,7 @@ export default function ParentFees() {
             fee_type: c.fee_type,
             amount: Number(c.amount),
           }))}
-          customerPhone={childProfile?.parent_phone || undefined}
+          customerPhone={user?.phone || undefined}
           paidAmount={Number(onlinePayInvoice.total_amount) - Number(onlinePayInvoice.balance)}
         />
       )}
