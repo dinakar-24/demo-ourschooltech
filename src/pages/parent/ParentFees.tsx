@@ -331,9 +331,10 @@ export default function ParentFees() {
 
                           {/* Fee Breakdown - Clean Cards */}
                           {(inv.components || []).length > 0 && (() => {
+                            const effectivePaid = Number(inv.total_amount) - Number(inv.balance);
                             const balances = computeComponentBalances(
                               (inv.components || []).map(c => ({ id: c.id, fee_type: c.fee_type, amount: Number(c.amount) })),
-                              Number(inv.paid_amount)
+                              effectivePaid
                             );
                             return (
                               <div>
@@ -528,7 +529,7 @@ export default function ParentFees() {
             fee_type: c.fee_type,
             amount: Number(c.amount),
           }))}
-          paidAmount={Number(submitInvoice.paid_amount)}
+          paidAmount={Number(submitInvoice.total_amount) - Number(submitInvoice.balance)}
         />
       )}
 
@@ -550,7 +551,8 @@ export default function ParentFees() {
             fee_type: c.fee_type,
             amount: Number(c.amount),
           }))}
-          paidAmount={Number(onlinePayInvoice.paid_amount)}
+          customerPhone={childProfile?.parent_email ? undefined : undefined}
+          paidAmount={Number(onlinePayInvoice.total_amount) - Number(onlinePayInvoice.balance)}
         />
       )}
     </MobileLayout>
