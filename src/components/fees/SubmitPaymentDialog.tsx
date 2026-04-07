@@ -1,18 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSubmitPayment } from '@/hooks/usePaymentSubmissions';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Upload, Camera, IndianRupee, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, Upload, Camera, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { computeComponentBalances, type FeeComponentBalance } from '@/lib/fee-waterfall';
+import { FeeComponentSelector } from './FeeComponentSelector';
 
 interface FeeComponent {
   id: string;
@@ -36,83 +35,31 @@ interface Props {
 
 export function SubmitPaymentDialog({
   open, onOpenChange, invoiceId, studentId, schoolId,
-  maxAmount, termName, prefillAmount, prefillLabel,
-  components = [], paidAmount = 0,
+  maxAmount, termName, components = [], paidAmount = 0,
 }: Props) {
-  const [useCustomAmount, setUseCustomAmount] = useState(false);
-  const [customAmount, setCustomAmount] = useState('');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [payableAmount, setPayableAmount] = useState(0);
+  const [feeLabels, setFeeLabels] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('phonepe');
   const [transactionId, setTransactionId] = useState('');
   const [notes, setNotes] = useState('');
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const isMobile = useIsMobile();
-
   const submitPayment = useSubmitPayment();
 
-  const componentBalances = useMemo(
-    () => computeComponentBalances(components, paidAmount),
-    [components, paidAmount]
-  );
-
-  const unpaidComponents = useMemo(
-    () => componentBalances.filter(c => c.remaining > 0),
-    [componentBalances]
-  );
-
-  const paidComponents = useMemo(
-    () => componentBalances.filter(c => c.remaining <= 0),
-    [componentBalances]
-  );
-
-  // Reset when dialog opens
   useEffect(() => {
     if (open) {
-      setUseCustomAmount(false);
-      setCustomAmount('');
       setPaymentMethod('phonepe');
       setTransactionId('');
       setNotes('');
       setScreenshotFile(null);
-
-      if (prefillLabel && prefillAmount) {
-        // Pre-select specific component
-        const match = unpaidComponents.find(c => c.fee_type === prefillLabel);
-        if (match) {
-          setSelectedIds(new Set([match.id]));
-        } else {
-          setSelectedIds(new Set(unpaidComponents.map(c => c.id)));
-        }
-      } else {
-        setSelectedIds(new Set(unpaidComponents.map(c => c.id)));
-      }
     }
-  }, [open, unpaidComponents, prefillLabel, prefillAmount]);
+  }, [open]);
 
-  const toggleComponent = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    setUseCustomAmount(false);
-  };
-
-  const selectedTotal = useMemo(() => {
-    if (unpaidComponents.length === 0) return maxAmount;
-    return unpaidComponents
-      .filter(c => selectedIds.has(c.id))
-      .reduce((s, c) => s + c.remaining, 0);
-  }, [selectedIds, unpaidComponents, maxAmount]);
-
-  const payableAmount = useCustomAmount && customAmount
-    ? Math.min(parseFloat(customAmount) || 0, maxAmount)
-    : Math.min(Math.round(selectedTotal * 100) / 100, maxAmount);
+  const handleAmountChange = useCallback((amt: number) => setPayableAmount(amt), []);
+  const handleLabelsChange = useCallback((labels: string) => setFeeLabels(labels), []);
 
   const isValid = payableAmount > 0 && transactionId.trim().length > 0;
-  const allUnpaidSelected = unpaidComponents.length > 0 && unpaidComponents.every(c => selectedIds.has(c.id));
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -137,12 +84,7 @@ export function SubmitPaymentDialog({
       screenshotUrl = path;
     }
 
-    // Build descriptive notes
-    const selectedFees = unpaidComponents.filter(c => selectedIds.has(c.id));
-    const feeLabels = selectedFees.map(c => c.fee_type).join(', ');
-    const autoNote = useCustomAmount
-      ? `Custom amount payment`
-      : feeLabels ? `Payment for: ${feeLabels}` : '';
+    const autoNote = feeLabels ? `Payment for: ${feeLabels}` : '';
     const finalNotes = [autoNote, notes.trim()].filter(Boolean).join(' · ');
 
     submitPayment.mutate({
@@ -163,105 +105,14 @@ export function SubmitPaymentDialog({
 
   const formContent = (
     <div className="space-y-4">
-      {/* Fee Component Selection */}
-      {unpaidComponents.length > 0 ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Select Fees to Pay
-            </p>
-            <button
-              type="button"
-              className="text-xs text-primary font-medium"
-              onClick={() => {
-                setUseCustomAmount(false);
-                if (allUnpaidSelected) setSelectedIds(new Set());
-                else setSelectedIds(new Set(unpaidComponents.map(c => c.id)));
-              }}
-            >
-              {allUnpaidSelected ? 'Deselect All' : 'Select All'}
-            </button>
-          </div>
-
-          <div className="space-y-1.5">
-            {unpaidComponents.map(c => {
-              const checked = selectedIds.has(c.id);
-              return (
-                <label
-                  key={c.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    checked && !useCustomAmount
-                      ? 'border-primary/40 bg-primary/5'
-                      : 'border-border/60 bg-card hover:bg-muted/30'
-                  }`}
-                >
-                  <Checkbox
-                    checked={checked && !useCustomAmount}
-                    onCheckedChange={() => toggleComponent(c.id)}
-                    disabled={useCustomAmount}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-foreground">{c.fee_type}</span>
-                    {c.paid > 0 && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        ₹{c.paid.toLocaleString('en-IN')} paid of ₹{c.original_amount.toLocaleString('en-IN')}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-sm font-bold text-foreground whitespace-nowrap">
-                    ₹{c.remaining.toLocaleString('en-IN')}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-
-          {paidComponents.length > 0 && (
-            <div className="pt-1 space-y-1">
-              {paidComponents.map(c => (
-                <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 opacity-60">
-                  <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                  <span className="flex-1 text-sm text-muted-foreground">{c.fee_type}</span>
-                  <span className="text-xs text-success font-medium">Paid ✓</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Custom amount toggle */}
-          <label className="flex items-center gap-2 pt-1 cursor-pointer">
-            <Checkbox
-              checked={useCustomAmount}
-              onCheckedChange={(v) => {
-                setUseCustomAmount(!!v);
-                if (!v) setCustomAmount('');
-              }}
-            />
-            <span className="text-xs text-muted-foreground">Enter a custom amount instead</span>
-          </label>
-
-          {useCustomAmount && (
-            <div className="relative">
-              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                max={maxAmount}
-                min={1}
-                className="pl-9 text-lg font-semibold h-11"
-                placeholder={`Max ₹${maxAmount.toLocaleString('en-IN')}`}
-                autoFocus
-              />
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-center">
-          <p className="text-xs text-muted-foreground mb-1">Outstanding Balance</p>
-          <p className="text-2xl font-bold text-foreground">₹{maxAmount.toLocaleString('en-IN')}</p>
-        </div>
-      )}
+      {/* Fee selection */}
+      <FeeComponentSelector
+        components={components}
+        paidAmount={paidAmount}
+        maxAmount={maxAmount}
+        onAmountChange={handleAmountChange}
+        onSelectedLabelsChange={handleLabelsChange}
+      />
 
       {/* Amount summary */}
       <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5">
