@@ -279,15 +279,15 @@ function LoginBackground() {
 }
 
 /* ── Email Step (CSS animations) ── */
-function EmailStep({ email, setEmail, error, loading, onSubmit }: {
+const EmailStep = React.forwardRef<HTMLDivElement, {
   email: string;
   setEmail: (v: string) => void;
   error: string;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
-}) {
+}>(({ email, setEmail, error, loading, onSubmit }, ref) => {
   return (
-    <div className="flex flex-col login-fade-in">
+    <div ref={ref} className="flex flex-col login-fade-in">
       <div className="flex justify-center mb-6 login-scale-in">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-md flex items-center justify-center border border-white/[0.08] shadow-2xl">
           <GraduationCap className="w-10 h-10 text-white/60" />
@@ -326,7 +326,8 @@ function EmailStep({ email, setEmail, error, loading, onSubmit }: {
       </form>
     </div>
   );
-}
+});
+EmailStep.displayName = 'EmailStep';
 
 /* ── Password Step (CSS animations) ── */
 function PasswordStep({ email, password, setPassword, showPassword, setShowPassword, error, loading, schoolInfo, onSubmit, onChangeEmail, onForgotPassword }: {

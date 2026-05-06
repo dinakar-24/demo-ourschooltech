@@ -196,15 +196,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Only check for no-session case (onAuthStateChange handles active sessions)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        // Silently clear stale refresh tokens (common after long absence)
+        if (error || !session) {
+          if (error?.message?.toLowerCase().includes('refresh')) {
+            supabase.auth.signOut().catch(() => {});
+          }
+          setUser(null);
+          setSchool(null);
+          clearAuthCache();
+          setIsLoading(false);
+        }
+        // If session exists, onAuthStateChange INITIAL_SESSION event handles it
+      })
+      .catch(() => {
         setUser(null);
         setSchool(null);
         clearAuthCache();
         setIsLoading(false);
-      }
-      // If session exists, onAuthStateChange INITIAL_SESSION event handles it
-    });
+      });
 
     return () => {
       subscription.unsubscribe();
