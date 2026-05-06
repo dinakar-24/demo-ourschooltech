@@ -279,13 +279,13 @@ function LoginBackground() {
 }
 
 /* ── Email Step (CSS animations) ── */
-function EmailStep({ email, setEmail, error, loading, onSubmit }: {
+const EmailStep = React.forwardRef<HTMLDivElement, {
   email: string;
   setEmail: (v: string) => void;
   error: string;
   loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
-}) {
+}>(({ email, setEmail, error, loading, onSubmit }, ref) => {
   return (
     <div className="flex flex-col login-fade-in">
       <div className="flex justify-center mb-6 login-scale-in">
