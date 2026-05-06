@@ -353,7 +353,7 @@ export const ForgotPasswordDialog = React.forwardRef<HTMLDivElement, ForgotPassw
     </AnimatePresence>,
     document.body
   );
-}
+});
 
 /* ── Shared sub-components ── */
 
