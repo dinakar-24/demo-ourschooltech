@@ -240,11 +240,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
         // Cache for pre-React branding on next refresh
         try {
-          sessionStorage.setItem(`tenant_${subdomain}`, JSON.stringify({
+          const payload = JSON.stringify({
             title: tenantData.appDisplayName || tenantData.name,
             logo: tenantData.logo,
             color: tenantData.primaryColor,
-          }));
+          });
+          sessionStorage.setItem(`tenant_${subdomain}`, payload);
+          localStorage.setItem(`tenant_${subdomain}`, payload);
         } catch (e) { /* quota exceeded — ignore */ }
       } catch (err) {
         console.error('Tenant resolution error:', err);
