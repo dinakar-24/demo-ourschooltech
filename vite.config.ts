@@ -50,7 +50,18 @@ export default defineConfig(({ mode }) => {
               handler: "CacheFirst",
               options: {
                 cacheName: "supabase-storage",
-                expiration: { maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                expiration: { maxEntries: 300, maxAgeSeconds: 90 * 24 * 60 * 60 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Tenant logos & branded assets (any image, any host) — instant on return visits
+              urlPattern: ({ request }) => request.destination === "image",
+              handler: "CacheFirst",
+              options: {
+                cacheName: "branded-images",
+                expiration: { maxEntries: 200, maxAgeSeconds: 90 * 24 * 60 * 60 },
+                cacheableResponse: { statuses: [0, 200] },
               },
             },
             {
