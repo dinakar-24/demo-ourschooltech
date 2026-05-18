@@ -93,6 +93,19 @@
             if (fav) fav.href = t.logo;
             var apple = document.querySelector('link[rel="apple-touch-icon"]');
             if (apple) apple.href = t.logo;
+            var pl = document.createElement('link');
+            pl.rel = 'preload'; pl.as = 'image'; pl.href = t.logo;
+            pl.setAttribute('fetchpriority','high');
+            document.head.appendChild(pl);
+            var slot = document.getElementById('pre-react-logo');
+            if (slot && !slot.firstChild) {
+              var im = new Image();
+              im.src = t.logo; im.alt = '';
+              im.style.cssText = 'width:96px;height:96px;object-fit:contain;display:block';
+              im.setAttribute('fetchpriority','high');
+              im.decoding = 'sync';
+              slot.appendChild(im);
+            }
           }
           if (t.color) {
             var mc = document.querySelector('meta[name="theme-color"]');
@@ -102,10 +115,9 @@
           }
         }
 
-        var cached = sessionStorage.getItem('tenant_' + sub);
+        var cached = localStorage.getItem('tenant_' + sub) || sessionStorage.getItem('tenant_' + sub);
         if (cached) {
           try { applyBrand(JSON.parse(cached)); } catch(e) {}
-          return;
         }
 
         var url = 'https://oxqkmugovmqcuosimbzz.supabase.co/rest/v1/rpc/get_school_by_code';
@@ -120,13 +132,17 @@
           if (!d) return;
           var brand = { title: d.app_display_name || d.name, logo: d.logo, color: d.primary_color };
           applyBrand(brand);
-          sessionStorage.setItem('tenant_' + sub, JSON.stringify(brand));
+          var s = JSON.stringify(brand);
+          sessionStorage.setItem('tenant_' + sub, s);
+          try { localStorage.setItem('tenant_' + sub, s); } catch(e) {}
         })
         .catch(function(){});
       })();
     </script>
     <div id="root">
-      <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;background:#fff;z-index:200;">
+      <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#fff;z-index:200;">
+        <div id="pre-react-logo" style="min-height:0;display:flex;align-items:center;justify-content:center;"></div>
+        <div style="display:flex;gap:16px;">
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
           <circle cx="32" cy="32" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear infinite"/>
@@ -135,6 +151,7 @@
           <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
           <circle cx="32" cy="32" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear 0.2s infinite"/>
         </svg>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
