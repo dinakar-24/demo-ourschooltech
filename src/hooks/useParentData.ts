@@ -11,6 +11,8 @@ export interface ChildInfo {
   admission_number: string;
   parent_name: string | null;
   parent_email: string | null;
+  parent_phone: string | null;
+  alternate_phone: string | null;
   avatar_url: string | null;
   school_id?: string;
 }
