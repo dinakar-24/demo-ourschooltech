@@ -19,6 +19,17 @@ function isTestMode(appId: string) {
   return appId.toUpperCase().startsWith("TEST");
 }
 
+// Cashfree requires a valid Indian mobile (10 digits starting 6-9).
+// Strip +91, spaces, dashes, brackets; return null if not recoverable.
+function sanitizeIndianPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const digits = String(raw).replace(/\D/g, "");
+  // Drop a leading 91 country code if present and length is 12
+  const trimmed = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  if (trimmed.length === 10 && /^[6-9]/.test(trimmed)) return trimmed;
+  return null;
+}
+
 function getCashfreeBaseUrl(appId: string) {
   return isTestMode(appId)
     ? "https://sandbox.cashfree.com/pg/orders"
@@ -196,6 +207,8 @@ Deno.serve(async (req) => {
 
     const { invoice_id, student_id, school_id, amount, customer_name, customer_email, customer_phone } = await req.json();
 
+    const sanitizedPhone = sanitizeIndianPhone(customer_phone);
+
     if (!invoice_id || !student_id || !school_id || !amount) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: corsHeaders });
     }
@@ -309,7 +322,8 @@ Deno.serve(async (req) => {
           customer_id: userId,
           customer_name: customer_name || "Parent",
           customer_email: customer_email || "parent@school.com",
-          customer_phone: customer_phone || "9999999999",
+          // Cashfree validates as Indian mobile; fall back to a valid-format placeholder
+          customer_phone: sanitizedPhone || "9999999999",
         },
         order_meta: {
           return_url: `${req.headers.get("origin") || ""}/parent/fees?payment_status={order_status}&order_id={order_id}`,
