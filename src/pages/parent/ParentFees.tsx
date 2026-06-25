@@ -543,15 +543,15 @@ export default function ParentFees() {
           schoolId={user?.schoolId || ''}
           amount={Number(onlinePayInvoice.balance)}
           extraChargePct={payConfig?.extraChargePct ?? 0}
-          customerName={childProfile?.full_name}
-          customerEmail={user?.email}
+          customerName={childProfile?.parent_name || childProfile?.full_name}
+          customerEmail={childProfile?.parent_email || user?.email}
           termName={`Due ${new Date(onlinePayInvoice.due_date).toLocaleDateString('en-IN')}`}
           components={(onlinePayInvoice.components || []).map(c => ({
             id: c.id,
             fee_type: c.fee_type,
             amount: Number(c.amount),
           }))}
-          customerPhone={childProfile?.parent_email ? undefined : undefined}
+          customerPhone={childProfile?.parent_phone || childProfile?.alternate_phone || undefined}
           paidAmount={Number(onlinePayInvoice.total_amount) - Number(onlinePayInvoice.balance)}
         />
       )}
