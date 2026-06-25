@@ -16,6 +16,7 @@ import { useFeeRealtime } from '@/hooks/useFeeRealtime';
 import { PaymentReceiptDialog } from '@/components/fees/PaymentReceiptDialog';
 import { SubmitPaymentDialog } from '@/components/fees/SubmitPaymentDialog';
 import { OnlinePaymentDialog } from '@/components/fees/OnlinePaymentDialog';
+import { InvoicePaymentStatus } from '@/components/fees/InvoicePaymentStatus';
 import { FeeInvoice, FeePayment } from '@/hooks/useFeeInvoices';
 import { computeComponentBalances } from '@/lib/fee-waterfall';
 import {
@@ -270,6 +271,9 @@ export default function ParentFees() {
 
                       <CollapsibleContent>
                         <div className="px-4 pb-4 space-y-3 border-t border-border/40 pt-3">
+                          {/* Live online payment status */}
+                          <InvoicePaymentStatus invoiceId={inv.id} />
+
                           {/* Payment Buttons */}
                           {canSubmit && (
                             <div className="flex gap-2">
