@@ -44,7 +44,7 @@ export function NotificationsDropdown() {
     try {
       const { data, error } = await supabase
         .from('audit_logs')
-        .select('*')
+        .select('id, action, entity_type, entity_id, details, created_at, user_id')
         .order('created_at', { ascending: false })
         .limit(20);
 

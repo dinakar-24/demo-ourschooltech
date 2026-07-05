@@ -63,7 +63,7 @@ export default function AuditLogsPage() {
     try {
       const { data, error } = await supabase
         .from('audit_logs')
-        .select('*')
+        .select('id, user_id, action, entity_type, entity_id, details, ip_address, created_at')
         .order('created_at', { ascending: false })
         .limit(100);
 
