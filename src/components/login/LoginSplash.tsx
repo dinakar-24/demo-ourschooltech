@@ -17,9 +17,9 @@ const item = {
 };
 
 export function LoginSplash({ onComplete }: LoginSplashProps) {
-  // Auto-advance after 4 seconds
+  // Auto-advance quickly so login is responsive on low-end devices.
   useEffect(() => {
-    const timer = setTimeout(onComplete, 4000);
+    const timer = setTimeout(onComplete, 900);
     return () => clearTimeout(timer);
   }, [onComplete]);
 

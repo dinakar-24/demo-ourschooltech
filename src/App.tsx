@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type DehydratedState } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { get, set, del } from "idb-keyval";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -127,7 +127,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000,       // 5 minutes -- data stays fresh
       gcTime: 30 * 60 * 1000,          // 30 minutes -- unused cache kept
-      refetchOnMount: true,            // only refetch if stale
+      refetchOnMount: true,            // render cache immediately, then refresh stale data in the background
       refetchOnWindowFocus: false,     // no refetch on tab switch
       refetchOnReconnect: true,        // refetch stale data when back online
       networkMode: 'offlineFirst',     // use cache when offline, fetch when online
@@ -156,9 +156,33 @@ const queryClient = new QueryClient({
 });
 
 // Persist React Query cache to IndexedDB for instant loading on repeat visits
+const shouldPersistQuery = (query: any) => {
+  const key = query?.queryKey?.[0];
+  return ![
+    'fees',
+    'fee-invoices',
+    'student-fee-invoices',
+    'audit-logs',
+    'error-logs-health',
+    'login-attempts-health',
+    'recent-jobs',
+  ].includes(key);
+};
+
 const idbPersister = {
   persistClient: async (client: any) => {
-    await set('react-query-cache', client);
+    const dehydratedState = client?.clientState as DehydratedState | undefined;
+    const trimmedClient = dehydratedState
+      ? {
+          ...client,
+          clientState: {
+            ...dehydratedState,
+            queries: dehydratedState.queries.filter((query) => shouldPersistQuery(query)),
+          },
+        }
+      : client;
+
+    await set('react-query-cache', trimmedClient);
   },
   restoreClient: async () => {
     return await get('react-query-cache');

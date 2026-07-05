@@ -88,11 +88,11 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
       let query = supabase
         .from('fee_invoices')
         .select(`
-          *,
+          id, school_id, student_id, total_amount, paid_amount, balance, status, due_date, created_at,
           student:students!inner(id, full_name, class_name, section, admission_number, parent_name, parent_email, roll_number),
           components:fee_invoice_components(id, fee_type, amount),
           payments:fee_payments(id, amount, payment_method, transaction_id, cheque_number, cheque_date, bank_name, payment_date, received_by, receipt_number, notes, created_at, student_id, school_id)
-        `, { count: 'exact' })
+        `)
         .eq('school_id', schoolId)
         .order('due_date', { ascending: false });
 
@@ -119,9 +119,9 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
       const { from, to } = getSupabaseRange(page, pageSize);
       query = query.range(from, to);
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
       if (error) throw error;
-      return { data: (data || []) as unknown as FeeInvoice[], totalCount: count || 0 };
+      return { data: (data || []) as unknown as FeeInvoice[], totalCount: from + (data?.length ?? 0) + ((data?.length ?? 0) === pageSize ? 1 : 0) };
     },
     enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,

@@ -62,9 +62,9 @@ export function useFees(filters?: FeeFilters) {
       let query = supabase
         .from('fees')
         .select(`
-          *,
+          id, student_id, school_id, fee_type, amount, due_date, paid_date, status, payment_method, transaction_id, receipt_number, created_at, updated_at,
           student:students!inner(id, full_name, class_name, section, admission_number)
-        `, { count: 'exact' })
+        `)
         .eq('school_id', schoolId)
         .order('due_date', { ascending: false });
 
@@ -90,10 +90,10 @@ export function useFees(filters?: FeeFilters) {
       const { from, to } = getSupabaseRange(page, pageSize);
       query = query.range(from, to);
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
 
       if (error) throw error;
-      return { data: (data || []) as FeeRecord[], totalCount: count || 0 };
+      return { data: (data || []) as FeeRecord[], totalCount: from + (data?.length ?? 0) + ((data?.length ?? 0) === pageSize ? 1 : 0) };
     },
     enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,
