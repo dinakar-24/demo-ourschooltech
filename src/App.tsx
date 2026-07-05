@@ -127,7 +127,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000,       // 5 minutes -- data stays fresh
       gcTime: 30 * 60 * 1000,          // 30 minutes -- unused cache kept
-      refetchOnMount: false,           // show cache immediately; realtime/manual invalidation refreshes changed data
+      refetchOnMount: true,            // render cache immediately, then refresh stale data in the background
       refetchOnWindowFocus: false,     // no refetch on tab switch
       refetchOnReconnect: true,        // refetch stale data when back online
       networkMode: 'offlineFirst',     // use cache when offline, fetch when online
