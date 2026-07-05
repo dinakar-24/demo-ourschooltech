@@ -78,12 +78,12 @@ export function useCashfree() {
         mode: sessionData.cashfree_mode === 'sandbox' ? 'sandbox' : 'production',
       });
 
-      // On mobile, use full-page redirect for better UX; on desktop use modal
-      const redirectTarget = isMobile() ? '_self' : '_modal';
-
+      // Always use full-page redirect ('_self'). The Cashfree modal/iframe
+      // renders a fixed desktop-width card on mobile browsers/Custom Tabs,
+      // whereas the hosted checkout page is fully responsive.
       const result = await cashfree.checkout({
         paymentSessionId: sessionData.payment_session_id,
-        redirectTarget,
+        redirectTarget: '_self',
       });
 
       // If redirectTarget is '_self', the page navigates away — this code won't run.
