@@ -121,7 +121,7 @@ export function useFeeInvoices(filters?: InvoiceFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return { data: (data || []) as unknown as FeeInvoice[], totalCount: (page * pageSize) + ((data?.length ?? 0) === pageSize ? 1 : 0) };
+      return { data: (data || []) as unknown as FeeInvoice[], totalCount: from + (data?.length ?? 0) + ((data?.length ?? 0) === pageSize ? 1 : 0) };
     },
     enabled: !!schoolId,
     staleTime: 2 * 60 * 1000,
