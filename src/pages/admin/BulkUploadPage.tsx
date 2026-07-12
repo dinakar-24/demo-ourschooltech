@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -18,7 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, X, Loader2,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
