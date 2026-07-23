@@ -22,6 +22,8 @@ import { friendlyErrorMessage } from "@/lib/error-utils";
 import { logError } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
+const AiChatFabLazy = lazy(() => import("@/components/ai/AiChatFab").then(m => ({ default: m.AiChatFab })));
+
 // Eagerly loaded pages (small, needed immediately)
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -406,7 +408,7 @@ const App = () => (
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>
-                
+                <AiChatFabLazy />
               </ImpersonationProvider>
             </AuthProvider>
           </TenantProvider>
