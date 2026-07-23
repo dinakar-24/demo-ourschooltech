@@ -29,7 +29,7 @@ async function buildRoleContext(admin: ReturnType<typeof createClient>, userId: 
       const { data: children } = await admin
         .from('students')
         .select('id, full_name, admission_number, class_name, section')
-        .eq('parent_id', userId)
+        .eq('parent_user_id', userId)
         .limit(10);
       if (children?.length) {
         facts.push(`Children linked to this parent: ${children.map((c: any) => `${c.full_name} (${c.class_name || 'N/A'}${c.section ? '-' + c.section : ''}, admission ${c.admission_number})`).join('; ')}.`);
@@ -82,15 +82,15 @@ async function buildRoleContext(admin: ReturnType<typeof createClient>, userId: 
     } else if (role === 'teacher') {
       const { data: teacher } = await admin
         .from('teachers')
-        .select('full_name, employee_id, subjects, class_teacher_of')
+        .select('full_name, employee_id, subjects, classes')
         .eq('user_id', userId)
         .maybeSingle();
       if (teacher) {
-        facts.push(`Teacher: ${teacher.full_name} (ID ${teacher.employee_id}). Subjects: ${(teacher.subjects || []).join(', ') || 'N/A'}. Class teacher of: ${teacher.class_teacher_of || 'None'}.`);
+        facts.push(`Teacher: ${teacher.full_name} (ID ${teacher.employee_id}). Subjects: ${(teacher.subjects || []).join(', ') || 'N/A'}. Classes: ${(teacher.classes || []).join(', ') || 'N/A'}.`);
       }
     } else if (role === 'school_admin' && schoolId) {
-      const { count: studentCount } = await admin.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('is_active', true);
-      const { count: teacherCount } = await admin.from('teachers').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('is_active', true);
+      const { count: studentCount } = await admin.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+      const { count: teacherCount } = await admin.from('teachers').select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
       const { data: absentToday } = await admin.from('attendance').select('id').eq('school_id', schoolId).eq('date', today).eq('status', 'ABSENT');
       facts.push(`School stats: ${studentCount || 0} active students, ${teacherCount || 0} active teachers. Absent today: ${absentToday?.length || 0}.`);
 
