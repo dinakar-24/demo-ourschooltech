@@ -406,7 +406,7 @@ const App = () => (
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>
-                
+                <AiChatFabLazy />
               </ImpersonationProvider>
             </AuthProvider>
           </TenantProvider>
