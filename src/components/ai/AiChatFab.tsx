@@ -3,12 +3,16 @@ import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AiChatDrawer } from './AiChatDrawer';
 import { cn } from '@/lib/utils';
+import { useSchoolAiSettings } from '@/hooks/useSchoolAiSettings';
 
 export function AiChatFab() {
   const { isAuthenticated, user } = useAuth();
   const [open, setOpen] = useState(false);
+  const { enabled, allowedForRole } = useSchoolAiSettings();
 
   if (!isAuthenticated || !user) return null;
+  if (!enabled) return null;
+  if (!allowedForRole(user.role)) return null;
 
   return (
     <>
