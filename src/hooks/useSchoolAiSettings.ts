@@ -20,7 +20,7 @@ const DEFAULTS: SchoolAiSettings = {
 
 export function useSchoolAiSettings() {
   const { user, school } = useAuth();
-  const schoolId = school?.id ?? user?.school_id ?? null;
+  const schoolId = school?.id ?? (user as any)?.schoolId ?? null;
 
   const { data } = useQuery({
     queryKey: ['school-ai-settings', schoolId],
