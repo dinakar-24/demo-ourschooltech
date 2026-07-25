@@ -6,12 +6,14 @@ import { BrandingSettings } from '@/components/super-admin/settings/BrandingSett
 import { SecuritySettings } from '@/components/super-admin/settings/SecuritySettings';
 import { SubscriptionPricingSettings } from '@/components/super-admin/settings/SubscriptionPricingSettings';
 import { PaymentSettings } from '@/components/super-admin/settings/PaymentSettings';
-import { UserCog, IndianRupee, Bell, Palette, ShieldCheck, CreditCard } from 'lucide-react';
+import { AiSettings } from '@/components/super-admin/settings/AiSettings';
+import { UserCog, IndianRupee, Bell, Palette, ShieldCheck, CreditCard, Sparkles } from 'lucide-react';
 
 const TABS = [
   { value: 'accounts', label: 'Accounts', icon: UserCog },
   { value: 'pricing', label: 'Pricing', icon: IndianRupee },
   { value: 'payments', label: 'Payments', icon: CreditCard },
+  { value: 'ai', label: 'AI', icon: Sparkles },
   { value: 'notifications', label: 'Notifs', icon: Bell },
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'security', label: 'Security', icon: ShieldCheck },
@@ -50,6 +52,10 @@ export default function SystemSettingsPage() {
 
           <TabsContent value="payments">
             <PaymentSettings />
+          </TabsContent>
+
+          <TabsContent value="ai">
+            <AiSettings />
           </TabsContent>
 
           <TabsContent value="notifications">
