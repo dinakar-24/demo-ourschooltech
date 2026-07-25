@@ -408,7 +408,9 @@ const App = () => (
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>
-                <AiChatFabLazy />
+                <Suspense fallback={null}>
+                  <AiChatFabLazy />
+                </Suspense>
               </ImpersonationProvider>
             </AuthProvider>
           </TenantProvider>
