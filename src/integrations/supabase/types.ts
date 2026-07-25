@@ -1813,6 +1813,7 @@ export type Database = {
         Row: {
           accent_color: string | null
           address: string
+          ai_settings: Json
           app_display_name: string | null
           app_short_name: string | null
           background_color: string | null
@@ -1837,6 +1838,7 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           address: string
+          ai_settings?: Json
           app_display_name?: string | null
           app_short_name?: string | null
           background_color?: string | null
@@ -1861,6 +1863,7 @@ export type Database = {
         Update: {
           accent_color?: string | null
           address?: string
+          ai_settings?: Json
           app_display_name?: string | null
           app_short_name?: string | null
           background_color?: string | null
@@ -2992,6 +2995,7 @@ export type Database = {
       }
       get_performance_summary: { Args: never; Returns: Json }
       get_role_counts: { Args: never; Returns: Json }
+      get_school_ai_settings: { Args: { _school_id: string }; Returns: Json }
       get_school_by_code: { Args: { _code: string }; Returns: Json }
       get_school_logo_by_id: { Args: { _school_id: string }; Returns: Json }
       get_student_counts_by_class: {
