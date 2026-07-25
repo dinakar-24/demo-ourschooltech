@@ -72,7 +72,7 @@ export function AiSettings() {
         .select('id, name, code, ai_settings')
         .order('name');
       if (error) throw error;
-      return (data || []) as SchoolRow[];
+      return (data || []) as unknown as SchoolRow[];
     },
   });
 
