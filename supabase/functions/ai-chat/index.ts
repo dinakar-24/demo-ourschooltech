@@ -7,7 +7,25 @@ const PRO_MODEL = 'google/gemini-3.1-pro-preview';
 
 const REASONING_KEYWORDS = /\b(analy[sz]e|compare|explain why|reason|deep|strategy|forecast|plan|breakdown|optimi[sz]e|recommend|pros and cons)\b/i;
 
-function pickModel(userMessage: string): string {
+interface AiSchoolConfig {
+  enabled: boolean;
+  model: 'auto' | 'flash' | 'pro';
+  tone: 'friendly' | 'formal' | 'concise' | 'playful';
+  custom_instructions: string;
+  allowed_roles: string[];
+}
+
+const AI_DEFAULTS: AiSchoolConfig = {
+  enabled: true,
+  model: 'auto',
+  tone: 'friendly',
+  custom_instructions: '',
+  allowed_roles: ['parent', 'student', 'teacher', 'school_admin', 'super_admin'],
+};
+
+function pickModel(userMessage: string, override: AiSchoolConfig['model']): string {
+  if (override === 'flash') return FLASH_MODEL;
+  if (override === 'pro') return PRO_MODEL;
   if (userMessage.length > 500) return PRO_MODEL;
   if (REASONING_KEYWORDS.test(userMessage)) return PRO_MODEL;
   return FLASH_MODEL;
@@ -127,11 +145,22 @@ async function buildRoleContext(admin: ReturnType<typeof createClient>, userId: 
   return facts.join('\n');
 }
 
-function buildSystemPrompt(role: string, roleContext: string, userName: string, schoolName: string): string {
-  return `You are OurSchool AI, a friendly, concise assistant embedded inside the Our School Tech school management platform.
+function buildSystemPrompt(role: string, roleContext: string, userName: string, schoolName: string, cfg: AiSchoolConfig): string {
+  const toneLine: Record<AiSchoolConfig['tone'], string> = {
+    friendly: 'Warm, encouraging, use light emoji.',
+    formal: 'Professional, respectful, no emoji, no slang.',
+    concise: 'Extremely brief. Prefer bullet points. Skip pleasantries.',
+    playful: 'Fun, upbeat, feel free to use emoji and light humour.',
+  };
+  const custom = cfg.custom_instructions?.trim()
+    ? `\nSchool-specific instructions (MUST follow):\n${cfg.custom_instructions.trim()}\n`
+    : '';
+  return `You are OurSchool AI, an assistant embedded inside the Our School Tech school management platform.
 
 You are talking to ${userName || 'a user'} (role: ${role}) at ${schoolName || 'their school'}.
 
+Response tone: ${toneLine[cfg.tone] ?? toneLine.friendly}
+${custom}
 Guidelines:
 - Answer clearly in the user's language when they use one (English, Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Bengali).
 - Use markdown for lists, bold key numbers, and add small emoji where appropriate.
@@ -196,6 +225,29 @@ Deno.serve(async (req) => {
     const school: any = (authData as any)?.school;
     const schoolId: string | null = profile?.school_id || null;
 
+    // Load per-school AI settings (fall back to global defaults, then hard defaults)
+    let aiCfg: AiSchoolConfig = { ...AI_DEFAULTS };
+    const { data: defaultsRow } = await admin
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'ai_defaults')
+      .maybeSingle();
+    if (defaultsRow?.value) aiCfg = { ...aiCfg, ...(defaultsRow.value as Partial<AiSchoolConfig>) };
+    if (schoolId) {
+      const { data: schoolRow } = await admin
+        .from('schools')
+        .select('ai_settings')
+        .eq('id', schoolId)
+        .maybeSingle();
+      if (schoolRow?.ai_settings) aiCfg = { ...aiCfg, ...(schoolRow.ai_settings as Partial<AiSchoolConfig>) };
+    }
+    if (!aiCfg.enabled) {
+      return new Response(JSON.stringify({ error: 'OurSchool AI is disabled for your school.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!aiCfg.allowed_roles.includes(role)) {
+      return new Response(JSON.stringify({ error: 'OurSchool AI is not enabled for your role.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Get or create conversation
     let conversationId: string = incomingConvId;
     if (!conversationId) {
@@ -237,9 +289,9 @@ Deno.serve(async (req) => {
 
     // Build system prompt with live role context
     const roleContext = await buildRoleContext(admin, user.id, role, schoolId);
-    const systemPrompt = buildSystemPrompt(role, roleContext, profile?.full_name || '', school?.name || '');
+    const systemPrompt = buildSystemPrompt(role, roleContext, profile?.full_name || '', school?.name || '', aiCfg);
 
-    const model = pickModel(message);
+    const model = pickModel(message, aiCfg.model);
 
     const upstream = await fetch(LOVABLE_GATEWAY, {
       method: 'POST',
