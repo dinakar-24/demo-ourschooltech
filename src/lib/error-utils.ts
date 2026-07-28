@@ -1,0 +1,140 @@
+/**
+ * Centralized error handling utilities.
+ *
+ * – extractEdgeFunctionError()  → safely pulls a human-readable string from
+ *   supabase.functions.invoke() responses (handles ReadableStream, context, etc.)
+ * – friendlyErrorMessage()      → maps raw backend strings to user-friendly text
+ * – validateEmail / validatePassword / validateOTP  → client-side validation
+ */
+
+// ── Error mapping ──────────────────────────────────────────────────────────────
+
+const ERROR_MAP: Array<{ pattern: RegExp; message: string }> = [
+  { pattern: /invalid login credentials/i, message: 'Incorrect email or password. Please try again.' },
+  { pattern: /invalid credentials/i, message: 'Incorrect email or password. Please try again.' },
+  { pattern: /invalid or expired otp/i, message: 'The OTP you entered is incorrect or has expired. Please request a new one.' },
+  { pattern: /rate limit exceeded|too many attempts|too many requests/i, message: 'Too many attempts. Please wait a few minutes and try again.' },
+  { pattern: /email not confirmed/i, message: 'Please verify your email address before signing in.' },
+  { pattern: /user not found|no account found/i, message: 'No account found with this email address.' },
+  { pattern: /not registered as a super admin/i, message: 'This email is not authorized for Super Admin access.' },
+  { pattern: /email service not configured/i, message: 'Unable to send OTP. Please try again later or contact support.' },
+  { pattern: /already been registered|email_exists|already exists/i, message: 'A user with this email already exists.' },
+  { pattern: /TIMEOUT/i, message: 'Taking too long. Please check your connection and try again.' },
+  { pattern: /failed to fetch|networkerror|network error|fetch error|load failed/i, message: 'Unable to connect. Please check your internet connection.' },
+  { pattern: /password must be at least/i, message: 'Password must be at least 8 characters long.' },
+];
+
+const FALLBACK_MESSAGE = 'Something went wrong. Please try again or contact support.';
+
+/**
+ * Convert a raw backend / Supabase error string to a user-friendly message.
+ */
+export function friendlyErrorMessage(raw: unknown): string {
+  if (!raw) return FALLBACK_MESSAGE;
+
+  const str = typeof raw === 'string' ? raw : String(raw);
+
+  // Reject stringified objects that leaked through
+  if (str.startsWith('[object') || str === 'undefined' || str === 'null' || str.trim() === '') {
+    return FALLBACK_MESSAGE;
+  }
+
+  for (const { pattern, message } of ERROR_MAP) {
+    if (pattern.test(str)) return message;
+  }
+
+  // If the raw message looks reasonably human-readable (no stack traces, short), pass it through
+  if (str.length < 200 && !str.includes('\n') && !str.includes('at ')) {
+    return str;
+  }
+
+  return FALLBACK_MESSAGE;
+}
+
+// ── Edge function error extraction ─────────────────────────────────────────────
+
+/**
+ * Safely extract a user-friendly error string from a supabase.functions.invoke()
+ * response. Returns `null` when there is no error.
+ *
+ * Handles:
+ * - FunctionsHttpError with `.context` (Response body)
+ * - ReadableStream bodies that would otherwise show as [object ReadableStream]
+ * - Plain `.message` strings
+ * - Application-level `data.error` / `data.success === false`
+ */
+export async function extractEdgeFunctionError(
+  response: { data: any; error: any },
+): Promise<string | null> {
+  const { data, error } = response;
+
+  // No error at all
+  if (!error && data?.success !== false) return null;
+
+  // 1. Try to read context body (FunctionsHttpError)
+  if (error?.context) {
+    try {
+      const body =
+        typeof error.context.json === 'function'
+          ? await error.context.json()
+          : null;
+      if (body?.error) return friendlyErrorMessage(body.error);
+      if (body?.message) return friendlyErrorMessage(body.message);
+    } catch {
+      /* context isn't JSON — fall through */
+    }
+
+    // Try text() as fallback for non-JSON responses
+    try {
+      if (typeof error.context.text === 'function') {
+        const text = await error.context.text();
+        if (text && !text.startsWith('[object')) {
+          return friendlyErrorMessage(text);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 2. Plain string message (but skip [object …] leaks)
+  if (
+    error?.message &&
+    typeof error.message === 'string' &&
+    !error.message.includes('[object')
+  ) {
+    return friendlyErrorMessage(error.message);
+  }
+
+  // 3. Application-level error in data
+  if (data?.error) return friendlyErrorMessage(data.error);
+
+  return FALLBACK_MESSAGE;
+}
+
+// ── Client-side validation helpers ─────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Returns an error string or `null` if valid. */
+export function validateEmail(email: string): string | null {
+  const trimmed = email.trim();
+  if (!trimmed) return 'Please enter your email address.';
+  if (!EMAIL_RE.test(trimmed)) return 'Please enter a valid email address.';
+  return null;
+}
+
+/** Returns an error string or `null` if valid. */
+export function validatePassword(password: string): string | null {
+  if (!password) return 'Please enter your password.';
+  if (password.length < 6) return 'Password must be at least 6 characters.';
+  return null;
+}
+
+/** Returns an error string or `null` if valid. Expects a 6-digit code. */
+export function validateOTP(otp: string): string | null {
+  if (!otp.trim()) return 'Please enter the OTP.';
+  if (otp.length !== 6) return 'Please enter the complete 6-digit OTP.';
+  if (!/^\d{6}$/.test(otp)) return 'OTP must contain only digits.';
+  return null;
+}

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <link rel="preconnect" href="https://oxqkmugovmqcuosimbzz.supabase.co" />
+    <link rel="dns-prefetch" href="https://oxqkmugovmqcuosimbzz.supabase.co" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" /></noscript>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <title></title>
+    <meta name="description" content="School Management Portal">
+    <meta name="author" content="School Portal" />
+    <meta name="theme-color" content="#0F766E" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- manifest injected by VitePWA -->
+    <style>
+      @keyframes eyeOrbit{0%{transform:translate(-12.73px,-12.73px)}12.5%{transform:translate(0,-18px)}25%{transform:translate(12.73px,-12.73px)}37.5%{transform:translate(18px,0)}50%{transform:translate(12.73px,12.73px)}62.5%{transform:translate(0,18px)}75%{transform:translate(-12.73px,12.73px)}87.5%{transform:translate(-18px,0)}100%{transform:translate(-12.73px,-12.73px)}}
+    </style>
+
+    <!-- TODO: Update og:title to match your application name -->
+    
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7cfbb656-6bda-4f7d-9307-75cc3b537b8d/id-preview-c8fd332a--a8e1d9c1-9358-4731-a727-7fb5da417e7b.lovable.app-1772195139089.png">
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="" />
+    <meta name="twitter:image" content="">
+    <meta property="og:title" content="School Portal">
+  <meta name="twitter:title" content="School Portal">
+  <meta property="og:description" content="School Management Portal">
+  <meta name="twitter:description" content="School Management Portal">
+</head>
+
+  <body>
+    <script>
+      // Build-based cache bust + service worker cleanup
+      (function(){
+        var APP_VERSION = '__APP_BUILD_ID__';
+        var VERSION_KEY = 'app_build_id';
+        var SYNC_KEY = 'app_build_sync';
+        var stored = localStorage.getItem(VERSION_KEY);
+
+        if (stored && stored !== APP_VERSION) {
+          if (sessionStorage.getItem(SYNC_KEY) === APP_VERSION) return;
+          sessionStorage.setItem(SYNC_KEY, APP_VERSION);
+          localStorage.setItem(VERSION_KEY, APP_VERSION);
+
+          var clearCaches = ('caches' in window)
+            ? caches.keys().then(function(keys){
+                var deletions = [];
+                for (var i = 0; i < keys.length; i++) deletions.push(caches.delete(keys[i]));
+                return Promise.all(deletions);
+              })
+            : Promise.resolve();
+
+          var clearServiceWorkers = ('serviceWorker' in navigator)
+            ? navigator.serviceWorker.getRegistrations().then(function(regs){
+                var unregs = [];
+                for (var k = 0; k < regs.length; k++) unregs.push(regs[k].unregister());
+                return Promise.all(unregs);
+              })
+            : Promise.resolve();
+
+          Promise.all([clearCaches, clearServiceWorkers]).finally(function(){
+            location.reload();
+          });
+          return;
+        }
+
+        if (!stored) {
+          localStorage.setItem(VERSION_KEY, APP_VERSION);
+        }
+        sessionStorage.removeItem(SYNC_KEY);
+      })();
+
+      // Pre-React subdomain branding
+      (function(){
+        var host = location.hostname;
+        var base = 'ourschooltech.com';
+        if (host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return;
+        if (!host.endsWith('.' + base)) return;
+        var sub = host.replace('.' + base, '');
+        if (!sub || ['www','app','admin'].indexOf(sub) >= 0) return;
+
+        function applyBrand(t) {
+          if (t.title) document.title = t.title;
+          if (t.logo) {
+            var fav = document.querySelector('link[rel="icon"]');
+            if (fav) fav.href = t.logo;
+            var apple = document.querySelector('link[rel="apple-touch-icon"]');
+            if (apple) apple.href = t.logo;
+            var pl = document.createElement('link');
+            pl.rel = 'preload'; pl.as = 'image'; pl.href = t.logo;
+            pl.setAttribute('fetchpriority','high');
+            document.head.appendChild(pl);
+            var slot = document.getElementById('pre-react-logo');
+            if (slot && !slot.firstChild) {
+              var im = new Image();
+              im.src = t.logo; im.alt = '';
+              im.style.cssText = 'width:96px;height:96px;object-fit:contain;display:block';
+              im.setAttribute('fetchpriority','high');
+              im.decoding = 'sync';
+              slot.appendChild(im);
+            }
+          }
+          if (t.color) {
+            var mc = document.querySelector('meta[name="theme-color"]');
+            if (mc) mc.setAttribute('content', t.color);
+            var loader = document.getElementById('pre-react-loader');
+            if (loader) loader.style.background = t.color + '10';
+          }
+        }
+
+        var cached = localStorage.getItem('tenant_' + sub) || sessionStorage.getItem('tenant_' + sub);
+        if (cached) {
+          try { applyBrand(JSON.parse(cached)); } catch(e) {}
+        }
+
+        var url = 'https://oxqkmugovmqcuosimbzz.supabase.co/rest/v1/rpc/get_school_by_code';
+        var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94cWttdWdvdm1xY3Vvc2ltYnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMDY0MjUsImV4cCI6MjA4NTc4MjQyNX0.HXIEeDbbO4pgZYGqe7gJjSrVfUdgwHwaJJ2M9uDkVRo';
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': key, 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({ _code: sub })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d) return;
+          var brand = { title: d.app_display_name || d.name, logo: d.logo, color: d.primary_color };
+          applyBrand(brand);
+          var s = JSON.stringify(brand);
+          sessionStorage.setItem('tenant_' + sub, s);
+          try { localStorage.setItem('tenant_' + sub, s); } catch(e) {}
+        })
+        .catch(function(){});
+      })();
+    </script>
+    <div id="root">
+      <div id="pre-react-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#fff;z-index:200;">
+        <div id="pre-react-logo" style="min-height:0;display:flex;align-items:center;justify-content:center;"></div>
+        <div style="display:flex;gap:16px;">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
+          <circle cx="32" cy="32" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear infinite"/>
+        </svg>
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="29" fill="#fff" stroke="#5a5ce6" stroke-width="3"/>
+          <circle cx="32" cy="32" r="6" fill="#000" style="animation:eyeOrbit 1.4s linear 0.2s infinite"/>
+        </svg>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
