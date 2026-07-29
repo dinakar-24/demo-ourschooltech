@@ -1,7 +1,19 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import axios from 'axios';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Migrated from Supabase (`get_school_by_code` RPC) to the Express backend.
+//
+// Deliberately uses a bare axios call rather than the shared `api` instance
+// from '@/lib/api': this runs BEFORE login, and `api`'s response interceptor
+// treats a 401 as an expired session. The resolve endpoint is public
+// (routes/schools.js mounts no `authenticate` middleware), so there is no
+// token to attach and no refresh flow to trigger.
+// ─────────────────────────────────────────────────────────────────────────
 
 const BASE_DOMAIN = 'ourschooltech.com';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 
 export interface Tenant {
   schoolId: string;
@@ -23,6 +35,24 @@ interface TenantContextType {
   isSubdomain: boolean;
   isLoading: boolean;
   tenantError: string | null;
+}
+
+/** Raw payload from GET /api/schools/resolve/subdomain/:subdomain */
+interface RawSchool {
+  id: string;
+  name: string;
+  subdomain: string;
+  schoolCode: string;
+  logo: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
+  secondaryColor: string | null;
+  backgroundColor: string | null;
+  splashScreenImageUrl: string | null;
+  appDisplayName: string | null;
+  appShortName: string | null;
+  isActive: boolean;
+  isSuspended: boolean;
 }
 
 const TenantContext = createContext<TenantContextType>({
@@ -188,51 +218,27 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     const resolveTenant = async () => {
       try {
-        const { data, error } = await supabase.rpc('get_school_by_code', {
-          _code: subdomain,
-        });
-
-        if (error || !data) {
-          setTenantError(`not_found`);
-          setIsLoading(false);
-          return;
-        }
-
-        const school = data as unknown as {
-          id: string;
-          name: string;
-          code: string;
-          subdomain: string;
-          logo: string | null;
-          primary_color: string | null;
-          accent_color: string | null;
-          secondary_color: string | null;
-          background_color: string | null;
-          splash_screen_image_url: string | null;
-          app_display_name: string | null;
-          app_short_name: string | null;
-          is_active: boolean;
-        };
-
-        if (!school.is_active) {
-          setTenantError(`inactive`);
-          setIsLoading(false);
-          return;
-        }
+        // The endpoint rejects suspended/inactive schools with a 403 and a
+        // `code`, so the is_active check that used to live here is handled by
+        // the catch block below.
+        const { data } = await axios.get<{ school: RawSchool }>(
+          `${API_BASE_URL}/schools/resolve/subdomain/${encodeURIComponent(subdomain)}`,
+        );
+        const school = data.school;
 
         const tenantData: Tenant = {
           schoolId: school.id,
           name: school.name,
-          code: school.code,
-          subdomain: school.subdomain || school.code.toLowerCase(),
+          code: school.schoolCode,
+          subdomain: school.subdomain || school.schoolCode.toLowerCase(),
           logo: school.logo,
-          primaryColor: school.primary_color || '#0F766E',
-          accentColor: school.accent_color || '#E69500',
-          secondaryColor: school.secondary_color || '#1a1a2e',
-          backgroundColor: school.background_color || '#ffffff',
-          splashScreenImageUrl: school.splash_screen_image_url,
-          appDisplayName: school.app_display_name,
-          appShortName: school.app_short_name,
+          primaryColor: school.primaryColor || '#0F766E',
+          accentColor: school.accentColor || '#E69500',
+          secondaryColor: school.secondaryColor || '#1a1a2e',
+          backgroundColor: school.backgroundColor || '#ffffff',
+          splashScreenImageUrl: school.splashScreenImageUrl,
+          appDisplayName: school.appDisplayName,
+          appShortName: school.appShortName,
         };
 
         setTenant(tenantData);
@@ -249,8 +255,22 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(`tenant_${subdomain}`, payload);
         } catch (e) { /* quota exceeded — ignore */ }
       } catch (err) {
-        console.error('Tenant resolution error:', err);
-        setTenantError('Failed to resolve school. Please try again.');
+        // Map the endpoint's status/code onto the tenantError values
+        // TenantErrorPage already understands. 404 SCHOOL_NOT_FOUND →
+        // 'not_found'; 403 SCHOOL_SUSPENDED / SCHOOL_INACTIVE → 'inactive'
+        // (the old RPC path collapsed both into 'inactive' too). Anything
+        // else — network failure, 500 — keeps the generic retry message
+        // rather than telling the user their school doesn't exist.
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+
+        if (status === 404) {
+          setTenantError('not_found');
+        } else if (status === 403) {
+          setTenantError('inactive');
+        } else {
+          console.error('Tenant resolution error:', err);
+          setTenantError('Failed to resolve school. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }

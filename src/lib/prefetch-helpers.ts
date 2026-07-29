@@ -2,83 +2,54 @@
  * Sidebar hover prefetch helpers.
  * Call prefetchForPath(path, schoolId, queryClient) on mouseEnter
  * to warm React Query cache before navigation.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * MIGRATION NOTE — read before adding entries back.
+ *
+ * Each entry here writes directly into a query key that a *hook* also owns.
+ * If the prefetch produces a different shape than that hook produces, the
+ * hook serves the prefetched value and silently renders wrong or empty data
+ * for the duration of staleTime.
+ *
+ * So an entry may only exist here once its consuming hook is on Express, and
+ * it must reuse that hook's mapping rather than re-deriving one.
+ *
+ * Removed until their consumers migrate (they were querying Supabase, which
+ * now returns empty sets to unauthenticated requests and was caching
+ * `{ data: [], totalCount: 0 }` over the real result):
+ *   '/teachers'   → waiting on useTeachers.ts
+ *   '/attendance' → waiting on useAttendance.ts
+ *   '/fees'       → waiting on useFeeInvoices.ts
+ *   '/dashboard'  → had no consumer at all; queryKeys.adminDashboard is read
+ *                   by nothing, and there is no school-scoped dashboard
+ *                   endpoint yet (/api/superadmin/dashboard is platform-wide).
+ * ─────────────────────────────────────────────────────────────────────────
  */
 
 import { QueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
-import { format } from 'date-fns';
+import { mapStudent, type RawStudent } from '@/hooks/useStudents';
 
 const PREFETCH_STALE = 60_000; // 1 min -- don't re-prefetch if fresh
+const PREFETCH_LIMIT = 50;
 
 type PrefetchFn = (schoolId: string, qc: QueryClient) => void;
 
 const prefetchMap: Record<string, PrefetchFn> = {
   '/students': (schoolId, qc) => {
     qc.prefetchQuery({
+      // Must match useStudents' key for an undefined filter set, and its
+      // PaginatedStudents return shape exactly.
       queryKey: queryKeys.students(schoolId, undefined),
       queryFn: async () => {
-        const { data } = await supabase
-          .from('students')
-          .select('id, full_name, class_name, section, roll_number, admission_number, status, avatar_url')
-          .eq('school_id', schoolId)
-          .eq('status', 'active')
-          .order('full_name')
-          .limit(50);
-        return { data: data || [], totalCount: data?.length || 0 };
-      },
-      staleTime: PREFETCH_STALE,
-    });
-  },
-  '/teachers': (schoolId, qc) => {
-    qc.prefetchQuery({
-      queryKey: queryKeys.teachers(schoolId, undefined),
-      queryFn: async () => {
-        const { data } = await supabase
-          .from('teachers')
-          .select('id, full_name, email, phone, subjects, classes, employee_id, avatar_url')
-          .eq('school_id', schoolId)
-          .order('full_name')
-          .limit(50);
-        return { data: data || [], totalCount: data?.length || 0 };
-      },
-      staleTime: PREFETCH_STALE,
-    });
-  },
-  '/attendance': (schoolId, qc) => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    qc.prefetchQuery({
-      queryKey: queryKeys.attendanceSummary(schoolId, today),
-      queryFn: async () => {
-        const { data } = await supabase.rpc('get_attendance_summary' as any, {
-          _school_id: schoolId,
-          _date: today,
-        } as any);
-        return data;
-      },
-      staleTime: PREFETCH_STALE,
-    });
-  },
-  '/fees': (schoolId, qc) => {
-    qc.prefetchQuery({
-      queryKey: queryKeys.invoiceStats(schoolId),
-      queryFn: async () => {
-        const { data } = await supabase.rpc('get_invoice_stats' as any, {
-          _school_id: schoolId,
-        } as any);
-        return data;
-      },
-      staleTime: PREFETCH_STALE,
-    });
-  },
-  '/dashboard': (schoolId, qc) => {
-    qc.prefetchQuery({
-      queryKey: queryKeys.adminDashboard(schoolId),
-      queryFn: async () => {
-        const { data } = await supabase.rpc('get_admin_dashboard_stats' as any, {
-          _school_id: schoolId,
-        } as any);
-        return data;
+        const { data } = await api.get('/school/students', {
+          params: { page: 1, limit: PREFETCH_LIMIT },
+        });
+        return {
+          data: (data.students as RawStudent[]).map(mapStudent),
+          totalCount: data.pagination.total as number,
+        };
       },
       staleTime: PREFETCH_STALE,
     });

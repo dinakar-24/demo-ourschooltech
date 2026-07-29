@@ -2,6 +2,24 @@ import { useEffect, createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * ⚠️ NOT MIGRATED — BLOCKED on two separate gaps.
+ *
+ * 1. Platform theme — reads the `system_settings` table (key = 'theme').
+ *    There is no SystemSettings Prisma model and no endpoint. Nothing to
+ *    migrate to. (Also blocks hooks/useSystemSettings.ts.)
+ *
+ * 2. School theme — GET /api/auth/me already returns the user's school with
+ *    `primaryColor`, so half of this could move today. But `accentColor` was
+ *    only just added to the School model and is not yet exposed by /auth/me,
+ *    and migrating primary alone would apply a school's primary against the
+ *    platform's accent. Deferred so both move together.
+ *
+ * Note: TenantContext.applyTenantBranding() also writes --primary/--accent,
+ * from the (now Express-backed) subdomain resolve. On a subdomain both run and
+ * whichever resolves last wins. Worth reconciling when this file migrates.
+ */
+
 interface ThemeColors {
   primary_color: string;
   accent_color: string;

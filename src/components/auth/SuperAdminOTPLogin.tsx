@@ -3,10 +3,14 @@ import { Eye, EyeOff, ArrowRight, Loader2, Mail, KeyRound, ShieldCheck, Lock, Re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { invokeEdgeFunction } from '@/lib/api';
+import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { validateEmail, friendlyErrorMessage } from '@/lib/error-utils';
+
+/** Pull the backend's error message out of an axios failure. */
+const apiError = (err: any, fallback: string) =>
+  err?.response?.data?.error || err?.message || fallback;
 
 type OTPStep = 'credentials' | 'otp';
 
@@ -17,6 +21,7 @@ interface SuperAdminOTPLoginProps {
 }
 
 export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdminOTPLoginProps) {
+  const { loginWithSession } = useAuth();
   const [step, setStep] = useState<OTPStep>('credentials');
   const [email, setEmail] = useState(initialEmail || '');
   const [password, setPassword] = useState('');
@@ -57,17 +62,17 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setError('');
 
     try {
-      const result = await invokeEdgeFunction<{ needsPasswordSetup?: boolean }>(
-        'send-super-admin-otp',
-        { email: email.trim().toLowerCase(), password },
-      );
+      const { data } = await api.post('/auth/super-admin/send-otp', {
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       setSuccess('OTP sent to your email after credential verification');
-      setNeedsPasswordSetup(result?.needsPasswordSetup || false);
+      setNeedsPasswordSetup(data?.needsPasswordSetup || false);
       setResendCooldown(30);
       setStep('otp');
     } catch (err: any) {
-      setError(friendlyErrorMessage(err.message));
+      setError(friendlyErrorMessage(apiError(err, 'Could not send OTP')));
     } finally {
       setLoading(false);
     }
@@ -81,7 +86,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setSuccess('');
 
     try {
-      await invokeEdgeFunction('send-super-admin-otp', {
+      await api.post('/auth/super-admin/send-otp', {
         email: email.trim().toLowerCase(),
         password,
         resend: true,
@@ -91,7 +96,7 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
       setResendCooldown(30);
       setOtp('');
     } catch (err: any) {
-      setError(friendlyErrorMessage(err.message));
+      setError(friendlyErrorMessage(apiError(err, 'Could not resend OTP')));
     } finally {
       setLoading(false);
     }
@@ -105,25 +110,24 @@ export function SuperAdminOTPLogin({ onBack, onSuccess, initialEmail }: SuperAdm
     setError('');
 
     try {
-      await invokeEdgeFunction('verify-super-admin-otp', {
+      // verify-otp now issues the JWT pair directly, so there's no second
+      // sign-in call — the Supabase flow needed one because its verify step
+      // only returned { success }.
+      const { data } = await api.post('/auth/super-admin/verify-otp', {
         email: email.trim().toLowerCase(),
         otp,
         newPassword: needsPasswordSetup ? password : undefined,
       });
 
-      // Sign in with password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-
-      if (signInError) {
-        throw new Error(friendlyErrorMessage(signInError.message));
-      }
+      // Goes through AuthContext, not authStore directly — AuthContext also
+      // needs to adopt the user, otherwise route guards still see a logged-out
+      // session and bounce. LoginPage's existing isAuthenticated effect then
+      // handles navigation, which is why onSuccess can stay a no-op.
+      await loginWithSession(data);
 
       onSuccess();
     } catch (err: any) {
-      setError(friendlyErrorMessage(err.message));
+      setError(friendlyErrorMessage(apiError(err, 'Could not verify OTP')));
     } finally {
       setLoading(false);
     }

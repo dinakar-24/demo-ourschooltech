@@ -107,6 +107,17 @@ export default function LoginPage() {
     setLookupLoading(true);
     setError('');
 
+    // ⚠️ NOT MIGRATED — BLOCKED.
+    //
+    // Needs: GET /api/auth/lookup?email=  (does not exist)
+    //   returns { found, role, school_id, school_name, logo_url }
+    //   must be PUBLIC (runs pre-auth) and rate-limited like the OTP routes —
+    //   it is by design a user-enumeration surface, so it should return the
+    //   minimum the login flow needs and nothing more.
+    //
+    // Everything after this point already runs through Express: the password
+    // path calls AuthContext.login() (migrated) and the super-admin path uses
+    // SuperAdminOTPLogin (migrated). Only this lookup still needs Supabase.
     const doLookup = () => supabase.rpc('lookup_user_by_email', { _email: email.trim() });
 
     try {

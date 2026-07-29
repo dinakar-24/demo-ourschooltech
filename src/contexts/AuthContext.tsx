@@ -1,12 +1,22 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { api } from '@/lib/api';
+import { useAuthStore, type AuthUser } from '@/stores/authStore';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { SessionWarningBanner } from '@/components/layout/SessionWarningBanner';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
-import { friendlyErrorMessage } from '@/lib/error-utils';
 import { logError, updateLoggerContext } from '@/lib/logger';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Migrated from Supabase Auth to the Express/JWT backend.
+//
+// The exported `useAuth()` shape is UNCHANGED so every route guard, page and
+// layout keeps working with zero edits. What changed is only where the data
+// comes from: POST /auth/login + GET /auth/me instead of supabase.auth.
+//
+// Dropped in the migration (both had zero callers and relied on Supabase RPCs
+// with no Express equivalent): `signup()` and `useSchoolSearch()`.
+// ─────────────────────────────────────────────────────────────────────────
 
 export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'parent' | 'student';
 
@@ -42,14 +52,82 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => Promise<void>;
+  /**
+   * Adopt a session obtained outside the password flow — currently the Super
+   * Admin OTP login, whose verify step returns the same token payload as
+   * POST /auth/login.
+   *
+   * Callers must use this rather than authStore.setAuth() directly: setAuth
+   * only fills the token store, leaving AuthContext's `user` null, so every
+   * route guard would still treat the user as logged out.
+   */
+  loginWithSession: (payload: { accessToken: string; refreshToken: string; user: unknown }) => Promise<void>;
   logout: () => void;
   selectSchool: (school: School) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// --- sessionStorage cache helpers ---
+/**
+ * The backend returns the Prisma enum (`SUPER_ADMIN`); every route guard in
+ * App.tsx and `getRoleDashboard()` compare against lowercase (`super_admin`).
+ * Skipping this mapping makes login appear to succeed while every protected
+ * route silently bounces to a dashboard — do not remove.
+ */
+function toUserRole(role: string | undefined): UserRole {
+  return String(role ?? '').toLowerCase() as UserRole;
+}
+
+/** Raw `user` payload from POST /auth/login and GET /auth/me. */
+interface RawAuthUser {
+  id: string;
+  email: string;
+  role: string;
+  schoolId: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  school?: {
+    id?: string;
+    name: string;
+    subdomain?: string;
+    schoolCode?: string;
+    logo?: string | null;
+    primaryColor?: string;
+    address?: string | null;
+    city?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+}
+
+function mapSchool(raw: RawAuthUser): School | null {
+  if (!raw.school) return null;
+  return {
+    id: raw.school.id ?? raw.schoolId ?? '',
+    name: raw.school.name,
+    // Backend calls it schoolCode; the UI has always called it code.
+    code: raw.school.schoolCode ?? '',
+    logo: raw.school.logo || undefined,
+    address: raw.school.address ?? '',
+    city: raw.school.city ?? '',
+    phone: raw.school.phone || undefined,
+    email: raw.school.email || undefined,
+  };
+}
+
+function mapUser(raw: RawAuthUser, school: School | null): User {
+  return {
+    id: raw.id,
+    name: raw.name || raw.email,
+    email: raw.email,
+    role: toUserRole(raw.role),
+    avatar: raw.avatar || undefined,
+    schoolId: raw.schoolId ?? '',
+    schoolName: school?.name ?? '',
+  };
+}
+
+// --- sessionStorage cache helpers (unchanged) ---
 const AUTH_CACHE_KEY = 'ost_auth_cache';
 
 function cacheAuthData(user: User, school: School | null) {
@@ -83,144 +161,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const cached = getCachedAuth();
   const [user, setUser] = useState<User | null>(cached?.user ?? null);
   const [school, setSchool] = useState<School | null>(cached?.school ?? null);
-  const [isLoading, setIsLoading] = useState(!cached); // skip loading if cached
+  const [isLoading, setIsLoading] = useState(!cached);
   const { tenant, isSubdomain } = useTenant();
+
+  const clearSession = useCallback(() => {
+    useAuthStore.getState().clearAuth();
+    setUser(null);
+    setSchool(null);
+    clearAuthCache();
+    updateLoggerContext(undefined, undefined);
+  }, []);
 
   // Cross-tenant validation
   const validateTenant = useCallback(async (userData: User) => {
     if (isSubdomain && tenant) {
       if (userData.schoolId !== tenant.schoolId) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setSchool(null);
-        clearAuthCache();
+        clearSession();
         toast.error('Your account does not belong to this school. Please use the correct school portal.');
         return false;
       }
     }
     return true;
-  }, [isSubdomain, tenant]);
+  }, [isSubdomain, tenant, clearSession]);
 
-  // Fetch user profile, role, and school in a single optimized query
-  const fetchUserData = async (supabaseUser: SupabaseUser) => {
-    try {
-      const { data, error } = await supabase.rpc('get_user_auth_data', {
-        _user_id: supabaseUser.id,
-      });
+  const applyAuthUser = useCallback(async (raw: RawAuthUser) => {
+    const schoolData = mapSchool(raw);
+    const userData = mapUser(raw, schoolData);
 
-      if (error) {
-        console.error('Error fetching user data:', error);
-        return null;
-      }
+    const isValid = await validateTenant(userData);
+    if (!isValid) return null;
 
-      const result = data as unknown as { profile: any; role: string | null; school: any | null } | null;
-
-      if (!result?.profile) {
-        console.log('No profile found for user');
-        return null;
-      }
-
-      const { profile, role, school } = result;
-
-      const schoolData: School | null = school
-        ? {
-            id: school.id,
-            name: school.name,
-            code: school.code,
-            logo: school.logo || undefined,
-            address: school.address,
-            city: school.city,
-            phone: school.phone || undefined,
-            email: school.email || undefined,
-          }
-        : null;
-
-      const userData: User = {
-        id: supabaseUser.id,
-        name: profile.full_name,
-        email: profile.email,
-        role: (role as UserRole) || 'student',
-        avatar: profile.avatar_url || undefined,
-        schoolId: profile.school_id || '',
-        schoolName: schoolData?.name || '',
-        className: profile.class_name || undefined,
-        section: profile.section || undefined,
-        employeeId: profile.employee_id || undefined,
-        subjects: profile.subjects || undefined,
-      };
-
-      return { user: userData, school: schoolData };
-    } catch (error) {
-      console.error('Error in fetchUserData:', error);
-      return null;
-    }
-  };
-
-  // Deduplication guard to prevent triple RPC calls
-  const fetchInFlightRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const userId = session.user.id;
-          // Skip if a fetch for this user is already in progress
-          if (fetchInFlightRef.current === userId) return;
-          fetchInFlightRef.current = userId;
-
-          setTimeout(async () => {
-            try {
-              const data = await fetchUserData(session.user);
-              if (data) {
-                const isValid = await validateTenant(data.user);
-                if (isValid) {
-                  setUser(data.user);
-                  setSchool(data.school);
-                  cacheAuthData(data.user, data.school);
-                  updateLoggerContext(data.user.id, data.user.schoolId);
-                }
-              }
-            } finally {
-              fetchInFlightRef.current = null;
-              setIsLoading(false);
-            }
-          }, 0);
-        } else {
-          setUser(null);
-          setSchool(null);
-          clearAuthCache();
-          updateLoggerContext(undefined, undefined);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    // Only check for no-session case (onAuthStateChange handles active sessions)
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        // Silently clear stale refresh tokens (common after long absence)
-        if (error || !session) {
-          if (error?.message?.toLowerCase().includes('refresh')) {
-            supabase.auth.signOut().catch(() => {});
-          }
-          setUser(null);
-          setSchool(null);
-          clearAuthCache();
-          setIsLoading(false);
-        }
-        // If session exists, onAuthStateChange INITIAL_SESSION event handles it
-      })
-      .catch(() => {
-        setUser(null);
-        setSchool(null);
-        clearAuthCache();
-        setIsLoading(false);
-      });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    setUser(userData);
+    setSchool(schoolData);
+    cacheAuthData(userData, schoolData);
+    updateLoggerContext(userData.id, userData.schoolId);
+    return userData;
   }, [validateTenant]);
+
+  // Session restore. authStore rehydrates from IndexedDB asynchronously, so
+  // wait for `hydrated` before concluding there's no token — otherwise every
+  // refresh would look logged-out for a tick.
+  useEffect(() => {
+    let cancelled = false;
+
+    const restore = async () => {
+      if (!useAuthStore.getState().hydrated) {
+        await new Promise<void>((resolve) => {
+          const unsub = useAuthStore.subscribe((state) => {
+            if (state.hydrated) { unsub(); resolve(); }
+          });
+          // Guard against the store having hydrated between the check and the
+          // subscribe call.
+          if (useAuthStore.getState().hydrated) { unsub(); resolve(); }
+        });
+      }
+
+      if (cancelled) return;
+
+      if (!useAuthStore.getState().accessToken) {
+        clearSession();
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data } = await api.get('/auth/me');
+        if (!cancelled) await applyAuthUser(data.user as RawAuthUser);
+      } catch {
+        // 401 here means the token and its refresh are both dead; the axios
+        // interceptor has already attempted a refresh.
+        if (!cancelled) clearSession();
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    restore();
+    return () => { cancelled = true; };
+  }, [applyAuthUser, clearSession]);
 
   const selectSchool = (selectedSchool: School) => {
     setSchool(selectedSchool);
@@ -228,72 +246,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
 
-    if (error) {
+      useAuthStore.getState().setAuth({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user as AuthUser,
+      });
+
+      await applyAuthUser(data.user as RawAuthUser);
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Login failed. Please try again.';
+      logError('auth', `Login failed: ${message}`, { email }, 'warning');
+      throw new Error(message);
+    } finally {
       setIsLoading(false);
-      logError('auth', `Login failed: ${error.message}`, { email }, 'warning');
-      throw new Error(friendlyErrorMessage(error.message));
     }
   };
 
-  const signup = async (email: string, password: string, fullName: string, role: UserRole, schoolId: string) => {
-    setIsLoading(true);
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName,
-        },
-      },
+  const loginWithSession = useCallback(async (payload: {
+    accessToken: string;
+    refreshToken: string;
+    user: unknown;
+  }) => {
+    useAuthStore.getState().setAuth({
+      accessToken: payload.accessToken,
+      refreshToken: payload.refreshToken,
+      user: payload.user as AuthUser,
     });
-
-    if (error) {
-      setIsLoading(false);
-      throw new Error(friendlyErrorMessage(error.message));
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          school_id: schoolId,
-          full_name: fullName,
-        })
-        .eq('id', data.user.id);
-
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-      }
-
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ 
-          user_id: data.user.id, 
-          role: role 
-        });
-
-      if (roleError) {
-        console.error('Error inserting role:', roleError);
-      }
-    }
-
+    await applyAuthUser(payload.user as RawAuthUser);
     setIsLoading(false);
-  };
+  }, [applyAuthUser]);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSchool(null);
-    clearAuthCache();
-  }, []);
+    const refreshToken = useAuthStore.getState().refreshToken;
+    try {
+      if (refreshToken) await api.post('/auth/logout', { refreshToken });
+    } catch {
+      // Best effort — the local session is cleared either way.
+    }
+    clearSession();
+  }, [clearSession]);
 
   const handleSessionTimeout = useCallback(() => {
     toast.info('You have been logged out due to inactivity.');
@@ -309,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       login,
-      signup,
+      loginWithSession,
       logout,
       selectSchool,
     }}>
@@ -331,41 +325,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
-
-// Hook to search schools
-export function useSchoolSearch(query: string): { schools: School[]; isLoading: boolean } {
-  const [schools, setSchools] = useState<School[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setSchools([]);
-      return;
-    }
-
-    const searchSchools = async () => {
-      setIsLoading(true);
-      const { data, error } = await supabase.rpc('search_schools_public', {
-        _query: query.trim(),
-      });
-
-      if (!error && data) {
-        setSchools((data as any[]).map(s => ({
-          id: s.id,
-          name: s.name,
-          code: s.code,
-          logo: s.logo || undefined,
-          address: '',
-          city: s.city,
-        })));
-      }
-      setIsLoading(false);
-    };
-
-    const debounce = setTimeout(searchSchools, 150);
-    return () => clearTimeout(debounce);
-  }, [query]);
-
-  return { schools, isLoading };
 }

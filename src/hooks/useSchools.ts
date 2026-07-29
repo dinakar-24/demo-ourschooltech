@@ -1,8 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getSupabaseRange } from './usePagination';
-import { invokeEdgeFunction } from '@/lib/api';
+import { api } from '@/lib/api';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Migrated from Supabase to the Express backend.
+//
+// Why: the Supabase `schools` table is governed by the RLS policy
+// "Users can view their own school" (TO authenticated,
+// USING id = get_user_school_id(auth.uid())). Once login moved to Express
+// there is no Supabase session, so these queries ran as `anon` and RLS
+// returned an EMPTY SET rather than an error — the page showed 0 schools
+// while the data was intact. See migration 20260208003158.
+//
+// External shapes (`School`, `SchoolFormData`, `PaginatedSchools`) and the
+// query keys are unchanged, so SchoolsPage.tsx needs no edits.
+// ─────────────────────────────────────────────────────────────────────────
 
 export interface School {
   id: string;
@@ -46,6 +59,52 @@ export interface PaginatedSchools {
   totalCount: number;
 }
 
+/** Raw row from GET /api/superadmin/schools. */
+interface RawSchool {
+  id: string;
+  name: string;
+  subdomain: string;
+  schoolCode: string;
+  logo: string | null;
+  primaryColor: string;
+  address?: string | null;
+  city: string | null;
+  state: string | null;
+  phone: string | null;
+  email: string | null;
+  board: string | null;
+  isActive: boolean;
+  isSuspended: boolean;
+  subscriptionPlan: string | null;
+  subscriptionEnd: string | null;
+  createdAt: string;
+  _count?: { students: number; teachers: number; users: number };
+}
+
+function mapSchool(raw: RawSchool): School {
+  return {
+    id: raw.id,
+    name: raw.name,
+    code: raw.schoolCode,
+    subdomain: raw.subdomain,
+    // ⚠️ Gap: getSchools()'s `select` does not include `address`, so this is
+    // empty in list responses. Add it to the controller's select if the UI
+    // needs it — the column does exist on the model.
+    address: raw.address ?? '',
+    city: raw.city ?? '',
+    phone: raw.phone,
+    email: raw.email,
+    logo: raw.logo,
+    // A suspended school is not usable, so treat it as inactive here.
+    is_active: raw.isActive && !raw.isSuspended,
+    // ⚠️ Gap: no `studentLimit` column on the Prisma School model. Always
+    // null until a schema migration adds it.
+    student_limit: null,
+    subscription_status: raw.subscriptionPlan,
+    created_at: raw.createdAt,
+  };
+}
+
 export function useSchools(filters?: SchoolFilters) {
   const page = filters?.page || 1;
   const pageSize = filters?.pageSize || 25;
@@ -53,32 +112,31 @@ export function useSchools(filters?: SchoolFilters) {
   return useQuery({
     queryKey: ['schools', filters],
     queryFn: async (): Promise<PaginatedSchools> => {
-      let query = supabase
-        .from('schools')
-        .select('id, name, code, subdomain, address, city, phone, email, logo, is_active, student_limit, subscription_status, primary_color, accent_color, created_at', { count: 'exact' })
-        .order('created_at', { ascending: false });
+      const { data } = await api.get('/superadmin/schools', {
+        params: {
+          page,
+          limit: pageSize,
+          search: filters?.search || undefined,
+        },
+      });
 
-      if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,city.ilike.%${filters.search}%`);
-      }
+      let rows = (data.schools as RawSchool[]).map(mapSchool);
 
+      // ⚠️ The backend supports `search` only — no status or city params. These
+      // are applied to the current page's rows, so they are NOT reliable across
+      // pages (same caveat as the class/section filters in useStudents.ts).
+      // Proper fix: add `status` and `city` to getSchools().
       if (filters?.status === 'active') {
-        query = query.eq('is_active', true);
+        rows = rows.filter(s => s.is_active === true);
       } else if (filters?.status === 'inactive') {
-        query = query.eq('is_active', false);
+        rows = rows.filter(s => s.is_active === false);
       }
 
       if (filters?.city && filters.city !== 'All Cities') {
-        query = query.eq('city', filters.city);
+        rows = rows.filter(s => s.city === filters.city);
       }
 
-      const { from, to } = getSupabaseRange(page, pageSize);
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-      return { data: (data || []) as School[], totalCount: count || 0 };
+      return { data: rows, totalCount: data.pagination.total as number };
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -88,16 +146,12 @@ export function useSchoolStats() {
   return useQuery({
     queryKey: ['school-stats'],
     queryFn: async () => {
-      const [totalResult, activeResult] = await Promise.all([
-        supabase.from('schools').select('*', { count: 'exact', head: true }),
-        supabase.from('schools').select('*', { count: 'exact', head: true }).eq('is_active', true),
-      ]);
+      const { data } = await api.get('/superadmin/dashboard');
+      const stats = data.stats ?? {};
+      const total = Number(stats.totalSchools ?? 0);
+      const active = Number(stats.activeSchools ?? 0);
 
-      return {
-        total: totalResult.count || 0,
-        active: activeResult.count || 0,
-        inactive: (totalResult.count || 0) - (activeResult.count || 0),
-      };
+      return { total, active, inactive: total - active };
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -107,17 +161,30 @@ export function useSchoolCities() {
   return useQuery({
     queryKey: ['school-cities'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_distinct_cities' as any);
+      // ⚠️ No Express equivalent of the `get_distinct_cities` RPC. Derived
+      // from a large page instead, so it covers only the first 200 schools.
+      const { data } = await api.get('/superadmin/schools', { params: { limit: 200 } });
+      const cities = [...new Set(
+        (data.schools as RawSchool[]).map(s => s.city).filter(Boolean) as string[]
+      )].sort();
 
-      if (error) throw error;
-
-      const cities = (data as unknown as string[]) || [];
       return ['All Cities', ...cities];
     },
     staleTime: 10 * 60 * 1000,
   });
 }
 
+/**
+ * ⚠️ NOT MIGRATED — still on Supabase, and therefore currently broken by the
+ * same RLS/session issue as everything else.
+ *
+ * POST /api/superadmin/schools requires `adminEmail` + `adminPassword` (it
+ * creates the school and its first admin in one transaction), but the
+ * create-school form collects neither. Wiring it up needs either a UI change
+ * to collect admin credentials, or a backend change making them optional —
+ * which would leave schools with no administrator. Needs a decision before
+ * migrating; left as-is rather than silently broken in a new way.
+ */
 export function useCreateSchool() {
   const queryClient = useQueryClient();
 
@@ -163,28 +230,34 @@ export function useUpdateSchool() {
 
   return useMutation({
     mutationFn: async ({ id, logoPreview, ...formData }: Partial<SchoolFormData> & { id: string; logoPreview?: string | null }) => {
-      const updateData: Record<string, unknown> = { ...formData };
-      if (logoPreview !== undefined) {
-        updateData.logo = logoPreview || formData.logo || null;
-      }
+      // ⚠️ PUT /superadmin/schools/:id accepts only: name, primaryColor,
+      // address, city, state, pincode, phone, email, website, board, medium,
+      // upiId, subscriptionPlan, subscriptionEnd.
+      //
+      // So `code`/`subdomain` are immutable server-side (arguably correct —
+      // both are unique tenant identifiers), and `logo` and `accent_color`
+      // have no home: logo isn't in the controller's destructure, and there
+      // is no accentColor column. Those edits are silently dropped today —
+      // extending updateSchool() is the fix.
+      const { data } = await api.put(`/superadmin/schools/${id}`, {
+        ...(formData.name !== undefined && { name: formData.name }),
+        ...(formData.address !== undefined && { address: formData.address }),
+        ...(formData.city !== undefined && { city: formData.city }),
+        ...(formData.phone !== undefined && { phone: formData.phone || null }),
+        ...(formData.email !== undefined && { email: formData.email || null }),
+        ...(formData.primary_color !== undefined && { primaryColor: formData.primary_color }),
+      });
 
-      const { data, error } = await supabase
-        .from('schools')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      void logoPreview;
+      return data.school;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-cities'] });
       toast.success('School updated successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update school');
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || error?.message || 'Failed to update school');
     },
   });
 }
@@ -194,16 +267,17 @@ export function useDeleteSchool() {
 
   return useMutation({
     mutationFn: async (schoolId: string) => {
-      return await invokeEdgeFunction('delete-school', { school_id: schoolId });
+      const { data } = await api.delete(`/superadmin/schools/${schoolId}`);
+      return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['school-cities'] });
       toast.success(data?.message || 'School and all associated data deleted successfully');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete school');
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || error?.message || 'Failed to delete school');
     },
   });
 }
@@ -213,18 +287,21 @@ export function useToggleSchoolStatus() {
 
   return useMutation({
     mutationFn: async ({ schoolId, isActive }: { schoolId: string; isActive: boolean }) => {
-      return await invokeEdgeFunction('toggle-school-status', {
-        school_id: schoolId,
-        is_active: isActive,
-      });
+      // The backend models this as suspend/activate rather than an isActive
+      // flag: activate sets { isSuspended: false, isActive: true }, suspend
+      // sets { isSuspended: true } and leaves isActive alone. mapSchool()
+      // collapses both into `is_active` so the UI keeps its single toggle.
+      const action = isActive ? 'activate' : 'suspend';
+      const { data } = await api.patch(`/superadmin/schools/${schoolId}/${action}`);
+      return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       toast.success(data?.message || 'School status updated');
     },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update school status');
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || error?.message || 'Failed to update school status');
     },
   });
 }

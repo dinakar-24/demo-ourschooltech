@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { getSupabaseRange } from './usePagination';
+
+// ─────────────────────────────────────────────────────────────────────────
+// External shape is UNCHANGED from the Supabase version on purpose —
+// SchoolAdminsPage.tsx and AdminCard/UserActionsMenu keep working with zero
+// edits. Internally we now map from GET /api/superadmin/school-admins
+// (backend/src/controllers/schooladmin.controller.js) instead of stitching
+// together user_roles + profiles + schools client-side.
+// ─────────────────────────────────────────────────────────────────────────
 
 interface School {
   id: string;
@@ -16,6 +23,16 @@ interface SchoolAdmin {
   school_id: string | null;
   avatar_url: string | null;
   school?: School;
+  /**
+   * NEW — the SchoolAdmin row id, which is what
+   * PUT /api/superadmin/school-admins/:id expects.
+   *
+   * `id` above is deliberately the **User** id, not this one, because
+   * SchoolAdminsPage passes `admin.id` straight into <UserActionsMenu
+   * userId=…> and into the `user?.id === admin.id` self-check — both of
+   * which are user-level operations. Don't collapse these two fields.
+   */
+  school_admin_id: string;
 }
 
 interface UseSchoolAdminsOptions {
@@ -24,18 +41,82 @@ interface UseSchoolAdminsOptions {
   searchQuery: string;
 }
 
+// Raw shape returned by GET /api/superadmin/school-admins
+interface RawSchoolAdmin {
+  id: string;
+  schoolId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  designation: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    email: string;
+    phone: string | null;
+    isActive: boolean;
+    lastLogin: string | null;
+  } | null;
+  school?: { id: string; name: string; schoolCode: string } | null;
+}
+
+interface RawSchool {
+  id: string;
+  name: string;
+  schoolCode: string;
+}
+
+function mapAdmin(raw: RawSchoolAdmin): SchoolAdmin {
+  return {
+    // User id — see the note on `school_admin_id` above.
+    id: raw.user?.id ?? raw.userId,
+    school_admin_id: raw.id,
+    email: raw.user?.email ?? '',
+    full_name: `${raw.firstName} ${raw.lastName}`.trim(),
+    school_id: raw.schoolId ?? null,
+    // ⚠️ Gap: the SchoolAdmin model has no photo/avatar column (Teacher and
+    // Student both have `photo`, SchoolAdmin doesn't). Always null for now,
+    // so the UI falls back to initials. Needs a schema migration to fix.
+    avatar_url: null,
+    school: raw.school
+      ? { id: raw.school.id, name: raw.school.name, code: raw.school.schoolCode }
+      : undefined,
+  };
+}
+
 export function useSchoolAdmins({ page, pageSize, searchQuery }: UseSchoolAdminsOptions) {
   const [admins, setAdmins] = useState<SchoolAdmin[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const schoolsCache = useRef<Map<string, School>>(new Map());
+  const schoolsLoaded = useRef(false);
 
   const fetchSchools = useCallback(async () => {
-    if (schoolsCache.current.size > 0) return;
-    const { data } = await supabase.from('schools').select('id, name, code').order('name');
-    (data || []).forEach(s => schoolsCache.current.set(s.id, s));
-    setSchools(data || []);
+    if (schoolsLoaded.current) return;
+    try {
+      // Only feeds the "Assign to School" dropdown in CreateSchoolAdminDialog.
+      // GET /superadmin/schools defaults to limit=25, so ask for a large page
+      // rather than silently truncating the list.
+      const { data } = await api.get('/superadmin/schools', { params: { limit: 200 } });
+      const mapped = (data.schools as RawSchool[]).map(s => ({
+        id: s.id,
+        name: s.name,
+        code: s.schoolCode,
+      }));
+      schoolsLoaded.current = true;
+      setSchools(mapped);
+    } catch (error: any) {
+      // Surface this rather than swallowing it. Leaving `schools` as [] made a
+      // 401 look identical to "there are no schools", which is exactly what
+      // made the RLS/session outage hard to spot.
+      console.error('Error fetching schools:', error);
+      toast.error(
+        error?.response?.data?.error || 'Failed to load schools for the assignment dropdown'
+      );
+    }
   }, []);
 
   const fetchAdmins = useCallback(async () => {
@@ -43,48 +124,22 @@ export function useSchoolAdmins({ page, pageSize, searchQuery }: UseSchoolAdmins
     try {
       await fetchSchools();
 
-      // Get all school_admin user IDs
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'school_admin');
+      // Search is server-side now. Note it matches firstName OR lastName OR
+      // email independently, so a full "First Last" string won't match the
+      // way the old single full_name column did.
+      const { data } = await api.get('/superadmin/school-admins', {
+        params: {
+          page,
+          limit: pageSize,
+          search: searchQuery || undefined,
+        },
+      });
 
-      if (!rolesData || rolesData.length === 0) {
-        setAdmins([]);
-        setTotalCount(0);
-        setLoading(false);
-        return;
-      }
-
-      const userIds = rolesData.map(r => r.user_id);
-
-      // Build paginated profiles query
-      let query = supabase
-        .from('profiles')
-        .select('id, email, full_name, school_id, avatar_url', { count: 'exact' })
-        .in('id', userIds);
-
-      if (searchQuery) {
-        query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
-      }
-
-      const { from, to } = getSupabaseRange(page, pageSize);
-      const { data: profiles, count, error } = await query
-        .order('full_name')
-        .range(from, to);
-
-      if (error) throw error;
-
-      const adminsWithSchools = (profiles || []).map(admin => ({
-        ...admin,
-        school: admin.school_id ? schoolsCache.current.get(admin.school_id) : undefined,
-      }));
-
-      setAdmins(adminsWithSchools);
-      setTotalCount(count || 0);
-    } catch (error) {
+      setAdmins((data.admins as RawSchoolAdmin[]).map(mapAdmin));
+      setTotalCount(data.pagination.total as number);
+    } catch (error: any) {
       console.error('Error fetching admins:', error);
-      toast.error('Failed to load school admins');
+      toast.error(error?.response?.data?.error || 'Failed to load school admins');
     } finally {
       setLoading(false);
     }

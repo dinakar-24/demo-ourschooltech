@@ -1,6 +1,18 @@
 /**
  * Client-side job queue utility.
  * Enqueues jobs into the `jobs` table for background processing.
+ *
+ * ⚠️ NOT MIGRATED — BLOCKED. Highest-impact gap in the migration.
+ *
+ * Needs: a `Job` Prisma model + POST /api/jobs  (neither exists)
+ *   — or a direct notification endpoint, if the queue indirection isn't wanted.
+ *
+ * This is the only consumer of lib/send-notification.ts, which in turn backs
+ * useAttendance, useAnnouncements, useHomework, useFees, useExams and
+ * SendReminderDialog. With no Supabase session the insert below is rejected
+ * and swallowed by the catch, so **every notification the app tries to send
+ * is currently dropped silently** — attendance alerts, fee reminders,
+ * homework and announcement pushes.
  */
 
 import { supabase } from '@/integrations/supabase/client';

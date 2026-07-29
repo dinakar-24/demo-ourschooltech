@@ -4,6 +4,18 @@
  * Writes to the `error_logs` table via safe_log_client_error RPC.
  * Batches logs (debounced 2s) to avoid spamming the DB on cascading failures.
  * Never exposes sensitive data in logs.
+ *
+ * ⚠️ NOT MIGRATED — BLOCKED, and currently a silent no-op.
+ *
+ * Needs: POST /api/logs/client-error  (does not exist)
+ *   body: { errorType, message, context, severity }
+ *
+ * The Express backend has no client-error sink. `AuditLog` exists but is a
+ * server-side audit trail with a different shape and purpose — not a
+ * substitute. Since login moved off Supabase there is no session, so the RPC
+ * below is rejected and the `catch {}` swallows it: every logError() call in
+ * the app (AuthContext, lib/api.ts interceptors) currently goes nowhere.
+ * Behaviour is unchanged by the migration; it was already failing silently.
  */
 
 import { supabase } from '@/integrations/supabase/client';
