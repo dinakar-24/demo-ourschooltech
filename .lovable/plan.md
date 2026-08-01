@@ -1,99 +1,108 @@
-# OurSchool AI — Gemini-Powered Assistant
+# OurSchoolTech — Enterprise Expansion Roadmap (7 Phases)
 
-A school-aware chat assistant available in every portal (Super Admin, Admin, Teacher, Parent, Student). Uses Gemini Flash by default and auto-escalates to Gemini Pro for complex queries. Answers general questions AND live school-specific questions ("what's my child's fee balance?", "how many absences this month?", "any homework due?") scoped strictly to the user's role, school, and children.
+All new modules are additive. No existing module is rebuilt or modified. Every new module follows the existing conventions: multi-tenant `school_id` scoping, RLS + GRANTs, `admin_permissions` module keys, MobileLayout/Drawer on mobile and Dialog/two-column on desktop, deep teal design tokens, React Query with server-side pagination, and push/notification triggers.
 
----
+## Working agreement
 
-## User Experience
-
-- **Floating chat button** (bottom-right, above mobile nav) on every authenticated page.
-- Tap → opens a **mobile-first Drawer** (max 85dvh) / desktop side panel with the conversation.
-- **Threaded history**: sidebar lists past chats, "New Chat" button, rename & delete.
-- Streaming responses (word-by-word), markdown rendering, code blocks, copy button.
-- **Suggested prompts** on empty state, tailored per role:
-  - Parent: "Show my child's fee balance", "This week's homework"
-  - Teacher: "My classes today", "Attendance summary for 8-A"
-  - Admin: "Fee collection this month", "Absent students today"
-- Loading shimmer ("Thinking..."), stop-generation button, error retry.
-- Multilingual — respects the user's current i18n language setting.
+- One phase is built completely before the next begins. Each phase ships in reviewable chunks (database migration -> APIs/edge functions -> UI -> analytics/reports -> permissions/notifications).
+- Every module gets: schema + relationships, RLS + role permissions, list/detail/create/edit UI, a dashboard tile or page, at least one report (ExcelJS or PDF), validation, settings, and notification hooks.
+- Each phase adds its module keys to `admin_permissions` and its nav entries to the sidebar, gated per role.
 
 ---
 
-## Intelligence & Safety
+## Phase 1 — AI Suite
 
-**Router logic** (server-side):
-- Default → `google/gemini-3.6-flash` (fast, cheap).
-- Escalate to `google/gemini-3.1-pro-preview` when the query is long, contains reasoning keywords, or needs multi-step tool chaining.
+Extends the existing `ai-chat` function, `ai_conversations`/`ai_messages` tables, and `schools.ai_settings`.
 
-**Tools the AI can call** (scoped by role — enforced server-side, never trust client):
-- `get_student_summary` (parent/student only, own children)
-- `get_fee_balance` (parent for own children, admin for school)
-- `get_attendance_summary` (role-scoped)
-- `get_homework_upcoming` (student/parent for own class)
-- `get_announcements_recent` (all, school-scoped)
-- `get_school_stats` (admin/super-admin only)
-- `get_class_roster` (teacher for own classes, admin)
+- Role-aware assistants: School Admin, Teacher, Parent, Student — each with its own tool set, data scope, and suggestion chips. Server-side tool calling replaces today's static context injection so the AI can query attendance, fees, results, and timetable on demand.
+- AI generators: Homework, Circular, Notice, Report Card remarks, Timetable draft (constraint-aware: teacher load, subject periods, lunch, clash detection). Each generator produces a draft that a human edits and approves before publishing.
+- Prediction engines (nightly `pg_cron` job + `jobs` queue): fee-defaulter risk, student performance trajectory, attendance dropout risk. Scores stored in `ai_predictions` with reason codes, surfaced as risk lists with drill-down.
+- AI Analytics Dashboard: natural-language question box over school data, plus auto-generated weekly insight cards.
+- Governance: per-school token budgets, usage log, model/tone config (already partly in `ai_settings`), audit of every generated artifact.
 
-Every tool re-verifies the caller's `user_id`, `role`, and `school_id` before returning data. Super Admin has cross-school access; everyone else is locked to their tenant.
+New tables: `ai_predictions`, `ai_generations`, `ai_usage_ledger`.
 
-**Guardrails**:
-- System prompt anchors the AI: identity ("OurSchool AI"), scope, refusal rules for out-of-scope requests (medical advice, non-school topics stay general), never leaks other schools' data.
-- Rate limit per user (e.g. 30 messages/hour) to control costs and abuse.
-- Log every conversation for audit.
+## Phase 2 — Transport & Safety
 
----
+Extends existing `transport_routes` / `student_transport`.
 
-## Data Model
+- Full transport management: vehicles, drivers/attendants, stops with geocoordinates, trip schedules (AM/PM), student stop assignment.
+- Driver portal (PWA route, phone-based GPS): trip start/end, live location ping with battery-aware throttling, student board/deboard marking, SOS button. A vendor webhook endpoint is included so an IoT tracker can push to the same pipeline later.
+- Parent live tracking: map with bus position, current stop, and progress.
+- Smart ETA: computed from live position + stop sequence + historical timing; push notification at configurable distance/minute thresholds, plus delay and arrival alerts.
+- Driver attendance, trip logs, route optimization suggestions (stop ordering), and transport analytics (on-time rate, utilization, fuel/cost per route, delay heatmap).
 
-Two new tables:
+New tables: `transport_vehicles`, `transport_drivers`, `transport_stops`, `transport_trips`, `transport_trip_events`, `transport_locations`, `transport_alerts`.
 
-- `ai_conversations` — `id, user_id, school_id, title, created_at, updated_at, last_message_at`
-- `ai_messages` — `id, conversation_id, role (user|assistant|tool), content, tool_calls jsonb, tokens_in, tokens_out, model, created_at`
+## Phase 3 — Operations Suite
 
-RLS: users see only their own conversations. Super admin can see all (for audit). Full GRANTs to `authenticated` + `service_role`.
+- Hostel: blocks, rooms, beds, allocation, occupancy dashboard, in/out register, hostel attendance (roll call), leave/outpass, complaints.
+- Mess: menu planner, meal attendance, mess fee linkage, feedback, consumption analytics.
+- Library: catalog, copies with QR/barcode, issue/return, fines, reservations, reading history. Digital library for e-books/PDFs with access rules. Barcode scanning via device camera.
+- Inventory & Assets: stock items, purchase entries, issue/consumption, reorder alerts; asset register with tags, assignment, depreciation, maintenance schedule.
+- Visitor & Gate Pass: pre-registration, QR check-in, photo capture, host approval, student early-exit gate pass with parent approval and guard verification.
+- Medical & Health: student health profile, allergies, vaccination, clinic visit log, medication administered, incident report with parent notification.
 
-Auto-title conversations from the first user message (short Gemini Flash call).
+## Phase 4 — People & Money
 
----
+- HR: employee master (beyond the teacher table), documents, contracts, onboarding/exit checklists, org chart.
+- Payroll: salary structures, allowances/deductions, attendance-linked payroll run, payslip PDF, statutory heads (PF/ESI/TDS), payroll register export.
+- Leave management: policies, balances, apply/approve chain, leave calendar, substitution assignment.
+- Employee performance: KPI templates, self/manager review cycles, classroom observation forms, ratings dashboard.
+- Online admissions: public inquiry -> application form -> document upload -> application fee payment (Cashfree) -> shortlist/interview -> offer -> enrollment that creates the student record.
+- Alumni portal: profiles, batch directory, events, donations, mentorship opt-in.
+- Executive analytics + finance analytics: revenue vs collection, ageing buckets, concession leakage, forecast, class-wise profitability, board-level KPI dashboard.
 
-## Architecture
+## Phase 5 — Communication
 
-**Backend** — new edge function `ai-chat`:
-- Auth-verified (JWT, extracts `user_id`, `role`, `school_id`).
-- Loads full conversation history from DB.
-- Streams response via Lovable AI Gateway (`ai-sdk-lovable-gateway`) — no user-provided key needed.
-- Executes tool calls server-side with role-scoped Supabase queries.
-- Persists user + assistant messages, tracks token usage.
-- Rate-limit check before each call.
+- Parent-Teacher chat: scoped 1:1 and class-group threads with school-hours windows, moderation, read receipts, attachments, realtime via Postgres changes.
+- Internal staff chat: department/role channels, announcements pinning.
+- Video meeting scheduler: slot booking for PTMs, availability calendar, links, reminders, attendance capture.
+- Unified notification center and communication dashboard: delivery status across push/email/SMS/WhatsApp, templates, scheduling, engagement analytics.
 
-**Frontend**:
-- `useAiChat` hook — wraps the AI SDK's `useChat` with our edge function transport, threaded history, streaming.
-- `AiChatDrawer` component — Drawer/Dialog with `Conversation`, `Message`, `PromptInput` from AI Elements.
-- `AiChatFab` — floating button, mounted globally in `App.tsx`.
-- `AiChatThreadList` — sidebar with rename/delete.
-- Realtime: subscribe to `ai_messages` inserts so multi-device users see updates live.
+## Phase 6 — Enterprise SaaS
 
-**AI Elements install** (per chat-ui-composition):
-```
-bun x ai-elements@latest add conversation message prompt-input shimmer tool
-```
+- White-label management, custom domain management (verification + status), and expanded school branding (themes, email templates, PWA assets).
+- Certificate designer: drag-and-drop template builder (bonafide, TC, character, sports), merge fields, bulk generation, verification QR (reusing the receipt-verification pattern).
+- Document management: folders, versioning, retention rules, role-scoped sharing, e-sign request flow.
+- Platform plumbing: feature flags per school/plan, API keys with scopes and rate limits, outbound webhooks with retries and delivery log.
 
----
+## Phase 7 — Smart Campus
 
-## Implementation Phases
-
-1. **Backend**: migration for `ai_conversations` + `ai_messages` with RLS/GRANTs; edge function `ai-chat` with model router, tool registry, streaming, rate limit.
-2. **Hooks & API**: `useAiConversations`, `useAiChat` (AI SDK integration), realtime subscription.
-3. **UI**: install AI Elements, build `AiChatDrawer`, `AiChatFab`, `AiChatThreadList`, empty state with role-based suggestions, custom OurSchool AI avatar.
-4. **Wire globally**: mount FAB in `App.tsx` inside authenticated layouts only; hide on login/tenant-error/receipt-verify pages.
-5. **Polish**: markdown rendering, streaming shimmer, mobile viewport safety (keyboard resize, safe-area), i18n strings for all 8 languages, dark mode.
-6. **Verify**: build check, test as each role (parent/teacher/admin/super-admin), confirm role-scoping (parent cannot see another child's data), realtime sync, rate limit.
+- Biometric attendance integration: device registry, punch ingestion API, mapping to staff/students, reconciliation.
+- Face recognition attendance: enrollment, capture, review queue, and confidence thresholds (UI + workflow; recognition provider pluggable).
+- QR attendance: rotating class QR, student scan, geofence and time-window validation.
+- LMS: courses, units, lessons, resources, progress tracking, discussions.
+- Online exams / CBT: question bank with tags and difficulty, paper blueprint, timed delivery, auto-grading for objective items, rubric-based subjective grading, proctoring signals, results publishing into the existing results flow.
+- Assignment evaluation: submission, plagiarism-signal check, AI-assisted rubric grading with teacher override.
 
 ---
 
-## Technical Notes
+## Additions beyond your list (gaps vs Entab / LEAD / Teachmint)
 
-- Uses existing Lovable AI Gateway (`LOVABLE_API_KEY` already provisioned) — no Gemini API key needed from you.
-- Cost control: Flash-first routing, per-user rate limit, capped `stepCountIs(50)` for tool loops, message history windowing (last ~20 turns to keep tokens sane on long threads).
-- Fully realtime via Supabase channels (matches your existing fee realtime pattern).
-- No external Gemini SDK — the gateway handles it, keeps everything server-side and secure.
+Slotted into the phases above where they fit best:
+
+- Sibling / family accounts with a single parent login and combined fee cart (Phase 4).
+- Multi-branch school groups with a group-level rollup dashboard (Phase 4).
+- Fee reconciliation automation: bank statement import, auto-match to payments, exception queue (Phase 4).
+- Offline-first teacher mode for attendance and marks in low-connectivity campuses (Phase 7).
+- WhatsApp Business channel as a notification transport (Phase 5).
+- Parent NPS and satisfaction pulse surveys (Phase 5).
+- Compliance pack: CBSE/State board report formats, UDISE+ export, RTE quota tracking (Phase 4).
+- Data export / DPDP-style consent and retention controls (Phase 6).
+- Emergency broadcast with acknowledgement tracking (Phase 5).
+
+---
+
+## Technical notes
+
+- Every new public table follows the mandated order: CREATE TABLE, GRANT, ENABLE RLS, CREATE POLICY; helper access via `has_role` / `get_user_school_id` security-definer functions to avoid recursive RLS.
+- Heavy dashboards use security-definer aggregate RPCs (matching `get_admin_dashboard_full`) rather than client-side aggregation, so the app stays fast at scale.
+- Background work (predictions, ETA recomputation, payroll runs, notification fanout) goes through the existing `jobs` queue with `pg_cron`, not synchronous requests.
+- AI calls run server-side only through the Lovable AI Gateway; no keys reach the browser. Generated content is always human-approved before publishing.
+- Realtime features (bus location, chat) use scoped Postgres change subscriptions with channel teardown on unmount, and RLS-restricted payloads.
+- New routes are lazy-loaded and added to the existing chunking strategy to keep the initial bundle flat.
+
+## Phase 1 kickoff
+
+On approval I start Phase 1 with the database migration for `ai_predictions`, `ai_generations`, and `ai_usage_ledger`, then the tool-calling upgrade to the `ai-chat` function, then the role assistants and generator UIs, then predictions + the AI analytics dashboard.
