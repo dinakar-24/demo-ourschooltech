@@ -131,6 +131,77 @@ export type Database = {
           },
         ]
       }
+      ai_generations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          class_name: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          generation_type: string
+          id: string
+          metadata: Json
+          model: string | null
+          prompt: string
+          published_ref_id: string | null
+          school_id: string
+          section: string | null
+          status: string
+          subject: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_name?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          generation_type: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          prompt: string
+          published_ref_id?: string | null
+          school_id: string
+          section?: string | null
+          status?: string
+          subject?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_name?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          generation_type?: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          prompt?: string
+          published_ref_id?: string | null
+          school_id?: string
+          section?: string | null
+          status?: string
+          subject?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generations_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_messages: {
         Row: {
           content: string
@@ -171,6 +242,110 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_predictions: {
+        Row: {
+          computed_at: string
+          created_at: string
+          id: string
+          metrics: Json
+          prediction_type: string
+          reasons: Json
+          recommendation: string | null
+          risk_band: string
+          risk_score: number
+          school_id: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          computed_at?: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          prediction_type: string
+          reasons?: Json
+          recommendation?: string | null
+          risk_band?: string
+          risk_score?: number
+          school_id: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          computed_at?: string
+          created_at?: string
+          id?: string
+          metrics?: Json
+          prediction_type?: string
+          reasons?: Json
+          recommendation?: string | null
+          risk_band?: string
+          risk_score?: number
+          school_id?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_predictions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_predictions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_ledger: {
+        Row: {
+          created_at: string
+          estimated_cost: number
+          feature: string
+          id: string
+          model: string
+          school_id: string | null
+          tokens_in: number
+          tokens_out: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost?: number
+          feature: string
+          id?: string
+          model: string
+          school_id?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_cost?: number
+          feature?: string
+          id?: string
+          model?: string
+          school_id?: string | null
+          tokens_in?: number
+          tokens_out?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_ledger_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2970,6 +3145,10 @@ export type Database = {
       }
       get_admin_dashboard_full: { Args: { _school_id: string }; Returns: Json }
       get_admin_dashboard_stats: { Args: { _school_id: string }; Returns: Json }
+      get_ai_usage_summary: {
+        Args: { _days?: number; _school_id: string }
+        Returns: Json
+      }
       get_attendance_summary: {
         Args: { _date: string; _school_id: string }
         Returns: Json
