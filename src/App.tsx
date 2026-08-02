@@ -73,6 +73,8 @@ const GalleryPage = lazy(() => import("./pages/admin/GalleryPage"));
 const FeedbackPage = lazy(() => import("./pages/admin/FeedbackPage"));
 const QueryPage = lazy(() => import("./pages/admin/QueryPage"));
 const InstallAppPage = lazy(() => import("./pages/admin/InstallAppPage"));
+const AiStudioPage = lazy(() => import("./pages/admin/AiStudioPage"));
+const AiInsightsPage = lazy(() => import("./pages/admin/AiInsightsPage"));
 
 // Lazy loaded pages -- Teacher
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
