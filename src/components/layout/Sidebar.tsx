@@ -34,6 +34,8 @@ import {
   MessageSquare,
   HelpCircle,
   Globe,
+  Sparkles,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -151,6 +153,13 @@ const schoolAdminGrouped: MenuGroup[] = [
       { label: 'Announcements', path: '/announcements', icon: Bell },
       { label: 'Feedback', path: '/feedback', icon: MessageSquare },
       { label: 'Queries', path: '/queries', icon: HelpCircle },
+    ],
+  },
+  {
+    group: 'OurSchool AI',
+    items: [
+      { label: 'AI Studio', path: '/ai-studio', icon: Sparkles },
+      { label: 'AI Insights', path: '/ai-insights', icon: Brain },
     ],
   },
   {

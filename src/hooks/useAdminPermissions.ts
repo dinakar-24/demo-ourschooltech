@@ -23,6 +23,8 @@ export const ALL_ADMIN_MODULES = [
   'bulk-upload',
   'subscription',
   'settings',
+  'ai-studio',
+  'ai-insights',
 ] as const;
 
 export type AdminModule = typeof ALL_ADMIN_MODULES[number];
@@ -47,6 +49,8 @@ export const MODULE_LABELS: Record<AdminModule, string> = {
   'bulk-upload': 'Bulk Upload',
   'subscription': 'Subscription',
   'settings': 'Settings',
+  'ai-studio': 'AI Studio',
+  'ai-insights': 'AI Insights',
 };
 
 // Map sidebar paths to module keys
@@ -69,6 +73,8 @@ export const PATH_TO_MODULE: Record<string, AdminModule> = {
   '/bulk-upload': 'bulk-upload',
   '/subscription': 'subscription',
   '/settings': 'settings',
+  '/ai-studio': 'ai-studio',
+  '/ai-insights': 'ai-insights',
 };
 
 interface PermissionRow {
