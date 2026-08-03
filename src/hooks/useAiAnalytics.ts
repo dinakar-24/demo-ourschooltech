@@ -1,4 +1,4 @@
-import { useMutation, useState as _unused } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { invokeEdgeFunction } from '@/lib/api';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
