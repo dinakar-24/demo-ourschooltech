@@ -134,8 +134,35 @@ async function processJob(supabase: any, job: any) {
       await handleCleanup(supabase, payload);
       break;
 
+    case 'ai_predict':
+      await handleAiPredict(payload);
+      break;
+
     default:
       throw new Error(`Unknown job type: ${job_type}`);
+  }
+}
+
+async function handleAiPredict(payload: any) {
+  const schoolId = payload?.school_id;
+  if (!schoolId) throw new Error('ai_predict job missing school_id');
+
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  if (!cronSecret) throw new Error('CRON_SECRET is not configured');
+
+  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/ai-predict`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+    },
+    body: JSON.stringify({ school_id: schoolId, cron_secret: cronSecret }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ai-predict failed [${res.status}]: ${text.slice(0, 500)}`);
   }
 }
 
