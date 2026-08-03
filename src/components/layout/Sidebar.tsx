@@ -160,6 +160,7 @@ const schoolAdminGrouped: MenuGroup[] = [
     items: [
       { label: 'AI Studio', path: '/ai-studio', icon: Sparkles },
       { label: 'AI Insights', path: '/ai-insights', icon: Brain },
+      { label: 'AI Analytics', path: '/ai-analytics', icon: LineChart },
     ],
   },
   {
