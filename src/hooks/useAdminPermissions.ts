@@ -25,6 +25,7 @@ export const ALL_ADMIN_MODULES = [
   'settings',
   'ai-studio',
   'ai-insights',
+  'ai-analytics',
 ] as const;
 
 export type AdminModule = typeof ALL_ADMIN_MODULES[number];
@@ -51,6 +52,7 @@ export const MODULE_LABELS: Record<AdminModule, string> = {
   'settings': 'Settings',
   'ai-studio': 'AI Studio',
   'ai-insights': 'AI Insights',
+  'ai-analytics': 'AI Analytics',
 };
 
 // Map sidebar paths to module keys
@@ -75,6 +77,7 @@ export const PATH_TO_MODULE: Record<string, AdminModule> = {
   '/settings': 'settings',
   '/ai-studio': 'ai-studio',
   '/ai-insights': 'ai-insights',
+  '/ai-analytics': 'ai-analytics',
 };
 
 interface PermissionRow {

@@ -36,6 +36,7 @@ import {
   Globe,
   Sparkles,
   Brain,
+  LineChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -160,6 +161,7 @@ const schoolAdminGrouped: MenuGroup[] = [
     items: [
       { label: 'AI Studio', path: '/ai-studio', icon: Sparkles },
       { label: 'AI Insights', path: '/ai-insights', icon: Brain },
+      { label: 'AI Analytics', path: '/ai-analytics', icon: LineChart },
     ],
   },
   {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Brain, Loader2, RefreshCw, TrendingUp, CalendarX, IndianRupee } from 'lucide-react';
+import { Brain, Loader2, RefreshCw, TrendingUp, CalendarX, IndianRupee, BellRing } from 'lucide-react';
 import { useAiInsights, type PredictionType } from '@/hooks/useAiInsights';
 
 const TABS: { value: PredictionType; label: string; icon: any }[] = [
@@ -22,7 +22,8 @@ const BAND_STYLE: Record<string, string> = {
 
 export default function AiInsightsPage() {
   const [type, setType] = useState<PredictionType>('fee_default');
-  const { predictions, isLoading, lastComputedAt, usage, runPredictions } = useAiInsights(type);
+  const { predictions, isLoading, lastComputedAt, usage, runPredictions, notifyParent } = useAiInsights(type);
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   const counts = {
     high: predictions.filter(p => p.risk_band === 'high').length,
@@ -44,6 +45,7 @@ export default function AiInsightsPage() {
                 {lastComputedAt
                   ? `Last scored ${new Date(lastComputedAt).toLocaleString('en-IN')}`
                   : 'Risk scoring has not run yet for this school.'}
+                {' · Runs automatically every night'}
               </p>
             </div>
           </div>
@@ -98,6 +100,22 @@ export default function AiInsightsPage() {
                 {p.recommendation && (
                   <p className="text-xs bg-muted/50 rounded-md p-2"><span className="font-medium">Suggested action: </span>{p.recommendation}</p>
                 )}
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!p.student?.parent_user_id || (notifyParent.isPending && notifyingId === p.id)}
+                    onClick={() => {
+                      setNotifyingId(p.id);
+                      notifyParent.mutate(p, { onSettled: () => setNotifyingId(null) });
+                    }}
+                  >
+                    {notifyParent.isPending && notifyingId === p.id
+                      ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                      : <BellRing className="h-3.5 w-3.5 mr-2" />}
+                    {p.prediction_type === 'fee_default' ? 'Send fee reminder' : 'Notify parent'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

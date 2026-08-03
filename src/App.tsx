@@ -75,6 +75,7 @@ const QueryPage = lazy(() => import("./pages/admin/QueryPage"));
 const InstallAppPage = lazy(() => import("./pages/admin/InstallAppPage"));
 const AiStudioPage = lazy(() => import("./pages/admin/AiStudioPage"));
 const AiInsightsPage = lazy(() => import("./pages/admin/AiInsightsPage"));
+const AiAnalyticsPage = lazy(() => import("./pages/admin/AiAnalyticsPage"));
 
 // Lazy loaded pages -- Teacher
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
@@ -334,6 +335,7 @@ function AppRoutes() {
           <Route path="/admin/install-app" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><InstallAppPage /></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/ai-studio" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiStudioPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/ai-insights" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiInsightsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/ai-analytics" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiAnalyticsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
           
           {/* Teacher Routes */}

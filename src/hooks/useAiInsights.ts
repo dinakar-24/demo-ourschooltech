@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { invokeEdgeFunction } from '@/lib/api';
 import { useEffectiveSchoolId } from '@/hooks/useEffectiveSchoolId';
 import { toast } from 'sonner';
+import { sendNotification } from '@/lib/send-notification';
 
 export type PredictionType = 'fee_default' | 'attendance' | 'performance';
 
@@ -16,7 +17,7 @@ export interface AiPrediction {
   metrics: Record<string, any>;
   recommendation: string | null;
   computed_at: string;
-  student?: { full_name: string; class_name: string; section: string } | null;
+  student?: { full_name: string; class_name: string; section: string; parent_user_id: string | null } | null;
 }
 
 export interface AiUsageSummary {
@@ -38,7 +39,7 @@ export function useAiInsights(type: PredictionType) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ai_predictions' as any)
-        .select('id, student_id, prediction_type, risk_score, risk_band, reasons, metrics, recommendation, computed_at, students(full_name, class_name, section)')
+        .select('id, student_id, prediction_type, risk_score, risk_band, reasons, metrics, recommendation, computed_at, students(full_name, class_name, section, parent_user_id)')
         .eq('school_id', schoolId)
         .eq('prediction_type', type)
         .order('risk_score', { ascending: false })
@@ -74,6 +75,35 @@ export function useAiInsights(type: PredictionType) {
     onError: (e: any) => toast.error(e?.message || 'Prediction run failed'),
   });
 
+  const notifyParent = useMutation({
+    mutationFn: async (p: AiPrediction) => {
+      const parentId = p.student?.parent_user_id;
+      if (!parentId) throw new Error('No parent account linked to this student.');
+      const name = p.student?.full_name || 'your child';
+      const title =
+        p.prediction_type === 'fee_default'
+          ? 'Fee payment reminder'
+          : p.prediction_type === 'attendance'
+            ? 'Attendance concern'
+            : 'Academic progress update';
+      const body =
+        p.prediction_type === 'fee_default'
+          ? `A fee balance is pending for ${name}. Please clear it at the earliest to avoid late charges.`
+          : p.prediction_type === 'attendance'
+            ? `${name}'s attendance has dropped recently. Please ensure regular attendance.`
+            : `${name} may need extra academic support. Please connect with the class teacher.`;
+      await sendNotification({
+        userIds: [parentId],
+        title,
+        body,
+        type: p.prediction_type === 'fee_default' ? 'fee' : 'general',
+        schoolId: schoolId || undefined,
+      });
+    },
+    onSuccess: () => toast.success('Parent notified'),
+    onError: (e: any) => toast.error(e?.message || 'Could not notify parent'),
+  });
+
   return {
     schoolId,
     predictions: predictions.data ?? [],
@@ -81,5 +111,6 @@ export function useAiInsights(type: PredictionType) {
     lastComputedAt: predictions.data?.[0]?.computed_at ?? null,
     usage: usage.data,
     runPredictions,
+    notifyParent,
   };
 }
