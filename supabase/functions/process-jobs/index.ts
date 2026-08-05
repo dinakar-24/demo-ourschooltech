@@ -15,20 +15,24 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Auth check: only allow service role, anon key (pg_cron), or super_admin
+    // Auth check: service role, anon key, the scheduler secret (pg_cron), or a super_admin JWT
+    const reqBody = await req.json().catch(() => ({}));
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const isCron = !!cronSecret && (reqBody as any)?.cron_secret === cronSecret;
+
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!isCron && !authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = (authHeader || '').replace('Bearer ', '');
     const isServiceRole = token === serviceRoleKey;
     const isAnonKey = token === anonKey; // pg_cron uses anon key
 
-    if (!isServiceRole && !isAnonKey) {
+    if (!isCron && !isServiceRole && !isAnonKey) {
       // Validate JWT - only super_admin can manually trigger
       const supabaseUser = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
