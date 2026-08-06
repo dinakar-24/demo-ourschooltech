@@ -77,6 +77,30 @@ const AiStudioPage = lazy(() => import("./pages/admin/AiStudioPage"));
 const AiInsightsPage = lazy(() => import("./pages/admin/AiInsightsPage"));
 const AiAnalyticsPage = lazy(() => import("./pages/admin/AiAnalyticsPage"));
 
+// Enterprise modules (frontend preview)
+const VehiclesPage = lazy(() => import("./pages/admin/modules/VehiclesPage"));
+const DriversPage = lazy(() => import("./pages/admin/modules/DriversPage"));
+const BusRoutesPage = lazy(() => import("./pages/admin/modules/BusRoutesPage"));
+const LiveTrackingPage = lazy(() => import("./pages/admin/modules/LiveTrackingPage"));
+const TripLogsPage = lazy(() => import("./pages/admin/modules/TripLogsPage"));
+const HostelPage = lazy(() => import("./pages/admin/modules/HostelPage"));
+const LibraryPage = lazy(() => import("./pages/admin/modules/LibraryPage"));
+const InventoryPage = lazy(() => import("./pages/admin/modules/InventoryPage"));
+const VisitorsPage = lazy(() => import("./pages/admin/modules/VisitorsPage"));
+const MedicalPage = lazy(() => import("./pages/admin/modules/MedicalPage"));
+const StaffHrPage = lazy(() => import("./pages/admin/modules/StaffHrPage"));
+const PayrollPage = lazy(() => import("./pages/admin/modules/PayrollPage"));
+const AdmissionsPage = lazy(() => import("./pages/admin/modules/AdmissionsPage"));
+const FinancePage = lazy(() => import("./pages/admin/modules/FinancePage"));
+const MessagingPage = lazy(() => import("./pages/admin/modules/MessagingPage"));
+const MeetingsPage = lazy(() => import("./pages/admin/modules/MeetingsPage"));
+const CampaignsPage = lazy(() => import("./pages/admin/modules/CampaignsPage"));
+const WhiteLabelPage = lazy(() => import("./pages/admin/modules/WhiteLabelPage"));
+const CertificatesPage = lazy(() => import("./pages/admin/modules/CertificatesPage"));
+const BiometricPage = lazy(() => import("./pages/admin/modules/BiometricPage"));
+const LmsPage = lazy(() => import("./pages/admin/modules/LmsPage"));
+const OnlineExamsPage = lazy(() => import("./pages/admin/modules/OnlineExamsPage"));
+
 // Lazy loaded pages -- Teacher
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
 const TeacherAttendance = lazy(() => import("./pages/teacher/TeacherAttendance"));
@@ -336,6 +360,30 @@ function AppRoutes() {
           <Route path="/admin/ai-studio" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiStudioPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/ai-insights" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiInsightsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/ai-analytics" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminPermissionGuard><AiAnalyticsPage /></AdminPermissionGuard></SubscriptionGuard></ProtectedRoute>} />
+
+          {/* Enterprise modules */}
+          <Route path="/admin/fleet-vehicles" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><VehiclesPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/fleet-drivers" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><DriversPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/fleet-routes" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BusRoutesPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/fleet-tracking" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><LiveTrackingPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/fleet-trips" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><TripLogsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/hostel" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><HostelPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/library" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><LibraryPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><InventoryPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/visitors" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><VisitorsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/medical" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><MedicalPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/staff-hr" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><StaffHrPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/payroll" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><PayrollPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/admissions" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdmissionsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><FinancePage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/messaging" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><MessagingPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/meetings" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><MeetingsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/campaigns" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><CampaignsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/white-label" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><WhiteLabelPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/certificates" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><CertificatesPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/biometric" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><BiometricPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/lms" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><LmsPage /></SubscriptionGuard></ProtectedRoute>} />
+          <Route path="/admin/online-exams" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><OnlineExamsPage /></SubscriptionGuard></ProtectedRoute>} />
           <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['school_admin', 'super_admin']} requireImpersonation><SubscriptionGuard><AdminDashboard /></SubscriptionGuard></ProtectedRoute>} />
           
           {/* Teacher Routes */}
