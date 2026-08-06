@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 interface ModuleHeaderProps {
