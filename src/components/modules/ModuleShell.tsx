@@ -118,3 +118,67 @@ export function EmptyHint({ text }: { text: string }) {
     <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">{text}</CardContent></Card>
   );
 }
+
+export interface Column<T> {
+  key: string;
+  header: string;
+  cell: (row: T) => ReactNode;
+  /** shown on the mobile card */
+  mobile?: 'title' | 'subtitle' | 'meta' | 'badge' | 'hide';
+}
+
+export function ModuleTable<T extends { id?: string }>({
+  columns,
+  rows,
+  empty = 'Nothing here yet.',
+}: { columns: Column<T>[]; rows: T[]; empty?: string }) {
+  if (rows.length === 0) return <EmptyHint text={empty} />;
+  const title = columns.find(c => c.mobile === 'title') ?? columns[0];
+  const subtitle = columns.filter(c => c.mobile === 'subtitle');
+  const meta = columns.filter(c => c.mobile === 'meta');
+  const badge = columns.find(c => c.mobile === 'badge');
+
+  return (
+    <>
+      <div className="hidden md:block overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>{columns.map(c => <TableHead key={c.key}>{c.header}</TableHead>)}</TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r, i) => (
+              <TableRow key={r.id ?? i}>
+                {columns.map(c => <TableCell key={c.key} className="text-sm align-top">{c.cell(r)}</TableCell>)}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="md:hidden divide-y">
+        {rows.map((r, i) => (
+          <div key={r.id ?? i} className="p-4 space-y-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-0.5">
+                <div className="font-medium text-sm">{title.cell(r)}</div>
+                {subtitle.map(c => (
+                  <div key={c.key} className="text-xs text-muted-foreground">{c.cell(r)}</div>
+                ))}
+              </div>
+              {badge && <div className="shrink-0">{badge.cell(r)}</div>}
+            </div>
+            {meta.length > 0 && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+                {meta.map(c => (
+                  <div key={c.key} className="text-xs">
+                    <span className="text-muted-foreground">{c.header}: </span>
+                    <span className="font-medium">{c.cell(r)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
