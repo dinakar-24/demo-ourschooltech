@@ -36,6 +36,22 @@ import {
   Megaphone,
   Award,
 } from 'lucide-react';
+import {
+  Sparkles,
+  Brain,
+  LineChart,
+  Building2,
+  Package,
+  DoorOpen,
+  HeartPulse,
+  Wallet,
+  Palette,
+  ScanFace,
+  Library,
+  FileQuestion,
+  Upload,
+  MapPin,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -114,9 +130,70 @@ const menuGroups: MenuGroup[] = [
       { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
       { label: 'Gallery', href: '/admin/gallery', icon: Image },
       { label: 'Transport', href: '/admin/transport', icon: Bus },
+      { label: 'Bulk Upload', href: '/admin/bulk-upload', icon: Upload },
       { label: 'Subscription', href: '/admin/subscription', icon: CreditCard },
       { label: 'My Profile', href: '/admin/profile', icon: Users },
       { label: 'Settings', href: '/admin/settings', icon: Settings },
+    ],
+  },
+  {
+    group: 'OurSchool AI',
+    items: [
+      { label: 'AI Studio', href: '/admin/ai-studio', icon: Sparkles },
+      { label: 'AI Insights', href: '/admin/ai-insights', icon: Brain },
+      { label: 'AI Analytics', href: '/admin/ai-analytics', icon: LineChart },
+    ],
+  },
+  {
+    group: 'Transport & Fleet',
+    items: [
+      { label: 'Vehicles', href: '/admin/fleet-vehicles', icon: Bus },
+      { label: 'Drivers', href: '/admin/fleet-drivers', icon: Users },
+      { label: 'Routes & Stops', href: '/admin/fleet-routes', icon: MapPin },
+      { label: 'Live Tracking', href: '/admin/fleet-tracking', icon: MapPin },
+      { label: 'Trip Logs', href: '/admin/fleet-trips', icon: ClipboardList },
+    ],
+  },
+  {
+    group: 'Operations',
+    items: [
+      { label: 'Hostel', href: '/admin/hostel', icon: Building2 },
+      { label: 'Library', href: '/admin/library', icon: BookOpen },
+      { label: 'Inventory', href: '/admin/inventory', icon: Package },
+      { label: 'Visitors', href: '/admin/visitors', icon: DoorOpen },
+      { label: 'Medical', href: '/admin/medical', icon: HeartPulse },
+    ],
+  },
+  {
+    group: 'People & Money',
+    items: [
+      { label: 'Staff & HR', href: '/admin/staff-hr', icon: Users },
+      { label: 'Payroll', href: '/admin/payroll', icon: Wallet },
+      { label: 'Admissions', href: '/admin/admissions', icon: GraduationCap },
+      { label: 'Finance Analytics', href: '/admin/finance', icon: LineChart },
+    ],
+  },
+  {
+    group: 'Engagement',
+    items: [
+      { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
+      { label: 'Meetings', href: '/admin/meetings', icon: Video },
+      { label: 'Campaigns', href: '/admin/campaigns', icon: Megaphone },
+    ],
+  },
+  {
+    group: 'Enterprise',
+    items: [
+      { label: 'White Label', href: '/admin/white-label', icon: Palette },
+      { label: 'Certificates', href: '/admin/certificates', icon: Award },
+    ],
+  },
+  {
+    group: 'Smart Campus',
+    items: [
+      { label: 'Biometric', href: '/admin/biometric', icon: ScanFace },
+      { label: 'Learning (LMS)', href: '/admin/lms', icon: Library },
+      { label: 'Online Exams', href: '/admin/online-exams', icon: FileQuestion },
     ],
   },
 ];
