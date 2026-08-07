@@ -28,17 +28,19 @@ export const busRoutes = [
 ];
 
 export const routeStops = [
-  { id: 'S-1', name: 'JNTU Circle', time: '07:05', students: 6, eta: 'On time' },
-  { id: 'S-2', name: 'KPHB Colony 5th Phase', time: '07:12', students: 9, eta: 'On time' },
-  { id: 'S-3', name: 'Malaysian Township', time: '07:21', students: 7, eta: '2 min late' },
-  { id: 'S-4', name: 'Bharat Nagar X Road', time: '07:34', students: 5, eta: 'On time' },
-  { id: 'S-5', name: 'Erragadda Metro', time: '07:48', students: 11, eta: 'On time' },
+  { id: 'S-1', name: 'JNTU Circle', time: '07:05', students: 6, eta: 'On time', lat: 17.4933, lng: 78.3915 },
+  { id: 'S-2', name: 'KPHB Colony 5th Phase', time: '07:12', students: 9, eta: 'On time', lat: 17.4849, lng: 78.3915 },
+  { id: 'S-3', name: 'Malaysian Township', time: '07:21', students: 7, eta: '2 min late', lat: 17.4923, lng: 78.3999 },
+  { id: 'S-4', name: 'Bharat Nagar X Road', time: '07:34', students: 5, eta: 'On time', lat: 17.4712, lng: 78.4265 },
+  { id: 'S-5', name: 'Erragadda Metro', time: '07:48', students: 11, eta: 'On time', lat: 17.4581, lng: 78.4331 },
 ];
 
+export const schoolCampus = { name: 'School Campus', lat: 17.4483, lng: 78.3915 };
+
 export const liveBuses = [
-  { id: 'V-01', number: 'TS 09 AB 4521', route: 'Route 1 — Kukatpally', driver: 'Ramesh Yadav', speed: 34, onboard: 28, nextStop: 'Malaysian Township', eta: '4 min', status: 'running', progress: 46 },
-  { id: 'V-02', number: 'TS 09 CD 7788', route: 'Route 2 — Miyapur', driver: 'Suresh Babu', speed: 0, onboard: 31, nextStop: 'School Campus', eta: 'Arrived', status: 'completed', progress: 100 },
-  { id: 'V-04', number: 'TS 09 GH 3312', route: 'Route 4 — LB Nagar', driver: 'Naveen Reddy', speed: 18, onboard: 22, nextStop: 'Kothapet Junction', eta: '9 min', status: 'delayed', progress: 62 },
+  { id: 'V-01', number: 'TS 09 AB 4521', route: 'Route 1 — Kukatpally', driver: 'Ramesh Yadav', speed: 34, onboard: 28, nextStop: 'Malaysian Township', eta: '4 min', status: 'running', progress: 46, lat: 17.4901, lng: 78.3961 },
+  { id: 'V-02', number: 'TS 09 CD 7788', route: 'Route 2 — Miyapur', driver: 'Suresh Babu', speed: 0, onboard: 31, nextStop: 'School Campus', eta: 'Arrived', status: 'completed', progress: 100, lat: 17.4483, lng: 78.3915 },
+  { id: 'V-04', number: 'TS 09 GH 3312', route: 'Route 4 — LB Nagar', driver: 'Naveen Reddy', speed: 18, onboard: 22, nextStop: 'Kothapet Junction', eta: '9 min', status: 'delayed', progress: 62, lat: 17.3684, lng: 78.5525 },
 ];
 
 export const tripLogs = [
